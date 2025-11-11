@@ -1,35 +1,58 @@
-import React, { useState, useMemo, useEffect } from 'react';
-import type { UserRole, Cliente, Gasto, Trabajo } from './types';
-import { JobStatus } from './types';
+import React, { useState, useEffect } from 'react';
+import { supabase } from './supabaseClient';
+import type { Session, User } from '@supabase/supabase-js';
 import Login from './components/Login';
 import TallerDashboard from './components/TallerDashboard';
 import ClientPortal from './components/ClientPortal';
-import { supabase } from './supabaseClient';
-import type { TallerInfo } from './components/TallerDashboard';
-import type { Session } from '@supabase/supabase-js';
+import type { Cliente, Trabajo } from './types';
 
 const App: React.FC = () => {
     const [session, setSession] = useState<Session | null>(null);
-    const [userRole, setUserRole] = useState<UserRole | null>(null);
-    const [clientes, setClientes] = useState<Cliente[]>([]);
-    const [trabajos, setTrabajos] = useState<Trabajo[]>([]);
-    const [gastos, setGastos] = useState<Gasto[]>([]);
-    const [tallerInfo, setTallerInfo] = useState<TallerInfo | null>(null);
+    const [user, setUser] = useState<User | null>(null);
+    const [role, setRole] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
+
+    // Client-specific state
+    const [clientData, setClientData] = useState<Cliente | null>(null);
+    const [clientTrabajos, setClientTrabajos] = useState<Trabajo[]>([]);
+    const [tallerName, setTallerName] = useState('Mi Taller');
 
     useEffect(() => {
         const getSession = async () => {
             const { data: { session } } = await supabase.auth.getSession();
             setSession(session);
+            setUser(session?.user ?? null);
+
+            if (session?.user) {
+                const { data: profile } = await supabase
+                    .from('profiles')
+                    .select('role')
+                    .eq('id', session.user.id)
+                    .single();
+                setRole(profile?.role || null);
+            }
             setLoading(false);
         };
+        
         getSession();
 
-        const { data: authListener } = supabase.auth.onAuthStateChange(
-            (_event, session) => {
-                setSession(session);
+        const { data: authListener } = supabase.auth.onAuthStateChange(async (_event, session) => {
+            setSession(session);
+            setUser(session?.user ?? null);
+            if (session?.user) {
+                 const { data: profile } = await supabase
+                    .from('profiles')
+                    .select('role')
+                    .eq('id', session.user.id)
+                    .single();
+                setRole(profile?.role || null);
+            } else {
+                setRole(null);
             }
-        );
+            if (_event === 'SIGNED_OUT') {
+                setClientData(null);
+            }
+        });
 
         return () => {
             authListener.subscription.unsubscribe();
@@ -37,183 +60,87 @@ const App: React.FC = () => {
     }, []);
 
     useEffect(() => {
-        const fetchData = async () => {
-            if (!session) {
-                setUserRole(null);
-                return;
-            };
+        const fetchClientData = async () => {
+            if (user && role === 'cliente') {
+                setLoading(true);
+                try {
+                    // Fetch client profile and their workshop's name
+                    const { data: clientProfile, error: clientError } = await supabase
+                        .from('clientes')
+                        .select('*, talleres ( nombre )')
+                        .eq('id', user.id)
+                        .single();
 
-            setLoading(true);
-            try {
-                // Fetch user role from profiles table
-                const { data: profile, error: profileError } = await supabase
-                    .from('profiles')
-                    .select('role')
-                    .eq('id', session.user.id)
-                    .single();
-                
-                if (profileError) throw profileError;
+                    if (clientError) throw clientError;
 
-                const role = profile.role as UserRole;
-                setUserRole(role);
+                    // Fetch client's vehicles
+                    const { data: vehiculos, error: vehiculosError } = await supabase
+                        .from('vehiculos')
+                        .select('*')
+                        .eq('cliente_id', user.id);
+                    if (vehiculosError) throw vehiculosError;
+                    
+                    const fullClientData = { ...clientProfile, vehiculos: vehiculos || [] };
+                    setClientData(fullClientData as any);
+                    setTallerName((clientProfile as any)?.talleres?.nombre || 'Mi Taller');
 
-                // Fetch all data in parallel
-                const [
-                    { data: clientesData, error: clientesError },
-                    { data: trabajosData, error: trabajosError },
-                    { data: gastosData, error: gastosError },
-                    { data: tallerInfoData, error: tallerInfoError },
-                ] = await Promise.all([
-                    supabase.from('clientes').select('*, vehiculos(*)'),
-                    supabase.from('trabajos').select('*, partes(*)'),
-                    supabase.from('gastos').select('*').order('fecha', { ascending: false }),
-                    supabase.from('taller_info').select('*').limit(1).single(),
-                ]);
+                    // Fetch jobs for this client
+                    const { data: trabajosData, error: trabajosError } = await supabase
+                        .from('trabajos')
+                        .select('*')
+                        .eq('cliente_id', user.id)
+                        .order('fecha_entrada', { ascending: false });
+                    if (trabajosError) throw trabajosError;
 
-                if (clientesError) throw clientesError;
-                if (trabajosError) throw trabajosError;
-                if (gastosError) throw gastosError;
-                if (tallerInfoError) throw tallerInfoError;
+                    // Map snake_case to camelCase
+                    const mappedTrabajos = trabajosData.map(t => ({
+                        id: t.id,
+                        clienteId: t.cliente_id,
+                        vehiculoId: t.vehiculo_id,
+                        descripcion: t.descripcion,
+                        partes: t.partes,
+                        costoManoDeObra: t.costo_mano_de_obra,
+                        costoEstimado: t.costo_estimado,
+                        status: t.status,
+                        fechaEntrada: t.fecha_entrada,
+                        fechaSalida: t.fecha_salida,
+                    }));
 
-                setClientes(clientesData || []);
-                setTrabajos(trabajosData || []);
-                setGastos(gastosData || []);
-                setTallerInfo(tallerInfoData);
+                    setClientTrabajos(mappedTrabajos || []);
 
-            } catch (error) {
-                console.error("Error fetching data from Supabase:", error);
-            } finally {
-                setLoading(false);
+                } catch (error: any) {
+                    console.error("Error fetching client data: ", error.message);
+                } finally {
+                    setLoading(false);
+                }
             }
         };
 
-        fetchData();
-    }, [session]);
-
+        fetchClientData();
+    }, [user, role]);
+    
     const handleLogout = async () => {
         await supabase.auth.signOut();
-        setUserRole(null);
-        setClientes([]);
-        setTrabajos([]);
-        setGastos([]);
-    };
-
-    const addGasto = async (gasto: Omit<Gasto, 'id' | 'fecha'>) => {
-        const newGasto: Omit<Gasto, 'id'> = {
-            ...gasto,
-            fecha: new Date().toISOString().split('T')[0],
-        };
-        
-        const { data, error } = await supabase
-            .from('gastos')
-            .insert(newGasto)
-            .select()
-            .single();
-
-        if (error) {
-            console.error("Error adding gasto:", error);
-        } else if(data) {
-            setGastos(prev => [data, ...prev]);
-        }
     };
     
-    const updateTrabajoStatus = async (trabajoId: string, newStatus: JobStatus) => {
-        const { data, error } = await supabase
-            .from('trabajos')
-            .update({ status: newStatus })
-            .eq('id', trabajoId)
-            .select('*, partes(*)')
-            .single();
-        
-        if (error) {
-            console.error("Error updating trabajo:", error);
-        } else if (data) {
-            setTrabajos(prevTrabajos => 
-                prevTrabajos.map(t => 
-                    t.id === trabajoId ? data : t
-                )
-            );
-        }
-    };
-
-    const updateTallerInfo = async (newInfo: TallerInfo) => {
-        const { data, error } = await supabase
-            .from('taller_info')
-            .update({
-                nombre: newInfo.nombre,
-                direccion: newInfo.direccion,
-                logo_url: newInfo.logoUrl,
-                telefono: newInfo.telefono,
-                cuit: newInfo.cuit,
-            })
-            .eq('id', 1)
-            .select()
-            .single();
-
-        if (error) {
-            console.error("Error updating taller info:", error);
-        } else if (data) {
-            setTallerInfo(data);
-        }
-    };
-
-
-    const clientData = useMemo(() => {
-        if (userRole === 'cliente') {
-            // In a real app, you might fetch only this client's data
-            // based on the logged-in user's ID.
-            const client = clientes[0];
-            if (!client) return null;
-            const clientTrabajos = trabajos.filter(t => t.clienteId === client.id);
-            return { client, trabajos: clientTrabajos };
-        }
-        return null;
-    }, [userRole, clientes, trabajos]);
-
-    const renderContent = () => {
-        if (loading) {
-            return (
-                <div className="flex items-center justify-center min-h-screen">
-                    <p className="text-xl">Cargando...</p>
-                </div>
-            );
-        }
-
-        if (!session || !userRole) {
-            return <Login />;
-        }
-        if (userRole === 'taller' && tallerInfo) {
-            return (
-                <TallerDashboard
-                    clientes={clientes}
-                    trabajos={trabajos}
-                    gastos={gastos}
-                    onLogout={handleLogout}
-                    onAddGasto={addGasto}
-                    onUpdateTrabajoStatus={updateTrabajoStatus}
-                    tallerInfo={tallerInfo}
-                    onUpdateTallerInfo={updateTallerInfo}
-                />
-            );
-        }
-        if (userRole === 'cliente' && clientData && tallerInfo) {
-            return (
-                <ClientPortal
-                    client={clientData.client}
-                    trabajos={clientData.trabajos}
-                    onLogout={handleLogout}
-                    tallerName={tallerInfo.nombre}
-                />
-            );
-        }
+    if (loading && !session) {
+        return <div className="flex h-screen items-center justify-center">Cargando...</div>;
+    }
+    
+    if (!session) {
         return <Login />;
-    };
+    }
 
-    return (
-      <div className="min-h-screen bg-taller-light">
-        {renderContent()}
-      </div>
-    );
+    if (role === 'taller') {
+        return <TallerDashboard onLogout={handleLogout} />;
+    }
+
+    if (role === 'cliente' && clientData) {
+        return <ClientPortal client={clientData} trabajos={clientTrabajos} onLogout={handleLogout} tallerName={tallerName} />;
+    }
+
+    // Still loading client data or role is not set
+    return <div className="flex h-screen items-center justify-center">Cargando portal...</div>;
 };
 
 export default App;
