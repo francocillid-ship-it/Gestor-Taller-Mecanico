@@ -1,0 +1,5 @@
+{
+  "name": "Gestor Taller Mecánico",
+  "description": "Una aplicación web para ayudar a los talleres mecánicos a gestionar trabajos, generar presupuestos, crear recibos, manejar finanzas y administrar clientes.",
+  "requestFramePermissions": []
+}
