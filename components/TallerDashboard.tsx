@@ -17,12 +17,13 @@ export interface TallerInfo {
     direccion: string;
     cuit: string;
     logoUrl?: string;
+    pdfTemplate: 'classic' | 'modern';
 }
 
 const TallerDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
     const [view, setView] = useState<View>('dashboard');
     const [loading, setLoading] = useState(true);
-    const [tallerInfo, setTallerInfo] = useState<TallerInfo>({ nombre: 'Mi Taller', telefono: '', direccion: '', cuit: '', logoUrl: '' });
+    const [tallerInfo, setTallerInfo] = useState<TallerInfo>({ nombre: 'Mi Taller', telefono: '', direccion: '', cuit: '', logoUrl: '', pdfTemplate: 'classic' });
     const [trabajos, setTrabajos] = useState<Trabajo[]>([]);
     const [clientes, setClientes] = useState<Cliente[]>([]);
     const [gastos, setGastos] = useState<Gasto[]>([]);
@@ -33,22 +34,41 @@ const TallerDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) throw new Error("User not found");
 
-            // Fetch taller info
-            const { data: tallerData, error: tallerError } = await supabase
+            // Fetch taller info, create if it doesn't exist
+            let { data: tallerData, error: tallerError } = await supabase
                 .from('talleres')
                 .select('*')
                 .eq('id', user.id)
                 .single();
-            if (tallerError && tallerError.code !== 'PGRST116') throw tallerError;
+
+            if (tallerError && tallerError.code === 'PGRST116') {
+                // No workshop profile exists for this user. Let's create one.
+                const defaultName = user.email ? `${user.email.split('@')[0]}'s Taller` : 'Mi Taller';
+                const { data: newTallerData, error: insertError } = await supabase
+                    .from('talleres')
+                    .insert({ id: user.id, nombre: defaultName, pdf_template: 'classic' })
+                    .select()
+                    .single();
+                
+                if (insertError) throw insertError;
+                
+                tallerData = newTallerData; // Use new data for the rest of the function
+            } else if (tallerError) {
+                // For any other error, we should throw it
+                throw tallerError;
+            }
+
             if (tallerData) {
                 setTallerInfo({
-                    nombre: tallerData.nombre,
-                    telefono: tallerData.telefono,
-                    direccion: tallerData.direccion,
-                    cuit: tallerData.cuit,
-                    logoUrl: tallerData.logo_url
+                    nombre: tallerData.nombre || 'Mi Taller',
+                    telefono: tallerData.telefono || '',
+                    direccion: tallerData.direccion || '',
+                    cuit: tallerData.cuit || '',
+                    logoUrl: tallerData.logo_url || '',
+                    pdfTemplate: tallerData.pdf_template || 'classic',
                 });
             }
+
 
             // Fetch clientes and their vehiculos
             const { data: clientesData, error: clientesError } = await supabase
@@ -157,6 +177,7 @@ const TallerDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
                 direccion: newInfo.direccion,
                 cuit: newInfo.cuit,
                 logo_url: newInfo.logoUrl,
+                pdf_template: newInfo.pdfTemplate,
             };
             const { data, error } = await supabase
                 .from('talleres')
@@ -170,7 +191,8 @@ const TallerDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
                 telefono: data.telefono,
                 direccion: data.direccion,
                 cuit: data.cuit,
-                logoUrl: data.logo_url
+                logoUrl: data.logo_url,
+                pdfTemplate: data.pdf_template,
             });
         } catch (error: any) {
             console.error('Error updating taller info:', error.message);

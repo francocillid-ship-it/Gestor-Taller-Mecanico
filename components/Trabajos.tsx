@@ -116,6 +116,7 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
                         setIsJobModalOpen(false);
                         onDataRefresh();
                     }}
+                    onDataRefresh={onDataRefresh}
                 />
             )}
             

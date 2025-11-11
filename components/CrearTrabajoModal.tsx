@@ -2,23 +2,25 @@ import React, { useState, useMemo } from 'react';
 import type { Cliente, Parte } from '../types';
 import { JobStatus } from '../types';
 import { supabase } from '../supabaseClient';
-import { XMarkIcon, PlusCircleIcon, TrashIcon } from '@heroicons/react/24/solid';
+import { XMarkIcon, PlusCircleIcon, TrashIcon, UserPlusIcon } from '@heroicons/react/24/solid';
+import CrearClienteModal from './CrearClienteModal';
 
 interface CrearTrabajoModalProps {
     clientes: Cliente[];
     onClose: () => void;
     onSuccess: () => void;
+    onDataRefresh: () => void;
 }
 
-const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ clientes, onClose, onSuccess }) => {
+const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ clientes, onClose, onSuccess, onDataRefresh }) => {
     const [selectedClienteId, setSelectedClienteId] = useState('');
     const [selectedVehiculoId, setSelectedVehiculoId] = useState('');
     const [descripcion, setDescripcion] = useState('');
-    const [costoEstimado, setCostoEstimado] = useState('');
     const [partes, setPartes] = useState<Omit<Parte, 'id'>[]>([]);
     const [costoManoDeObra, setCostoManoDeObra] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState('');
+    const [isClientModalOpen, setIsClientModalOpen] = useState(false);
 
     const vehiculos = useMemo(() => {
         if (!selectedClienteId) return [];
@@ -45,7 +47,7 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ clientes, onClose
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!selectedClienteId || !selectedVehiculoId || !descripcion || !costoEstimado) {
+        if (!selectedClienteId || !selectedVehiculoId || !descripcion) {
             setError('Por favor complete todos los campos requeridos.');
             return;
         }
@@ -56,14 +58,18 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ clientes, onClose
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) throw new Error("User not authenticated");
 
+            const totalPartesCost = partes.reduce((acc, parte) => acc + (parte.cantidad * parte.precioUnitario), 0);
+            const manoDeObraCost = parseFloat(costoManoDeObra) || 0;
+            const calculatedCostoEstimado = totalPartesCost + manoDeObraCost;
+
             const newTrabajo = {
                 taller_id: user.id,
                 cliente_id: selectedClienteId,
                 vehiculo_id: selectedVehiculoId,
                 descripcion,
                 partes,
-                costo_mano_de_obra: parseFloat(costoManoDeObra) || 0,
-                costo_estimado: parseFloat(costoEstimado),
+                costo_mano_de_obra: manoDeObraCost,
+                costo_estimado: calculatedCostoEstimado,
                 status: JobStatus.Presupuesto,
                 fecha_entrada: new Date().toISOString(),
             };
@@ -90,12 +96,22 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ clientes, onClose
                 </div>
                 <form onSubmit={handleSubmit} className="space-y-4 overflow-y-auto pr-2">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label htmlFor="cliente" className="block text-sm font-medium text-taller-gray">Cliente</label>
-                            <select id="cliente" value={selectedClienteId} onChange={e => { setSelectedClienteId(e.target.value); setSelectedVehiculoId(''); }} className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-taller-primary focus:border-taller-primary sm:text-sm" required>
-                                <option value="">Seleccione un cliente</option>
-                                {clientes.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
-                            </select>
+                        <div className="flex items-end gap-2">
+                             <div className="flex-grow">
+                                <label htmlFor="cliente" className="block text-sm font-medium text-taller-gray">Cliente</label>
+                                <select id="cliente" value={selectedClienteId} onChange={e => { setSelectedClienteId(e.target.value); setSelectedVehiculoId(''); }} className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-taller-primary focus:border-taller-primary sm:text-sm" required>
+                                    <option value="">Seleccione un cliente</option>
+                                    {clientes.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
+                                </select>
+                            </div>
+                             <button 
+                                type="button" 
+                                onClick={() => setIsClientModalOpen(true)}
+                                className="p-2 h-10 flex-shrink-0 bg-taller-secondary text-white rounded-md shadow-sm hover:bg-taller-primary focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-taller-primary"
+                                title="Crear Nuevo Cliente"
+                            >
+                                <UserPlusIcon className="h-5 w-5"/>
+                            </button>
                         </div>
                         <div>
                             <label htmlFor="vehiculo" className="block text-sm font-medium text-taller-gray">Vehículo</label>
@@ -128,17 +144,11 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ clientes, onClose
                         </button>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label htmlFor="manoDeObra" className="block text-sm font-medium text-taller-gray">Costo Mano de Obra (€)</label>
-                            <input type="number" id="manoDeObra" value={costoManoDeObra} onChange={e => setCostoManoDeObra(e.target.value)} className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-taller-primary focus:border-taller-primary sm:text-sm" />
-                        </div>
-                        <div>
-                            <label htmlFor="costoEstimado" className="block text-sm font-medium text-taller-gray">Costo Total Estimado (€)</label>
-                            <input type="number" id="costoEstimado" value={costoEstimado} onChange={e => setCostoEstimado(e.target.value)} className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-taller-primary focus:border-taller-primary sm:text-sm" required />
-                        </div>
+                    <div>
+                        <label htmlFor="manoDeObra" className="block text-sm font-medium text-taller-gray">Costo Mano de Obra (€)</label>
+                        <input type="number" step="0.01" placeholder="0.00" id="manoDeObra" value={costoManoDeObra} onChange={e => setCostoManoDeObra(e.target.value)} className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-taller-primary focus:border-taller-primary sm:text-sm" />
                     </div>
-
+                    
                     {error && <p className="text-sm text-red-600">{error}</p>}
 
                     <div className="pt-4 flex justify-end space-x-3">
@@ -150,6 +160,15 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ clientes, onClose
                         </button>
                     </div>
                 </form>
+                {isClientModalOpen && (
+                    <CrearClienteModal
+                        onClose={() => setIsClientModalOpen(false)}
+                        onSuccess={() => {
+                            setIsClientModalOpen(false);
+                            onDataRefresh();
+                        }}
+                    />
+                )}
             </div>
         </div>
     );
