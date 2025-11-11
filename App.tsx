@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { supabase } from './supabaseClient';
 import type { Session, User } from '@supabase/supabase-js';
@@ -22,33 +23,17 @@ const App: React.FC = () => {
             const { data: { session } } = await supabase.auth.getSession();
             setSession(session);
             setUser(session?.user ?? null);
-
-            if (session?.user) {
-                const { data: profile } = await supabase
-                    .from('profiles')
-                    .select('role')
-                    .eq('id', session.user.id)
-                    .single();
-                setRole(profile?.role || null);
-            }
+            setRole(session?.user?.user_metadata?.role || null);
             setLoading(false);
         };
         
         getSession();
 
-        const { data: authListener } = supabase.auth.onAuthStateChange(async (_event, session) => {
+        const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
             setSession(session);
             setUser(session?.user ?? null);
-            if (session?.user) {
-                 const { data: profile } = await supabase
-                    .from('profiles')
-                    .select('role')
-                    .eq('id', session.user.id)
-                    .single();
-                setRole(profile?.role || null);
-            } else {
-                setRole(null);
-            }
+            setRole(session?.user?.user_metadata?.role || null);
+
             if (_event === 'SIGNED_OUT') {
                 setClientData(null);
             }
