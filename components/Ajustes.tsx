@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import type { TallerInfo } from './TallerDashboard';
 import { supabase } from '../supabaseClient';
-import { ArrowRightOnRectangleIcon, BuildingOffice2Icon, PhotoIcon, ArrowUpOnSquareIcon, PaintBrushIcon, DevicePhoneMobileIcon, SunIcon, MoonIcon, ComputerDesktopIcon } from '@heroicons/react/24/solid';
+import { ArrowRightOnRectangleIcon, BuildingOffice2Icon, PhotoIcon, ArrowUpOnSquareIcon, PaintBrushIcon, DevicePhoneMobileIcon, SunIcon, MoonIcon, ComputerDesktopIcon, DocumentTextIcon } from '@heroicons/react/24/solid';
 
 interface AjustesProps {
     tallerInfo: TallerInfo;
@@ -188,6 +188,38 @@ const Ajustes: React.FC<AjustesProps> = ({ tallerInfo, onUpdateTallerInfo, onLog
                            <ThemeButton value="dark" currentTheme={theme} onClick={handleThemeChange} icon={MoonIcon} label="Oscuro" />
                            <ThemeButton value="system" currentTheme={theme} onClick={handleThemeChange} icon={ComputerDesktopIcon} label="Sistema" />
                         </div>
+                    </div>
+                </div>
+
+                <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md">
+                    <h3 className="text-lg font-bold mb-6 flex items-center"><DocumentTextIcon className="h-6 w-6 mr-2 text-taller-primary"/>Plantillas de Documentos</h3>
+                    <div className="flex items-center justify-between">
+                        <div className="flex flex-col">
+                            <label htmlFor="showLogoOnPdf" className="font-medium text-taller-dark dark:text-taller-light">
+                                Mostrar logo en PDF
+                            </label>
+                            <p className="text-sm text-taller-gray dark:text-gray-400">
+                                Incluye el logo de tu taller en los presupuestos y remitos.
+                            </p>
+                        </div>
+                        <button
+                            type="button"
+                            id="showLogoOnPdf"
+                            onClick={() => {
+                                setFormData(prev => ({ ...prev, showLogoOnPdf: !prev.showLogoOnPdf }));
+                                setIsSaved(false);
+                            }}
+                            className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-taller-primary focus:ring-offset-2 dark:focus:ring-offset-gray-800 ${
+                                formData.showLogoOnPdf ? 'bg-taller-primary' : 'bg-gray-200 dark:bg-gray-600'
+                            }`}
+                        >
+                            <span
+                                aria-hidden="true"
+                                className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                                    formData.showLogoOnPdf ? 'translate-x-5' : 'translate-x-0'
+                                }`}
+                            />
+                        </button>
                     </div>
                 </div>
 

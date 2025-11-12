@@ -17,6 +17,7 @@ export interface TallerInfo {
     logoUrl?: string;
     pdfTemplate: 'classic' | 'modern';
     mobileNavStyle: 'sidebar' | 'bottom_nav';
+    showLogoOnPdf: boolean;
 }
 
 interface TallerDashboardProps {
@@ -44,6 +45,7 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
         cuit: '',
         pdfTemplate: 'classic',
         mobileNavStyle: 'sidebar',
+        showLogoOnPdf: true,
     });
     const [loading, setLoading] = useState(true);
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);

@@ -43,7 +43,7 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
 
     const saldoPendiente = trabajo.costoEstimado - totalPagado;
 
-    const generatePDF = () => {
+    const generatePDF = async () => {
         const doc = new jsPDF();
         const a4Width = doc.internal.pageSize.getWidth();
         const a4Height = doc.internal.pageSize.getHeight();
@@ -57,12 +57,43 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
         doc.setFillColor(primaryColor);
         doc.rect(0, 0, a4Width, 30, 'F');
         doc.setTextColor('#FFFFFF');
-        doc.setFontSize(20);
         doc.setFont('helvetica', 'bold');
-        doc.text(tallerInfo.nombre, margin, 15);
-        doc.setFontSize(9);
-        doc.setFont('helvetica', 'normal');
-        doc.text(`${tallerInfo.direccion} | Tel: ${tallerInfo.telefono} | CUIT: ${tallerInfo.cuit}`, margin, 22);
+
+        const renderHeaderText = (logoOffset = 0) => {
+            doc.setFontSize(20);
+            doc.text(tallerInfo.nombre, margin + logoOffset, 15);
+            doc.setFontSize(9);
+            doc.setFont('helvetica', 'normal');
+            doc.text(`${tallerInfo.direccion} | Tel: ${tallerInfo.telefono} | CUIT: ${tallerInfo.cuit}`, margin + logoOffset, 22);
+        };
+
+        if (tallerInfo.showLogoOnPdf && tallerInfo.logoUrl) {
+            try {
+                const response = await fetch(tallerInfo.logoUrl);
+                if (!response.ok) throw new Error('Network response was not ok');
+                const blob = await response.blob();
+                
+                const imageBase64 = await new Promise<string>((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onloadend = () => resolve(reader.result as string);
+                    reader.onerror = reject;
+                    reader.readAsDataURL(blob);
+                });
+
+                const imgProps = doc.getImageProperties(imageBase64);
+                const aspectRatio = imgProps.width / imgProps.height;
+                const imgHeight = 20;
+                const imgWidth = imgHeight * aspectRatio;
+
+                doc.addImage(imageBase64, 'PNG', margin, 5, imgWidth, imgHeight);
+                renderHeaderText(imgWidth + 5);
+            } catch (error) {
+                console.error("Could not add logo to PDF, rendering without it.", error);
+                renderHeaderText();
+            }
+        } else {
+            renderHeaderText();
+        }
 
         // --- DOCUMENT TITLE ---
         const docTitle = trabajo.status === JobStatusEnum.Presupuesto ? 'PRESUPUESTO' : 'REMITO';
