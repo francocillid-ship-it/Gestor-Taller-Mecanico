@@ -157,11 +157,15 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
         doc.setFont('helvetica', 'normal');
         
         // --- FOOTER ---
+        const footerText = trabajo.status === JobStatusEnum.Presupuesto
+            ? 'Validez del presupuesto: 30 días.'
+            : '¡Gracias por su confianza!';
+
         doc.setLineWidth(0.2);
         doc.line(margin, a4Height - 20, a4Width - margin, a4Height - 20);
         doc.setFontSize(9);
         doc.setTextColor(lightTextColor);
-        doc.text('¡Gracias por su confianza!', a4Width / 2, a4Height - 15, { align: 'center' });
+        doc.text(footerText, a4Width / 2, a4Height - 15, { align: 'center' });
 
         doc.save(`${docTitle.toLowerCase()}-${cliente?.nombre?.replace(' ', '_') || 'cliente'}.pdf`);
     };
