@@ -24,6 +24,10 @@ const ClientPortal: React.FC<ClientPortalProps> = ({ client, trabajos, onLogout,
     const currentTrabajo = trabajos.find(t => t.status !== JobStatus.Finalizado);
     const pastTrabajos = trabajos.filter(t => t.status === JobStatus.Finalizado);
 
+    const formatCurrency = (amount: number) => {
+        return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(amount);
+    };
+
     return (
         <div className="min-h-screen bg-taller-light">
             <Header tallerName={tallerName} />
@@ -34,7 +38,7 @@ const ClientPortal: React.FC<ClientPortalProps> = ({ client, trabajos, onLogout,
                         <p className="text-taller-gray">Aquí puede ver el estado de sus vehículos.</p>
                     </div>
 
-                    {currentTrabajo && (
+                    {currentTrabajo ? (
                          <div className="bg-white p-6 rounded-xl shadow-md border-l-4 border-taller-accent">
                             <h2 className="text-xl font-bold mb-4">Estado Actual de su Vehículo</h2>
                             <div className="flex flex-col md:flex-row items-start md:items-center justify-between">
@@ -47,6 +51,11 @@ const ClientPortal: React.FC<ClientPortalProps> = ({ client, trabajos, onLogout,
                                     <span>{statusInfo[currentTrabajo.status].text}</span>
                                 </div>
                             </div>
+                        </div>
+                    ) : (
+                        <div className="bg-white p-6 rounded-xl shadow-md text-center">
+                            <h2 className="text-xl font-bold mb-2">Todo en orden</h2>
+                            <p className="text-taller-gray">No tiene ningún trabajo activo en este momento.</p>
                         </div>
                     )}
                     
@@ -69,7 +78,7 @@ const ClientPortal: React.FC<ClientPortalProps> = ({ client, trabajos, onLogout,
                                                      </p>
                                                 </div>
                                                 <div className="mt-2 md:mt-0 text-left md:text-right">
-                                                    <p className="font-bold text-taller-dark">{new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(costoTotal)}</p>
+                                                    <p className="font-bold text-taller-dark">{formatCurrency(costoTotal)}</p>
                                                     <button className="text-sm text-taller-primary hover:underline flex items-center gap-1 mt-1">
                                                         <DocumentTextIcon className="h-4 w-4"/> Ver Factura
                                                     </button>

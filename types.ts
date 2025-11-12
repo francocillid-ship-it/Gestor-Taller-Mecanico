@@ -1,3 +1,4 @@
+
 export type UserRole = 'taller' | 'cliente';
 
 export enum JobStatus {
@@ -11,6 +12,12 @@ export interface Parte {
     nombre: string;
     cantidad: number;
     precioUnitario: number;
+    fecha?: string; // Para registrar la fecha de los pagos
+}
+
+export interface Pago {
+    monto: number;
+    fecha: string;
 }
 
 export interface Trabajo {
@@ -40,6 +47,7 @@ export interface Cliente {
     email: string;
     telefono: string;
     vehiculos: Vehiculo[];
+    taller_nombre?: string;
 }
 
 export interface Gasto {

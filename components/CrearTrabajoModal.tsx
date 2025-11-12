@@ -1,54 +1,144 @@
-import React, { useState, useMemo } from 'react';
-import type { Cliente, Parte } from '../types';
-import { JobStatus } from '../types';
+import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../supabaseClient';
-import { XMarkIcon, PlusCircleIcon, TrashIcon, UserPlusIcon } from '@heroicons/react/24/solid';
+import type { Cliente, Parte, Trabajo } from '../types';
+import { JobStatus } from '../types';
+import { XMarkIcon, PlusIcon, TrashIcon, UserPlusIcon } from '@heroicons/react/24/solid';
 import CrearClienteModal from './CrearClienteModal';
 
 interface CrearTrabajoModalProps {
-    clientes: Cliente[];
     onClose: () => void;
     onSuccess: () => void;
     onDataRefresh: () => void;
+    clientes: Cliente[];
+    trabajoToEdit?: Trabajo;
 }
 
-const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ clientes, onClose, onSuccess, onDataRefresh }) => {
+type ParteState = {
+    nombre: string;
+    cantidad: number;
+    precioUnitario: string; // Storing the formatted string
+};
+
+
+const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSuccess, onDataRefresh, clientes, trabajoToEdit }) => {
     const [selectedClienteId, setSelectedClienteId] = useState('');
     const [selectedVehiculoId, setSelectedVehiculoId] = useState('');
     const [descripcion, setDescripcion] = useState('');
-    const [partes, setPartes] = useState<Omit<Parte, 'id'>[]>([]);
+    const [partes, setPartes] = useState<ParteState[]>([{ nombre: '', cantidad: 1, precioUnitario: '' }]);
     const [costoManoDeObra, setCostoManoDeObra] = useState('');
+    const [status, setStatus] = useState<JobStatus>(JobStatus.Presupuesto);
+
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
     const [error, setError] = useState('');
     const [isClientModalOpen, setIsClientModalOpen] = useState(false);
+    const [confirmingDelete, setConfirmingDelete] = useState(false);
 
-    const vehiculos = useMemo(() => {
-        if (!selectedClienteId) return [];
-        return clientes.find(c => c.id === selectedClienteId)?.vehiculos || [];
-    }, [selectedClienteId, clientes]);
-    
-    const handleAddParte = () => {
-        setPartes([...partes, { nombre: '', cantidad: 1, precioUnitario: 0 }]);
+    const isEditMode = Boolean(trabajoToEdit);
+
+    const formatCurrency = (value: string): string => {
+        const digits = value.replace(/\D/g, '');
+        if (digits === '') return '';
+        const numberValue = parseInt(digits, 10);
+        return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(numberValue / 100);
+    };
+
+    const parseCurrency = (value: string): number => {
+        const digits = value.replace(/\D/g, '');
+        if (digits === '') return 0;
+        return parseInt(digits, 10) / 100;
     };
     
-    const handleParteChange = (index: number, field: keyof Parte, value: string | number) => {
-        const newPartes = [...partes];
-        if (field === 'nombre') {
-            newPartes[index][field] = value as string;
-        } else {
-            newPartes[index][field] = Number(value);
+    const formatNumberToCurrency = (num: number | undefined) => {
+        if (num === undefined || isNaN(num)) return '';
+        return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(num);
+    }
+
+    useEffect(() => {
+        if (trabajoToEdit) {
+            setSelectedClienteId(trabajoToEdit.clienteId);
+            setSelectedVehiculoId(trabajoToEdit.vehiculoId);
+            setDescripcion(trabajoToEdit.descripcion);
+            const initialPartes = trabajoToEdit.partes.length > 0 ? trabajoToEdit.partes.filter(p => p.nombre !== '__PAGO_REGISTRADO__') : [{ nombre: '', cantidad: 1, precioUnitario: 0 }];
+            setPartes(initialPartes.map(p => ({
+                ...p,
+                precioUnitario: formatNumberToCurrency(p.precioUnitario)
+            })));
+            setCostoManoDeObra(formatNumberToCurrency(trabajoToEdit.costoManoDeObra));
+            setStatus(trabajoToEdit.status);
         }
+    }, [trabajoToEdit]);
+
+    const selectedClientVehiculos = useMemo(() => {
+        if (!selectedClienteId) return [];
+        const cliente = clientes.find(c => c.id === selectedClienteId);
+        return cliente?.vehiculos || [];
+    }, [selectedClienteId, clientes]);
+    
+    useEffect(() => {
+        if(selectedClienteId && !isEditMode) {
+             const cliente = clientes.find(c => c.id === selectedClienteId);
+             if (cliente && cliente.vehiculos.length === 1) {
+                 setSelectedVehiculoId(cliente.vehiculos[0].id);
+             } else {
+                 setSelectedVehiculoId('');
+             }
+        }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [selectedClienteId, clientes]);
+
+    const costoEstimado = useMemo(() => {
+        const totalPartes = partes.reduce((sum, p) => sum + (Number(p.cantidad) * parseCurrency(p.precioUnitario)), 0);
+        return totalPartes + parseCurrency(costoManoDeObra);
+    }, [partes, costoManoDeObra]);
+
+
+    const handleParteChange = (index: number, field: keyof ParteState, value: string | number) => {
+        const newPartes = [...partes];
+        (newPartes[index] as any)[field] = value;
         setPartes(newPartes);
     };
 
-    const handleRemoveParte = (index: number) => {
-        setPartes(partes.filter((_, i) => i !== index));
+    const addParte = () => {
+        setPartes([...partes, { nombre: '', cantidad: 1, precioUnitario: '' }]);
     };
+
+    const removeParte = (index: number) => {
+        if (partes.length > 1) {
+            setPartes(partes.filter((_, i) => i !== index));
+        } else {
+            setPartes([{ nombre: '', cantidad: 1, precioUnitario: '' }]);
+        }
+    };
+    
+    const handleDeleteJob = async () => {
+        if (!trabajoToEdit) return;
+        
+        setIsDeleting(true);
+        setError('');
+        try {
+            const { error: deleteError } = await supabase
+                .from('trabajos')
+                .delete()
+                .eq('id', trabajoToEdit.id);
+
+            if (deleteError) throw deleteError;
+
+            onSuccess();
+        } catch (err: any) {
+            setError(err.message || 'Error al eliminar el trabajo.');
+            console.error(err);
+        } finally {
+            setIsDeleting(false);
+            setConfirmingDelete(false);
+        }
+    };
+
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!selectedClienteId || !selectedVehiculoId || !descripcion) {
-            setError('Por favor complete todos los campos requeridos.');
+        if (!selectedClienteId || !selectedVehiculoId) {
+            setError('Por favor, seleccione un cliente y un vehículo.');
             return;
         }
         setIsSubmitting(true);
@@ -57,30 +147,45 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ clientes, onClose
         try {
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) throw new Error("User not authenticated");
+            
+            const pagosExistentes = trabajoToEdit?.partes.filter(p => p.nombre === '__PAGO_REGISTRADO__') || [];
 
-            const totalPartesCost = partes.reduce((acc, parte) => acc + (parte.cantidad * parte.precioUnitario), 0);
-            const manoDeObraCost = parseFloat(costoManoDeObra) || 0;
-            const calculatedCostoEstimado = totalPartesCost + manoDeObraCost;
-
-            const newTrabajo = {
-                taller_id: user.id,
+            const cleanPartes = partes
+                .filter(p => p.nombre.trim() !== '' && p.cantidad > 0)
+                .map(p => ({
+                    nombre: p.nombre,
+                    cantidad: Number(p.cantidad),
+                    precioUnitario: parseCurrency(p.precioUnitario)
+                }));
+            
+            const jobData = {
                 cliente_id: selectedClienteId,
                 vehiculo_id: selectedVehiculoId,
+                taller_id: user.id,
                 descripcion,
-                partes,
-                costo_mano_de_obra: manoDeObraCost,
-                costo_estimado: calculatedCostoEstimado,
-                status: JobStatus.Presupuesto,
-                fecha_entrada: new Date().toISOString(),
+                partes: [...cleanPartes, ...pagosExistentes],
+                costo_mano_de_obra: parseCurrency(costoManoDeObra),
+                costo_estimado: costoEstimado,
+                status: status,
+                fecha_entrada: trabajoToEdit?.fechaEntrada || new Date().toISOString(),
             };
 
-            const { error: insertError } = await supabase.from('trabajos').insert(newTrabajo);
+            if (isEditMode) {
+                const { error: updateError } = await supabase
+                    .from('trabajos')
+                    .update(jobData)
+                    .eq('id', trabajoToEdit!.id);
+                if (updateError) throw updateError;
+            } else {
+                const { error: insertError } = await supabase
+                    .from('trabajos')
+                    .insert(jobData);
+                if (insertError) throw insertError;
+            }
 
-            if (insertError) throw insertError;
-            
             onSuccess();
         } catch (err: any) {
-            setError(err.message || 'Error al crear el trabajo.');
+            setError(err.message || 'Error al guardar el trabajo.');
             console.error(err);
         } finally {
             setIsSubmitting(false);
@@ -88,89 +193,134 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ clientes, onClose
     };
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
-            <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-2xl max-h-[90vh] flex flex-col">
-                <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-xl font-bold text-taller-dark">Crear Nuevo Trabajo / Presupuesto</h2>
-                    <button onClick={onClose} className="text-taller-gray hover:text-taller-dark"><XMarkIcon className="h-6 w-6" /></button>
-                </div>
-                <form onSubmit={handleSubmit} className="space-y-4 overflow-y-auto pr-2">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="flex items-end gap-2">
-                             <div className="flex-grow">
-                                <label htmlFor="cliente" className="block text-sm font-medium text-taller-gray">Cliente</label>
-                                <select id="cliente" value={selectedClienteId} onChange={e => { setSelectedClienteId(e.target.value); setSelectedVehiculoId(''); }} className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-taller-primary focus:border-taller-primary sm:text-sm" required>
+        <>
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
+                <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+                    <div className="flex justify-between items-center mb-4">
+                        <h2 className="text-xl font-bold text-taller-dark">{isEditMode ? 'Editar Trabajo' : 'Crear Nuevo Presupuesto'}</h2>
+                        <button onClick={onClose} className="text-taller-gray hover:text-taller-dark"><XMarkIcon className="h-6 w-6" /></button>
+                    </div>
+                    <form onSubmit={handleSubmit} className="space-y-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <div className="flex justify-between items-center mb-1">
+                                    <label htmlFor="cliente" className="block text-sm font-medium text-taller-gray">Cliente</label>
+                                     <button type="button" onClick={() => setIsClientModalOpen(true)} className="flex items-center gap-1 text-xs text-taller-primary font-medium hover:underline">
+                                        <UserPlusIcon className="h-4 w-4"/> Nuevo Cliente
+                                    </button>
+                                </div>
+                                <select id="cliente" value={selectedClienteId} onChange={e => setSelectedClienteId(e.target.value)} className="block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-taller-primary focus:border-taller-primary sm:text-sm" required>
                                     <option value="">Seleccione un cliente</option>
                                     {clientes.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
                                 </select>
                             </div>
-                             <button 
-                                type="button" 
-                                onClick={() => setIsClientModalOpen(true)}
-                                className="p-2 h-10 flex-shrink-0 bg-taller-secondary text-white rounded-md shadow-sm hover:bg-taller-primary focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-taller-primary"
-                                title="Crear Nuevo Cliente"
-                            >
-                                <UserPlusIcon className="h-5 w-5"/>
+                            <div>
+                                <label htmlFor="vehiculo" className="block text-sm font-medium text-taller-gray mb-1">Vehículo</label>
+                                <select id="vehiculo" value={selectedVehiculoId} onChange={e => setSelectedVehiculoId(e.target.value)} disabled={!selectedClienteId} className="block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-taller-primary focus:border-taller-primary sm:text-sm disabled:bg-gray-100" required>
+                                    <option value="">Seleccione un vehículo</option>
+                                    {selectedClientVehiculos.map(v => <option key={v.id} value={v.id}>{`${v.marca} ${v.modelo} (${v.matricula})`}</option>)}
+                                </select>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label htmlFor="descripcion" className="block text-sm font-medium text-taller-gray">Descripción del Problema/Trabajo</label>
+                            <textarea id="descripcion" value={descripcion} onChange={e => setDescripcion(e.target.value)} rows={3} className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-taller-primary focus:border-taller-primary sm:text-sm" required />
+                        </div>
+
+                        {isEditMode && (
+                            <div>
+                                <label htmlFor="status" className="block text-sm font-medium text-taller-gray">Estado del Trabajo</label>
+                                <select id="status" value={status} onChange={e => setStatus(e.target.value as JobStatus)} className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-taller-primary focus:border-taller-primary sm:text-sm">
+                                    {Object.values(JobStatus).map(s => <option key={s} value={s}>{s}</option>)}
+                                </select>
+                            </div>
+                        )}
+
+                        <div>
+                            <h3 className="text-md font-semibold text-taller-dark mb-2">Partes y Repuestos</h3>
+                            {partes.map((parte, index) => (
+                                <div key={index} className="grid grid-cols-[1fr,80px,120px,auto] items-center gap-2 mb-2">
+                                    <input type="text" placeholder="Nombre de la parte" value={parte.nombre} onChange={e => handleParteChange(index, 'nombre', e.target.value)} className="block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-taller-primary focus:border-taller-primary sm:text-sm" />
+                                    <input type="number" placeholder="Cant." value={parte.cantidad} onChange={e => handleParteChange(index, 'cantidad', parseInt(e.target.value, 10) || 1)} className="block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-taller-primary focus:border-taller-primary sm:text-sm" />
+                                    <input type="text" inputMode="decimal" placeholder="$ 0,00" value={parte.precioUnitario} onChange={e => handleParteChange(index, 'precioUnitario', formatCurrency(e.target.value))} className="block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-taller-primary focus:border-taller-primary sm:text-sm" />
+                                    <button type="button" onClick={() => removeParte(index)} className="p-2 text-red-500 hover:bg-red-100 rounded-full"><TrashIcon className="h-5 w-5"/></button>
+                                </div>
+                            ))}
+                            <button type="button" onClick={addParte} className="flex items-center gap-1 text-sm text-taller-primary font-medium hover:underline">
+                                <PlusIcon className="h-4 w-4"/> Añadir Parte
                             </button>
                         </div>
-                        <div>
-                            <label htmlFor="vehiculo" className="block text-sm font-medium text-taller-gray">Vehículo</label>
-                            <select id="vehiculo" value={selectedVehiculoId} onChange={e => setSelectedVehiculoId(e.target.value)} className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-taller-primary focus:border-taller-primary sm:text-sm" disabled={!selectedClienteId} required>
-                                <option value="">Seleccione un vehículo</option>
-                                {vehiculos.map(v => <option key={v.id} value={v.id}>{`${v.marca} ${v.modelo} (${v.matricula})`}</option>)}
-                            </select>
-                        </div>
-                    </div>
-                    <div>
-                        <label htmlFor="descripcion" className="block text-sm font-medium text-taller-gray">Descripción del Trabajo</label>
-                        <textarea id="descripcion" value={descripcion} onChange={e => setDescripcion(e.target.value)} rows={3} className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-taller-primary focus:border-taller-primary sm:text-sm" required />
-                    </div>
-                     <div>
-                        <h3 className="text-md font-semibold text-taller-dark mb-2">Partes y Repuestos</h3>
-                        <div className="space-y-2">
-                        {partes.map((parte, index) => (
-                            <div key={index} className="grid grid-cols-12 gap-2 items-center">
-                                <input type="text" placeholder="Nombre parte" value={parte.nombre} onChange={e => handleParteChange(index, 'nombre', e.target.value)} className="col-span-5 mt-1 block w-full px-2 py-1.5 bg-white border border-gray-300 rounded-md text-sm" />
-                                <input type="number" placeholder="Cant." value={parte.cantidad} onChange={e => handleParteChange(index, 'cantidad', e.target.value)} className="col-span-2 mt-1 block w-full px-2 py-1.5 bg-white border border-gray-300 rounded-md text-sm" />
-                                <input type="number" placeholder="P/U" value={parte.precioUnitario} onChange={e => handleParteChange(index, 'precioUnitario', e.target.value)} className="col-span-3 mt-1 block w-full px-2 py-1.5 bg-white border border-gray-300 rounded-md text-sm" />
-                                <div className="col-span-2 flex justify-end">
-                                    <button type="button" onClick={() => handleRemoveParte(index)} className="text-red-500 hover:text-red-700"><TrashIcon className="h-5 w-5" /></button>
-                                </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
+                            <div>
+                                <label htmlFor="costoManoDeObra" className="block text-sm font-medium text-taller-gray">Costo Mano de Obra ($)</label>
+                                <input type="text" id="costoManoDeObra" inputMode="decimal" placeholder="$ 0,00" value={costoManoDeObra} onChange={e => setCostoManoDeObra(formatCurrency(e.target.value))} className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-taller-primary focus:border-taller-primary sm:text-sm" />
                             </div>
-                        ))}
+                            <div className="bg-taller-light p-3 rounded-md text-right">
+                                <p className="text-sm text-taller-gray">Costo Total Estimado</p>
+                                <p className="text-xl font-bold text-taller-dark">{new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(costoEstimado)}</p>
+                            </div>
                         </div>
-                        <button type="button" onClick={handleAddParte} className="mt-2 flex items-center text-sm font-medium text-taller-primary hover:underline">
-                            <PlusCircleIcon className="h-5 w-5 mr-1"/> Añadir Parte
-                        </button>
-                    </div>
+                        
+                        {error && <p className="text-sm text-red-600">{error}</p>}
 
-                    <div>
-                        <label htmlFor="manoDeObra" className="block text-sm font-medium text-taller-gray">Costo Mano de Obra (€)</label>
-                        <input type="number" step="0.01" placeholder="0.00" id="manoDeObra" value={costoManoDeObra} onChange={e => setCostoManoDeObra(e.target.value)} className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-taller-primary focus:border-taller-primary sm:text-sm" />
-                    </div>
-                    
-                    {error && <p className="text-sm text-red-600">{error}</p>}
-
-                    <div className="pt-4 flex justify-end space-x-3">
-                         <button type="button" onClick={onClose} className="py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
-                            Cancelar
-                        </button>
-                        <button type="submit" disabled={isSubmitting} className="py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-taller-primary hover:bg-taller-secondary disabled:opacity-50">
-                            {isSubmitting ? 'Creando...' : 'Crear Trabajo'}
-                        </button>
-                    </div>
-                </form>
-                {isClientModalOpen && (
-                    <CrearClienteModal
-                        onClose={() => setIsClientModalOpen(false)}
-                        onSuccess={() => {
-                            setIsClientModalOpen(false);
-                            onDataRefresh();
-                        }}
-                    />
-                )}
+                        <div className="pt-4 flex justify-between items-center">
+                            <div>
+                                {isEditMode && !confirmingDelete && (
+                                    <button
+                                        type="button"
+                                        onClick={() => setConfirmingDelete(true)}
+                                        className="flex items-center gap-2 py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 disabled:opacity-50"
+                                    >
+                                        <TrashIcon className="h-5 w-5"/>
+                                        Eliminar Trabajo
+                                    </button>
+                                )}
+                                {isEditMode && confirmingDelete && (
+                                    <div className="flex items-center gap-3">
+                                        <p className="text-sm font-medium text-red-700 animate-pulse">¿Confirmar?</p>
+                                        <button
+                                            type="button"
+                                            onClick={handleDeleteJob}
+                                            disabled={isDeleting}
+                                            className="py-1 px-3 text-sm font-bold text-white bg-red-600 rounded-md hover:bg-red-700"
+                                        >
+                                            {isDeleting ? '...' : 'Sí'}
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setConfirmingDelete(false)}
+                                            disabled={isDeleting}
+                                            className="py-1 px-3 text-sm font-medium text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300"
+                                        >
+                                            No
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                            <div className="flex space-x-3">
+                                <button type="button" onClick={onClose} className="py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
+                                    Cancelar
+                                </button>
+                                <button type="submit" disabled={isSubmitting || isDeleting} className="py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-taller-primary hover:bg-taller-secondary disabled:opacity-50">
+                                    {isSubmitting ? 'Guardando...' : (isEditMode ? 'Guardar Cambios' : 'Crear Presupuesto')}
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
             </div>
-        </div>
+            {isClientModalOpen && (
+                <CrearClienteModal
+                    onClose={() => setIsClientModalOpen(false)}
+                    onSuccess={() => {
+                        setIsClientModalOpen(false);
+                        onDataRefresh();
+                    }}
+                />
+            )}
+        </>
     );
 };
 

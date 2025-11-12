@@ -3,9 +3,8 @@ import type { Trabajo, Cliente } from '../types';
 import { JobStatus } from '../types';
 import JobCard from './JobCard';
 import CrearTrabajoModal from './CrearTrabajoModal';
-import CrearClienteModal from './CrearClienteModal';
 import type { TallerInfo } from './TallerDashboard';
-import { PlusIcon, UserPlusIcon } from '@heroicons/react/24/solid';
+import { PlusIcon } from '@heroicons/react/24/solid';
 
 interface TrabajosProps {
     trabajos: Trabajo[];
@@ -23,7 +22,8 @@ const StatusColumn: React.FC<{
     clientes: Cliente[];
     onUpdateStatus: (trabajoId: string, newStatus: JobStatus) => void;
     tallerInfo: TallerInfo;
-}> = ({ status, trabajos, clientes, onUpdateStatus, tallerInfo }) => {
+    onDataRefresh: () => void;
+}> = ({ status, trabajos, clientes, onUpdateStatus, tallerInfo, onDataRefresh }) => {
 
     const getStatusColor = (status: JobStatus) => {
         switch (status) {
@@ -36,27 +36,33 @@ const StatusColumn: React.FC<{
     };
 
     return (
-        <div className="w-80 bg-gray-100 rounded-lg p-3 flex-shrink-0">
+        <div className="w-full lg:w-80 bg-gray-100 rounded-lg p-3 lg:flex-shrink-0">
             <div className={`flex justify-between items-center mb-4 pb-2 border-b-2 ${getStatusColor(status)}`}>
                  <h3 className="font-bold text-taller-dark">{status}</h3>
                  <span className="bg-taller-primary text-white text-xs font-semibold px-2 py-1 rounded-full">{trabajos.length}</span>
             </div>
            
-            <div className="space-y-4 overflow-y-auto h-[calc(100vh-20rem)] pr-1">
-                {trabajos.map(trabajo => {
-                    const cliente = clientes.find(c => c.id === trabajo.clienteId);
-                    const vehiculo = cliente?.vehiculos.find(v => v.id === trabajo.vehiculoId);
-                    return (
-                        <JobCard
-                            key={trabajo.id}
-                            trabajo={trabajo}
-                            cliente={cliente}
-                            vehiculo={vehiculo}
-                            onUpdateStatus={onUpdateStatus}
-                            tallerInfo={tallerInfo}
-                        />
-                    );
-                })}
+            <div className="space-y-4 lg:overflow-y-auto lg:h-[calc(100vh-20rem)] lg:pr-1">
+                {trabajos.length > 0 ? (
+                    trabajos.map(trabajo => {
+                        const cliente = clientes.find(c => c.id === trabajo.clienteId);
+                        const vehiculo = cliente?.vehiculos.find(v => v.id === trabajo.vehiculoId);
+                        return (
+                            <JobCard
+                                key={trabajo.id}
+                                trabajo={trabajo}
+                                cliente={cliente}
+                                vehiculo={vehiculo}
+                                onUpdateStatus={onUpdateStatus}
+                                tallerInfo={tallerInfo}
+                                clientes={clientes}
+                                onDataRefresh={onDataRefresh}
+                            />
+                        );
+                    })
+                ) : (
+                    <p className="text-sm text-center text-taller-gray py-4">No hay trabajos en este estado.</p>
+                )}
             </div>
         </div>
     );
@@ -65,7 +71,6 @@ const StatusColumn: React.FC<{
 
 const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus, onDataRefresh, tallerInfo }) => {
     const [isJobModalOpen, setIsJobModalOpen] = useState(false);
-    const [isClientModalOpen, setIsClientModalOpen] = useState(false);
     
     const trabajosByStatus = useMemo(() => {
         return statusOrder.reduce((acc, status) => {
@@ -76,26 +81,19 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
     
     return (
         <div className="h-full flex flex-col">
-            <div className="flex justify-between items-center mb-6">
+            <div className="flex flex-col gap-4 sm:flex-row sm:justify-between sm:items-center mb-6">
                 <h2 className="text-2xl font-bold text-taller-dark">Flujo de Trabajos</h2>
-                <div className="flex space-x-3">
-                    <button
-                        onClick={() => setIsClientModalOpen(true)}
-                        className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-taller-secondary rounded-lg shadow-md hover:bg-taller-primary focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-taller-primary transition-colors"
-                    >
-                        <UserPlusIcon className="h-5 w-5"/>
-                        Nuevo Cliente
-                    </button>
+                <div className="flex">
                     <button
                         onClick={() => setIsJobModalOpen(true)}
-                        className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-taller-primary rounded-lg shadow-md hover:bg-taller-secondary focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-taller-secondary transition-colors"
+                        className="flex items-center justify-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-taller-primary rounded-lg shadow-md hover:bg-taller-secondary focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-taller-secondary transition-colors"
                     >
                        <PlusIcon className="h-5 w-5"/>
-                        Nuevo Trabajo
+                        Nuevo Presupuesto
                     </button>
                 </div>
             </div>
-            <div className="flex-1 flex space-x-4 overflow-x-auto pb-4">
+            <div className="flex-1 flex flex-col gap-6 lg:flex-row lg:space-x-4 lg:overflow-x-auto pb-4">
                 {statusOrder.map(status => (
                     <StatusColumn
                         key={status}
@@ -104,6 +102,7 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
                         clientes={clientes}
                         onUpdateStatus={onUpdateStatus}
                         tallerInfo={tallerInfo}
+                        onDataRefresh={onDataRefresh}
                     />
                 ))}
             </div>
@@ -117,16 +116,6 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
                         onDataRefresh();
                     }}
                     onDataRefresh={onDataRefresh}
-                />
-            )}
-            
-            {isClientModalOpen && (
-                 <CrearClienteModal
-                    onClose={() => setIsClientModalOpen(false)}
-                    onSuccess={() => {
-                        setIsClientModalOpen(false);
-                        onDataRefresh();
-                    }}
                 />
             )}
         </div>

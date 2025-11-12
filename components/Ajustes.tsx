@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import type { TallerInfo } from './TallerDashboard';
 import { supabase } from '../supabaseClient';
-import { ArrowRightOnRectangleIcon, BuildingOffice2Icon, PhotoIcon, ArrowUpOnSquareIcon, PaintBrushIcon } from '@heroicons/react/24/solid';
+import { ArrowRightOnRectangleIcon, BuildingOffice2Icon, PhotoIcon, ArrowUpOnSquareIcon, PaintBrushIcon, DevicePhoneMobileIcon } from '@heroicons/react/24/solid';
 
 interface AjustesProps {
     tallerInfo: TallerInfo;
@@ -28,6 +28,11 @@ const Ajustes: React.FC<AjustesProps> = ({ tallerInfo, onUpdateTallerInfo, onLog
 
     const handleTemplateChange = (template: 'classic' | 'modern') => {
         setFormData(prev => ({ ...prev, pdfTemplate: template }));
+        setIsSaved(false);
+    };
+
+    const handleNavStyleChange = (style: 'sidebar' | 'bottom_nav') => {
+        setFormData(prev => ({ ...prev, mobileNavStyle: style }));
         setIsSaved(false);
     };
 
@@ -155,6 +160,29 @@ const Ajustes: React.FC<AjustesProps> = ({ tallerInfo, onUpdateTallerInfo, onLog
                                 className={`w-full rounded-md py-2 text-sm font-medium transition-colors ${formData.pdfTemplate === 'modern' ? 'bg-taller-primary text-white shadow' : 'text-taller-gray hover:bg-white'}`}
                             >
                                 Moderno
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="bg-white p-6 rounded-xl shadow-md">
+                    <h3 className="text-lg font-bold mb-4 flex items-center"><DevicePhoneMobileIcon className="h-6 w-6 mr-2 text-taller-primary"/>Interfaz Móvil</h3>
+                    <div>
+                        <label className="block text-sm font-medium text-taller-gray mb-2">Estilo de Navegación</label>
+                        <div className="flex space-x-2 rounded-lg bg-taller-light p-1">
+                             <button
+                                type="button"
+                                onClick={() => handleNavStyleChange('sidebar')}
+                                className={`w-full rounded-md py-2 text-sm font-medium transition-colors ${formData.mobileNavStyle === 'sidebar' ? 'bg-taller-primary text-white shadow' : 'text-taller-gray hover:bg-white'}`}
+                            >
+                                Menú Lateral
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => handleNavStyleChange('bottom_nav')}
+                                className={`w-full rounded-md py-2 text-sm font-medium transition-colors ${formData.mobileNavStyle === 'bottom_nav' ? 'bg-taller-primary text-white shadow' : 'text-taller-gray hover:bg-white'}`}
+                            >
+                                Barra Inferior
                             </button>
                         </div>
                     </div>

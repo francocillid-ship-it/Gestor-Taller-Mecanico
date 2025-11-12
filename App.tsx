@@ -49,14 +49,16 @@ const App: React.FC = () => {
             if (user && role === 'cliente') {
                 setLoading(true);
                 try {
-                    // Fetch client profile and their workshop's name
+                    // Fetch client profile
                     const { data: clientProfile, error: clientError } = await supabase
                         .from('clientes')
-                        .select('*, talleres ( nombre )')
+                        .select('*')
                         .eq('id', user.id)
                         .single();
 
                     if (clientError) throw clientError;
+                    
+                    setTallerName(clientProfile.taller_nombre || 'Mi Taller');
 
                     // Fetch client's vehicles
                     const { data: vehiculos, error: vehiculosError } = await supabase
@@ -67,7 +69,6 @@ const App: React.FC = () => {
                     
                     const fullClientData = { ...clientProfile, vehiculos: vehiculos || [] };
                     setClientData(fullClientData as any);
-                    setTallerName((clientProfile as any)?.talleres?.nombre || 'Mi Taller');
 
                     // Fetch jobs for this client
                     const { data: trabajosData, error: trabajosError } = await supabase
@@ -76,9 +77,8 @@ const App: React.FC = () => {
                         .eq('cliente_id', user.id)
                         .order('fecha_entrada', { ascending: false });
                     if (trabajosError) throw trabajosError;
-
-                    // Map snake_case to camelCase
-                    const mappedTrabajos = trabajosData.map(t => ({
+                    
+                    const finalTrabajos = (trabajosData || []).map(t => ({
                         id: t.id,
                         clienteId: t.cliente_id,
                         vehiculoId: t.vehiculo_id,
@@ -91,7 +91,7 @@ const App: React.FC = () => {
                         fechaSalida: t.fecha_salida,
                     }));
 
-                    setClientTrabajos(mappedTrabajos || []);
+                    setClientTrabajos(finalTrabajos as Trabajo[]);
 
                 } catch (error: any) {
                     console.error("Error fetching client data: ", error.message);
