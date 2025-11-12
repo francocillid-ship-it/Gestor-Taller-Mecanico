@@ -1,0 +1,17 @@
+{
+  "name": "Gestor Taller Mecánico",
+  "short_name": "GestorTaller",
+  "description": "Una aplicación web para ayudar a los talleres mecánicos a gestionar trabajos, generar presupuestos, crear recibos, manejar finanzas y administrar clientes.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f1f5f9",
+  "theme_color": "#1e40af",
+  "icons": [
+    {
+      "src": "favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
