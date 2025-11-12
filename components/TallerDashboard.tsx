@@ -188,8 +188,9 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
 
     const BottomNav = () => (
         <nav className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t dark:border-gray-700 z-40 md:hidden shadow-[0_-2px_5px_rgba(0,0,0,0.1)]">
-            <div className="flex justify-around">
-                {navItems.map(item => <BottomNavItem key={item.id} {...item} />)}
+            <div className="flex justify-around pb-4">
+                {/* FIX: Pass props explicitly to avoid spreading `key` prop and causing a TypeScript error. */}
+                {navItems.map(item => <BottomNavItem key={item.id} id={item.id} label={item.label} icon={item.icon} />)}
             </div>
         </nav>
     );
@@ -213,7 +214,8 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
                      </button>
                 </div>
                 <nav className="flex-1 space-y-2">
-                    {navItems.map(item => <NavItem key={item.id} {...item} />)}
+                    {/* FIX: Pass props explicitly to avoid spreading `key` prop and causing a TypeScript error. */}
+                    {navItems.map(item => <NavItem key={item.id} id={item.id} label={item.label} icon={item.icon} />)}
                 </nav>
             </aside>
             
