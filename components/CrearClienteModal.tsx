@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
-import { XMarkIcon, TrashIcon } from '@heroicons/react/24/solid';
+import { XMarkIcon, TrashIcon, ClipboardDocumentCheckIcon } from '@heroicons/react/24/solid';
 import type { Cliente } from '../types';
 import type { TallerInfo } from './TallerDashboard';
 
@@ -24,8 +24,15 @@ const CrearClienteModal: React.FC<CrearClienteModalProps> = ({ onClose, onSucces
     const [isDeleting, setIsDeleting] = useState(false);
     const [confirmingDelete, setConfirmingDelete] = useState(false);
     const [error, setError] = useState('');
+    const [contactApiAvailable, setContactApiAvailable] = useState(false);
 
     const isEditMode = Boolean(clienteToEdit);
+
+    useEffect(() => {
+        if ('contacts' in navigator && 'select' in (navigator as any).contacts) {
+            setContactApiAvailable(true);
+        }
+    }, []);
 
     useEffect(() => {
         if (clienteToEdit) {
@@ -41,6 +48,31 @@ const CrearClienteModal: React.FC<CrearClienteModalProps> = ({ onClose, onSucces
             }
         }
     }, [clienteToEdit]);
+    
+    const handleSelectContact = async () => {
+        const props = ['name', 'email', 'tel'];
+        const opts = { multiple: false };
+
+        try {
+            const contacts = await (navigator as any).contacts.select(props, opts);
+            if (contacts.length === 0) {
+                return; // User cancelled
+            }
+            const contact = contacts[0];
+            if (contact.name && contact.name.length > 0) {
+                setNombre(contact.name[0]);
+            }
+            if (contact.tel && contact.tel.length > 0) {
+                setTelefono(contact.tel[0]);
+            }
+            if (contact.email && contact.email.length > 0) {
+                setEmail(contact.email[0]);
+            }
+        } catch (ex) {
+            console.error('Error selecting contact:', ex);
+            setError('No se pudo acceder a los contactos.');
+        }
+    };
 
     const handleDeleteClient = async () => {
         if (!clienteToEdit) return;
@@ -156,7 +188,19 @@ const CrearClienteModal: React.FC<CrearClienteModalProps> = ({ onClose, onSucces
                     <button onClick={onClose} className="text-taller-gray dark:text-gray-400 hover:text-taller-dark dark:hover:text-white"><XMarkIcon className="h-6 w-6" /></button>
                 </div>
                 <form onSubmit={handleSubmit} className="space-y-4">
-                    <h3 className="text-md font-semibold text-taller-dark dark:text-taller-light border-b dark:border-gray-600 pb-2">Datos del Cliente</h3>
+                    <div className="flex justify-between items-center border-b dark:border-gray-600 pb-2">
+                        <h3 className="text-md font-semibold text-taller-dark dark:text-taller-light">Datos del Cliente</h3>
+                        {contactApiAvailable && (
+                            <button
+                                type="button"
+                                onClick={handleSelectContact}
+                                className="flex items-center gap-2 px-3 py-1 text-sm font-semibold text-taller-secondary bg-blue-50 border border-taller-secondary/50 rounded-lg shadow-sm hover:bg-blue-100 dark:text-blue-300 dark:bg-blue-900/30 dark:border-blue-500/50 dark:hover:bg-blue-900/50"
+                            >
+                                <ClipboardDocumentCheckIcon className="h-4 w-4" />
+                                Seleccionar Contacto
+                            </button>
+                        )}
+                    </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <label htmlFor="nombre" className="block text-sm font-medium text-taller-gray dark:text-gray-400">Nombre Completo</label>
