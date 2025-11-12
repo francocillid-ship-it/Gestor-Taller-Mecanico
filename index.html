@@ -7,6 +7,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
       tailwind.config = {
+        darkMode: 'class',
         theme: {
           extend: {
             colors: {
@@ -34,8 +35,16 @@
   }
 }
 </script>
+<script>
+    // Aplica el tema inmediatamente para evitar FOUC (Flash of Unstyled Content)
+    if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+        document.documentElement.classList.add('dark');
+    } else {
+        document.documentElement.classList.remove('dark');
+    }
+</script>
 </head>
-<body class="bg-taller-light text-taller-dark">
+<body class="bg-taller-light dark:bg-taller-dark text-taller-dark dark:text-taller-light">
     <div id="root"></div>
     <script type="module" src="/index.tsx"></script>
 </body>

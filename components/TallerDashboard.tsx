@@ -162,7 +162,7 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
             className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg font-semibold transition-colors ${
                 view === id
                     ? 'bg-taller-primary text-white shadow'
-                    : 'text-taller-dark hover:bg-taller-light'
+                    : 'text-taller-dark dark:text-taller-light hover:bg-taller-light dark:hover:bg-gray-700'
             }`}
         >
             <Icon className="h-6 w-6" />
@@ -176,7 +176,7 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
             className={`flex flex-col items-center justify-center w-full pt-2 pb-1 text-xs font-medium transition-colors ${
                 view === id
                     ? 'text-taller-primary'
-                    : 'text-taller-gray hover:text-taller-primary'
+                    : 'text-taller-gray dark:text-gray-400 hover:text-taller-primary dark:hover:text-white'
             }`}
         >
             <Icon className="h-6 w-6 mb-1" />
@@ -185,7 +185,7 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
     );
 
     const BottomNav = () => (
-        <nav className="fixed bottom-0 left-0 right-0 bg-white border-t z-40 md:hidden shadow-[0_-2px_5px_rgba(0,0,0,0.1)]">
+        <nav className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t dark:border-gray-700 z-40 md:hidden shadow-[0_-2px_5px_rgba(0,0,0,0.1)]">
             <div className="flex justify-around">
                 {navItems.map(item => <BottomNavItem key={item.id} {...item} />)}
             </div>
@@ -193,7 +193,7 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
     );
 
     return (
-        <div className="flex h-screen bg-taller-light overflow-hidden">
+        <div className="flex h-screen bg-taller-light dark:bg-gray-900 overflow-hidden">
             {/* Overlay for mobile */}
             {isSidebarOpen && tallerInfo.mobileNavStyle === 'sidebar' && (
                 <div
@@ -203,7 +203,7 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
             )}
             
             {/* Sidebar */}
-            <aside className={`absolute md:relative z-30 w-64 bg-white h-full flex-shrink-0 flex flex-col p-4 transform ${isSidebarOpen && tallerInfo.mobileNavStyle === 'sidebar' ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 transition-transform duration-300 ease-in-out`}>
+            <aside className={`absolute md:relative z-30 w-64 bg-white dark:bg-gray-800 h-full flex-shrink-0 flex flex-col p-4 transform ${isSidebarOpen && tallerInfo.mobileNavStyle === 'sidebar' ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 transition-transform duration-300 ease-in-out`}>
                 <div className="flex items-center justify-between md:justify-center mb-8">
                      <h1 className="text-2xl font-bold text-taller-primary">Gestor Taller</h1>
                      <button className="md:hidden" onClick={() => setIsSidebarOpen(false)}>
@@ -221,7 +221,7 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
                     onMenuClick={() => setIsSidebarOpen(true)} 
                     showMenuButton={tallerInfo.mobileNavStyle === 'sidebar'} 
                 />
-                <main className={`flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 ${tallerInfo.mobileNavStyle === 'bottom_nav' ? 'pb-28' : ''}`}>
+                <main className={`flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 ${tallerInfo.mobileNavStyle === 'bottom_nav' ? 'pb-24' : ''}`}>
                     {renderView()}
                 </main>
             </div>

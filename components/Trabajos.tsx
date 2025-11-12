@@ -36,9 +36,9 @@ const StatusColumn: React.FC<{
     };
 
     return (
-        <div className="w-full lg:w-80 bg-gray-100 rounded-lg p-3 lg:flex-shrink-0">
+        <div className="w-full lg:w-80 bg-gray-100 dark:bg-gray-800 rounded-lg p-3 lg:flex-shrink-0">
             <div className={`flex justify-between items-center mb-4 pb-2 border-b-2 ${getStatusColor(status)}`}>
-                 <h3 className="font-bold text-taller-dark">{status}</h3>
+                 <h3 className="font-bold text-taller-dark dark:text-taller-light">{status}</h3>
                  <span className="bg-taller-primary text-white text-xs font-semibold px-2 py-1 rounded-full">{trabajos.length}</span>
             </div>
            
@@ -61,7 +61,7 @@ const StatusColumn: React.FC<{
                         );
                     })
                 ) : (
-                    <p className="text-sm text-center text-taller-gray py-4">No hay trabajos en este estado.</p>
+                    <p className="text-sm text-center text-taller-gray dark:text-gray-400 py-4">No hay trabajos en este estado.</p>
                 )}
             </div>
         </div>
@@ -82,7 +82,7 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
     return (
         <div className="h-full flex flex-col">
             <div className="flex flex-col gap-4 sm:flex-row sm:justify-between sm:items-center mb-6">
-                <h2 className="text-2xl font-bold text-taller-dark">Flujo de Trabajos</h2>
+                <h2 className="text-2xl font-bold text-taller-dark dark:text-taller-light">Flujo de Trabajos</h2>
                 <div className="flex">
                     <button
                         onClick={() => setIsJobModalOpen(true)}

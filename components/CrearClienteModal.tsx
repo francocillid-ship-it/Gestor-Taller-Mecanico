@@ -150,45 +150,45 @@ const CrearClienteModal: React.FC<CrearClienteModalProps> = ({ onClose, onSucces
 
     return (
          <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
-            <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-lg">
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-lg">
                 <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-xl font-bold text-taller-dark">{isEditMode ? 'Editar Cliente' : 'Crear Nuevo Cliente'}</h2>
-                    <button onClick={onClose} className="text-taller-gray hover:text-taller-dark"><XMarkIcon className="h-6 w-6" /></button>
+                    <h2 className="text-xl font-bold text-taller-dark dark:text-taller-light">{isEditMode ? 'Editar Cliente' : 'Crear Nuevo Cliente'}</h2>
+                    <button onClick={onClose} className="text-taller-gray dark:text-gray-400 hover:text-taller-dark dark:hover:text-white"><XMarkIcon className="h-6 w-6" /></button>
                 </div>
                 <form onSubmit={handleSubmit} className="space-y-4">
-                    <h3 className="text-md font-semibold text-taller-dark border-b pb-2">Datos del Cliente</h3>
+                    <h3 className="text-md font-semibold text-taller-dark dark:text-taller-light border-b dark:border-gray-600 pb-2">Datos del Cliente</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                            <label htmlFor="nombre" className="block text-sm font-medium text-taller-gray">Nombre Completo</label>
-                            <input type="text" id="nombre" value={nombre} onChange={e => setNombre(e.target.value)} className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-taller-primary focus:border-taller-primary sm:text-sm" required />
+                            <label htmlFor="nombre" className="block text-sm font-medium text-taller-gray dark:text-gray-400">Nombre Completo</label>
+                            <input type="text" id="nombre" value={nombre} onChange={e => setNombre(e.target.value)} className="mt-1 block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-taller-primary focus:border-taller-primary text-taller-dark dark:text-taller-light sm:text-sm" required />
                         </div>
                         <div>
-                            <label htmlFor="telefono" className="block text-sm font-medium text-taller-gray">Teléfono</label>
-                            <input type="tel" id="telefono" value={telefono} onChange={e => setTelefono(e.target.value)} className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-taller-primary focus:border-taller-primary sm:text-sm" required />
+                            <label htmlFor="telefono" className="block text-sm font-medium text-taller-gray dark:text-gray-400">Teléfono</label>
+                            <input type="tel" id="telefono" value={telefono} onChange={e => setTelefono(e.target.value)} className="mt-1 block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-taller-primary focus:border-taller-primary text-taller-dark dark:text-taller-light sm:text-sm" required />
                         </div>
                     </div>
                     <div>
-                        <label htmlFor="email" className="block text-sm font-medium text-taller-gray">Email (opcional, para acceso al portal)</label>
-                        <input type="email" id="email" value={email} onChange={e => setEmail(e.target.value)} disabled={isEditMode} className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-taller-primary focus:border-taller-primary sm:text-sm disabled:bg-gray-100" />
+                        <label htmlFor="email" className="block text-sm font-medium text-taller-gray dark:text-gray-400">Email (opcional, para acceso al portal)</label>
+                        <input type="email" id="email" value={email} onChange={e => setEmail(e.target.value)} disabled={isEditMode} className="mt-1 block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-taller-primary focus:border-taller-primary text-taller-dark dark:text-taller-light sm:text-sm disabled:bg-gray-200 dark:disabled:bg-gray-700/50" />
                     </div>
 
-                    <h3 className="text-md font-semibold text-taller-dark border-b pb-2 pt-4">Datos del Vehículo</h3>
+                    <h3 className="text-md font-semibold text-taller-dark dark:text-taller-light border-b dark:border-gray-600 pb-2 pt-4">Datos del Vehículo</h3>
                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                            <label htmlFor="marca" className="block text-sm font-medium text-taller-gray">Marca</label>
-                            <input type="text" id="marca" value={marca} onChange={e => setMarca(e.target.value)} className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-taller-primary focus:border-taller-primary sm:text-sm" required />
+                            <label htmlFor="marca" className="block text-sm font-medium text-taller-gray dark:text-gray-400">Marca</label>
+                            <input type="text" id="marca" value={marca} onChange={e => setMarca(e.target.value)} className="mt-1 block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-taller-primary focus:border-taller-primary text-taller-dark dark:text-taller-light sm:text-sm" required />
                         </div>
                         <div>
-                            <label htmlFor="modelo" className="block text-sm font-medium text-taller-gray">Modelo</label>
-                            <input type="text" id="modelo" value={modelo} onChange={e => setModelo(e.target.value)} className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-taller-primary focus:border-taller-primary sm:text-sm" required />
+                            <label htmlFor="modelo" className="block text-sm font-medium text-taller-gray dark:text-gray-400">Modelo</label>
+                            <input type="text" id="modelo" value={modelo} onChange={e => setModelo(e.target.value)} className="mt-1 block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-taller-primary focus:border-taller-primary text-taller-dark dark:text-taller-light sm:text-sm" required />
                         </div>
                          <div>
-                            <label htmlFor="año" className="block text-sm font-medium text-taller-gray">Año</label>
-                            <input type="number" id="año" value={año} onChange={e => setAño(e.target.value)} className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-taller-primary focus:border-taller-primary sm:text-sm" required />
+                            <label htmlFor="año" className="block text-sm font-medium text-taller-gray dark:text-gray-400">Año</label>
+                            <input type="number" id="año" value={año} onChange={e => setAño(e.target.value)} className="mt-1 block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-taller-primary focus:border-taller-primary text-taller-dark dark:text-taller-light sm:text-sm" required />
                         </div>
                          <div>
-                            <label htmlFor="matricula" className="block text-sm font-medium text-taller-gray">Matrícula</label>
-                            <input type="text" id="matricula" value={matricula} onChange={e => setMatricula(e.target.value)} className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-taller-primary focus:border-taller-primary sm:text-sm" required />
+                            <label htmlFor="matricula" className="block text-sm font-medium text-taller-gray dark:text-gray-400">Matrícula</label>
+                            <input type="text" id="matricula" value={matricula} onChange={e => setMatricula(e.target.value)} className="mt-1 block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-taller-primary focus:border-taller-primary text-taller-dark dark:text-taller-light sm:text-sm" required />
                         </div>
                     </div>
 
@@ -221,7 +221,7 @@ const CrearClienteModal: React.FC<CrearClienteModalProps> = ({ onClose, onSucces
                                         type="button"
                                         onClick={() => setConfirmingDelete(false)}
                                         disabled={isDeleting}
-                                        className="py-1 px-3 text-sm font-medium text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300"
+                                        className="py-1 px-3 text-sm font-medium text-gray-700 bg-gray-200 dark:bg-gray-600 dark:text-gray-200 dark:hover:bg-gray-500 rounded-md"
                                     >
                                         No
                                     </button>
@@ -229,7 +229,7 @@ const CrearClienteModal: React.FC<CrearClienteModalProps> = ({ onClose, onSucces
                             )}
                         </div>
                         <div className="flex justify-end space-x-3">
-                             <button type="button" onClick={onClose} className="py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
+                             <button type="button" onClick={onClose} className="py-2 px-4 border border-gray-300 dark:border-gray-500 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
                                 Cancelar
                             </button>
                             <button type="submit" disabled={isSubmitting || isDeleting} className="py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-taller-primary hover:bg-taller-secondary disabled:opacity-50">

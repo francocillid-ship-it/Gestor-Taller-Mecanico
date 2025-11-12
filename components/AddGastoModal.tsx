@@ -73,28 +73,28 @@ const AddGastoModal: React.FC<AddGastoModalProps> = ({ onClose, onAddGasto }) =>
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
-            <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md">
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-md">
                 <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-xl font-bold text-taller-dark flex items-center">
+                    <h2 className="text-xl font-bold text-taller-dark dark:text-taller-light flex items-center">
                         <PlusCircleIcon className="h-6 w-6 mr-2 text-taller-primary"/>
                         Añadir Gasto
                     </h2>
-                    <button onClick={onClose} className="text-taller-gray hover:text-taller-dark"><XMarkIcon className="h-6 w-6" /></button>
+                    <button onClick={onClose} className="text-taller-gray dark:text-gray-400 hover:text-taller-dark dark:hover:text-white"><XMarkIcon className="h-6 w-6" /></button>
                 </div>
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <div>
-                        <label htmlFor="descripcion" className="block text-sm font-medium text-taller-gray">Descripción</label>
+                        <label htmlFor="descripcion" className="block text-sm font-medium text-taller-gray dark:text-gray-400">Descripción</label>
                         <input 
                             type="text" 
                             id="descripcion" 
                             value={descripcion} 
                             onChange={e => setDescripcion(e.target.value)} 
-                            className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-taller-primary focus:border-taller-primary sm:text-sm" 
+                            className="mt-1 block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-taller-primary focus:border-taller-primary text-taller-dark dark:text-taller-light sm:text-sm" 
                             required
                         />
                     </div>
                     <div>
-                        <label htmlFor="monto" className="block text-sm font-medium text-taller-gray">Monto</label>
+                        <label htmlFor="monto" className="block text-sm font-medium text-taller-gray dark:text-gray-400">Monto</label>
                         <input 
                             type="text"
                             inputMode="decimal"
@@ -102,7 +102,7 @@ const AddGastoModal: React.FC<AddGastoModalProps> = ({ onClose, onAddGasto }) =>
                             value={monto} 
                             onChange={handleMontoChange} 
                             placeholder="$ 0,00"
-                            className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-taller-primary focus:border-taller-primary sm:text-sm" 
+                            className="mt-1 block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-taller-primary focus:border-taller-primary text-taller-dark dark:text-taller-light sm:text-sm" 
                             required
                         />
                     </div>
@@ -113,14 +113,14 @@ const AddGastoModal: React.FC<AddGastoModalProps> = ({ onClose, onAddGasto }) =>
                             type="checkbox"
                             checked={isRecurring}
                             onChange={(e) => setIsRecurring(e.target.checked)}
-                            className="h-4 w-4 text-taller-primary focus:ring-taller-primary border-gray-300 rounded"
+                            className="h-4 w-4 text-taller-primary focus:ring-taller-primary border-gray-300 dark:border-gray-600 rounded"
                         />
-                        <label htmlFor="recurring" className="ml-2 block text-sm text-taller-gray">
+                        <label htmlFor="recurring" className="ml-2 block text-sm text-taller-gray dark:text-gray-400">
                             Gasto mensual recurrente
                         </label>
                     </div>
                     <div className="pt-4 flex justify-end space-x-3">
-                        <button type="button" onClick={onClose} className="py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
+                        <button type="button" onClick={onClose} className="py-2 px-4 border border-gray-300 dark:border-gray-500 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
                             Cancelar
                         </button>
                         <button type="submit" disabled={isSubmitting} className="py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-taller-primary hover:bg-taller-secondary disabled:opacity-50">

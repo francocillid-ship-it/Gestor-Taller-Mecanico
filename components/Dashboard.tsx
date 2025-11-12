@@ -21,13 +21,13 @@ interface StatCardProps {
 }
 
 const StatCard: React.FC<StatCardProps> = ({ title, value, icon, color }) => (
-    <div className="bg-white p-6 rounded-xl shadow-md flex items-center space-x-4">
+    <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md flex items-center space-x-4">
         <div className={`p-3 rounded-full ${color}`}>
             {icon}
         </div>
         <div>
-            <p className="text-sm text-taller-gray">{title}</p>
-            <p className="text-2xl font-bold text-taller-dark">{value}</p>
+            <p className="text-sm text-taller-gray dark:text-gray-400">{title}</p>
+            <p className="text-2xl font-bold text-taller-dark dark:text-taller-light">{value}</p>
         </div>
     </div>
 );
@@ -79,26 +79,26 @@ const Dashboard: React.FC<DashboardProps> = ({ clientes, trabajos, gastos, onDat
             const pagoDate = new Date(p.fecha!);
             return pagoDate >= startDate && pagoDate <= endDate;
         });
-
-        const finishedJobsInPeriod = trabajos.filter(t => 
-            t.status === JobStatus.Finalizado && 
-            t.fechaSalida && 
-            new Date(t.fechaSalida) >= startDate && 
-            new Date(t.fechaSalida) <= endDate
-        );
         
         const ingresosNetos = filteredPagos.reduce((sum, p) => sum + p.precioUnitario, 0);
 
-        const gananciaManoDeObra = finishedJobsInPeriod.reduce((sum, t) => sum + (t.costoManoDeObra || 0), 0);
-        const gastosTotales = filteredGastos.reduce((sum, g) => sum + g.monto, 0);
-        const gananciasNetas = gananciaManoDeObra - gastosTotales;
+        const gananciaNeta = trabajos.reduce((totalGanancia, trabajo) => {
+            const tienePagoEnPeriodo = trabajo.partes.some(parte => 
+                parte.nombre === '__PAGO_REGISTRADO__' &&
+                parte.fecha &&
+                new Date(parte.fecha) >= startDate &&
+                new Date(parte.fecha) <= endDate
+            );
 
-        const monthNames = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
-        const gastosFijos = filteredGastos
-            .filter(g => monthNames.some(month => g.descripcion.toLowerCase().includes(`(${month})`)))
-            .reduce((sum, g) => sum + g.monto, 0);
+            if (tienePagoEnPeriodo) {
+                return totalGanancia + (trabajo.costoManoDeObra || 0);
+            }
+            return totalGanancia;
+        }, 0);
+        
+        const totalGastos = filteredGastos.reduce((sum, g) => sum + g.monto, 0);
 
-        const balance = ingresosNetos - gastosTotales;
+        const balance = gananciaNeta - totalGastos;
 
         const trabajosActivos = trabajos.filter(t => t.status !== JobStatus.Finalizado).length;
 
@@ -106,8 +106,8 @@ const Dashboard: React.FC<DashboardProps> = ({ clientes, trabajos, gastos, onDat
 
         return {
             ingresosNetos: formatCurrency(ingresosNetos),
-            gananciasNetas: formatCurrency(gananciasNetas),
-            gastosFijos: formatCurrency(gastosFijos),
+            gananciasNetas: formatCurrency(gananciaNeta),
+            gastos: formatCurrency(totalGastos),
             balance: formatCurrency(balance),
             trabajosActivos,
             totalClientes,
@@ -155,7 +155,7 @@ const Dashboard: React.FC<DashboardProps> = ({ clientes, trabajos, gastos, onDat
     }, [gastos]);
 
     const FilterControls = () => (
-        <div className="flex flex-wrap items-center gap-2 bg-white p-2 rounded-lg shadow-sm">
+        <div className="flex flex-wrap items-center gap-2 bg-white dark:bg-gray-800 p-2 rounded-lg shadow-sm">
             {[
                 { label: 'Este mes', value: 'this_month' },
                 { label: 'Últimos 7 días', value: 'last_7_days' },
@@ -165,7 +165,7 @@ const Dashboard: React.FC<DashboardProps> = ({ clientes, trabajos, gastos, onDat
                 <button
                     key={p.value}
                     onClick={() => setPeriod(p.value as Period)}
-                    className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${period === p.value ? 'bg-taller-primary text-white shadow' : 'text-taller-gray hover:bg-taller-light'}`}
+                    className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${period === p.value ? 'bg-taller-primary text-white shadow' : 'text-taller-gray dark:text-gray-300 hover:bg-taller-light dark:hover:bg-gray-700'}`}
                 >
                     {p.label}
                 </button>
@@ -176,21 +176,21 @@ const Dashboard: React.FC<DashboardProps> = ({ clientes, trabajos, gastos, onDat
     return (
         <div className="space-y-8 pb-16">
             <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
-                <h2 className="text-2xl font-bold text-taller-dark">Dashboard</h2>
+                <h2 className="text-2xl font-bold text-taller-dark dark:text-taller-light">Dashboard</h2>
                 <FilterControls />
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                 <StatCard title="Ingreso Neto" value={stats.ingresosNetos} icon={<CurrencyDollarIcon className="h-6 w-6 text-white"/>} color="bg-blue-500" />
                 <StatCard title="Ganancia Neta" value={stats.gananciasNetas} icon={<ChartPieIcon className="h-6 w-6 text-white"/>} color="bg-green-500" />
-                <StatCard title="Gastos Fijos" value={stats.gastosFijos} icon={<BuildingLibraryIcon className="h-6 w-6 text-white"/>} color="bg-red-500" />
+                <StatCard title="Gastos" value={stats.gastos} icon={<BuildingLibraryIcon className="h-6 w-6 text-white"/>} color="bg-red-500" />
                 <StatCard title="Balance" value={stats.balance} icon={<ScaleIcon className="h-6 w-6 text-white"/>} color="bg-indigo-500" />
                 <StatCard title="Trabajos Activos" value={stats.trabajosActivos} icon={<WrenchScrewdriverIcon className="h-6 w-6 text-white"/>} color="bg-yellow-500" />
                 <StatCard title="Total Clientes" value={stats.totalClientes} icon={<UsersIcon className="h-6 w-6 text-white"/>} color="bg-purple-500" />
             </div>
 
-            <div className="bg-white p-6 rounded-xl shadow-md">
+            <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md">
                 <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 gap-4">
-                    <h3 className="text-lg font-bold">Gastos Recientes</h3>
+                    <h3 className="text-lg font-bold text-taller-dark dark:text-taller-light">Gastos Recientes</h3>
                     <button
                         onClick={() => setIsAddGastoModalOpen(true)}
                         className="flex items-center justify-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-taller-primary rounded-lg shadow-md hover:bg-taller-secondary"
@@ -200,10 +200,10 @@ const Dashboard: React.FC<DashboardProps> = ({ clientes, trabajos, gastos, onDat
                 </div>
                 <div className="space-y-2">
                     {recentGastos.length > 0 ? recentGastos.map(gasto => (
-                        <div key={gasto.id} className="flex flex-col sm:flex-row sm:justify-between sm:items-center p-3 hover:bg-gray-50 rounded-lg gap-2">
+                        <div key={gasto.id} className="flex flex-col sm:flex-row sm:justify-between sm:items-center p-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 rounded-lg gap-2">
                             <div>
-                                <p className="font-medium text-taller-dark">{gasto.descripcion}</p>
-                                <p className="text-sm text-taller-gray">{new Date(gasto.fecha).toLocaleDateString('es-ES')}</p>
+                                <p className="font-medium text-taller-dark dark:text-taller-light">{gasto.descripcion}</p>
+                                <p className="text-sm text-taller-gray dark:text-gray-400">{new Date(gasto.fecha).toLocaleDateString('es-ES')}</p>
                             </div>
                             <div className="flex items-center gap-4 self-end sm:self-center">
                                 <p className="font-semibold text-red-600">{new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(gasto.monto)}</p>
@@ -218,20 +218,20 @@ const Dashboard: React.FC<DashboardProps> = ({ clientes, trabajos, gastos, onDat
                                         </button>
                                         <button 
                                             onClick={() => setConfirmingDeleteGastoId(null)}
-                                            className="px-2 py-1 text-xs font-medium text-gray-700 bg-gray-200 rounded hover:bg-gray-300"
+                                            className="px-2 py-1 text-xs font-medium text-gray-700 bg-gray-200 dark:bg-gray-600 dark:text-gray-200 dark:hover:bg-gray-500 rounded"
                                         >
                                             No
                                         </button>
                                     </div>
                                 ) : (
                                     <>
-                                        <button onClick={() => setGastoToEdit(gasto)} className="text-taller-gray hover:text-taller-secondary p-1"><PencilIcon className="h-4 w-4"/></button>
-                                        <button onClick={() => setConfirmingDeleteGastoId(gasto.id)} className="text-taller-gray hover:text-red-600 p-1"><TrashIcon className="h-4 w-4"/></button>
+                                        <button onClick={() => setGastoToEdit(gasto)} className="text-taller-gray dark:text-gray-400 hover:text-taller-secondary dark:hover:text-white p-1"><PencilIcon className="h-4 w-4"/></button>
+                                        <button onClick={() => setConfirmingDeleteGastoId(gasto.id)} className="text-taller-gray dark:text-gray-400 hover:text-red-600 dark:hover:text-red-500 p-1"><TrashIcon className="h-4 w-4"/></button>
                                     </>
                                 )}
                             </div>
                         </div>
-                    )) : <p className="text-center text-taller-gray py-4">No hay gastos registrados.</p>}
+                    )) : <p className="text-center text-taller-gray dark:text-gray-400 py-4">No hay gastos registrados.</p>}
                 </div>
             </div>
 

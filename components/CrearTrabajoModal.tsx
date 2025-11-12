@@ -124,6 +124,7 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
 
             if (deleteError) throw deleteError;
 
+            onDataRefresh(); // Refresh data to update dashboard and other components
             onSuccess();
         } catch (err: any) {
             setError(err.message || 'Error al eliminar el trabajo.');
@@ -195,28 +196,28 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
     return (
         <>
             <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
-                <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+                <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
                     <div className="flex justify-between items-center mb-4">
-                        <h2 className="text-xl font-bold text-taller-dark">{isEditMode ? 'Editar Trabajo' : 'Crear Nuevo Presupuesto'}</h2>
-                        <button onClick={onClose} className="text-taller-gray hover:text-taller-dark"><XMarkIcon className="h-6 w-6" /></button>
+                        <h2 className="text-xl font-bold text-taller-dark dark:text-taller-light">{isEditMode ? 'Editar Trabajo' : 'Crear Nuevo Presupuesto'}</h2>
+                        <button onClick={onClose} className="text-taller-gray dark:text-gray-400 hover:text-taller-dark dark:hover:text-white"><XMarkIcon className="h-6 w-6" /></button>
                     </div>
-                    <form onSubmit={handleSubmit} className="space-y-4">
+                    <form onSubmit={handleSubmit} className="space-y-4 text-taller-dark dark:text-taller-light">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
                                 <div className="flex justify-between items-center mb-1">
-                                    <label htmlFor="cliente" className="block text-sm font-medium text-taller-gray">Cliente</label>
+                                    <label htmlFor="cliente" className="block text-sm font-medium text-taller-gray dark:text-gray-400">Cliente</label>
                                      <button type="button" onClick={() => setIsClientModalOpen(true)} className="flex items-center gap-1 text-xs text-taller-primary font-medium hover:underline">
                                         <UserPlusIcon className="h-4 w-4"/> Nuevo Cliente
                                     </button>
                                 </div>
-                                <select id="cliente" value={selectedClienteId} onChange={e => setSelectedClienteId(e.target.value)} className="block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-taller-primary focus:border-taller-primary sm:text-sm" required>
+                                <select id="cliente" value={selectedClienteId} onChange={e => setSelectedClienteId(e.target.value)} className="block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-taller-primary focus:border-taller-primary sm:text-sm" required>
                                     <option value="">Seleccione un cliente</option>
                                     {clientes.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
                                 </select>
                             </div>
                             <div>
-                                <label htmlFor="vehiculo" className="block text-sm font-medium text-taller-gray mb-1">Vehículo</label>
-                                <select id="vehiculo" value={selectedVehiculoId} onChange={e => setSelectedVehiculoId(e.target.value)} disabled={!selectedClienteId} className="block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-taller-primary focus:border-taller-primary sm:text-sm disabled:bg-gray-100" required>
+                                <label htmlFor="vehiculo" className="block text-sm font-medium text-taller-gray dark:text-gray-400 mb-1">Vehículo</label>
+                                <select id="vehiculo" value={selectedVehiculoId} onChange={e => setSelectedVehiculoId(e.target.value)} disabled={!selectedClienteId} className="block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-taller-primary focus:border-taller-primary sm:text-sm disabled:bg-gray-200 dark:disabled:bg-gray-700/50" required>
                                     <option value="">Seleccione un vehículo</option>
                                     {selectedClientVehiculos.map(v => <option key={v.id} value={v.id}>{`${v.marca} ${v.modelo} (${v.matricula})`}</option>)}
                                 </select>
@@ -224,27 +225,27 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
                         </div>
 
                         <div>
-                            <label htmlFor="descripcion" className="block text-sm font-medium text-taller-gray">Descripción del Problema/Trabajo</label>
-                            <textarea id="descripcion" value={descripcion} onChange={e => setDescripcion(e.target.value)} rows={3} className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-taller-primary focus:border-taller-primary sm:text-sm" required />
+                            <label htmlFor="descripcion" className="block text-sm font-medium text-taller-gray dark:text-gray-400">Descripción del Problema/Trabajo</label>
+                            <textarea id="descripcion" value={descripcion} onChange={e => setDescripcion(e.target.value)} rows={3} className="mt-1 block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-taller-primary focus:border-taller-primary sm:text-sm" required />
                         </div>
 
                         {isEditMode && (
                             <div>
-                                <label htmlFor="status" className="block text-sm font-medium text-taller-gray">Estado del Trabajo</label>
-                                <select id="status" value={status} onChange={e => setStatus(e.target.value as JobStatus)} className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-taller-primary focus:border-taller-primary sm:text-sm">
+                                <label htmlFor="status" className="block text-sm font-medium text-taller-gray dark:text-gray-400">Estado del Trabajo</label>
+                                <select id="status" value={status} onChange={e => setStatus(e.target.value as JobStatus)} className="mt-1 block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-taller-primary focus:border-taller-primary sm:text-sm">
                                     {Object.values(JobStatus).map(s => <option key={s} value={s}>{s}</option>)}
                                 </select>
                             </div>
                         )}
 
                         <div>
-                            <h3 className="text-md font-semibold text-taller-dark mb-2">Partes y Repuestos</h3>
+                            <h3 className="text-md font-semibold text-taller-dark dark:text-taller-light mb-2">Partes y Repuestos</h3>
                             {partes.map((parte, index) => (
                                 <div key={index} className="grid grid-cols-[1fr,80px,120px,auto] items-center gap-2 mb-2">
-                                    <input type="text" placeholder="Nombre de la parte" value={parte.nombre} onChange={e => handleParteChange(index, 'nombre', e.target.value)} className="block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-taller-primary focus:border-taller-primary sm:text-sm" />
-                                    <input type="number" placeholder="Cant." value={parte.cantidad} onChange={e => handleParteChange(index, 'cantidad', parseInt(e.target.value, 10) || 1)} className="block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-taller-primary focus:border-taller-primary sm:text-sm" />
-                                    <input type="text" inputMode="decimal" placeholder="$ 0,00" value={parte.precioUnitario} onChange={e => handleParteChange(index, 'precioUnitario', formatCurrency(e.target.value))} className="block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-taller-primary focus:border-taller-primary sm:text-sm" />
-                                    <button type="button" onClick={() => removeParte(index)} className="p-2 text-red-500 hover:bg-red-100 rounded-full"><TrashIcon className="h-5 w-5"/></button>
+                                    <input type="text" placeholder="Nombre de la parte" value={parte.nombre} onChange={e => handleParteChange(index, 'nombre', e.target.value)} className="block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-taller-primary focus:border-taller-primary sm:text-sm" />
+                                    <input type="number" placeholder="Cant." value={parte.cantidad} onChange={e => handleParteChange(index, 'cantidad', parseInt(e.target.value, 10) || 1)} className="block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-taller-primary focus:border-taller-primary sm:text-sm" />
+                                    <input type="text" inputMode="decimal" placeholder="$ 0,00" value={parte.precioUnitario} onChange={e => handleParteChange(index, 'precioUnitario', formatCurrency(e.target.value))} className="block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-taller-primary focus:border-taller-primary sm:text-sm" />
+                                    <button type="button" onClick={() => removeParte(index)} className="p-2 text-red-500 hover:bg-red-100 dark:hover:bg-red-900/50 rounded-full"><TrashIcon className="h-5 w-5"/></button>
                                 </div>
                             ))}
                             <button type="button" onClick={addParte} className="flex items-center gap-1 text-sm text-taller-primary font-medium hover:underline">
@@ -254,12 +255,12 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
                             <div>
-                                <label htmlFor="costoManoDeObra" className="block text-sm font-medium text-taller-gray">Costo Mano de Obra ($)</label>
-                                <input type="text" id="costoManoDeObra" inputMode="decimal" placeholder="$ 0,00" value={costoManoDeObra} onChange={e => setCostoManoDeObra(formatCurrency(e.target.value))} className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-taller-primary focus:border-taller-primary sm:text-sm" />
+                                <label htmlFor="costoManoDeObra" className="block text-sm font-medium text-taller-gray dark:text-gray-400">Costo Mano de Obra ($)</label>
+                                <input type="text" id="costoManoDeObra" inputMode="decimal" placeholder="$ 0,00" value={costoManoDeObra} onChange={e => setCostoManoDeObra(formatCurrency(e.target.value))} className="mt-1 block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-taller-primary focus:border-taller-primary sm:text-sm" />
                             </div>
-                            <div className="bg-taller-light p-3 rounded-md text-right">
-                                <p className="text-sm text-taller-gray">Costo Total Estimado</p>
-                                <p className="text-xl font-bold text-taller-dark">{new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(costoEstimado)}</p>
+                            <div className="bg-taller-light dark:bg-gray-700/50 p-3 rounded-md text-right">
+                                <p className="text-sm text-taller-gray dark:text-gray-400">Costo Total Estimado</p>
+                                <p className="text-xl font-bold text-taller-dark dark:text-taller-light">{new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(costoEstimado)}</p>
                             </div>
                         </div>
                         
@@ -292,7 +293,7 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
                                             type="button"
                                             onClick={() => setConfirmingDelete(false)}
                                             disabled={isDeleting}
-                                            className="py-1 px-3 text-sm font-medium text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300"
+                                            className="py-1 px-3 text-sm font-medium text-gray-700 bg-gray-200 dark:bg-gray-600 dark:text-gray-200 dark:hover:bg-gray-500 rounded-md"
                                         >
                                             No
                                         </button>
@@ -300,7 +301,7 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
                                 )}
                             </div>
                             <div className="flex space-x-3">
-                                <button type="button" onClick={onClose} className="py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
+                                <button type="button" onClick={onClose} className="py-2 px-4 border border-gray-300 dark:border-gray-500 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
                                     Cancelar
                                 </button>
                                 <button type="submit" disabled={isSubmitting || isDeleting} className="py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-taller-primary hover:bg-taller-secondary disabled:opacity-50">

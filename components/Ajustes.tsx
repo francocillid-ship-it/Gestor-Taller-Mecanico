@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import type { TallerInfo } from './TallerDashboard';
 import { supabase } from '../supabaseClient';
-import { ArrowRightOnRectangleIcon, BuildingOffice2Icon, PhotoIcon, ArrowUpOnSquareIcon, PaintBrushIcon, DevicePhoneMobileIcon } from '@heroicons/react/24/solid';
+import { ArrowRightOnRectangleIcon, BuildingOffice2Icon, PhotoIcon, ArrowUpOnSquareIcon, PaintBrushIcon, DevicePhoneMobileIcon, SunIcon, MoonIcon, ComputerDesktopIcon } from '@heroicons/react/24/solid';
 
 interface AjustesProps {
     tallerInfo: TallerInfo;
@@ -9,16 +9,38 @@ interface AjustesProps {
     onLogout: () => void;
 }
 
+type Theme = 'light' | 'dark' | 'system';
+
 const Ajustes: React.FC<AjustesProps> = ({ tallerInfo, onUpdateTallerInfo, onLogout }) => {
     const [formData, setFormData] = useState<TallerInfo>(tallerInfo);
     const [isSaved, setIsSaved] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isUploading, setIsUploading] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const [theme, setTheme] = useState<Theme>(() => (localStorage.getItem('theme') as Theme) || 'system');
 
     useEffect(() => {
         setFormData(tallerInfo);
     }, [tallerInfo]);
+    
+    const handleThemeChange = (newTheme: Theme) => {
+        setTheme(newTheme);
+        if (newTheme === 'system') {
+            localStorage.removeItem('theme');
+            if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                document.documentElement.classList.add('dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+            }
+        } else {
+            localStorage.setItem('theme', newTheme);
+            if (newTheme === 'dark') {
+                document.documentElement.classList.add('dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+            }
+        }
+    };
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
@@ -77,18 +99,33 @@ const Ajustes: React.FC<AjustesProps> = ({ tallerInfo, onUpdateTallerInfo, onLog
         setIsSaved(true);
         setTimeout(() => setIsSaved(false), 3000); 
     };
+    
+    const ThemeButton = ({ value, currentTheme, onClick, icon: Icon, label }: { value: Theme, currentTheme: Theme, onClick: (theme: Theme) => void, icon: React.ElementType, label: string }) => (
+        <button
+            type="button"
+            onClick={() => onClick(value)}
+            className={`w-full flex flex-col items-center gap-2 rounded-md py-3 text-sm font-medium transition-colors ${
+                currentTheme === value
+                    ? 'bg-taller-primary text-white shadow'
+                    : 'text-taller-gray dark:text-gray-300 bg-taller-light dark:bg-gray-700 hover:bg-white dark:hover:bg-gray-600'
+            }`}
+        >
+            <Icon className="h-6 w-6" />
+            <span>{label}</span>
+        </button>
+    );
 
     return (
         <div className="space-y-8 pb-16 max-w-4xl mx-auto">
-            <h2 className="text-2xl font-bold text-taller-dark">Ajustes del Taller</h2>
+            <h2 className="text-2xl font-bold text-taller-dark dark:text-taller-light">Ajustes del Taller</h2>
             
             <form onSubmit={handleSubmit} className="space-y-8">
-                <div className="bg-white p-6 rounded-xl shadow-md">
+                <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md">
                     <h3 className="text-lg font-bold mb-6 flex items-center"><BuildingOffice2Icon className="h-6 w-6 mr-2 text-taller-primary"/>Datos del Taller</h3>
                     <div className="space-y-4">
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                             <div className="md:col-span-1 flex flex-col items-center">
-                                <label className="block text-sm font-medium text-taller-gray mb-2">Logo del Taller</label>
+                                <label className="block text-sm font-medium text-taller-gray dark:text-gray-400 mb-2">Logo del Taller</label>
                                 <input
                                     type="file"
                                     accept="image/png, image/jpeg, image/webp"
@@ -100,10 +137,10 @@ const Ajustes: React.FC<AjustesProps> = ({ tallerInfo, onUpdateTallerInfo, onLog
                                     type="button"
                                     onClick={() => fileInputRef.current?.click()}
                                     disabled={isUploading}
-                                    className="relative w-32 h-32 bg-taller-light rounded-full flex items-center justify-center text-taller-gray border-2 border-dashed hover:border-taller-primary transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-taller-primary"
+                                    className="relative w-32 h-32 bg-taller-light dark:bg-gray-700 rounded-full flex items-center justify-center text-taller-gray dark:text-gray-400 border-2 border-dashed dark:border-gray-600 hover:border-taller-primary transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-taller-primary"
                                 >
                                     {isUploading && (
-                                        <div className="absolute inset-0 bg-white/70 flex items-center justify-center rounded-full">
+                                        <div className="absolute inset-0 bg-white/70 dark:bg-gray-800/70 flex items-center justify-center rounded-full">
                                             <svg className="animate-spin h-8 w-8 text-taller-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                                                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                                                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
@@ -122,65 +159,54 @@ const Ajustes: React.FC<AjustesProps> = ({ tallerInfo, onUpdateTallerInfo, onLog
                             </div>
                             <div className="md:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-6">
                                 <div>
-                                    <label htmlFor="nombre" className="block text-sm font-medium text-taller-gray">Nombre del Taller</label>
-                                    <input type="text" id="nombre" name="nombre" value={formData.nombre} onChange={handleChange} className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-taller-primary focus:border-taller-primary sm:text-sm" required/>
+                                    <label htmlFor="nombre" className="block text-sm font-medium text-taller-gray dark:text-gray-400">Nombre del Taller</label>
+                                    <input type="text" id="nombre" name="nombre" value={formData.nombre} onChange={handleChange} className="mt-1 block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-taller-primary focus:border-taller-primary sm:text-sm" required/>
                                 </div>
                                 <div>
-                                    <label htmlFor="telefono" className="block text-sm font-medium text-taller-gray">Teléfono</label>
-                                    <input type="tel" id="telefono" name="telefono" value={formData.telefono} onChange={handleChange} className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-taller-primary focus:border-taller-primary sm:text-sm" required/>
+                                    <label htmlFor="telefono" className="block text-sm font-medium text-taller-gray dark:text-gray-400">Teléfono</label>
+                                    <input type="tel" id="telefono" name="telefono" value={formData.telefono} onChange={handleChange} className="mt-1 block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-taller-primary focus:border-taller-primary sm:text-sm" required/>
                                 </div>
                                 <div className="sm:col-span-2">
-                                    <label htmlFor="direccion" className="block text-sm font-medium text-taller-gray">Dirección</label>
-                                    <input type="text" id="direccion" name="direccion" value={formData.direccion} onChange={handleChange} className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-taller-primary focus:border-taller-primary sm:text-sm" required/>
+                                    <label htmlFor="direccion" className="block text-sm font-medium text-taller-gray dark:text-gray-400">Dirección</label>
+                                    <input type="text" id="direccion" name="direccion" value={formData.direccion} onChange={handleChange} className="mt-1 block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-taller-primary focus:border-taller-primary sm:text-sm" required/>
                                 </div>
                                 <div className="sm:col-span-2">
-                                    <label htmlFor="cuit" className="block text-sm font-medium text-taller-gray">CUIT</label>
-                                    <input type="text" id="cuit" name="cuit" value={formData.cuit} onChange={handleChange} className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-taller-primary focus:border-taller-primary sm:text-sm" required/>
+                                    <label htmlFor="cuit" className="block text-sm font-medium text-taller-gray dark:text-gray-400">CUIT</label>
+                                    <input type="text" id="cuit" name="cuit" value={formData.cuit} onChange={handleChange} className="mt-1 block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-taller-primary focus:border-taller-primary sm:text-sm" required/>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <div className="bg-white p-6 rounded-xl shadow-md">
-                    <h3 className="text-lg font-bold mb-4 flex items-center"><PaintBrushIcon className="h-6 w-6 mr-2 text-taller-primary"/>Diseño de Documentos</h3>
+                <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md">
+                    <h3 className="text-lg font-bold mb-4 flex items-center"><PaintBrushIcon className="h-6 w-6 mr-2 text-taller-primary"/>Apariencia</h3>
                     <div>
-                        <label className="block text-sm font-medium text-taller-gray mb-2">Plantilla de Presupuestos/Recibos</label>
-                        <div className="flex space-x-2 rounded-lg bg-taller-light p-1">
-                             <button
-                                type="button"
-                                onClick={() => handleTemplateChange('classic')}
-                                className={`w-full rounded-md py-2 text-sm font-medium transition-colors ${formData.pdfTemplate === 'classic' ? 'bg-taller-primary text-white shadow' : 'text-taller-gray hover:bg-white'}`}
-                            >
-                                Clásico
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => handleTemplateChange('modern')}
-                                className={`w-full rounded-md py-2 text-sm font-medium transition-colors ${formData.pdfTemplate === 'modern' ? 'bg-taller-primary text-white shadow' : 'text-taller-gray hover:bg-white'}`}
-                            >
-                                Moderno
-                            </button>
+                        <label className="block text-sm font-medium text-taller-gray dark:text-gray-400 mb-2">Tema de la aplicación</label>
+                        <div className="grid grid-cols-3 gap-2 rounded-lg bg-taller-light dark:bg-gray-900/50 p-1">
+                           <ThemeButton value="light" currentTheme={theme} onClick={handleThemeChange} icon={SunIcon} label="Claro" />
+                           <ThemeButton value="dark" currentTheme={theme} onClick={handleThemeChange} icon={MoonIcon} label="Oscuro" />
+                           <ThemeButton value="system" currentTheme={theme} onClick={handleThemeChange} icon={ComputerDesktopIcon} label="Sistema" />
                         </div>
                     </div>
                 </div>
 
-                <div className="bg-white p-6 rounded-xl shadow-md">
+                <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md">
                     <h3 className="text-lg font-bold mb-4 flex items-center"><DevicePhoneMobileIcon className="h-6 w-6 mr-2 text-taller-primary"/>Interfaz Móvil</h3>
                     <div>
-                        <label className="block text-sm font-medium text-taller-gray mb-2">Estilo de Navegación</label>
-                        <div className="flex space-x-2 rounded-lg bg-taller-light p-1">
+                        <label className="block text-sm font-medium text-taller-gray dark:text-gray-400 mb-2">Estilo de Navegación</label>
+                        <div className="flex space-x-2 rounded-lg bg-taller-light dark:bg-gray-700/50 p-1">
                              <button
                                 type="button"
                                 onClick={() => handleNavStyleChange('sidebar')}
-                                className={`w-full rounded-md py-2 text-sm font-medium transition-colors ${formData.mobileNavStyle === 'sidebar' ? 'bg-taller-primary text-white shadow' : 'text-taller-gray hover:bg-white'}`}
+                                className={`w-full rounded-md py-2 text-sm font-medium transition-colors ${formData.mobileNavStyle === 'sidebar' ? 'bg-taller-primary text-white shadow' : 'text-taller-gray dark:text-gray-300 hover:bg-white dark:hover:bg-gray-600'}`}
                             >
                                 Menú Lateral
                             </button>
                             <button
                                 type="button"
                                 onClick={() => handleNavStyleChange('bottom_nav')}
-                                className={`w-full rounded-md py-2 text-sm font-medium transition-colors ${formData.mobileNavStyle === 'bottom_nav' ? 'bg-taller-primary text-white shadow' : 'text-taller-gray hover:bg-white'}`}
+                                className={`w-full rounded-md py-2 text-sm font-medium transition-colors ${formData.mobileNavStyle === 'bottom_nav' ? 'bg-taller-primary text-white shadow' : 'text-taller-gray dark:text-gray-300 hover:bg-white dark:hover:bg-gray-600'}`}
                             >
                                 Barra Inferior
                             </button>
@@ -196,11 +222,11 @@ const Ajustes: React.FC<AjustesProps> = ({ tallerInfo, onUpdateTallerInfo, onLog
                 </div>
             </form>
 
-            <div className="bg-white p-6 rounded-xl shadow-md">
+            <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md">
                  <h3 className="text-lg font-bold mb-4">Acciones de Cuenta</h3>
                  <button
                     onClick={onLogout}
-                    className="flex items-center space-x-2 px-4 py-2 text-sm font-medium text-red-700 bg-red-100 rounded-lg hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                    className="flex items-center space-x-2 px-4 py-2 text-sm font-medium text-red-700 bg-red-100 rounded-lg hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 dark:bg-red-900/50 dark:text-red-300 dark:hover:bg-red-900"
                 >
                     <ArrowRightOnRectangleIcon className="h-5 w-5" />
                     <span>Salir de la Cuenta</span>
