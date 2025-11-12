@@ -87,7 +87,10 @@ const Login: React.FC = () => {
             <form
                 onSubmit={(e) => {
                     e.preventDefault();
-                    handleAuthAction(view);
+                    // FIX: The `view` state could be 'selection', which is not a valid argument type for `handleAuthAction`. This check narrows the type of `view`.
+                    if (view !== 'selection') {
+                        handleAuthAction(view);
+                    }
                 }}
                 className="space-y-4"
             >

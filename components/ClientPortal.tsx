@@ -1,8 +1,6 @@
 import React from 'react';
-import type { Cliente, Trabajo } from '../types';
-import { JobStatus } from '../types';
-import Header from './Header';
-import { CheckCircleIcon, ClockIcon, WrenchScrewdriverIcon, DocumentTextIcon } from '@heroicons/react/24/solid';
+import type { Cliente, Trabajo, Vehiculo } from '../types';
+import { ArrowRightOnRectangleIcon, WrenchScrewdriverIcon, CurrencyDollarIcon, CalendarDaysIcon, ClockIcon } from '@heroicons/react/24/solid';
 
 interface ClientPortalProps {
     client: Cliente;
@@ -11,87 +9,112 @@ interface ClientPortalProps {
     tallerName: string;
 }
 
-const statusInfo = {
-    [JobStatus.Presupuesto]: { text: 'Presupuesto Pendiente', icon: <ClockIcon className="h-5 w-5 text-yellow-500" />, color: 'text-yellow-500' },
-    [JobStatus.Programado]: { text: 'Trabajo Programado', icon: <ClockIcon className="h-5 w-5 text-blue-500" />, color: 'text-blue-500' },
-    [JobStatus.EnProceso]: { text: 'Vehículo en el Taller', icon: <WrenchScrewdriverIcon className="h-5 w-5 text-orange-500" />, color: 'text-orange-500' },
-    [JobStatus.Finalizado]: { text: 'Trabajo Finalizado', icon: <CheckCircleIcon className="h-5 w-5 text-green-500" />, color: 'text-green-500' },
+const getStatusStyles = (status: string) => {
+    switch (status) {
+        case 'Presupuesto':
+            return { bg: 'bg-yellow-100', text: 'text-yellow-800', border: 'border-yellow-400' };
+        case 'Programado':
+            return { bg: 'bg-blue-100', text: 'text-blue-800', border: 'border-blue-400' };
+        case 'En Proceso':
+            return { bg: 'bg-orange-100', text: 'text-orange-800', border: 'border-orange-400' };
+        case 'Finalizado':
+            return { bg: 'bg-green-100', text: 'text-green-800', border: 'border-green-400' };
+        default:
+            return { bg: 'bg-gray-100', text: 'text-gray-800', border: 'border-gray-400' };
+    }
+};
+
+const TrabajoDetails: React.FC<{ trabajo: Trabajo; vehiculo: Vehiculo | undefined }> = ({ trabajo, vehiculo }) => {
+    const statusStyles = getStatusStyles(trabajo.status);
+    const totalPagado = trabajo.partes
+        .filter(p => p.nombre === '__PAGO_REGISTRADO__')
+        .reduce((sum, p) => sum + p.precioUnitario, 0);
+    const saldoPendiente = trabajo.costoEstimado - totalPagado;
+
+    return (
+        <div className={`bg-white rounded-lg shadow-md overflow-hidden border-l-4 ${statusStyles.border}`}>
+            <div className="p-4">
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start">
+                    <div>
+                        <h3 className="font-bold text-lg text-taller-dark">{vehiculo ? `${vehiculo.marca} ${vehiculo.modelo}` : 'Vehículo'}</h3>
+                        <p className="text-sm text-taller-gray">{trabajo.descripcion}</p>
+                    </div>
+                    <span className={`mt-2 sm:mt-0 px-3 py-1 text-sm font-semibold rounded-full ${statusStyles.bg} ${statusStyles.text}`}>{trabajo.status}</span>
+                </div>
+                <div className="mt-4 pt-4 border-t grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                    <div className="flex items-center">
+                        <CalendarDaysIcon className="h-5 w-5 mr-2 text-taller-gray"/>
+                        <div>
+                            <p className="font-semibold">Ingreso</p>
+                            <p>{new Date(trabajo.fechaEntrada).toLocaleDateString('es-ES')}</p>
+                        </div>
+                    </div>
+                    <div className="flex items-center">
+                        <ClockIcon className="h-5 w-5 mr-2 text-taller-gray"/>
+                        <div>
+                            <p className="font-semibold">Salida</p>
+                            <p>{trabajo.fechaSalida ? new Date(trabajo.fechaSalida).toLocaleDateString('es-ES') : 'Pendiente'}</p>
+                        </div>
+                    </div>
+                    <div className="flex items-center col-span-2 md:col-span-1 mt-4 md:mt-0">
+                        <CurrencyDollarIcon className="h-5 w-5 mr-2 text-taller-gray"/>
+                        <div>
+                            <p className="font-semibold">Costo Total</p>
+                            <p>{new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(trabajo.costoEstimado)}</p>
+                        </div>
+                    </div>
+                     <div className="flex items-center col-span-2 md:col-span-1 mt-4 md:mt-0">
+                        <CurrencyDollarIcon className={`h-5 w-5 mr-2 ${saldoPendiente > 0 ? 'text-red-500' : 'text-green-500'}`}/>
+                        <div>
+                            <p className="font-semibold">Saldo Pendiente</p>
+                            <p className={`${saldoPendiente > 0 ? 'text-red-600' : 'text-green-600'}`}>{new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(saldoPendiente)}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
 };
 
 
 const ClientPortal: React.FC<ClientPortalProps> = ({ client, trabajos, onLogout, tallerName }) => {
-
-    const currentTrabajo = trabajos.find(t => t.status !== JobStatus.Finalizado);
-    const pastTrabajos = trabajos.filter(t => t.status === JobStatus.Finalizado);
-
-    const formatCurrency = (amount: number) => {
-        return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(amount);
-    };
-
+    
     return (
-        <div className="min-h-screen bg-taller-light">
-            <Header tallerName={tallerName} />
-            <main className="p-4 md:p-8">
-                <div className="max-w-4xl mx-auto space-y-8">
-                    <div className="text-center">
-                        <h1 className="text-3xl font-bold">Bienvenido, {client.nombre}</h1>
-                        <p className="text-taller-gray">Aquí puede ver el estado de sus vehículos.</p>
+        <div className="min-h-screen bg-gray-100">
+            <header className="bg-white shadow-md">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
+                    <div className="flex items-center gap-3">
+                        <WrenchScrewdriverIcon className="h-8 w-8 text-taller-primary"/>
+                        <h1 className="text-xl font-bold text-taller-dark">{tallerName}</h1>
                     </div>
+                    <button 
+                        onClick={onLogout}
+                        className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-red-700 bg-red-100 rounded-lg hover:bg-red-200"
+                    >
+                        <ArrowRightOnRectangleIcon className="h-5 w-5" />
+                        <span>Salir</span>
+                    </button>
+                </div>
+            </header>
+            
+            <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                <div className="mb-8">
+                    <h2 className="text-3xl font-bold text-taller-dark">Bienvenido, {client.nombre}</h2>
+                    <p className="text-taller-gray mt-1">Aquí puede ver el estado de sus trabajos y vehículos.</p>
+                </div>
 
-                    {currentTrabajo ? (
-                         <div className="bg-white p-6 rounded-xl shadow-md border-l-4 border-taller-accent">
-                            <h2 className="text-xl font-bold mb-4">Estado Actual de su Vehículo</h2>
-                            <div className="flex flex-col md:flex-row items-start md:items-center justify-between">
-                                 <div>
-                                    <p className="font-semibold">{client.vehiculos.find(v=>v.id === currentTrabajo.vehiculoId)?.marca} {client.vehiculos.find(v=>v.id === currentTrabajo.vehiculoId)?.modelo}</p>
-                                    <p className="text-taller-gray">{currentTrabajo.descripcion}</p>
-                                </div>
-                                <div className={`mt-4 md:mt-0 flex items-center space-x-2 font-semibold ${statusInfo[currentTrabajo.status].color}`}>
-                                    {statusInfo[currentTrabajo.status].icon}
-                                    <span>{statusInfo[currentTrabajo.status].text}</span>
-                                </div>
-                            </div>
-                        </div>
+                <div className="space-y-6">
+                    <h3 className="text-xl font-bold text-taller-dark">Sus Trabajos</h3>
+                    {trabajos.length > 0 ? (
+                        trabajos.map(trabajo => {
+                            const vehiculo = client.vehiculos.find(v => v.id === trabajo.vehiculoId);
+                            return <TrabajoDetails key={trabajo.id} trabajo={trabajo} vehiculo={vehiculo} />;
+                        })
                     ) : (
-                        <div className="bg-white p-6 rounded-xl shadow-md text-center">
-                            <h2 className="text-xl font-bold mb-2">Todo en orden</h2>
-                            <p className="text-taller-gray">No tiene ningún trabajo activo en este momento.</p>
+                        <div className="bg-white rounded-lg shadow-md p-8 text-center">
+                            <p className="text-taller-gray">No tiene trabajos registrados en este momento.</p>
                         </div>
                     )}
-                    
-                    <div className="bg-white p-6 rounded-xl shadow-md">
-                        <h2 className="text-xl font-bold mb-4">Historial de Servicios</h2>
-                        {pastTrabajos.length > 0 ? (
-                            <div className="space-y-4">
-                                {pastTrabajos.map((trabajo, index) => {
-                                    const vehiculo = client.vehiculos.find(v => v.id === trabajo.vehiculoId);
-                                    const costoTotal = (trabajo.costoManoDeObra || 0) + trabajo.partes.reduce((acc, p) => acc + p.cantidad * p.precioUnitario, 0);
-
-                                    return (
-                                        <div key={trabajo.id} className={`p-4 border rounded-lg transition-colors hover:bg-gray-100 ${index % 2 === 0 ? 'bg-white' : 'bg-taller-light'}`}>
-                                            <div className="flex flex-col md:flex-row justify-between">
-                                                <div>
-                                                    <p className="font-semibold">{vehiculo?.marca} {vehiculo?.modelo}</p>
-                                                    <p className="text-sm text-taller-gray">{trabajo.descripcion}</p>
-                                                     <p className="text-xs text-taller-gray mt-1">
-                                                        {new Date(trabajo.fechaSalida || '').toLocaleDateString('es-ES')}
-                                                     </p>
-                                                </div>
-                                                <div className="mt-2 md:mt-0 text-left md:text-right">
-                                                    <p className="font-bold text-taller-dark">{formatCurrency(costoTotal)}</p>
-                                                    <button className="text-sm text-taller-primary hover:underline flex items-center gap-1 mt-1">
-                                                        <DocumentTextIcon className="h-4 w-4"/> Ver Factura
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    )
-                                })}
-                            </div>
-                        ) : (
-                            <p className="text-taller-gray">No hay servicios anteriores registrados.</p>
-                        )}
-                    </div>
                 </div>
             </main>
         </div>

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { supabase } from './supabaseClient';
 import type { Session, User } from '@supabase/supabase-js';
@@ -23,7 +22,11 @@ const App: React.FC = () => {
             const { data: { session } } = await supabase.auth.getSession();
             setSession(session);
             setUser(session?.user ?? null);
-            setRole(session?.user?.user_metadata?.role || null);
+            const userRole = session?.user?.user_metadata?.role || null;
+            setRole(userRole);
+            if (userRole === 'cliente') {
+                setTallerName(session?.user?.user_metadata?.taller_nombre_ref || 'Mi Taller');
+            }
             setLoading(false);
         };
         
@@ -32,7 +35,11 @@ const App: React.FC = () => {
         const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
             setSession(session);
             setUser(session?.user ?? null);
-            setRole(session?.user?.user_metadata?.role || null);
+            const userRole = session?.user?.user_metadata?.role || null;
+            setRole(userRole);
+            if (userRole === 'cliente') {
+                setTallerName(session?.user?.user_metadata?.taller_nombre_ref || 'Mi Taller');
+            }
 
             if (_event === 'SIGNED_OUT') {
                 setClientData(null);
@@ -57,8 +64,6 @@ const App: React.FC = () => {
                         .single();
 
                     if (clientError) throw clientError;
-                    
-                    setTallerName(clientProfile.taller_nombre || 'Mi Taller');
 
                     // Fetch client's vehicles
                     const { data: vehiculos, error: vehiculosError } = await supabase

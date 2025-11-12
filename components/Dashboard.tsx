@@ -38,6 +38,7 @@ const Dashboard: React.FC<DashboardProps> = ({ clientes, trabajos, gastos, onDat
     const [isAddGastoModalOpen, setIsAddGastoModalOpen] = useState(false);
     const [gastoToEdit, setGastoToEdit] = useState<Gasto | null>(null);
     const [period, setPeriod] = useState<Period>('this_month');
+    const [confirmingDeleteGastoId, setConfirmingDeleteGastoId] = useState<string | null>(null);
 
     const stats = useMemo(() => {
         const formatCurrency = (amount: number) => new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(amount);
@@ -140,14 +141,13 @@ const Dashboard: React.FC<DashboardProps> = ({ clientes, trabajos, gastos, onDat
     };
     
     const handleDeleteGasto = async (gastoId: string) => {
-        if(window.confirm('¿Está seguro que desea eliminar este gasto?')) {
-            const { error } = await supabase.from('gastos').delete().eq('id', gastoId);
-            if(error) {
-                console.error("Error deleting expense:", error);
-            } else {
-                onDataRefresh();
-            }
+        const { error } = await supabase.from('gastos').delete().eq('id', gastoId);
+        if(error) {
+            console.error("Error deleting expense:", error);
+        } else {
+            onDataRefresh();
         }
+        setConfirmingDeleteGastoId(null);
     };
 
     const recentGastos = useMemo(() => {
@@ -180,8 +180,8 @@ const Dashboard: React.FC<DashboardProps> = ({ clientes, trabajos, gastos, onDat
                 <FilterControls />
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                <StatCard title="Ingresos Netos" value={stats.ingresosNetos} icon={<CurrencyDollarIcon className="h-6 w-6 text-white"/>} color="bg-blue-500" />
-                <StatCard title="Ganancias Netas" value={stats.gananciasNetas} icon={<ChartPieIcon className="h-6 w-6 text-white"/>} color="bg-green-500" />
+                <StatCard title="Ingreso Neto" value={stats.ingresosNetos} icon={<CurrencyDollarIcon className="h-6 w-6 text-white"/>} color="bg-blue-500" />
+                <StatCard title="Ganancia Neta" value={stats.gananciasNetas} icon={<ChartPieIcon className="h-6 w-6 text-white"/>} color="bg-green-500" />
                 <StatCard title="Gastos Fijos" value={stats.gastosFijos} icon={<BuildingLibraryIcon className="h-6 w-6 text-white"/>} color="bg-red-500" />
                 <StatCard title="Balance" value={stats.balance} icon={<ScaleIcon className="h-6 w-6 text-white"/>} color="bg-indigo-500" />
                 <StatCard title="Trabajos Activos" value={stats.trabajosActivos} icon={<WrenchScrewdriverIcon className="h-6 w-6 text-white"/>} color="bg-yellow-500" />
@@ -207,8 +207,28 @@ const Dashboard: React.FC<DashboardProps> = ({ clientes, trabajos, gastos, onDat
                             </div>
                             <div className="flex items-center gap-4 self-end sm:self-center">
                                 <p className="font-semibold text-red-600">{new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(gasto.monto)}</p>
-                                <button onClick={() => setGastoToEdit(gasto)} className="text-taller-gray hover:text-taller-secondary p-1"><PencilIcon className="h-4 w-4"/></button>
-                                <button onClick={() => handleDeleteGasto(gasto.id)} className="text-taller-gray hover:text-red-600 p-1"><TrashIcon className="h-4 w-4"/></button>
+                                {confirmingDeleteGastoId === gasto.id ? (
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-sm font-medium text-red-600">¿Seguro?</span>
+                                        <button 
+                                            onClick={() => handleDeleteGasto(gasto.id)}
+                                            className="px-2 py-1 text-xs font-bold text-white bg-red-600 rounded hover:bg-red-700"
+                                        >
+                                            Sí
+                                        </button>
+                                        <button 
+                                            onClick={() => setConfirmingDeleteGastoId(null)}
+                                            className="px-2 py-1 text-xs font-medium text-gray-700 bg-gray-200 rounded hover:bg-gray-300"
+                                        >
+                                            No
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <>
+                                        <button onClick={() => setGastoToEdit(gasto)} className="text-taller-gray hover:text-taller-secondary p-1"><PencilIcon className="h-4 w-4"/></button>
+                                        <button onClick={() => setConfirmingDeleteGastoId(gasto.id)} className="text-taller-gray hover:text-red-600 p-1"><TrashIcon className="h-4 w-4"/></button>
+                                    </>
+                                )}
                             </div>
                         </div>
                     )) : <p className="text-center text-taller-gray py-4">No hay gastos registrados.</p>}

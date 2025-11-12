@@ -1,380 +1,256 @@
-import React, { useState, useMemo } from 'react';
-import type { Trabajo, Cliente, Vehiculo, Parte, Pago } from '../types';
-import { JobStatus } from '../types';
-import { ChevronDownIcon, ChevronUpIcon, ArrowRightIcon, DocumentArrowDownIcon, PencilIcon, BanknotesIcon } from '@heroicons/react/24/solid';
-import type { TallerInfo } from './TallerDashboard';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
+import React, { useState, useRef, useEffect } from 'react';
+import type { Trabajo, Cliente, Vehiculo, JobStatus, Parte } from '../types';
+import { JobStatus as JobStatusEnum } from '../types';
+import { ChevronDownIcon, ChevronUpIcon, PencilIcon, ArrowPathIcon, PrinterIcon, CurrencyDollarIcon } from '@heroicons/react/24/solid';
 import CrearTrabajoModal from './CrearTrabajoModal';
+import type { TallerInfo } from './TallerDashboard';
+import { jsPDF } from 'jspdf';
 import { supabase } from '../supabaseClient';
-
+import 'jspdf-autotable';
 
 interface JobCardProps {
     trabajo: Trabajo;
-    cliente?: Cliente;
-    vehiculo?: Vehiculo;
+    cliente: Cliente | undefined;
+    vehiculo: Vehiculo | undefined;
     onUpdateStatus: (trabajoId: string, newStatus: JobStatus) => void;
     tallerInfo: TallerInfo;
     clientes: Cliente[];
     onDataRefresh: () => void;
 }
 
-const PAGO_ID = '__PAGO_REGISTRADO__';
-
 const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateStatus, tallerInfo, clientes, onDataRefresh }) => {
     const [isExpanded, setIsExpanded] = useState(false);
-    const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
-    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-    const [pagoMonto, setPagoMonto] = useState('');
-    const [isAddingPago, setIsAddingPago] = useState(false);
-    
-    const pagos = useMemo((): Pago[] =>
-        trabajo.partes
-            .filter(p => p.nombre === PAGO_ID)
-            .map(p => ({
-                fecha: p.fecha!,
-                monto: p.precioUnitario
-            })),
-        [trabajo.partes]
-    );
+    const [isJobModalOpen, setIsJobModalOpen] = useState(false);
+    const [isAddingPayment, setIsAddingPayment] = useState(false);
+    const [paymentAmount, setPaymentAmount] = useState('');
+    const cardRef = useRef<HTMLDivElement>(null);
 
-    const partesReales = useMemo(() =>
-        trabajo.partes.filter(p => p.nombre !== PAGO_ID),
-        [trabajo.partes]
-    );
-
-    const totalPartes = partesReales.reduce((sum, p) => sum + (p.cantidad * p.precioUnitario), 0);
-    const costoFinal = totalPartes + (trabajo.costoManoDeObra || 0);
-    const totalPagado = pagos.reduce((sum, p) => sum + p.monto, 0);
-    const saldoPendiente = costoFinal - totalPagado;
-
-    const getNextStatus = (): JobStatus | null => {
-        switch (trabajo.status) {
-            case JobStatus.Presupuesto: return JobStatus.Programado;
-            case JobStatus.Programado: return JobStatus.EnProceso;
-            case JobStatus.EnProceso: return JobStatus.Finalizado;
-            default: return null;
+    useEffect(() => {
+        if (isExpanded) {
+            const timer = setTimeout(() => {
+                cardRef.current?.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'nearest',
+                });
+            }, 150);
+            return () => clearTimeout(timer);
         }
-    };
-    
-    const nextStatus = getNextStatus();
-    
-    const formatCurrency = (amount: number) => {
-        return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(amount);
-    };
+    }, [isExpanded]);
 
-    const handlePagoMontoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const rawValue = e.target.value;
-        const digits = rawValue.replace(/\D/g, '');
+    const totalPagado = trabajo.partes
+        .filter(p => p.nombre === '__PAGO_REGISTRADO__')
+        .reduce((sum, p) => sum + p.precioUnitario, 0);
 
-        if (digits === '') {
-            setPagoMonto('');
-            return;
+    const saldoPendiente = trabajo.costoEstimado - totalPagado;
+
+    const generatePDF = () => {
+        const doc = new jsPDF();
+        const a4Width = doc.internal.pageSize.getWidth();
+
+        // Header
+        if (tallerInfo.logoUrl) {
+            // This is tricky because of CORS. If it's a supabase URL, it might work.
+            // For now, let's assume it can be drawn. A try-catch might be better.
+            try {
+                 // doc.addImage(tallerInfo.logoUrl, 'JPEG', 15, 10, 30, 30);
+            } catch (e) {
+                console.error("Could not add logo to PDF:", e);
+            }
+        }
+        doc.setFontSize(20);
+        doc.text(tallerInfo.nombre, a4Width / 2, 20, { align: 'center' });
+        doc.setFontSize(10);
+        doc.text(tallerInfo.direccion, a4Width / 2, 28, { align: 'center' });
+        doc.text(`Tel: ${tallerInfo.telefono} | CUIT: ${tallerInfo.cuit}`, a4Width / 2, 36, { align: 'center' });
+        
+        doc.line(15, 45, a4Width - 15, 45); // horizontal line
+
+        // Job details
+        doc.setFontSize(14);
+        doc.text(`Presupuesto / Orden de Trabajo N°: ${trabajo.id.substring(0, 8)}`, 15, 55);
+        doc.setFontSize(12);
+        doc.text(`Fecha: ${new Date(trabajo.fechaEntrada).toLocaleDateString('es-ES')}`, a4Width - 15, 55, { align: 'right' });
+
+        // Client info
+        doc.rect(15, 60, a4Width - 30, 25);
+        doc.text(`Cliente: ${cliente?.nombre || 'N/A'}`, 20, 68);
+        doc.text(`Vehículo: ${vehiculo?.marca || ''} ${vehiculo?.modelo || ''} (${vehiculo?.año || 'N/A'})`, 20, 75);
+        doc.text(`Matrícula: ${vehiculo?.matricula || 'N/A'}`, a4Width - 20, 75, { align: 'right' });
+
+        doc.text('Descripción del Problema:', 15, 95);
+        const descLines = doc.splitTextToSize(trabajo.descripcion, a4Width - 30);
+        doc.text(descLines, 15, 102);
+
+        // Table for parts
+        const partesSinPagos = trabajo.partes.filter(p => p.nombre !== '__PAGO_REGISTRADO__');
+        if (partesSinPagos.length > 0) {
+            (doc as any).autoTable({
+                startY: 120,
+                head: [['Cantidad', 'Descripción', 'Precio Unitario', 'Subtotal']],
+                body: partesSinPagos.map(p => [
+                    p.cantidad,
+                    p.nombre,
+                    `$ ${p.precioUnitario.toFixed(2)}`,
+                    `$ ${(p.cantidad * p.precioUnitario).toFixed(2)}`
+                ]),
+                theme: 'striped'
+            });
         }
         
-        const numberValue = parseInt(digits, 10);
-        const formattedValue = new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(numberValue / 100);
-        setPagoMonto(formattedValue);
+        // Totals
+        const finalY = (doc as any).lastAutoTable.finalY || 120;
+        const totalPartes = partesSinPagos.reduce((sum, p) => sum + (p.cantidad * p.precioUnitario), 0);
+        
+        doc.setFontSize(12);
+        doc.text(`Subtotal Repuestos:`, a4Width - 60, finalY + 10);
+        doc.text(`$ ${totalPartes.toFixed(2)}`, a4Width - 15, finalY + 10, { align: 'right' });
+        doc.text(`Mano de Obra:`, a4Width - 60, finalY + 18);
+        doc.text(`$ ${(trabajo.costoManoDeObra || 0).toFixed(2)}`, a4Width - 15, finalY + 18, { align: 'right' });
+
+        doc.setFontSize(14);
+        doc.setFont('helvetica', 'bold');
+        doc.text(`TOTAL:`, a4Width - 60, finalY + 28);
+        doc.text(`$ ${trabajo.costoEstimado.toFixed(2)}`, a4Width - 15, finalY + 28, { align: 'right' });
+        doc.setFont('helvetica', 'normal');
+
+        doc.save(`presupuesto-${cliente?.nombre}-${vehiculo?.matricula}.pdf`);
     };
+    
+    const handleAddPayment = async () => {
+        const amount = parseFloat(paymentAmount.replace(/[^0-9,-]+/g,"").replace(",", "."));
+        if (!amount || amount <= 0) return;
 
-    const handleAddPago = async () => {
-        const digits = pagoMonto.replace(/\D/g, '');
-        const numericValue = parseInt(digits, 10) / 100;
-        if (isNaN(numericValue) || numericValue <= 0) return;
+        const newPayment: Parte = {
+            nombre: '__PAGO_REGISTRADO__',
+            cantidad: 1,
+            precioUnitario: amount,
+            fecha: new Date().toISOString()
+        };
 
-        setIsAddingPago(true);
-        try {
-            const nuevoPago: Parte = {
-                nombre: PAGO_ID,
-                cantidad: 1,
-                precioUnitario: numericValue,
-                fecha: new Date().toISOString(),
-            };
+        const updatedPartes = [...trabajo.partes, newPayment];
+        
+        const { error } = await supabase
+            .from('trabajos')
+            .update({ partes: updatedPartes })
+            .eq('id', trabajo.id);
 
-            const partesActualizadas = [...trabajo.partes, nuevoPago];
-
-            const { error } = await supabase
-                .from('trabajos')
-                .update({ partes: partesActualizadas })
-                .eq('id', trabajo.id);
-
-            if (error) throw error;
-            
-            setPagoMonto('');
+        if (error) {
+            console.error("Error adding payment:", error);
+        } else {
             onDataRefresh();
-        } catch (error: any) {
-            console.error("Error adding payment:", error.message);
-        } finally {
-            setIsAddingPago(false);
+            setPaymentAmount('');
+            setIsAddingPayment(false);
         }
     };
 
-    const handleDownloadPDF = async () => {
-        setIsGeneratingPdf(true);
-
-        try {
-            const doc = new jsPDF();
-            
-            const isQuote = trabajo.status !== JobStatus.Finalizado;
-            const title = isQuote ? 'Presupuesto' : 'Recibo de Trabajo';
-            const filename = `${title}-${cliente?.nombre}-${vehiculo?.marca}_${vehiculo?.modelo}.pdf`.replace(/\s+/g, '_');
-            
-            const template = tallerInfo.pdfTemplate || 'classic';
-
-            const tableColumn = ["Item / Descripción", "Cantidad", "P/U", "Total"];
-            const tableRows: (string|number)[][] = [];
-            
-            tableRows.push([trabajo.descripcion, '', '', '']);
-
-            partesReales.forEach(parte => {
-                const parteData = [
-                    `  - ${parte.nombre}`,
-                    parte.cantidad,
-                    formatCurrency(parte.precioUnitario),
-                    formatCurrency(parte.cantidad * parte.precioUnitario),
-                ];
-                tableRows.push(parteData);
-            });
-            
-            const manoDeObra = trabajo.costoManoDeObra || 0;
-            const totalGeneral = isQuote ? trabajo.costoEstimado : costoFinal;
-
-            if (template === 'classic' && tallerInfo.logoUrl) {
-                try {
-                    const response = await fetch(tallerInfo.logoUrl);
-                    const blob = await response.blob();
-                    const base64data = await new Promise<string | null>((resolve, reject) => {
-                        const reader = new FileReader();
-                        reader.onloadend = () => resolve(reader.result as string);
-                        reader.onerror = reject;
-                        reader.readAsDataURL(blob);
-                    });
-                    if (base64data) {
-                        doc.addImage(base64data, 'PNG', 15, 15, 30, 30);
-                    }
-                } catch (e) {
-                    console.error("Could not add logo to PDF.", e);
-                }
-            }
-
-            if (template === 'modern') {
-                const primaryColor = '#1e40af';
-                doc.setFillColor(primaryColor);
-                doc.rect(0, 0, 210, 30, 'F');
-                doc.setFontSize(22);
-                doc.setTextColor('#FFFFFF');
-                doc.setFont('helvetica', 'bold');
-                doc.text(title, 20, 20);
-                doc.setFontSize(10);
-                doc.setTextColor('#FFFFFF');
-                doc.setFont('helvetica', 'normal');
-                doc.text(tallerInfo.nombre, 200, 12, { align: 'right' });
-                doc.text(tallerInfo.direccion, 200, 18, { align: 'right' });
-                doc.text(`Tel: ${tallerInfo.telefono}`, 200, 24, { align: 'right' });
-                doc.setFontSize(10);
-                doc.setTextColor(100);
-                doc.text(`Fecha: ${new Date().toLocaleDateString('es-ES')}`, 20, 45);
-                doc.text(`Presupuesto #${trabajo.id.substring(0, 8)}`, 20, 51);
-                doc.setFillColor(241, 245, 249);
-                doc.rect(15, 60, 180, 25, 'F');
-                doc.setFontSize(12);
-                doc.setTextColor(primaryColor);
-                doc.setFont('helvetica', 'bold');
-                doc.text('Cliente', 20, 67);
-                doc.text('Vehículo', 110, 67);
-                doc.setFontSize(10);
-                doc.setTextColor(50);
-                doc.setFont('helvetica', 'normal');
-                doc.text(cliente?.nombre || 'N/A', 20, 74);
-                doc.text(`${vehiculo?.marca} ${vehiculo?.modelo} (${vehiculo?.año})`, 110, 74);
-                doc.text(`Matrícula: ${vehiculo?.matricula}`, 110, 80);
-                autoTable(doc, { head: [tableColumn], body: tableRows, startY: 90, theme: 'striped', headStyles: { fillColor: primaryColor } });
-                const finalY = (doc as any).lastAutoTable.finalY;
-                doc.setFontSize(10);
-                doc.text(`Subtotal Partes:`, 160, finalY + 10, { align: 'right' });
-                doc.text(formatCurrency(totalPartes), 200, finalY + 10, { align: 'right' });
-                doc.text(`Mano de Obra:`, 160, finalY + 16, { align: 'right' });
-                doc.text(formatCurrency(manoDeObra), 200, finalY + 16, { align: 'right' });
-                doc.setLineWidth(0.5);
-                doc.line(140, finalY + 20, 200, finalY + 20);
-                doc.setFontSize(12);
-                doc.setFont('helvetica', 'bold');
-                doc.text(`TOTAL:`, 160, finalY + 26, { align: 'right' });
-                doc.text(formatCurrency(totalGeneral), 200, finalY + 26, { align: 'right' });
-            } else {
-                doc.setFontSize(12);
-                doc.setFont('helvetica', 'bold');
-                doc.text(tallerInfo.nombre, 50, 20);
-                doc.setFont('helvetica', 'normal');
-                doc.setFontSize(10);
-                doc.text(tallerInfo.direccion, 50, 26);
-                doc.text(`Tel: ${tallerInfo.telefono}`, 50, 32);
-                doc.text(`CUIT: ${tallerInfo.cuit}`, 50, 38);
-                doc.setFontSize(22);
-                doc.setFont('helvetica', 'bold');
-                doc.text(title, 200, 25, { align: 'right' });
-                doc.setFontSize(10);
-                doc.setFont('helvetica', 'normal');
-                doc.text(`Fecha: ${new Date().toLocaleDateString('es-ES')}`, 200, 32, { align: 'right' });
-                doc.text(`Presupuesto #${trabajo.id.substring(0, 8)}`, 200, 38, { align: 'right' });
-                doc.setLineWidth(0.5);
-                doc.line(15, 55, 200, 55);
-                doc.setFontSize(12);
-                doc.setFont('helvetica', 'bold');
-                doc.text('Cliente', 15, 62);
-                doc.setFont('helvetica', 'normal');
-                doc.setFontSize(10);
-                doc.text(cliente?.nombre || 'N/A', 15, 68);
-                doc.text(cliente?.email || 'N/A', 15, 74);
-                doc.setFont('helvetica', 'bold');
-                doc.text('Vehículo', 105, 62);
-                doc.setFont('helvetica', 'normal');
-                doc.text(`${vehiculo?.marca} ${vehiculo?.modelo} (${vehiculo?.año})`, 105, 68);
-                doc.text(`Matrícula: ${vehiculo?.matricula}`, 105, 74);
-                doc.line(15, 80, 200, 80);
-                autoTable(doc, {
-                    head: [tableColumn],
-                    body: tableRows,
-                    startY: 85,
-                    theme: 'striped',
-                    headStyles: { fillColor: [30, 64, 175] },
-                });
-                const finalY = (doc as any).lastAutoTable.finalY;
-                doc.setFontSize(10);
-                doc.text(`Subtotal Partes:`, 150, finalY + 10, { align: 'right' });
-                doc.text(formatCurrency(totalPartes), 200, finalY + 10, { align: 'right' });
-                doc.text(`Mano de Obra:`, 150, finalY + 16, { align: 'right' });
-                doc.text(formatCurrency(manoDeObra), 200, finalY + 16, { align: 'right' });
-                doc.setFontSize(12);
-                doc.setFont('helvetica', 'bold');
-                doc.text(`TOTAL:`, 150, finalY + 24, { align: 'right' });
-                doc.text(formatCurrency(totalGeneral), 200, finalY + 24, { align: 'right' });
-            }
-            
-            doc.save(filename);
-        } catch (error: any) {
-            console.error("Error generating PDF:", error);
-            alert("No se pudo generar el PDF. Un componente necesario no se cargó correctamente. Por favor, refresque la página y vuelva a intentarlo.");
-        } finally {
-            setIsGeneratingPdf(false);
-        }
-    };
 
     return (
         <>
-            <div className="bg-white rounded-lg shadow-md p-4 border-l-4 border-taller-primary">
-                <div className="flex justify-between items-start">
-                    <div>
-                        <h4 className="font-bold text-taller-dark">{vehiculo ? `${vehiculo.marca} ${vehiculo.modelo}` : 'Vehículo no encontrado'}</h4>
-                        <p className="text-sm text-taller-gray">{cliente?.nombre}</p>
+            <div ref={cardRef} className="bg-white rounded-lg shadow-md border-l-4 border-taller-secondary/50">
+                <div className="p-3">
+                    <div className="flex justify-between items-start">
+                        <div>
+                            <p className="font-bold text-sm text-taller-dark">{cliente?.nombre || 'Cliente no encontrado'}</p>
+                            <p className="text-xs text-taller-gray">{vehiculo ? `${vehiculo.marca} ${vehiculo.modelo} (${vehiculo.matricula})` : 'Vehículo no encontrado'}</p>
+                        </div>
+                         <button onClick={() => setIsExpanded(!isExpanded)} className="p-1 text-taller-gray hover:text-taller-dark">
+                            {isExpanded ? <ChevronUpIcon className="h-5 w-5" /> : <ChevronDownIcon className="h-5 w-5" />}
+                        </button>
                     </div>
-                    <button onClick={() => setIsExpanded(!isExpanded)} className="text-taller-gray hover:text-taller-dark">
-                        {isExpanded ? <ChevronUpIcon className="h-5 w-5" /> : <ChevronDownIcon className="h-5 w-5" />}
-                    </button>
-                </div>
-                <p className="text-sm my-2 text-taller-dark">{trabajo.descripcion}</p>
-                <div className="text-sm font-semibold text-taller-primary mt-1">
-                    Estimado: {formatCurrency(trabajo.costoEstimado)}
+                    <p className="text-sm mt-2">{trabajo.descripcion}</p>
                 </div>
                 {isExpanded && (
-                    <div className="mt-4 pt-4 border-t border-gray-200 space-y-3">
-                        <div>
-                            <h5 className="text-sm font-semibold mb-2">Detalles del Trabajo</h5>
-                            <ul className="text-xs space-y-1 text-taller-gray">
-                                {partesReales.map((parte, index) => (
-                                    <li key={index} className="flex justify-between">
-                                        <span>{parte.nombre} x{parte.cantidad}</span>
-                                        <span>{formatCurrency(parte.precioUnitario * parte.cantidad)}</span>
-                                    </li>
-                                ))}
-                                <li className="flex justify-between font-bold pt-1">
-                                    <span>Mano de obra</span>
-                                    <span>{formatCurrency(trabajo.costoManoDeObra || 0)}</span>
+                    <div className="p-3 border-t">
+                        <h4 className="font-semibold text-xs mb-2">Detalles:</h4>
+                        <ul className="text-xs space-y-1 text-taller-dark mb-3">
+                            {trabajo.partes.filter(p => p.nombre !== '__PAGO_REGISTRADO__').map((parte, i) => (
+                                <li key={i} className="flex justify-between">
+                                    <span>{parte.cantidad}x {parte.nombre}</span>
+                                    <span>$ {(parte.cantidad * parte.precioUnitario).toFixed(2)}</span>
                                 </li>
-                                <li className="flex justify-between font-bold text-taller-dark border-t pt-1 mt-1">
-                                    <span>Total</span>
-                                    <span>{formatCurrency(costoFinal)}</span>
+                            ))}
+                            {trabajo.costoManoDeObra ? (
+                                <li className="flex justify-between">
+                                    <span>Mano de Obra</span>
+                                    <span>$ {trabajo.costoManoDeObra.toFixed(2)}</span>
                                 </li>
-                            </ul>
-                        </div>
-                        
-                        {(trabajo.status === JobStatus.EnProceso || trabajo.status === JobStatus.Finalizado) && (
-                            <div className="pt-3 border-t">
-                                <h5 className="text-sm font-semibold mb-2 flex items-center"><BanknotesIcon className="h-5 w-5 mr-2 text-green-600"/>Gestión de Pagos</h5>
-                                <div className="text-xs space-y-1 mb-3">
-                                    {pagos.map((pago, index) => (
-                                        <div key={index} className="flex justify-between items-center bg-gray-50 p-1 rounded">
-                                            <span>Pago del {new Date(pago.fecha).toLocaleDateString('es-ES')}</span>
-                                            <span className="font-semibold">{formatCurrency(pago.monto)}</span>
-                                        </div>
-                                    ))}
-                                    <div className="flex justify-between font-bold pt-1 text-green-700">
-                                        <span>Total Pagado</span>
-                                        <span>{formatCurrency(totalPagado)}</span>
-                                    </div>
-                                    <div className={`flex justify-between font-bold pt-1 ${saldoPendiente > 0 ? 'text-red-600' : 'text-taller-dark'}`}>
-                                        <span>Saldo Pendiente</span>
-                                        <span>{formatCurrency(saldoPendiente)}</span>
-                                    </div>
-                                </div>
+                            ) : null}
+                            <li className="flex justify-between font-bold border-t pt-1">
+                                <span>Total Estimado</span>
+                                <span>$ {trabajo.costoEstimado.toFixed(2)}</span>
+                            </li>
+                             <li className="flex justify-between text-green-600">
+                                <span>Total Pagado</span>
+                                <span>$ {totalPagado.toFixed(2)}</span>
+                            </li>
+                            <li className="flex justify-between font-bold text-red-600">
+                                <span>Saldo Pendiente</span>
+                                <span>$ {saldoPendiente.toFixed(2)}</span>
+                            </li>
+                        </ul>
+                         <div className="text-xs space-y-2">
+                           {isAddingPayment ? (
                                 <div className="flex gap-2">
                                     <input
                                         type="text"
                                         inputMode="decimal"
-                                        placeholder="Monto del pago"
-                                        value={pagoMonto}
-                                        onChange={handlePagoMontoChange}
-                                        className="block w-full px-3 py-1.5 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-taller-primary focus:border-taller-primary sm:text-sm"
+                                        placeholder="Monto"
+                                        value={paymentAmount}
+                                        onChange={(e) => setPaymentAmount(e.target.value)}
+                                        className="w-full px-2 py-1 border rounded"
                                     />
-                                    <button 
-                                        onClick={handleAddPago} 
-                                        disabled={isAddingPago}
-                                        className="px-3 py-1.5 text-sm font-semibold text-white bg-green-600 rounded-lg shadow-sm hover:bg-green-700 focus:outline-none disabled:opacity-50"
-                                    >
-                                        {isAddingPago ? '...' : 'Añadir'}
-                                    </button>
+                                    <button onClick={handleAddPayment} className="px-2 py-1 bg-green-500 text-white rounded">OK</button>
+                                    <button onClick={() => setIsAddingPayment(false)} className="px-2 py-1 bg-gray-200 rounded">X</button>
                                 </div>
-                            </div>
-                        )}
-
-                         <button
-                            onClick={() => setIsEditModalOpen(true)}
-                            className="w-full text-sm flex items-center justify-center gap-2 px-3 py-1.5 font-semibold text-taller-secondary bg-blue-50 border border-taller-secondary/50 rounded-lg shadow-sm hover:bg-blue-100 focus:outline-none transition-colors"
-                        >
-                            <PencilIcon className="h-4 w-4"/>
-                            Modificar Datos
-                        </button>
+                            ) : (
+                                <button
+                                    onClick={() => setIsAddingPayment(true)}
+                                    className="flex items-center gap-1 font-semibold text-green-600 hover:underline"
+                                >
+                                    <CurrencyDollarIcon className="h-4 w-4" /> Registrar Pago
+                                </button>
+                            )}
+                        </div>
                     </div>
                 )}
-                <div className="mt-4 flex flex-col space-y-2">
-                    <button
-                        onClick={handleDownloadPDF}
-                        disabled={isGeneratingPdf}
-                        className="w-full text-sm flex items-center justify-center gap-2 px-3 py-1.5 font-semibold text-taller-primary bg-taller-light border border-taller-primary/50 rounded-lg shadow-sm hover:bg-blue-100 focus:outline-none transition-colors disabled:opacity-70 disabled:cursor-not-allowed"
-                    >
-                        <DocumentArrowDownIcon className="h-4 w-4"/>
-                        {isGeneratingPdf ? 'Generando...' : 'Descargar PDF'}
-                    </button>
-                    {nextStatus && (
-                        <button
-                            onClick={() => onUpdateStatus(trabajo.id, nextStatus)}
-                            className="w-full text-sm flex items-center justify-center gap-2 px-3 py-1.5 font-semibold text-white bg-taller-secondary rounded-lg shadow-sm hover:bg-taller-primary focus:outline-none transition-colors"
-                        >
-                            Mover a {nextStatus} <ArrowRightIcon className="h-4 w-4"/>
+                 <div className="bg-gray-50 px-3 py-2 flex items-center justify-between">
+                    <div className="relative group">
+                        <button className="flex items-center gap-1 text-xs font-semibold text-taller-dark hover:text-taller-primary">
+                            <ArrowPathIcon className="h-4 w-4" />
+                            {trabajo.status}
                         </button>
-                    )}
-                </div>
+                         <div className="absolute bottom-full mb-2 hidden group-hover:block bg-white shadow-lg rounded-md border z-10">
+                            {Object.values(JobStatusEnum).map(s => (
+                                <button
+                                    key={s}
+                                    onClick={() => onUpdateStatus(trabajo.id, s)}
+                                    className="block w-full text-left px-4 py-2 text-xs hover:bg-gray-100"
+                                >
+                                    {s}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                         <button onClick={generatePDF} className="p-1.5 text-taller-gray hover:text-blue-600" title="Imprimir Presupuesto">
+                            <PrinterIcon className="h-4 w-4" />
+                        </button>
+                        <button onClick={() => setIsJobModalOpen(true)} className="p-1.5 text-taller-gray hover:text-taller-secondary" title="Editar Trabajo">
+                            <PencilIcon className="h-4 w-4" />
+                        </button>
+                    </div>
+                 </div>
             </div>
-            {isEditModalOpen && (
+            {isJobModalOpen && (
                 <CrearTrabajoModal
-                    clientes={clientes}
-                    trabajoToEdit={trabajo}
-                    onClose={() => setIsEditModalOpen(false)}
+                    onClose={() => setIsJobModalOpen(false)}
                     onSuccess={() => {
-                        setIsEditModalOpen(false);
+                        setIsJobModalOpen(false);
                         onDataRefresh();
                     }}
                     onDataRefresh={onDataRefresh}
+                    clientes={clientes}
+                    trabajoToEdit={trabajo}
                 />
             )}
         </>

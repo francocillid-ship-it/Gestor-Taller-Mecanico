@@ -1,4 +1,3 @@
-
 export type UserRole = 'taller' | 'cliente';
 
 export enum JobStatus {
@@ -47,7 +46,6 @@ export interface Cliente {
     email: string;
     telefono: string;
     vehiculos: Vehiculo[];
-    taller_nombre?: string;
 }
 
 export interface Gasto {

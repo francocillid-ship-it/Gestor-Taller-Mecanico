@@ -111,10 +111,13 @@ const CrearClienteModal: React.FC<CrearClienteModalProps> = ({ onClose, onSucces
                 const clientEmail = email.trim();
                 const authEmail = clientEmail || `${crypto.randomUUID()}@placeholder.email`;
                 
+                const tallerInfo = user.user_metadata.taller_info as TallerInfo | undefined;
+                const tallerNombre = tallerInfo?.nombre || 'Mi Taller';
+                
                 const { data: clientAuthData, error: authError } = await supabase.auth.signUp({
                     email: authEmail,
                     password: `password-${Date.now()}`,
-                    options: { data: { role: 'cliente' } }
+                    options: { data: { role: 'cliente', taller_nombre_ref: tallerNombre } }
                 });
                 
                 if (authError && authError.message !== 'User already registered') throw authError;
@@ -123,12 +126,9 @@ const CrearClienteModal: React.FC<CrearClienteModalProps> = ({ onClose, onSucces
 
                 if (!clientUserId) throw new Error("Could not find or create client user");
 
-                const tallerInfo = user.user_metadata.taller_info as TallerInfo | undefined;
-                const tallerNombre = tallerInfo?.nombre || 'Mi Taller';
-
                 const { data: clienteData, error: clienteError } = await supabase
                     .from('clientes')
-                    .insert({ id: clientUserId, taller_id: user.id, taller_nombre: tallerNombre, nombre, email: clientEmail, telefono })
+                    .insert({ id: clientUserId, taller_id: user.id, nombre, email: clientEmail, telefono })
                     .select().single();
                 
                 if (clienteError) throw clienteError;
