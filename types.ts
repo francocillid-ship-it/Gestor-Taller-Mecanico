@@ -38,6 +38,8 @@ export interface Vehiculo {
     modelo: string;
     año: number;
     matricula: string;
+    numero_chasis?: string;
+    numero_motor?: string;
 }
 
 export interface Cliente {

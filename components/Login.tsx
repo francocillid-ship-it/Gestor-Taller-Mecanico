@@ -3,7 +3,7 @@ import type { UserRole } from '../types';
 import { supabase } from '../supabaseClient';
 import { WrenchScrewdriverIcon, UserIcon, ArrowLeftIcon, CheckCircleIcon, XCircleIcon } from '@heroicons/react/24/solid';
 
-type View = 'selection' | 'login' | 'signup';
+type View = 'selection' | 'login' | 'signup' | 'forgotPassword';
 
 const Login: React.FC = () => {
     const [view, setView] = useState<View>('selection');
@@ -13,6 +13,7 @@ const Login: React.FC = () => {
     const [confirmPassword, setConfirmPassword] = useState('');
     const [rememberMe, setRememberMe] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [successMessage, setSuccessMessage] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
     const [passwordValid, setPasswordValid] = useState(false);
 
@@ -31,6 +32,7 @@ const Login: React.FC = () => {
         setRole(selectedRole);
         setView('login');
         setError(null);
+        setSuccessMessage(null);
         setPassword('');
         setConfirmPassword('');
     };
@@ -38,6 +40,7 @@ const Login: React.FC = () => {
     const handleAuthAction = async (action: 'login' | 'signup') => {
         setLoading(true);
         setError(null);
+        setSuccessMessage(null);
 
         try {
             if (action === 'login') {
@@ -59,6 +62,23 @@ const Login: React.FC = () => {
             }
         } catch (err: any) {
             setError(err.message || 'Ha ocurrido un error.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handlePasswordReset = async () => {
+        setLoading(true);
+        setError(null);
+        setSuccessMessage(null);
+        try {
+            const { error } = await supabase.auth.resetPasswordForEmail(email, {
+                redirectTo: window.location.origin,
+            });
+            if (error) throw error;
+            setSuccessMessage('Se han enviado las instrucciones para restablecer la contraseña a tu correo.');
+        } catch (err: any) {
+            setError(err.message || 'Error al enviar el email.');
         } finally {
             setLoading(false);
         }
@@ -92,6 +112,39 @@ const Login: React.FC = () => {
         </>
     );
     
+    const renderForgotPasswordForm = () => (
+         <>
+            <button onClick={() => { setView('login'); setError(null); setSuccessMessage(null); }} className="absolute top-4 left-4 text-taller-gray hover:text-taller-dark dark:hover:text-taller-light">
+                <ArrowLeftIcon className="h-6 w-6"/>
+            </button>
+            <h2 className="text-2xl font-bold text-taller-dark dark:text-taller-light pt-8">
+                Restablecer Contraseña
+            </h2>
+             <p className="text-sm text-taller-gray dark:text-gray-400">
+                Ingresa tu email y te enviaremos las instrucciones.
+            </p>
+            <form
+                onSubmit={(e) => {
+                    e.preventDefault();
+                    handlePasswordReset();
+                }}
+                className="space-y-4"
+            >
+                <div>
+                    <label htmlFor="email" className="block text-sm font-medium text-taller-gray dark:text-gray-400">Email</label>
+                    <input type="email" id="email" value={email} onChange={e => setEmail(e.target.value)} className="mt-1 block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-taller-primary focus:border-taller-primary text-taller-dark dark:text-taller-light sm:text-sm" required/>
+                </div>
+                {error && <p className="text-sm text-red-600">{error}</p>}
+                {successMessage && <p className="text-sm text-green-600">{successMessage}</p>}
+                <div className="pt-2">
+                    <button type="submit" disabled={loading} className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-taller-primary hover:bg-taller-secondary focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-taller-primary disabled:opacity-50 disabled:cursor-not-allowed">
+                        {loading ? 'Enviando...' : 'Enviar Instrucciones'}
+                    </button>
+                </div>
+            </form>
+        </>
+    );
+
     const renderAuthForm = () => (
         <>
             <button onClick={() => { setView('selection'); setRole(null); }} className="absolute top-4 left-4 text-taller-gray hover:text-taller-dark dark:hover:text-taller-light">
@@ -103,7 +156,8 @@ const Login: React.FC = () => {
             <form
                 onSubmit={(e) => {
                     e.preventDefault();
-                    if (view !== 'selection') {
+                    // FIX: Resolved a TypeScript error by narrowing the type of the `view` variable. The `if` condition now explicitly checks for 'login' or 'signup' before calling `handleAuthAction`, ensuring type safety.
+                    if (view === 'login' || view === 'signup') {
                         handleAuthAction(view);
                     }
                 }}
@@ -151,8 +205,21 @@ const Login: React.FC = () => {
                                 className="h-4 w-4 text-taller-primary focus:ring-taller-primary border-gray-300 dark:border-gray-600 rounded"
                             />
                             <label htmlFor="remember-me" className="ml-2 block text-sm text-taller-gray dark:text-gray-400">
-                                Mantener sesión iniciada
+                                Mantener sesión
                             </label>
+                        </div>
+                        <div className="text-sm">
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setView('forgotPassword');
+                                    setError(null);
+                                    setSuccessMessage(null);
+                                }}
+                                className="font-medium text-taller-primary hover:underline focus:outline-none"
+                            >
+                                ¿Olvidaste la contraseña?
+                            </button>
                         </div>
                     </div>
                 )}
@@ -177,10 +244,21 @@ const Login: React.FC = () => {
         </>
     )
 
+    const renderCurrentView = () => {
+        switch (view) {
+            case 'selection':
+                return renderSelectionView();
+            case 'forgotPassword':
+                return renderForgotPasswordForm();
+            default:
+                return renderAuthForm();
+        }
+    };
+
     return (
         <div className="flex items-center justify-center min-h-screen bg-gray-100 dark:bg-taller-dark">
             <div className="relative w-full max-w-md p-8 space-y-6 bg-white dark:bg-gray-800 rounded-2xl shadow-lg text-center">
-                {view === 'selection' ? renderSelectionView() : renderAuthForm()}
+                {renderCurrentView()}
             </div>
         </div>
     );

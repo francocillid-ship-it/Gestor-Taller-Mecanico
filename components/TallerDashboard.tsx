@@ -158,7 +158,14 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
         }
     };
 
-    const NavItem = ({ id, label, icon: Icon }: { id: View, label: string, icon: React.FC<{className: string}> }) => (
+    // FIX: Refactored to use a shared NavItemProps interface for props to improve type safety and potentially resolve inference issues.
+    interface NavItemProps {
+        id: View;
+        label: string;
+        icon: React.ComponentType<{ className: string }>;
+    }
+
+    const NavItem = ({ id, label, icon: Icon }: NavItemProps) => (
         <button
             onClick={() => { setView(id); setIsSidebarOpen(false); }}
             className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg font-semibold transition-colors ${
@@ -172,7 +179,7 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
         </button>
     );
     
-    const BottomNavItem = ({ id, label, icon: Icon }: { id: View, label: string, icon: React.FC<{className: string}> }) => (
+    const BottomNavItem = ({ id, label, icon: Icon }: NavItemProps) => (
          <button
             onClick={() => setView(id)}
             className={`flex flex-col items-center justify-center w-full pt-2 pb-1 text-xs font-medium transition-colors ${
@@ -190,7 +197,8 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
         <nav className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t dark:border-gray-700 z-40 md:hidden shadow-[0_-2px_5px_rgba(0,0,0,0.1)]">
             <div className="flex justify-around pb-4">
                 {/* When mapping over an array to create components, spreading props (`{...item}`) can sometimes cause TypeScript errors with the `key` prop. Passing props explicitly avoids this. */}
-                {navItems.map((item) => <BottomNavItem key={item.id} id={item.id} label={item.label} icon={item.icon} />)}
+                {/* FIX: Destructuring props from `item` to prevent potential TypeScript inference issues with the `key` prop. */}
+                {navItems.map(({ id, label, icon }) => <BottomNavItem key={id} id={id} label={label} icon={icon} />)}
             </div>
         </nav>
     );
@@ -215,7 +223,8 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
                 </div>
                 <nav className="flex-1 space-y-2">
                     {/* When mapping over an array to create components, spreading props (`{...item}`) can sometimes cause TypeScript errors with the `key` prop. Passing props explicitly avoids this. */}
-                    {navItems.map((item) => <NavItem key={item.id} id={item.id} label={item.label} icon={item.icon} />)}
+                    {/* FIX: Destructuring props from `item` to prevent potential TypeScript inference issues with the `key` prop. */}
+                    {navItems.map(({ id, label, icon }) => <NavItem key={id} id={id} label={label} icon={icon} />)}
                 </nav>
             </aside>
             

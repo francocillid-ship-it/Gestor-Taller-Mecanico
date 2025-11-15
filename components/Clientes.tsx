@@ -1,7 +1,8 @@
 import React, { useState, useMemo } from 'react';
 import type { Cliente, Trabajo } from '../types';
-import { ChevronDownIcon, ChevronUpIcon, PhoneIcon, EnvelopeIcon, MagnifyingGlassIcon, UserPlusIcon, PencilIcon } from '@heroicons/react/24/solid';
+import { ChevronDownIcon, ChevronUpIcon, PhoneIcon, EnvelopeIcon, MagnifyingGlassIcon, UserPlusIcon, PencilIcon, PlusIcon } from '@heroicons/react/24/solid';
 import CrearClienteModal from './CrearClienteModal';
+import AddVehicleModal from './AddVehicleModal';
 
 interface ClientesProps {
     clientes: Cliente[];
@@ -9,7 +10,14 @@ interface ClientesProps {
     onDataRefresh: () => void;
 }
 
-const ClientCard: React.FC<{ cliente: Cliente; trabajos: Trabajo[]; onEdit: (cliente: Cliente) => void; }> = ({ cliente, trabajos, onEdit }) => {
+interface ClientCardProps {
+    cliente: Cliente;
+    trabajos: Trabajo[];
+    onEdit: (cliente: Cliente) => void;
+    onAddVehicle: (cliente: Cliente) => void;
+}
+
+const ClientCard: React.FC<ClientCardProps> = ({ cliente, trabajos, onEdit, onAddVehicle }) => {
     const [isExpanded, setIsExpanded] = useState(false);
     const clientTrabajos = trabajos.filter(t => t.clienteId === cliente.id);
 
@@ -66,7 +74,14 @@ const ClientCard: React.FC<{ cliente: Cliente; trabajos: Trabajo[]; onEdit: (cli
                              )
                         }) : <p className="text-sm text-taller-gray dark:text-gray-400">No hay trabajos registrados.</p>}
                     </div>
-                    <div className="mt-4 flex justify-end">
+                    <div className="mt-4 flex justify-end gap-3">
+                         <button
+                            onClick={() => onAddVehicle(cliente)}
+                            className="flex items-center gap-2 px-3 py-1.5 text-sm font-semibold text-taller-secondary bg-blue-50 border border-taller-secondary/50 rounded-lg shadow-sm hover:bg-blue-100 dark:text-blue-300 dark:bg-blue-900/30 dark:border-blue-500/50 dark:hover:bg-blue-900/50"
+                        >
+                            <PlusIcon className="h-4 w-4"/>
+                            Agregar Vehículo
+                        </button>
                         <button
                             onClick={() => onEdit(cliente)}
                             className="flex items-center gap-2 px-3 py-1.5 text-sm font-semibold text-taller-secondary bg-blue-50 border border-taller-secondary/50 rounded-lg shadow-sm hover:bg-blue-100 dark:text-blue-300 dark:bg-blue-900/30 dark:border-blue-500/50 dark:hover:bg-blue-900/50"
@@ -85,9 +100,14 @@ const Clientes: React.FC<ClientesProps> = ({ clientes, trabajos, onDataRefresh }
     const [searchQuery, setSearchQuery] = useState('');
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [clienteToEdit, setClienteToEdit] = useState<Cliente | null>(null);
+    const [clientForNewVehicle, setClientForNewVehicle] = useState<Cliente | null>(null);
 
     const handleEditClick = (cliente: Cliente) => {
         setClienteToEdit(cliente);
+    };
+
+    const handleAddVehicleClick = (cliente: Cliente) => {
+        setClientForNewVehicle(cliente);
     };
 
     const handleCloseModal = () => {
@@ -137,7 +157,7 @@ const Clientes: React.FC<ClientesProps> = ({ clientes, trabajos, onDataRefresh }
             <div className="space-y-4">
                 {filteredClientes.length > 0 ? (
                     filteredClientes.map(cliente => (
-                        <ClientCard key={cliente.id} cliente={cliente} trabajos={trabajos} onEdit={handleEditClick} />
+                        <ClientCard key={cliente.id} cliente={cliente} trabajos={trabajos} onEdit={handleEditClick} onAddVehicle={handleAddVehicleClick} />
                     ))
                 ) : (
                     <div className="text-center py-10 bg-white dark:bg-gray-800 rounded-lg shadow-md">
@@ -153,6 +173,17 @@ const Clientes: React.FC<ClientesProps> = ({ clientes, trabajos, onDataRefresh }
                     onClose={handleCloseModal}
                     onSuccess={() => {
                         handleCloseModal();
+                        onDataRefresh();
+                    }}
+                />
+            )}
+
+            {clientForNewVehicle && (
+                 <AddVehicleModal
+                    clienteId={clientForNewVehicle.id}
+                    onClose={() => setClientForNewVehicle(null)}
+                    onSuccess={() => {
+                        setClientForNewVehicle(null);
                         onDataRefresh();
                     }}
                 />
