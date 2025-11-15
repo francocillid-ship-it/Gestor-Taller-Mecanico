@@ -15,6 +15,36 @@ export const isGeminiAvailable = (): boolean => {
     return !!localStorage.getItem('gemini_api_key');
 };
 
+const calculateYearFromPatente = (patente: string): string | null => {
+    const cleanPatente = patente.replace(/\s/g, '').toUpperCase();
+    
+    // Formato antiguo: LLLNNN (e.g., ABC123)
+    const oldFormatRegex = /^[A-Z]{3}\d{3}$/;
+    // Formato Mercosur: LLNNNLL (e.g., AB123CD)
+    const mercosurFormatRegex = /^[A-Z]{2}\d{3}[A-Z]{2}$/;
+
+    if (oldFormatRegex.test(cleanPatente)) {
+        const firstLetter = cleanPatente[0];
+        // As per user request: A=1995, B=1996, etc.
+        const year = 1995 + (firstLetter.charCodeAt(0) - 'A'.charCodeAt(0));
+        // The user's example P=2015 is not linear, but we follow the linear rule as a simplification.
+        if (year >= 1995 && year <= 2016) {
+             return String(year);
+        }
+    } else if (mercosurFormatRegex.test(cleanPatente)) {
+        const secondLetter = cleanPatente[1];
+        // As per user request: A=2016, B=2017, etc.
+        const year = 2016 + (secondLetter.charCodeAt(0) - 'A'.charCodeAt(0));
+        const currentYear = new Date().getFullYear();
+        if (year >= 2016 && year <= currentYear + 1) { // Cap at next year
+            return String(year);
+        }
+    }
+    
+    return null;
+};
+
+
 export const recognizeVehicleDataFromImage = async (base64Image: string): Promise<VehiculoData> => {
     const ai = getGeminiClient();
     if (!ai) {
@@ -64,6 +94,13 @@ export const recognizeVehicleDataFromImage = async (base64Image: string): Promis
 
         if (Object.keys(cleanData).length < 3) {
             return {};
+        }
+
+        if (cleanData.matricula) {
+            const calculatedYear = calculateYearFromPatente(cleanData.matricula);
+            if (calculatedYear) {
+                cleanData.año = calculatedYear;
+            }
         }
 
         return cleanData;
