@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import type { TallerInfo } from './TallerDashboard';
 import { supabase } from '../supabaseClient';
-import { ArrowRightOnRectangleIcon, BuildingOffice2Icon, PhotoIcon, ArrowUpOnSquareIcon, PaintBrushIcon, DevicePhoneMobileIcon, SunIcon, MoonIcon, ComputerDesktopIcon, DocumentTextIcon } from '@heroicons/react/24/solid';
+import { isGeminiAvailable } from '../gemini';
+import { ArrowRightOnRectangleIcon, BuildingOffice2Icon, PhotoIcon, ArrowUpOnSquareIcon, PaintBrushIcon, DevicePhoneMobileIcon, SunIcon, MoonIcon, ComputerDesktopIcon, DocumentTextIcon, SparklesIcon } from '@heroicons/react/24/solid';
 
 interface AjustesProps {
     tallerInfo: TallerInfo;
@@ -18,6 +19,7 @@ const Ajustes: React.FC<AjustesProps> = ({ tallerInfo, onUpdateTallerInfo, onLog
     const [isUploading, setIsUploading] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [theme, setTheme] = useState<Theme>(() => (localStorage.getItem('theme') as Theme) || 'system');
+    const geminiEnabled = isGeminiAvailable();
 
     useEffect(() => {
         setFormData(tallerInfo);
@@ -176,6 +178,26 @@ const Ajustes: React.FC<AjustesProps> = ({ tallerInfo, onUpdateTallerInfo, onLog
                                 </div>
                             </div>
                         </div>
+                    </div>
+                </div>
+
+                 <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md">
+                    <h3 className="text-lg font-bold mb-4 flex items-center"><SparklesIcon className="h-6 w-6 mr-2 text-taller-primary"/>Integración con IA (Gemini)</h3>
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <p className="font-medium text-taller-dark dark:text-taller-light">Reconocimiento de Cédula Verde</p>
+                            <p className="text-sm text-taller-gray dark:text-gray-400">
+                                Usa la cámara para escanear y rellenar datos del vehículo automáticamente.
+                            </p>
+                        </div>
+                        {geminiEnabled ? (
+                            <span className="px-3 py-1 text-sm font-semibold rounded-full bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300">Activado</span>
+                        ) : (
+                            <div className="text-right">
+                                <span className="px-3 py-1 text-sm font-semibold rounded-full bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300">Desactivado</span>
+                                <p className="text-xs text-taller-gray dark:text-gray-400 mt-1">Se requiere una API Key en la configuración del entorno.</p>
+                            </div>
+                        )}
                     </div>
                 </div>
 
