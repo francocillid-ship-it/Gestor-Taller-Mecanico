@@ -109,8 +109,20 @@ const CrearClienteModal: React.FC<CrearClienteModalProps> = ({ onClose, onSucces
                     const yearNumber = parseInt(vehicle.año);
                     if (isNaN(yearNumber) || yearNumber <= 1900 || yearNumber > new Date().getFullYear() + 2) throw new Error(`Año inválido para ${vehicle.marca} ${vehicle.modelo}.`);
                     const vehicleData = { marca: vehicle.marca, modelo: vehicle.modelo, año: yearNumber, matricula: vehicle.matricula, numero_chasis: vehicle.numero_chasis, numero_motor: vehicle.numero_motor, cliente_id: clienteToEdit!.id };
-                    if (vehicle.id) await supabase.from('vehiculos').update(vehicleData).eq('id', vehicle.id);
-                    else await supabase.from('vehiculos').insert(vehicleData);
+                    if (vehicle.id) {
+                        const { data: updatedData, error: updateError } = await supabase
+                            .from('vehiculos')
+                            .update(vehicleData)
+                            .eq('id', vehicle.id)
+                            .select();
+
+                        if (updateError) throw updateError;
+                        if (!updatedData || updatedData.length === 0) {
+                            throw new Error(`No se pudo actualizar el vehículo ${vehicle.marca} ${vehicle.modelo}. Verifique los permisos o contacte a soporte.`);
+                        }
+                    } else {
+                        await supabase.from('vehiculos').insert(vehicleData);
+                    }
                 }
             } else {
                 const yearNumber = parseInt(año);

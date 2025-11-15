@@ -2,6 +2,20 @@ import React, { useState, useRef, useEffect } from 'react';
 import { recognizeVehicleDataFromImage, VehiculoData } from '../gemini';
 import { CameraIcon, XMarkIcon, ArrowPathIcon } from '@heroicons/react/24/solid';
 
+// Type definition for the browser's experimental TextDetector API
+interface DetectedText {
+    boundingBox: DOMRectReadOnly;
+    rawValue: string;
+}
+declare global {
+    interface Window {
+        TextDetector: new () => {
+            detect: (image: ImageBitmapSource) => Promise<DetectedText[]>;
+        };
+    }
+}
+
+
 interface CameraRecognitionModalProps {
     onClose: () => void;
     onDataRecognized: (data: VehiculoData) => void;
@@ -11,11 +25,32 @@ const CameraRecognitionModal: React.FC<CameraRecognitionModalProps> = ({ onClose
     const videoRef = useRef<HTMLVideoElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const streamRef = useRef<MediaStream | null>(null);
+    const animationFrameId = useRef<number | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [detectedTexts, setDetectedTexts] = useState<DetectedText[]>([]);
+    const [videoDimensions, setVideoDimensions] = useState({ width: 0, height: 0 });
 
     useEffect(() => {
         let isMounted = true;
+        let detector: any | null = null;
+        if ('TextDetector' in window) {
+            detector = new window.TextDetector();
+        }
+
+        const detectText = async () => {
+            if (!detector || !videoRef.current || videoRef.current.readyState < 2) {
+                if (isMounted) animationFrameId.current = requestAnimationFrame(detectText);
+                return;
+            }
+            try {
+                const texts = await detector.detect(videoRef.current);
+                if (isMounted) setDetectedTexts(texts);
+            } catch (e) {
+                console.error("Text detection failed:", e);
+            }
+            if (isMounted) animationFrameId.current = requestAnimationFrame(detectText);
+        };
 
         const startCamera = async () => {
             try {
@@ -27,13 +62,20 @@ const CameraRecognitionModal: React.FC<CameraRecognitionModalProps> = ({ onClose
                     streamRef.current = mediaStream;
                     if (videoRef.current) {
                         videoRef.current.srcObject = mediaStream;
+                        videoRef.current.onloadedmetadata = () => {
+                            if (videoRef.current) {
+                                setVideoDimensions({ width: videoRef.current.videoWidth, height: videoRef.current.videoHeight });
+                            }
+                        };
                         videoRef.current.play().catch(e => {
                             console.error("Error playing video:", e);
                             if (isMounted) setError("No se pudo iniciar la vista de la cámara.");
                         });
+                        if (detector) {
+                           animationFrameId.current = requestAnimationFrame(detectText);
+                        }
                     }
                 } else {
-                    // Component unmounted before stream could be assigned, so stop the tracks.
                     mediaStream.getTracks().forEach(track => track.stop());
                 }
 
@@ -53,8 +95,11 @@ const CameraRecognitionModal: React.FC<CameraRecognitionModalProps> = ({ onClose
                 streamRef.current.getTracks().forEach(track => track.stop());
                 streamRef.current = null;
             }
+            if (animationFrameId.current) {
+                cancelAnimationFrame(animationFrameId.current);
+            }
         };
-    }, []); // Empty dependency array ensures this runs only once on mount and cleanup on unmount.
+    }, []);
 
 
     const handleCapture = async () => {
@@ -62,6 +107,9 @@ const CameraRecognitionModal: React.FC<CameraRecognitionModalProps> = ({ onClose
         
         setIsLoading(true);
         setError(null);
+        setDetectedTexts([]);
+        if (animationFrameId.current) cancelAnimationFrame(animationFrameId.current);
+
 
         const video = videoRef.current;
         const canvas = canvasRef.current;
@@ -92,6 +140,9 @@ const CameraRecognitionModal: React.FC<CameraRecognitionModalProps> = ({ onClose
             setIsLoading(false);
         }
     };
+    
+    const scaleX = videoRef.current ? videoRef.current.clientWidth / videoDimensions.width : 0;
+    const scaleY = videoRef.current ? videoRef.current.clientHeight / videoDimensions.height : 0;
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-75 flex justify-center items-center z-[60]">
@@ -104,6 +155,22 @@ const CameraRecognitionModal: React.FC<CameraRecognitionModalProps> = ({ onClose
 
                 <div className="relative w-full aspect-video bg-black rounded-md overflow-hidden">
                     <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover"></video>
+                     {detectedTexts.length > 0 && videoDimensions.width > 0 && (
+                        <div className="absolute inset-0">
+                            {detectedTexts.map((text, i) => (
+                                <div
+                                    key={i}
+                                    className="absolute border-2 border-yellow-400 bg-yellow-400/20"
+                                    style={{
+                                        left: `${text.boundingBox.x * scaleX}px`,
+                                        top: `${text.boundingBox.y * scaleY}px`,
+                                        width: `${text.boundingBox.width * scaleX}px`,
+                                        height: `${text.boundingBox.height * scaleY}px`,
+                                    }}
+                                />
+                            ))}
+                        </div>
+                    )}
                     {isLoading && (
                         <div className="absolute inset-0 bg-black/70 flex flex-col justify-center items-center text-white">
                             <ArrowPathIcon className="h-10 w-10 animate-spin mb-2" />
