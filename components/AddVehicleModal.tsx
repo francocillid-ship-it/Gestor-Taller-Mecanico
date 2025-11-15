@@ -64,10 +64,10 @@ const AddVehicleModal: React.FC<AddVehicleModalProps> = ({ onClose, onSuccess, c
                         <button onClick={onClose} className="text-taller-gray dark:text-gray-400 hover:text-taller-dark dark:hover:text-white"><XMarkIcon className="h-6 w-6" /></button>
                     </div>
                     <form onSubmit={handleSubmit} className="space-y-4">
-                        <div className="flex justify-between items-center border-b dark:border-gray-600 pb-2 pt-2">
+                        <div className="flex flex-col gap-2 sm:flex-row sm:justify-between sm:items-center border-b dark:border-gray-600 pb-2 pt-2">
                              <h3 className="text-md font-semibold text-taller-dark dark:text-taller-light">Datos del Vehículo</h3>
                              {geminiEnabled && (
-                                <button type="button" onClick={() => setIsCameraModalOpen(true)} className="flex items-center gap-2 px-3 py-1 text-sm font-semibold text-taller-secondary bg-blue-50 border border-taller-secondary/50 rounded-lg shadow-sm hover:bg-blue-100 dark:text-blue-300 dark:bg-blue-900/30 dark:border-blue-500/50 dark:hover:bg-blue-900/50">
+                                <button type="button" onClick={() => setIsCameraModalOpen(true)} className="flex-shrink-0 self-end sm:self-center flex items-center gap-2 px-3 py-1 text-sm font-semibold text-taller-secondary bg-blue-50 border border-taller-secondary/50 rounded-lg shadow-sm hover:bg-blue-100 dark:text-blue-300 dark:bg-blue-900/30 dark:border-blue-500/50 dark:hover:bg-blue-900/50">
                                     <CameraIcon className="h-4 w-4" /> Escanear Cédula
                                 </button>
                             )}

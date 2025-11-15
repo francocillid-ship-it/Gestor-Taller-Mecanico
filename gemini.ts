@@ -1,21 +1,24 @@
 import { GoogleGenAI, Part, Type } from "@google/genai";
 import type { Vehiculo } from './types';
 
-// La API Key se inyecta a través de las variables de entorno del entorno de compilación.
-const API_KEY = process.env.API_KEY;
-
-let ai: GoogleGenAI | null = null;
-if (API_KEY) {
-    ai = new GoogleGenAI({ apiKey: API_KEY });
-}
+const getGeminiClient = (): GoogleGenAI | null => {
+    const apiKey = localStorage.getItem('gemini_api_key');
+    if (apiKey) {
+        return new GoogleGenAI({ apiKey });
+    }
+    return null;
+};
 
 export type VehiculoData = Partial<Omit<Vehiculo, 'id' | 'año'> & { año: string }>;
 
-export const isGeminiAvailable = (): boolean => !!ai;
+export const isGeminiAvailable = (): boolean => {
+    return !!localStorage.getItem('gemini_api_key');
+};
 
 export const recognizeVehicleDataFromImage = async (base64Image: string): Promise<VehiculoData> => {
+    const ai = getGeminiClient();
     if (!ai) {
-        throw new Error("La API Key de Gemini no está configurada.");
+        throw new Error("La API Key de Gemini no está configurada. Por favor, ingrésela en Ajustes.");
     }
 
     const imagePart: Part = {
@@ -45,7 +48,6 @@ export const recognizeVehicleDataFromImage = async (base64Image: string): Promis
                         numero_chasis: { type: Type.STRING, nullable: true },
                         numero_motor: { type: Type.STRING, nullable: true }
                     },
-                    // No es necesario 'required' ya que queremos campos opcionales si no hay confianza
                 }
             }
         });

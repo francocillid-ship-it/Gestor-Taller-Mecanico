@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import type { TallerInfo } from './TallerDashboard';
 import { supabase } from '../supabaseClient';
-import { isGeminiAvailable } from '../gemini';
-import { ArrowRightOnRectangleIcon, BuildingOffice2Icon, PhotoIcon, ArrowUpOnSquareIcon, PaintBrushIcon, DevicePhoneMobileIcon, SunIcon, MoonIcon, ComputerDesktopIcon, DocumentTextIcon, SparklesIcon } from '@heroicons/react/24/solid';
+import { ArrowRightOnRectangleIcon, BuildingOffice2Icon, PhotoIcon, ArrowUpOnSquareIcon, PaintBrushIcon, DevicePhoneMobileIcon, SunIcon, MoonIcon, ComputerDesktopIcon, DocumentTextIcon, SparklesIcon, CheckCircleIcon, ExclamationTriangleIcon } from '@heroicons/react/24/solid';
 
 interface AjustesProps {
     tallerInfo: TallerInfo;
@@ -19,11 +18,31 @@ const Ajustes: React.FC<AjustesProps> = ({ tallerInfo, onUpdateTallerInfo, onLog
     const [isUploading, setIsUploading] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [theme, setTheme] = useState<Theme>(() => (localStorage.getItem('theme') as Theme) || 'system');
-    const geminiEnabled = isGeminiAvailable();
+    const [geminiApiKey, setGeminiApiKey] = useState('');
+    const [geminiStatus, setGeminiStatus] = useState<'checking' | 'active' | 'inactive'>('checking');
 
     useEffect(() => {
         setFormData(tallerInfo);
     }, [tallerInfo]);
+
+    useEffect(() => {
+        const key = localStorage.getItem('gemini_api_key');
+        setGeminiApiKey(key || '');
+        setGeminiStatus(key ? 'active' : 'inactive');
+    }, []);
+
+    const handleSaveApiKey = () => {
+        if (geminiApiKey.trim()) {
+            localStorage.setItem('gemini_api_key', geminiApiKey.trim());
+            setGeminiStatus('active');
+        }
+    };
+
+    const handleDeleteApiKey = () => {
+        localStorage.removeItem('gemini_api_key');
+        setGeminiApiKey('');
+        setGeminiStatus('inactive');
+    };
     
     const handleThemeChange = (newTheme: Theme) => {
         setTheme(newTheme);
@@ -181,24 +200,48 @@ const Ajustes: React.FC<AjustesProps> = ({ tallerInfo, onUpdateTallerInfo, onLog
                     </div>
                 </div>
 
-                 <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md">
-                    <h3 className="text-lg font-bold mb-4 flex items-center"><SparklesIcon className="h-6 w-6 mr-2 text-taller-primary"/>Integración con IA (Gemini)</h3>
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <p className="font-medium text-taller-dark dark:text-taller-light">Reconocimiento de Cédula Verde</p>
-                            <p className="text-sm text-taller-gray dark:text-gray-400">
-                                Usa la cámara para escanear y rellenar datos del vehículo automáticamente.
-                            </p>
+                <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md">
+                    <h3 className="text-lg font-bold mb-2 flex items-center"><SparklesIcon className="h-6 w-6 mr-2 text-taller-primary"/>Integración con IA (Gemini)</h3>
+                    <p className="text-sm text-taller-gray dark:text-gray-400 mb-4">
+                        Usa la cámara para escanear y rellenar datos del vehículo automáticamente. Ingresa tu API Key de Google AI Studio para activar esta función.
+                    </p>
+                    <div className="space-y-2">
+                        <label htmlFor="gemini-api-key" className="block text-sm font-medium text-taller-gray dark:text-gray-400">Tu API Key de Gemini</label>
+                        <div className="flex flex-col sm:flex-row gap-2">
+                            <input
+                                type="password"
+                                id="gemini-api-key"
+                                value={geminiApiKey}
+                                onChange={(e) => setGeminiApiKey(e.target.value)}
+                                onFocus={(e) => e.target.type = 'text'}
+                                onBlur={(e) => e.target.type = 'password'}
+                                placeholder="Ingresa tu API Key"
+                                className="flex-grow mt-1 block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-taller-primary focus:border-taller-primary sm:text-sm"
+                            />
+                            <button
+                                type="button"
+                                onClick={handleSaveApiKey}
+                                className="py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-taller-primary hover:bg-taller-secondary disabled:opacity-50"
+                            >
+                                Guardar
+                            </button>
                         </div>
-                        {geminiEnabled ? (
-                            <span className="px-3 py-1 text-sm font-semibold rounded-full bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300">Activado</span>
-                        ) : (
-                            <div className="text-right">
-                                <span className="px-3 py-1 text-sm font-semibold rounded-full bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300">Desactivado</span>
-                                <p className="text-xs text-taller-gray dark:text-gray-400 mt-1">Se requiere una API Key en la configuración del entorno.</p>
-                            </div>
-                        )}
                     </div>
+                    {geminiStatus === 'active' && (
+                        <div className="mt-4 flex items-center justify-between">
+                            <span className="flex items-center gap-2 text-sm text-green-600 dark:text-green-400">
+                                <CheckCircleIcon className="h-5 w-5"/>
+                                API Key activa.
+                            </span>
+                            <button type="button" onClick={handleDeleteApiKey} className="text-sm font-medium text-red-600 hover:underline">Eliminar Clave</button>
+                        </div>
+                    )}
+                    {geminiStatus === 'inactive' && (
+                        <div className="mt-4 flex items-center gap-2 text-sm text-yellow-600 dark:text-yellow-400">
+                            <ExclamationTriangleIcon className="h-5 w-5"/>
+                            API Key no configurada. La función de escaneo está desactivada.
+                        </div>
+                    )}
                 </div>
 
                 <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md">
