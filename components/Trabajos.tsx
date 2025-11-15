@@ -105,6 +105,8 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
                         onDataRefresh={onDataRefresh}
                     />
                 ))}
+                {/* Spacer for bottom nav on mobile */}
+                {tallerInfo.mobileNavStyle === 'bottom_nav' && <div className="h-16 md:hidden flex-shrink-0" />}
             </div>
 
             {isJobModalOpen && (

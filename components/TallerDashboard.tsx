@@ -195,7 +195,7 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
     const BottomNav = () => (
         <nav className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t dark:border-gray-700 z-40 md:hidden shadow-[0_-2px_5px_rgba(0,0,0,0.1)]">
             <div className="flex justify-around pb-4">
-                {/* FIX: Switched to spreading props for cleaner code. This resolves a TypeScript error where the key prop was incorrectly being inferred as part of the component's props. */}
+                {/* FIX: Added the required `key` prop for list rendering. */}
                 {navItems.map(item => <BottomNavItem key={item.id} {...item} />)}
             </div>
         </nav>
@@ -220,7 +220,7 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
                      </button>
                 </div>
                 <nav className="flex-1 space-y-2">
-                    {/* FIX: Switched to spreading props for cleaner code. This resolves a TypeScript error where the key prop was incorrectly being inferred as part of the component's props. */}
+                    {/* FIX: Added the required `key` prop for list rendering. */}
                     {navItems.map(item => <NavItem key={item.id} {...item} />)}
                 </nav>
             </aside>
