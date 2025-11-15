@@ -150,7 +150,7 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
             case 'trabajos':
                 return <Trabajos trabajos={trabajos} clientes={clientes} onUpdateStatus={handleUpdateStatus} onDataRefresh={fetchData} tallerInfo={tallerInfo} />;
             case 'clientes':
-                return <Clientes clientes={clientes} trabajos={trabajos} onDataRefresh={fetchData} />;
+                return <Clientes clientes={clientes} trabajos={trabajos} onDataRefresh={fetchData} tallerInfo={tallerInfo} />;
             case 'ajustes':
                 return <Ajustes tallerInfo={tallerInfo} onUpdateTallerInfo={handleUpdateTallerInfo} onLogout={onLogout}/>;
             default:
@@ -195,7 +195,7 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
 
     const BottomNav = () => (
         <nav className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t dark:border-gray-700 z-40 md:hidden shadow-[0_-2px_5px_rgba(0,0,0,0.1)]">
-            <div className="flex justify-around pb-4">
+            <div className="flex justify-around">
                 {/* When mapping over an array to create components, spreading props (`{...item}`) can sometimes cause TypeScript errors with the `key` prop. Passing props explicitly avoids this. */}
                 {/* FIX: Destructuring props from `item` to prevent potential TypeScript inference issues with the `key` prop. */}
                 {navItems.map(({ id, label, icon }) => <BottomNavItem key={id} id={id} label={label} icon={icon} />)}

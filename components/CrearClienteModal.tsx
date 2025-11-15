@@ -244,9 +244,30 @@ const CrearClienteModal: React.FC<CrearClienteModalProps> = ({ onClose, onSucces
                         <div><label htmlFor="email" className="block text-sm font-medium text-taller-gray dark:text-gray-400">Email (opcional)</label><input type="email" id="email" value={email} onChange={e => setEmail(e.target.value)} className="mt-1 block w-full input-class" /></div>
                         {isEditMode ? renderEditForm() : renderCreateForm()}
                         {error && <p className="text-sm text-red-600 mt-2">{error}</p>}
-                        <div className="pt-4 flex justify-between items-center">
-                             <div>{isEditMode && !confirmingDelete && (<button type="button" onClick={() => setConfirmingDelete(true)} className="flex items-center gap-2 py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 disabled:opacity-50"><TrashIcon className="h-5 w-5"/> Eliminar</button>)} {isEditMode && confirmingDelete && (<div className="flex items-center gap-3"><p className="text-sm font-medium text-red-700 animate-pulse">¿Confirmar?</p><button type="button" onClick={handleDeleteClient} disabled={isDeleting} className="py-1 px-3 text-sm font-bold text-white bg-red-600 rounded-md hover:bg-red-700">{isDeleting ? '...' : 'Sí'}</button><button type="button" onClick={() => setConfirmingDelete(false)} disabled={isDeleting} className="py-1 px-3 text-sm font-medium text-gray-700 bg-gray-200 dark:bg-gray-600 dark:text-gray-200 dark:hover:bg-gray-500 rounded-md">No</button></div>)}</div>
-                            <div className="flex justify-end space-x-3"><button type="button" onClick={onClose} className="py-2 px-4 border border-gray-300 dark:border-gray-500 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">Cancelar</button><button type="submit" disabled={isSubmitting || isDeleting} className="py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-taller-primary hover:bg-taller-secondary disabled:opacity-50">{isSubmitting ? 'Guardando...' : (isEditMode ? 'Guardar Cambios' : 'Crear Cliente')}</button></div>
+                        <div className="pt-4 flex flex-col-reverse sm:flex-row items-center gap-4 w-full">
+                           {isEditMode ? (
+                                <div className="w-full sm:flex-1">
+                                    {!confirmingDelete ? (
+                                        <button type="button" onClick={() => setConfirmingDelete(true)} className="w-full justify-center flex items-center gap-2 py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 disabled:opacity-50">
+                                            <TrashIcon className="h-5 w-5"/> Eliminar
+                                        </button>
+                                    ) : (
+                                        <div className="flex items-center justify-center gap-3">
+                                            <p className="text-sm font-medium text-red-700 animate-pulse">¿Confirmar?</p>
+                                            <button type="button" onClick={handleDeleteClient} disabled={isDeleting} className="py-1 px-3 text-sm font-bold text-white bg-red-600 rounded-md hover:bg-red-700">{isDeleting ? '...' : 'Sí'}</button>
+                                            <button type="button" onClick={() => setConfirmingDelete(false)} disabled={isDeleting} className="py-1 px-3 text-sm font-medium text-gray-700 bg-gray-200 dark:bg-gray-600 dark:text-gray-200 dark:hover:bg-gray-500 rounded-md">No</button>
+                                        </div>
+                                    )}
+                                </div>
+                           ) : <div className="hidden sm:block sm:flex-1"></div>}
+                           <div className="w-full sm:flex-1">
+                                <button type="button" onClick={onClose} className="w-full justify-center py-2 px-4 border border-gray-300 dark:border-gray-500 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">Cancelar</button>
+                           </div>
+                           <div className="w-full sm:flex-1">
+                                <button type="submit" disabled={isSubmitting || isDeleting} className="w-full justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-taller-primary hover:bg-taller-secondary disabled:opacity-50">
+                                    {isSubmitting ? 'Guardando...' : (isEditMode ? 'Guardar' : 'Crear Cliente')}
+                                </button>
+                           </div>
                         </div>
                     </form>
                 </div>

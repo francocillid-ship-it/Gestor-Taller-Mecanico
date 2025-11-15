@@ -4,6 +4,7 @@ import type { Cliente, Parte, Trabajo } from '../types';
 import { JobStatus } from '../types';
 import { XMarkIcon, PlusIcon, TrashIcon, UserPlusIcon } from '@heroicons/react/24/solid';
 import CrearClienteModal from './CrearClienteModal';
+import type { TallerInfo } from './TallerDashboard';
 
 interface CrearTrabajoModalProps {
     onClose: () => void;
@@ -11,6 +12,7 @@ interface CrearTrabajoModalProps {
     onDataRefresh: () => void;
     clientes: Cliente[];
     trabajoToEdit?: Trabajo;
+    tallerInfo?: TallerInfo;
 }
 
 type ParteState = {
@@ -20,7 +22,7 @@ type ParteState = {
 };
 
 
-const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSuccess, onDataRefresh, clientes, trabajoToEdit }) => {
+const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSuccess, onDataRefresh, clientes, trabajoToEdit, tallerInfo }) => {
     const [selectedClienteId, setSelectedClienteId] = useState('');
     const [selectedVehiculoId, setSelectedVehiculoId] = useState('');
     const [descripcion, setDescripcion] = useState('');
@@ -196,7 +198,7 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
     return (
         <>
             <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
-                <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+                <div className={`bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto pt-6 px-6 ${tallerInfo?.mobileNavStyle === 'bottom_nav' ? 'pb-24' : 'pb-6'}`}>
                     <div className="flex justify-between items-center mb-4">
                         <h2 className="text-xl font-bold text-taller-dark dark:text-taller-light">{isEditMode ? 'Editar Trabajo' : 'Crear Nuevo Presupuesto'}</h2>
                         <button onClick={onClose} className="text-taller-gray dark:text-gray-400 hover:text-taller-dark dark:hover:text-white"><XMarkIcon className="h-6 w-6" /></button>
@@ -266,45 +268,48 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
                         
                         {error && <p className="text-sm text-red-600">{error}</p>}
 
-                        <div className="pt-4 flex justify-between items-center">
-                            <div>
-                                {isEditMode && !confirmingDelete && (
-                                    <button
-                                        type="button"
-                                        onClick={() => setConfirmingDelete(true)}
-                                        className="flex items-center gap-2 py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 disabled:opacity-50"
-                                    >
-                                        <TrashIcon className="h-5 w-5"/>
-                                        Eliminar Trabajo
-                                    </button>
-                                )}
-                                {isEditMode && confirmingDelete && (
-                                    <div className="flex items-center gap-3">
-                                        <p className="text-sm font-medium text-red-700 animate-pulse">¿Confirmar?</p>
+                        <div className="pt-4 flex flex-col-reverse sm:flex-row items-center gap-4 w-full">
+                            {isEditMode ? (
+                                <div className="w-full sm:flex-1">
+                                    {!confirmingDelete ? (
                                         <button
                                             type="button"
-                                            onClick={handleDeleteJob}
-                                            disabled={isDeleting}
-                                            className="py-1 px-3 text-sm font-bold text-white bg-red-600 rounded-md hover:bg-red-700"
+                                            onClick={() => setConfirmingDelete(true)}
+                                            className="w-full flex items-center justify-center gap-2 py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 disabled:opacity-50"
                                         >
-                                            {isDeleting ? '...' : 'Sí'}
+                                            <TrashIcon className="h-5 w-5"/>
+                                            Eliminar Trabajo
                                         </button>
-                                        <button
-                                            type="button"
-                                            onClick={() => setConfirmingDelete(false)}
-                                            disabled={isDeleting}
-                                            className="py-1 px-3 text-sm font-medium text-gray-700 bg-gray-200 dark:bg-gray-600 dark:text-gray-200 dark:hover:bg-gray-500 rounded-md"
-                                        >
-                                            No
-                                        </button>
-                                    </div>
-                                )}
-                            </div>
-                            <div className="flex space-x-3">
-                                <button type="button" onClick={onClose} className="py-2 px-4 border border-gray-300 dark:border-gray-500 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
+                                    ) : (
+                                        <div className="flex items-center justify-center gap-3">
+                                            <p className="text-sm font-medium text-red-700 animate-pulse">¿Confirmar?</p>
+                                            <button
+                                                type="button"
+                                                onClick={handleDeleteJob}
+                                                disabled={isDeleting}
+                                                className="py-1 px-3 text-sm font-bold text-white bg-red-600 rounded-md hover:bg-red-700"
+                                            >
+                                                {isDeleting ? '...' : 'Sí'}
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => setConfirmingDelete(false)}
+                                                disabled={isDeleting}
+                                                className="py-1 px-3 text-sm font-medium text-gray-700 bg-gray-200 dark:bg-gray-600 dark:text-gray-200 dark:hover:bg-gray-500 rounded-md"
+                                            >
+                                                No
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                            ) : <div className="hidden sm:block sm:flex-1"></div>}
+                            <div className="w-full sm:flex-1">
+                                <button type="button" onClick={onClose} className="w-full justify-center py-2 px-4 border border-gray-300 dark:border-gray-500 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
                                     Cancelar
                                 </button>
-                                <button type="submit" disabled={isSubmitting || isDeleting} className="py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-taller-primary hover:bg-taller-secondary disabled:opacity-50">
+                            </div>
+                             <div className="w-full sm:flex-1">
+                                <button type="submit" disabled={isSubmitting || isDeleting} className="w-full justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-taller-primary hover:bg-taller-secondary disabled:opacity-50">
                                     {isSubmitting ? 'Guardando...' : (isEditMode ? 'Guardar Cambios' : 'Crear Presupuesto')}
                                 </button>
                             </div>
@@ -319,6 +324,7 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
                         setIsClientModalOpen(false);
                         onDataRefresh();
                     }}
+                    tallerInfo={tallerInfo}
                 />
             )}
         </>

@@ -116,6 +116,7 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
                         onDataRefresh();
                     }}
                     onDataRefresh={onDataRefresh}
+                    tallerInfo={tallerInfo}
                 />
             )}
         </div>

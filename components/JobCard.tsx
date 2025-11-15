@@ -389,6 +389,7 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
                     onDataRefresh={onDataRefresh}
                     clientes={clientes}
                     trabajoToEdit={trabajo}
+                    tallerInfo={tallerInfo}
                 />
             )}
         </>
