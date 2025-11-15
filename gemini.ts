@@ -25,15 +25,35 @@ const calculateYearFromPatente = (patente: string): string | null => {
 
     if (oldFormatRegex.test(cleanPatente)) {
         const firstLetter = cleanPatente[0];
-        // As per user request: A=1995, B=1996, etc.
-        const year = 1995 + (firstLetter.charCodeAt(0) - 'A'.charCodeAt(0));
-        // The user's example P=2015 is not linear, but we follow the linear rule as a simplification.
-        if (year >= 1995 && year <= 2016) {
-             return String(year);
+        let year: number | null = null;
+        
+        switch (firstLetter) {
+            case 'A': year = 1996; break; // 95/96
+            case 'B': year = 1998; break; // 97/98
+            case 'C': year = 2000; break; // 99/00
+            case 'D': year = 2002; break; // 01/02
+            case 'E': year = 2004; break; // 03/04
+            case 'F': year = 2006; break; // 05/06
+            case 'G': year = 2007; break;
+            case 'H': year = 2008; break;
+            case 'I': year = 2009; break;
+            case 'J': year = 2010; break;
+            case 'K': year = 2011; break;
+            case 'L': year = 2012; break;
+            case 'M': year = 2013; break;
+            case 'N': year = 2014; break;
+            case 'O': year = 2015; break;
+            case 'P': year = 2015; break; // G-P se acomodan entre 07 y 15
+            default: year = null;
         }
+        
+        if (year) {
+            return String(year);
+        }
+
     } else if (mercosurFormatRegex.test(cleanPatente)) {
         const secondLetter = cleanPatente[1];
-        // As per user request: A=2016, B=2017, etc.
+        // A=2016, B=2017, etc.
         const year = 2016 + (secondLetter.charCodeAt(0) - 'A'.charCodeAt(0));
         const currentYear = new Date().getFullYear();
         if (year >= 2016 && year <= currentYear + 1) { // Cap at next year
