@@ -27,6 +27,7 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
     const [partes, setPartes] = useState<ParteState[]>([{ nombre: '', cantidad: 1, precioUnitario: '' }]);
     const [costoManoDeObra, setCostoManoDeObra] = useState('');
     const [status, setStatus] = useState<JobStatus>(JobStatus.Presupuesto);
+    const [pagos, setPagos] = useState<Parte[]>([]);
 
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
@@ -64,6 +65,7 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
                 ...p,
                 precioUnitario: formatNumberToCurrency(p.precioUnitario)
             })));
+            setPagos(trabajoToEdit.partes.filter(p => p.nombre === '__PAGO_REGISTRADO__'));
             setCostoManoDeObra(formatNumberToCurrency(trabajoToEdit.costoManoDeObra));
             setStatus(trabajoToEdit.status);
         }
@@ -111,6 +113,10 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
         }
     };
     
+    const handleRemovePago = (indexToRemove: number) => {
+        setPagos(currentPagos => currentPagos.filter((_, index) => index !== indexToRemove));
+    };
+
     const handleDeleteJob = async () => {
         if (!trabajoToEdit) return;
         
@@ -148,8 +154,6 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
         try {
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) throw new Error("User not authenticated");
-            
-            const pagosExistentes = trabajoToEdit?.partes.filter(p => p.nombre === '__PAGO_REGISTRADO__') || [];
 
             const cleanPartes = partes
                 .filter(p => p.nombre.trim() !== '' && p.cantidad > 0)
@@ -164,7 +168,7 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
                 vehiculo_id: selectedVehiculoId,
                 taller_id: user.id,
                 descripcion,
-                partes: [...cleanPartes, ...pagosExistentes],
+                partes: [...cleanPartes, ...pagos],
                 costo_mano_de_obra: parseCurrency(costoManoDeObra),
                 costo_estimado: costoEstimado,
                 status: status,
@@ -252,6 +256,27 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
                                 <PlusIcon className="h-4 w-4"/> Añadir Parte
                             </button>
                         </div>
+
+                        {isEditMode && pagos.length > 0 && (
+                            <div>
+                                <h3 className="text-md font-semibold text-taller-dark dark:text-taller-light mb-2 border-t dark:border-gray-600 pt-4">Historial de Pagos</h3>
+                                <div className="space-y-2">
+                                    {pagos.map((pago, index) => (
+                                        <div key={index} className="flex justify-between items-center p-2 bg-taller-light dark:bg-gray-700/50 rounded-md">
+                                            <div>
+                                                <p className="font-semibold text-green-600 dark:text-green-500">{new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(pago.precioUnitario)}</p>
+                                                <p className="text-xs text-taller-gray dark:text-gray-400">
+                                                    Registrado el {new Date(pago.fecha!).toLocaleDateString('es-ES')}
+                                                </p>
+                                            </div>
+                                            <button type="button" onClick={() => handleRemovePago(index)} className="p-2 text-red-500 hover:bg-red-100 dark:hover:bg-red-900/50 rounded-full">
+                                                <TrashIcon className="h-5 w-5"/>
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
                             <div>
