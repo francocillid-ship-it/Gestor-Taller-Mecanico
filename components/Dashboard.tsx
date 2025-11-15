@@ -80,7 +80,7 @@ const Dashboard: React.FC<DashboardProps> = ({ clientes, trabajos, gastos, onDat
             return pagoDate >= startDate && pagoDate <= endDate;
         });
         
-        const ingresosNetos = filteredPagos.reduce((sum, p) => sum + p.precioUnitario, 0);
+        const ingresosTotales = filteredPagos.reduce((sum, p) => sum + p.precioUnitario, 0);
 
         const gananciaNeta = trabajos.reduce((totalGanancia, trabajo) => {
             const tienePagoEnPeriodo = trabajo.partes.some(parte => 
@@ -105,7 +105,7 @@ const Dashboard: React.FC<DashboardProps> = ({ clientes, trabajos, gastos, onDat
         const totalClientes = clientes.length;
 
         return {
-            ingresosNetos: formatCurrency(ingresosNetos),
+            ingresosTotales: formatCurrency(ingresosTotales),
             gananciasNetas: formatCurrency(gananciaNeta),
             gastos: formatCurrency(totalGastos),
             balance: formatCurrency(balance),
@@ -180,7 +180,7 @@ const Dashboard: React.FC<DashboardProps> = ({ clientes, trabajos, gastos, onDat
                 <FilterControls />
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                <StatCard title="Ingreso Neto" value={stats.ingresosNetos} icon={<CurrencyDollarIcon className="h-6 w-6 text-white"/>} color="bg-blue-500" />
+                <StatCard title="Ingresos Totales" value={stats.ingresosTotales} icon={<CurrencyDollarIcon className="h-6 w-6 text-white"/>} color="bg-blue-500" />
                 <StatCard title="Ganancia Neta" value={stats.gananciasNetas} icon={<ChartPieIcon className="h-6 w-6 text-white"/>} color="bg-green-500" />
                 <StatCard title="Gastos" value={stats.gastos} icon={<BuildingLibraryIcon className="h-6 w-6 text-white"/>} color="bg-red-500" />
                 <StatCard title="Balance" value={stats.balance} icon={<ScaleIcon className="h-6 w-6 text-white"/>} color="bg-indigo-500" />

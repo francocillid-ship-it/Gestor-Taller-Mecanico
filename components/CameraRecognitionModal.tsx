@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { recognizeVehicleDataFromImage, VehiculoData } from '../gemini';
 import { CameraIcon, XMarkIcon, ArrowPathIcon } from '@heroicons/react/24/solid';
 
@@ -30,86 +30,91 @@ const CameraRecognitionModal: React.FC<CameraRecognitionModalProps> = ({ onClose
     const [error, setError] = useState<string | null>(null);
     const [detectedTexts, setDetectedTexts] = useState<DetectedText[]>([]);
     const [videoDimensions, setVideoDimensions] = useState({ width: 0, height: 0 });
+    const [capturedImage, setCapturedImage] = useState<string | null>(null);
 
-    useEffect(() => {
+    const stopCamera = useCallback(() => {
+        if (streamRef.current) {
+            streamRef.current.getTracks().forEach(track => track.stop());
+            streamRef.current = null;
+        }
+        if (animationFrameId.current) {
+            cancelAnimationFrame(animationFrameId.current);
+            animationFrameId.current = null;
+        }
+    }, []);
+
+    const startCamera = useCallback(() => {
         let isMounted = true;
+
+        if (streamRef.current) {
+            return;
+        }
+
+        setError(null);
+        setDetectedTexts([]);
+
         let detector: any | null = null;
         if ('TextDetector' in window) {
             detector = new window.TextDetector();
         }
 
         const detectText = async () => {
-            if (!detector || !videoRef.current || videoRef.current.readyState < 2) {
+            if (!isMounted || !detector || !videoRef.current || videoRef.current.readyState < 2) {
                 if (isMounted) animationFrameId.current = requestAnimationFrame(detectText);
                 return;
             }
             try {
                 const texts = await detector.detect(videoRef.current);
                 if (isMounted) setDetectedTexts(texts);
-            } catch (e) {
-                console.error("Text detection failed:", e);
-            }
+            } catch (e) { console.error("Text detection failed:", e); }
             if (isMounted) animationFrameId.current = requestAnimationFrame(detectText);
         };
 
-        const startCamera = async () => {
+        const initCamera = async () => {
             try {
-                const mediaStream = await navigator.mediaDevices.getUserMedia({
-                    video: { facingMode: 'environment' }
-                });
-                
-                if (isMounted) {
-                    streamRef.current = mediaStream;
-                    if (videoRef.current) {
-                        videoRef.current.srcObject = mediaStream;
-                        videoRef.current.onloadedmetadata = () => {
-                            if (videoRef.current) {
-                                setVideoDimensions({ width: videoRef.current.videoWidth, height: videoRef.current.videoHeight });
-                            }
-                        };
-                        videoRef.current.play().catch(e => {
-                            console.error("Error playing video:", e);
-                            if (isMounted) setError("No se pudo iniciar la vista de la cámara.");
-                        });
-                        if (detector) {
-                           animationFrameId.current = requestAnimationFrame(detectText);
-                        }
-                    }
-                } else {
+                const mediaStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+                if (!isMounted) {
                     mediaStream.getTracks().forEach(track => track.stop());
+                    return;
                 }
-
+                streamRef.current = mediaStream;
+                if (videoRef.current) {
+                    videoRef.current.srcObject = mediaStream;
+                    videoRef.current.onloadedmetadata = () => {
+                        if (videoRef.current) setVideoDimensions({ width: videoRef.current.videoWidth, height: videoRef.current.videoHeight });
+                    };
+                    await videoRef.current.play();
+                    if (detector) { animationFrameId.current = requestAnimationFrame(detectText); }
+                }
             } catch (err) {
-                console.error("Error accessing camera:", err);
-                if (isMounted) {
-                    setError("No se pudo acceder a la cámara. Verifique los permisos en su navegador.");
-                }
+                if (isMounted) setError("No se pudo acceder a la cámara. Verifique los permisos.");
             }
         };
 
-        startCamera();
+        initCamera();
 
-        return () => {
-            isMounted = false;
-            if (streamRef.current) {
-                streamRef.current.getTracks().forEach(track => track.stop());
-                streamRef.current = null;
-            }
-            if (animationFrameId.current) {
-                cancelAnimationFrame(animationFrameId.current);
-            }
-        };
+        return () => { isMounted = false; };
     }, []);
 
-
+    useEffect(() => {
+        if (!capturedImage) {
+            startCamera();
+        }
+        return () => {
+            if (!capturedImage) {
+                stopCamera();
+            }
+        };
+    }, [capturedImage, startCamera, stopCamera]);
+    
     const handleCapture = async () => {
-        if (!videoRef.current || !canvasRef.current) return;
+        if (!videoRef.current || !canvasRef.current || !streamRef.current) return;
         
         setIsLoading(true);
         setError(null);
-        setDetectedTexts([]);
-        if (animationFrameId.current) cancelAnimationFrame(animationFrameId.current);
 
+        if (animationFrameId.current) cancelAnimationFrame(animationFrameId.current);
+        setDetectedTexts([]);
 
         const video = videoRef.current;
         const canvas = canvasRef.current;
@@ -125,7 +130,11 @@ const CameraRecognitionModal: React.FC<CameraRecognitionModalProps> = ({ onClose
         
         context.drawImage(video, 0, 0, video.videoWidth, video.videoHeight);
         
-        const base64Image = canvas.toDataURL('image/jpeg', 0.9).split(',')[1];
+        const imageDataUrl = canvas.toDataURL('image/jpeg', 0.9);
+        setCapturedImage(imageDataUrl);
+        stopCamera();
+        
+        const base64Image = imageDataUrl.split(',')[1];
 
         try {
             const data = await recognizeVehicleDataFromImage(base64Image);
@@ -141,6 +150,12 @@ const CameraRecognitionModal: React.FC<CameraRecognitionModalProps> = ({ onClose
         }
     };
     
+    const handleRetry = () => {
+        setCapturedImage(null);
+        setError(null);
+        setIsLoading(false);
+    };
+
     const scaleX = videoRef.current ? videoRef.current.clientWidth / videoDimensions.width : 0;
     const scaleY = videoRef.current ? videoRef.current.clientHeight / videoDimensions.height : 0;
 
@@ -154,22 +169,28 @@ const CameraRecognitionModal: React.FC<CameraRecognitionModalProps> = ({ onClose
                 <h2 className="text-lg font-bold text-taller-dark dark:text-taller-light mb-2">Escanear Cédula del Vehículo</h2>
 
                 <div className="relative w-full aspect-video bg-black rounded-md overflow-hidden">
-                    <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover"></video>
-                     {detectedTexts.length > 0 && videoDimensions.width > 0 && (
-                        <div className="absolute inset-0">
-                            {detectedTexts.map((text, i) => (
-                                <div
-                                    key={i}
-                                    className="absolute border-2 border-yellow-400 bg-yellow-400/20"
-                                    style={{
-                                        left: `${text.boundingBox.x * scaleX}px`,
-                                        top: `${text.boundingBox.y * scaleY}px`,
-                                        width: `${text.boundingBox.width * scaleX}px`,
-                                        height: `${text.boundingBox.height * scaleY}px`,
-                                    }}
-                                />
-                            ))}
-                        </div>
+                    {capturedImage ? (
+                        <img src={capturedImage} alt="Captura de cédula" className="w-full h-full object-cover" />
+                    ) : (
+                        <>
+                            <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover"></video>
+                             {detectedTexts.length > 0 && videoDimensions.width > 0 && (
+                                <div className="absolute inset-0">
+                                    {detectedTexts.map((text, i) => (
+                                        <div
+                                            key={i}
+                                            className="absolute border-2 border-yellow-400 bg-yellow-400/20"
+                                            style={{
+                                                left: `${text.boundingBox.x * scaleX}px`,
+                                                top: `${text.boundingBox.y * scaleY}px`,
+                                                width: `${text.boundingBox.width * scaleX}px`,
+                                                height: `${text.boundingBox.height * scaleY}px`,
+                                            }}
+                                        />
+                                    ))}
+                                </div>
+                            )}
+                        </>
                     )}
                     {isLoading && (
                         <div className="absolute inset-0 bg-black/70 flex flex-col justify-center items-center text-white">
@@ -181,15 +202,24 @@ const CameraRecognitionModal: React.FC<CameraRecognitionModalProps> = ({ onClose
 
                 {error && <p className="text-sm text-red-500 mt-2">{error}</p>}
                 
-                <div className="mt-4">
-                    <button
-                        onClick={handleCapture}
-                        disabled={isLoading}
-                        className="w-16 h-16 bg-taller-primary rounded-full border-4 border-white dark:border-gray-600 shadow-lg flex items-center justify-center mx-auto focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-taller-secondary disabled:opacity-50"
-                        aria-label="Tomar foto"
-                    >
-                        <CameraIcon className="h-8 w-8 text-white" />
-                    </button>
+                <div className="mt-4 flex justify-center items-center h-16">
+                   {error && capturedImage ? (
+                         <button
+                            onClick={handleRetry}
+                            className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-taller-secondary rounded-lg shadow-md hover:bg-taller-primary"
+                        >
+                            <ArrowPathIcon className="h-5 w-5"/> Reintentar
+                        </button>
+                    ) : !capturedImage ? (
+                        <button
+                            onClick={handleCapture}
+                            disabled={isLoading}
+                            className="w-16 h-16 bg-taller-primary rounded-full border-4 border-white dark:border-gray-600 shadow-lg flex items-center justify-center mx-auto focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-taller-secondary disabled:opacity-50"
+                            aria-label="Tomar foto"
+                        >
+                            <CameraIcon className="h-8 w-8 text-white" />
+                        </button>
+                    ) : null}
                 </div>
                 <canvas ref={canvasRef} className="hidden"></canvas>
             </div>

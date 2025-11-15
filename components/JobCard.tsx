@@ -96,7 +96,7 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
         }
 
         // --- DOCUMENT TITLE ---
-        const docTitle = trabajo.status === JobStatusEnum.Presupuesto ? 'PRESUPUESTO' : 'REMITO';
+        const docTitle = trabajo.status === JobStatusEnum.Presupuesto ? 'PRESUPUESTO' : 'RECIBO';
         doc.setTextColor(mainTextColor);
         doc.setFontSize(18);
         doc.setFont('helvetica', 'bold');
