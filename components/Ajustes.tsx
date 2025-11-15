@@ -35,6 +35,8 @@ const Ajustes: React.FC<AjustesProps> = ({ tallerInfo, onUpdateTallerInfo, onLog
         if (geminiApiKey.trim()) {
             localStorage.setItem('gemini_api_key', geminiApiKey.trim());
             setGeminiStatus('active');
+        } else {
+            handleDeleteApiKey();
         }
     };
 

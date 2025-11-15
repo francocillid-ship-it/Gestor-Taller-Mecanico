@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { recognizeVehicleDataFromImage, VehiculoData } from '../gemini';
 import { CameraIcon, XMarkIcon, ArrowPathIcon } from '@heroicons/react/24/solid';
 
@@ -10,38 +10,52 @@ interface CameraRecognitionModalProps {
 const CameraRecognitionModal: React.FC<CameraRecognitionModalProps> = ({ onClose, onDataRecognized }) => {
     const videoRef = useRef<HTMLVideoElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
-    const [stream, setStream] = useState<MediaStream | null>(null);
+    const streamRef = useRef<MediaStream | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    const startCamera = useCallback(async () => {
-        try {
-            const mediaStream = await navigator.mediaDevices.getUserMedia({
-                video: { facingMode: 'environment' }
-            });
-            setStream(mediaStream);
-            if (videoRef.current) {
-                videoRef.current.srcObject = mediaStream;
-            }
-        } catch (err) {
-            console.error("Error accessing camera:", err);
-            setError("No se pudo acceder a la cámara. Verifique los permisos.");
-        }
-    }, []);
-
-    const stopCamera = useCallback(() => {
-        if (stream) {
-            stream.getTracks().forEach(track => track.stop());
-            setStream(null);
-        }
-    }, [stream]);
-
     useEffect(() => {
-        startCamera();
-        return () => {
-            stopCamera();
+        let isMounted = true;
+
+        const startCamera = async () => {
+            try {
+                const mediaStream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: 'environment' }
+                });
+                
+                if (isMounted) {
+                    streamRef.current = mediaStream;
+                    if (videoRef.current) {
+                        videoRef.current.srcObject = mediaStream;
+                        videoRef.current.play().catch(e => {
+                            console.error("Error playing video:", e);
+                            if (isMounted) setError("No se pudo iniciar la vista de la cámara.");
+                        });
+                    }
+                } else {
+                    // Component unmounted before stream could be assigned, so stop the tracks.
+                    mediaStream.getTracks().forEach(track => track.stop());
+                }
+
+            } catch (err) {
+                console.error("Error accessing camera:", err);
+                if (isMounted) {
+                    setError("No se pudo acceder a la cámara. Verifique los permisos en su navegador.");
+                }
+            }
         };
-    }, [startCamera, stopCamera]);
+
+        startCamera();
+
+        return () => {
+            isMounted = false;
+            if (streamRef.current) {
+                streamRef.current.getTracks().forEach(track => track.stop());
+                streamRef.current = null;
+            }
+        };
+    }, []); // Empty dependency array ensures this runs only once on mount and cleanup on unmount.
+
 
     const handleCapture = async () => {
         if (!videoRef.current || !canvasRef.current) return;
@@ -63,7 +77,6 @@ const CameraRecognitionModal: React.FC<CameraRecognitionModalProps> = ({ onClose
         
         context.drawImage(video, 0, 0, video.videoWidth, video.videoHeight);
         
-        // La especificación de toDataURL indica que el segundo parámetro es para la calidad.
         const base64Image = canvas.toDataURL('image/jpeg', 0.9).split(',')[1];
 
         try {
