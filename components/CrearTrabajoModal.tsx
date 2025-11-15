@@ -4,7 +4,6 @@ import type { Cliente, Parte, Trabajo } from '../types';
 import { JobStatus } from '../types';
 import { XMarkIcon, PlusIcon, TrashIcon, UserPlusIcon } from '@heroicons/react/24/solid';
 import CrearClienteModal from './CrearClienteModal';
-import type { TallerInfo } from './TallerDashboard';
 
 interface CrearTrabajoModalProps {
     onClose: () => void;
@@ -12,7 +11,6 @@ interface CrearTrabajoModalProps {
     onDataRefresh: () => void;
     clientes: Cliente[];
     trabajoToEdit?: Trabajo;
-    tallerInfo?: TallerInfo;
 }
 
 type ParteState = {
@@ -22,7 +20,7 @@ type ParteState = {
 };
 
 
-const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSuccess, onDataRefresh, clientes, trabajoToEdit, tallerInfo }) => {
+const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSuccess, onDataRefresh, clientes, trabajoToEdit }) => {
     const [selectedClienteId, setSelectedClienteId] = useState('');
     const [selectedVehiculoId, setSelectedVehiculoId] = useState('');
     const [descripcion, setDescripcion] = useState('');
@@ -198,7 +196,7 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
     return (
         <>
             <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
-                <div className={`bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto pt-6 px-6 ${tallerInfo?.mobileNavStyle === 'bottom_nav' ? 'pb-24' : 'pb-6'}`}>
+                <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
                     <div className="flex justify-between items-center mb-4">
                         <h2 className="text-xl font-bold text-taller-dark dark:text-taller-light">{isEditMode ? 'Editar Trabajo' : 'Crear Nuevo Presupuesto'}</h2>
                         <button onClick={onClose} className="text-taller-gray dark:text-gray-400 hover:text-taller-dark dark:hover:text-white"><XMarkIcon className="h-6 w-6" /></button>
@@ -324,7 +322,6 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
                         setIsClientModalOpen(false);
                         onDataRefresh();
                     }}
-                    tallerInfo={tallerInfo}
                 />
             )}
         </>
