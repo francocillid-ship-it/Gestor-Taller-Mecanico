@@ -23,41 +23,45 @@ const App: React.FC = () => {
     useEffect(() => {
         setLoading(true);
         const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
-            const user = session?.user;
             const hashParams = new URLSearchParams(window.location.hash.substring(1));
             const type = hashParams.get('type');
 
-            // Priority 1: New Client Initial Password Setup (from invite link)
-            if (_event === 'SIGNED_IN' && type === 'invite') {
-                setAuthView('SET_INITIAL_PASSWORD');
+            // Absolute Priority: Handle special flows from URL and then stop processing this event.
+            if (type === 'recovery' || type === 'invite') {
+                if (type === 'recovery') {
+                    setAuthView('PASSWORD_RECOVERY');
+                } else { // type === 'invite'
+                    setAuthView('SET_INITIAL_PASSWORD');
+                }
                 setSession(session);
-                setUser(user);
+                setUser(session?.user ?? null);
                 setLoading(false);
-                // Clean up the URL hash to prevent re-triggering on refresh
+                
+                // Clean up the URL so refreshes don't re-trigger this logic.
                 window.history.replaceState(null, '', window.location.pathname + window.location.search);
+                
+                // CRITICAL: Stop further processing for this auth event to prevent race condition.
                 return;
             }
 
-            // Priority 2: Password Recovery
-            if (_event === 'PASSWORD_RECOVERY' || type === 'recovery') {
+            // A secondary trigger for recovery is the event itself, in case the hash is already gone.
+            if (_event === 'PASSWORD_RECOVERY') {
                 setAuthView('PASSWORD_RECOVERY');
                 setSession(session);
                 setLoading(false);
-                if (type === 'recovery') {
-                    window.history.replaceState(null, '', window.location.pathname + window.location.search);
-                }
                 return;
             }
             
-            // Default: Normal App View
+            // Default: Normal App View. This only runs if we are not in a special flow.
             setAuthView('APP');
             setSession(session);
-            setUser(user ?? null);
-            const userRole = user?.user_metadata?.role || null;
+            const currentUser = session?.user ?? null;
+            setUser(currentUser);
+            const userRole = currentUser?.user_metadata?.role || null;
             setRole(userRole);
 
             if (userRole === 'cliente') {
-                setTallerName(user?.user_metadata?.taller_nombre_ref || 'Mi Taller');
+                setTallerName(currentUser?.user_metadata?.taller_nombre_ref || 'Mi Taller');
             }
 
             if (_event === 'SIGNED_OUT') {
