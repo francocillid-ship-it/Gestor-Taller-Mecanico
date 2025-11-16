@@ -233,7 +233,7 @@ const Login: React.FC = () => {
             <p className="text-sm text-center text-taller-gray dark:text-gray-400">
                 {view === 'login' ? (
                     <>
-                        ¿No tienes una cuenta? <button onClick={() => { setView('signup'); setError(null); setPassword(''); }} className="font-medium text-taller-primary hover:underline">Crear una</button>
+                        ¿No tienes una cuenta? <button onClick={() => { setView('signup'); setError(null); setPassword(''); }} className="font-medium text-taller-primary hover:underline">Crea una</button>
                     </>
                 ) : (
                      <>

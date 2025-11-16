@@ -17,6 +17,7 @@ type ParteState = {
     nombre: string;
     cantidad: number;
     precioUnitario: string; // Storing the formatted string
+    isCategory?: boolean;
 };
 
 
@@ -90,7 +91,7 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
     }, [selectedClienteId, clientes]);
 
     const costoEstimado = useMemo(() => {
-        const totalPartes = partes.reduce((sum, p) => sum + (Number(p.cantidad) * parseCurrency(p.precioUnitario)), 0);
+        const totalPartes = partes.filter(p => !p.isCategory).reduce((sum, p) => sum + (Number(p.cantidad) * parseCurrency(p.precioUnitario)), 0);
         return totalPartes + parseCurrency(costoManoDeObra);
     }, [partes, costoManoDeObra]);
 
@@ -104,6 +105,11 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
     const addParte = () => {
         setPartes([...partes, { nombre: '', cantidad: 1, precioUnitario: '' }]);
     };
+    
+    const addCategory = () => {
+        setPartes([...partes, { nombre: '', cantidad: 0, precioUnitario: '', isCategory: true }]);
+    };
+
 
     const removeParte = (index: number) => {
         if (partes.length > 1) {
@@ -156,11 +162,12 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
             if (!user) throw new Error("User not authenticated");
 
             const cleanPartes = partes
-                .filter(p => p.nombre.trim() !== '' && p.cantidad > 0)
+                .filter(p => p.nombre.trim() !== '')
                 .map(p => ({
                     nombre: p.nombre,
-                    cantidad: Number(p.cantidad),
-                    precioUnitario: parseCurrency(p.precioUnitario)
+                    cantidad: p.isCategory ? 0 : Number(p.cantidad),
+                    precioUnitario: p.isCategory ? 0 : parseCurrency(p.precioUnitario),
+                    isCategory: !!p.isCategory,
                 }));
             
             const jobData = {
@@ -245,16 +252,30 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
                         <div>
                             <h3 className="text-md font-semibold text-taller-dark dark:text-taller-light mb-2">Partes y Repuestos</h3>
                             {partes.map((parte, index) => (
-                                <div key={index} className="grid grid-cols-[1fr,80px,120px,auto] items-center gap-2 mb-2">
-                                    <input type="text" placeholder="Nombre de la parte" value={parte.nombre} onChange={e => handleParteChange(index, 'nombre', e.target.value)} className="block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-taller-primary focus:border-taller-primary sm:text-sm" />
-                                    <input type="number" placeholder="Cant." value={parte.cantidad} onChange={e => handleParteChange(index, 'cantidad', parseInt(e.target.value, 10) || 1)} className="block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-taller-primary focus:border-taller-primary sm:text-sm" />
-                                    <input type="text" inputMode="decimal" placeholder="$ 0,00" value={parte.precioUnitario} onChange={e => handleParteChange(index, 'precioUnitario', formatCurrency(e.target.value))} className="block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-taller-primary focus:border-taller-primary sm:text-sm" />
-                                    <button type="button" onClick={() => removeParte(index)} className="p-2 text-red-500 hover:bg-red-100 dark:hover:bg-red-900/50 rounded-full"><TrashIcon className="h-5 w-5"/></button>
+                                <div key={index} className="flex items-center gap-2 mb-2">
+                                    {parte.isCategory ? (
+                                        <>
+                                            <input type="text" placeholder="Nombre de la categoría" value={parte.nombre} onChange={e => handleParteChange(index, 'nombre', e.target.value)} className="block w-full px-3 py-2 bg-blue-50 dark:bg-gray-700/50 border border-blue-200 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-taller-primary focus:border-taller-primary sm:text-sm font-semibold" />
+                                            <button type="button" onClick={() => removeParte(index)} className="p-2 text-red-500 hover:bg-red-100 dark:hover:bg-red-900/50 rounded-full flex-shrink-0"><TrashIcon className="h-5 w-5"/></button>
+                                        </>
+                                    ) : (
+                                        <div className="grid grid-cols-[1fr,80px,120px,auto] items-center gap-2 w-full">
+                                            <input type="text" placeholder="Nombre de la parte" value={parte.nombre} onChange={e => handleParteChange(index, 'nombre', e.target.value)} className="block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-taller-primary focus:border-taller-primary sm:text-sm" />
+                                            <input type="number" placeholder="Cant." value={parte.cantidad} onChange={e => handleParteChange(index, 'cantidad', parseInt(e.target.value, 10) || 1)} className="block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-taller-primary focus:border-taller-primary sm:text-sm" />
+                                            <input type="text" inputMode="decimal" placeholder="$ 0,00" value={parte.precioUnitario} onChange={e => handleParteChange(index, 'precioUnitario', formatCurrency(e.target.value))} className="block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-taller-primary focus:border-taller-primary sm:text-sm" />
+                                            <button type="button" onClick={() => removeParte(index)} className="p-2 text-red-500 hover:bg-red-100 dark:hover:bg-red-900/50 rounded-full"><TrashIcon className="h-5 w-5"/></button>
+                                        </div>
+                                    )}
                                 </div>
                             ))}
-                            <button type="button" onClick={addParte} className="flex items-center gap-1 text-sm text-taller-primary font-medium hover:underline">
-                                <PlusIcon className="h-4 w-4"/> Añadir Parte
-                            </button>
+                           <div className="flex items-center gap-4 mt-2">
+                                <button type="button" onClick={addParte} className="flex items-center gap-1 text-sm text-taller-primary font-medium hover:underline">
+                                    <PlusIcon className="h-4 w-4"/> Añadir Ítem
+                                </button>
+                                <button type="button" onClick={addCategory} className="flex items-center gap-1 text-sm text-taller-secondary font-medium hover:underline">
+                                    <PlusIcon className="h-4 w-4"/> Añadir Categoría
+                                </button>
+                            </div>
                         </div>
 
                         {isEditMode && pagos.length > 0 && (

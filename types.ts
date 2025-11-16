@@ -12,6 +12,7 @@ export interface Parte {
     cantidad: number;
     precioUnitario: number;
     fecha?: string; // Para registrar la fecha de los pagos
+    isCategory?: boolean;
 }
 
 export interface Pago {

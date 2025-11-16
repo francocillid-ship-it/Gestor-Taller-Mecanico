@@ -139,16 +139,30 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
         const partesSinPagos = trabajo.partes.filter(p => p.nombre !== '__PAGO_REGISTRADO__');
         const formatCurrencyPDF = (val: number) => new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(val);
 
-        if (partesSinPagos.length > 0) {
+        if (partesSinPagos.some(p => p.nombre)) {
+            const body = partesSinPagos.map(p => {
+                if (p.isCategory) {
+                    return [{ 
+                        content: p.nombre, 
+                        colSpan: 4, 
+                        styles: { fontStyle: 'bold', fillColor: '#f1f5f9', textColor: '#0f172a', halign: 'left' }
+                    }];
+                } else if (p.nombre) {
+                    return [
+                        p.cantidad,
+                        p.nombre,
+                        formatCurrencyPDF(p.precioUnitario),
+                        formatCurrencyPDF(p.cantidad * p.precioUnitario)
+                    ];
+                }
+                return null;
+            }).filter(row => row !== null);
+
+
             autoTable(doc, {
                 startY: lastDescLineY + 5,
                 head: [['Cantidad', 'Descripción', 'Precio Unit.', 'Subtotal']],
-                body: partesSinPagos.map(p => [
-                    p.cantidad,
-                    p.nombre,
-                    formatCurrencyPDF(p.precioUnitario),
-                    formatCurrencyPDF(p.cantidad * p.precioUnitario)
-                ]),
+                body: body as any,
                 theme: 'grid',
                 headStyles: {
                     fillColor: primaryColor,
@@ -167,13 +181,13 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
         
         // --- TOTALS ---
         const finalY = (doc as any).lastAutoTable?.finalY || lastDescLineY + 10;
-        const totalPartes = partesSinPagos.reduce((sum, p) => sum + (p.cantidad * p.precioUnitario), 0);
+        const totalPartes = partesSinPagos.filter(p => !p.isCategory).reduce((sum, p) => sum + (p.cantidad * p.precioUnitario), 0);
         
         const totalsX = a4Width / 2;
         const valuesX = a4Width - margin;
 
         doc.setFontSize(10);
-        doc.text(`Subtotal Repuestos:`, totalsX, finalY + 10);
+        doc.text(`Subtotal:`, totalsX, finalY + 10);
         doc.text(formatCurrencyPDF(totalPartes), valuesX, finalY + 10, { align: 'right' });
         doc.text(`Mano de Obra:`, totalsX, finalY + 17);
         doc.text(formatCurrencyPDF(trabajo.costoManoDeObra || 0), valuesX, finalY + 17, { align: 'right' });
@@ -286,13 +300,19 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
                         <h4 className="font-semibold text-xs mb-2">Detalles:</h4>
                         <ul className="text-xs space-y-1 text-taller-dark dark:text-gray-300 mb-3">
                             {trabajo.partes.filter(p => p.nombre !== '__PAGO_REGISTRADO__').map((parte, i) => (
-                                <li key={i} className="flex justify-between">
-                                    <span>{parte.cantidad}x {parte.nombre}</span>
-                                    <span>{formatCurrency(parte.cantidad * parte.precioUnitario)}</span>
-                                </li>
+                                parte.isCategory ? (
+                                    <li key={i} className="font-semibold text-taller-dark dark:text-taller-light pt-2 first:pt-0">
+                                        {parte.nombre}
+                                    </li>
+                                ) : (
+                                    <li key={i} className="flex justify-between pl-2">
+                                        <span>{parte.cantidad}x {parte.nombre}</span>
+                                        <span>{formatCurrency(parte.cantidad * parte.precioUnitario)}</span>
+                                    </li>
+                                )
                             ))}
                             {trabajo.costoManoDeObra ? (
-                                <li className="flex justify-between">
+                                <li className="flex justify-between pt-2 border-t dark:border-gray-600 mt-2">
                                     <span>Mano de Obra</span>
                                     <span>{formatCurrency(trabajo.costoManoDeObra)}</span>
                                 </li>
