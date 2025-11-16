@@ -23,7 +23,7 @@ const navItems = [
 ] as const;
 
 const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
-    const [view, setView] = useState<View>('dashboard');
+    const [view, setView] = useState<View>(() => (localStorage.getItem('taller_view') as View) || 'dashboard');
     const [clientes, setClientes] = useState<Cliente[]>([]);
     const [trabajos, setTrabajos] = useState<Trabajo[]>([]);
     const [gastos, setGastos] = useState<Gasto[]>([]);
@@ -38,6 +38,11 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
     });
     const [loading, setLoading] = useState(true);
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+    const handleSetView = (newView: View) => {
+        localStorage.setItem('taller_view', newView);
+        setView(newView);
+    };
 
     const fetchData = useCallback(async () => {
         // Not setting loading to true here to avoid flicker on refetches
@@ -155,7 +160,7 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
 
     const NavItem = ({ id, label, icon: Icon }: NavItemProps) => (
         <button
-            onClick={() => { setView(id); setIsSidebarOpen(false); }}
+            onClick={() => { handleSetView(id); setIsSidebarOpen(false); }}
             className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg font-semibold transition-colors ${
                 view === id
                     ? 'bg-taller-primary text-white shadow'
@@ -169,7 +174,7 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
     
     const BottomNavItem = ({ id, label, icon: Icon }: NavItemProps) => (
          <button
-            onClick={() => setView(id)}
+            onClick={() => handleSetView(id)}
             className={`flex flex-col items-center justify-center w-full pt-2 pb-1 text-xs font-medium transition-colors ${
                 view === id
                     ? 'text-taller-primary'

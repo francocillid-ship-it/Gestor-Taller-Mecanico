@@ -6,7 +6,7 @@ import TallerDashboard from './components/TallerDashboard';
 import ClientPortal from './components/ClientPortal';
 import ResetPassword from './components/ResetPassword';
 import SetInitialPassword from './components/SetInitialPassword';
-import type { Cliente, Trabajo } from './types';
+import type { Cliente, Trabajo, TallerInfo } from './types';
 
 type AuthAction = 'APP' | 'PASSWORD_RECOVERY' | 'SET_INITIAL_PASSWORD';
 
@@ -20,7 +20,8 @@ const App: React.FC = () => {
 
     const [clientData, setClientData] = useState<Cliente | null>(null);
     const [clientTrabajos, setClientTrabajos] = useState<Trabajo[]>([]);
-    const [tallerName, setTallerName] = useState('Mi Taller');
+    const [tallerInfoForClient, setTallerInfoForClient] = useState<TallerInfo | null>(null);
+
 
     useEffect(() => {
         const hashParams = new URLSearchParams(window.location.hash.substring(1));
@@ -82,41 +83,46 @@ const App: React.FC = () => {
             if (userRole === 'taller') {
                 setLoading(false);
             } else if (userRole === 'cliente') {
-                setTallerName(currentUser.user_metadata?.taller_nombre_ref || 'Mi Taller');
+                const tallerInfo = currentUser.user_metadata?.taller_info_ref || null;
+                const tallerName = tallerInfo?.nombre || currentUser.user_metadata?.taller_nombre_ref || 'Mi Taller';
+                setTallerInfoForClient({ ...tallerInfo, nombre: tallerName });
+
                 try {
                     const { data: clientProfile, error: clientError } = await supabase
                         .from('clientes')
                         .select('*, vehiculos(*)')
                         .eq('id', currentUser.id)
-                        .single();
+                        .maybeSingle();
 
-                    if (clientError || !clientProfile) {
-                        throw clientError || new Error("No se encontró el perfil del cliente.");
+                    if (clientError) {
+                        throw clientError;
                     }
                     
-                    setClientData(clientProfile as any);
+                    if (clientProfile) {
+                        setClientData(clientProfile as any);
 
-                    const { data: trabajosData, error: trabajosError } = await supabase
-                        .from('trabajos')
-                        .select('*')
-                        .eq('cliente_id', currentUser.id)
-                        .order('fecha_entrada', { ascending: false });
-                    
-                    if (trabajosError) throw trabajosError;
-                    
-                    const finalTrabajos = (trabajosData || []).map(t => ({
-                        id: t.id,
-                        clienteId: t.cliente_id,
-                        vehiculoId: t.vehiculo_id,
-                        descripcion: t.descripcion,
-                        partes: t.partes,
-                        costoManoDeObra: t.costo_mano_de_obra,
-                        costoEstimado: t.costo_estimado,
-                        status: t.status,
-                        fechaEntrada: t.fecha_entrada,
-                        fechaSalida: t.fecha_salida,
-                    }));
-                    setClientTrabajos(finalTrabajos as Trabajo[]);
+                        const { data: trabajosData, error: trabajosError } = await supabase
+                            .from('trabajos')
+                            .select('*')
+                            .eq('cliente_id', currentUser.id)
+                            .order('fecha_entrada', { ascending: false });
+                        
+                        if (trabajosError) throw trabajosError;
+                        
+                        const finalTrabajos = (trabajosData || []).map(t => ({
+                            id: t.id,
+                            clienteId: t.cliente_id,
+                            vehiculoId: t.vehiculo_id,
+                            descripcion: t.descripcion,
+                            partes: t.partes,
+                            costoManoDeObra: t.costo_mano_de_obra,
+                            costoEstimado: t.costo_estimado,
+                            status: t.status,
+                            fechaEntrada: t.fecha_entrada,
+                            fechaSalida: t.fecha_salida,
+                        }));
+                        setClientTrabajos(finalTrabajos as Trabajo[]);
+                    }
 
                 } catch (error: any) {
                     console.error("Error fetching client data, signing out: ", error.message);
@@ -162,7 +168,7 @@ const App: React.FC = () => {
     }
 
     if (role === 'cliente' && clientData) {
-        return <ClientPortal client={clientData} trabajos={clientTrabajos} onLogout={handleLogout} tallerName={tallerName} />;
+        return <ClientPortal client={clientData} trabajos={clientTrabajos} onLogout={handleLogout} tallerInfo={tallerInfoForClient} />;
     }
 
     return <div className="flex h-screen items-center justify-center">Cargando portal...</div>;

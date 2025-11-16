@@ -13,6 +13,8 @@ interface CrearClienteModalProps {
 
 type VehicleFormState = Omit<Vehiculo, 'id' | 'año'> & { id?: string; año: string };
 
+const toTitleCase = (str: string) => str.replace(/\p{L}+/gu, (txt) => txt.charAt(0).toUpperCase() + txt.slice(1).toLowerCase());
+
 const CrearClienteModal: React.FC<CrearClienteModalProps> = ({ onClose, onSuccess, clienteToEdit }) => {
     const [nombre, setNombre] = useState('');
     const [email, setEmail] = useState('');
@@ -64,9 +66,27 @@ const CrearClienteModal: React.FC<CrearClienteModalProps> = ({ onClose, onSucces
     const handleDeleteClient = async () => {
         if (!clienteToEdit) return;
         setIsDeleting(true);
+        setError(''); // Clear previous errors
         try {
+            // Step 1: Delete all associated data from public tables.
+            // The order is important if there are foreign key constraints without ON DELETE CASCADE.
+            await supabase.from('trabajos').delete().eq('cliente_id', clienteToEdit.id);
             await supabase.from('vehiculos').delete().eq('cliente_id', clienteToEdit.id);
             await supabase.from('clientes').delete().eq('id', clienteToEdit.id);
+
+            // Step 2: Delete the user from the authentication system.
+            // This is a protected operation and requires a database function (RPC)
+            // because client-side code doesn't have permission to delete users directly.
+            const { error: rpcError } = await supabase.rpc('delete_auth_user', { user_id: clienteToEdit.id });
+
+            if (rpcError) {
+                // Provide a specific error if the function is missing, guiding the user.
+                if (rpcError.code === '42883') { // PostgreSQL's "undefined_function" code
+                    throw new Error("La función de base de datos 'delete_auth_user' no existe. Los datos del cliente fueron eliminados, pero su cuenta de acceso no. Por favor, siga las instrucciones para crear la función en Supabase.");
+                }
+                throw rpcError;
+            }
+
             onSuccess();
         } catch (err: any) {
             setError(err.message || 'Error al eliminar el cliente.');
@@ -76,8 +96,15 @@ const CrearClienteModal: React.FC<CrearClienteModalProps> = ({ onClose, onSucces
     };
     
     const handleVehicleChange = (index: number, field: keyof VehicleFormState, value: string) => {
+        let processedValue = value;
+        if (field === 'marca' || field === 'modelo') {
+            processedValue = toTitleCase(value);
+        } else if (field === 'matricula' || field === 'numero_chasis' || field === 'numero_motor') {
+            processedValue = value.toUpperCase();
+        }
+
         const updatedVehicles = [...vehicles];
-        updatedVehicles[index] = { ...updatedVehicles[index], [field]: value };
+        updatedVehicles[index] = { ...updatedVehicles[index], [field]: processedValue };
         setVehicles(updatedVehicles);
     };
 
@@ -138,14 +165,19 @@ const CrearClienteModal: React.FC<CrearClienteModalProps> = ({ onClose, onSucces
                 const tallerUser = currentTallerSession.user;
 
                 const tempPassword = Math.random().toString(36).slice(-12) + 'A1!';
+                
+                const userEmail = email.trim();
+                const shouldCreatePortalAccess = userEmail !== '';
+                const signUpEmail = shouldCreatePortalAccess ? userEmail : `${crypto.randomUUID()}@taller-placeholder.com`;
 
                 const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-                    email,
+                    email: signUpEmail,
                     password: tempPassword,
                     options: {
                         data: {
                             role: 'cliente',
-                            taller_nombre_ref: (tallerUser.user_metadata?.taller_info as TallerInfo)?.nombre || 'Mi Taller'
+                            taller_nombre_ref: (tallerUser.user_metadata?.taller_info as TallerInfo)?.nombre || 'Mi Taller',
+                            taller_info_ref: tallerUser.user_metadata?.taller_info,
                         },
                     }
                 });
@@ -154,18 +186,23 @@ const CrearClienteModal: React.FC<CrearClienteModalProps> = ({ onClose, onSucces
                     if (signUpError.message.includes('User already registered')) {
                         throw new Error('Un cliente con este email ya existe.');
                     }
+                     if (signUpError.message.includes('valid password')) {
+                        throw new Error('Error de sistema: La contraseña generada no es válida. Intente de nuevo.');
+                    }
                     throw signUpError;
                 }
                 if (!signUpData.user) {
                     throw new Error('No se pudo crear la cuenta de usuario para el cliente.');
                 }
                 
-                const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
-                    redirectTo: window.location.origin,
-                });
+                if (shouldCreatePortalAccess) {
+                    const { error: resetError } = await supabase.auth.resetPasswordForEmail(userEmail, {
+                        redirectTo: window.location.origin,
+                    });
 
-                if (resetError) {
-                    console.warn(`User ${email} created, but failed to send password reset email:`, resetError.message);
+                    if (resetError) {
+                        console.warn(`User ${userEmail} created, but failed to send password reset email:`, resetError.message);
+                    }
                 }
 
                 const { error: sessionError } = await supabase.auth.setSession({
@@ -180,7 +217,7 @@ const CrearClienteModal: React.FC<CrearClienteModalProps> = ({ onClose, onSucces
 
                 const { error: clientInsertError } = await supabase
                     .from('clientes')
-                    .insert({ id: newUserId, taller_id: tallerUser.id, nombre, email, telefono });
+                    .insert({ id: newUserId, taller_id: tallerUser.id, nombre, email: userEmail, telefono });
 
                 if (clientInsertError) {
                     throw new Error(`Usuario creado, pero falló la creación del perfil: ${clientInsertError.message}`);
@@ -210,12 +247,12 @@ const CrearClienteModal: React.FC<CrearClienteModalProps> = ({ onClose, onSucces
             updatedVehicles[scanningVehicleIndex] = { ...currentVehicle, ...data };
             setVehicles(updatedVehicles);
         } else {
-            if (data.marca) setMarca(data.marca);
-            if (data.modelo) setModelo(data.modelo);
+            if (data.marca) setMarca(toTitleCase(data.marca));
+            if (data.modelo) setModelo(toTitleCase(data.modelo));
             if (data.año) setAño(data.año);
-            if (data.matricula) setMatricula(data.matricula);
-            if (data.numero_chasis) setNumeroChasis(data.numero_chasis);
-            if (data.numero_motor) setNumeroMotor(data.numero_motor);
+            if (data.matricula) setMatricula(data.matricula.toUpperCase());
+            if (data.numero_chasis) setNumeroChasis(data.numero_chasis.toUpperCase());
+            if (data.numero_motor) setNumeroMotor(data.numero_motor.toUpperCase());
         }
         setIsCameraModalOpen(false);
         setScanningVehicleIndex(null);
@@ -237,12 +274,12 @@ const CrearClienteModal: React.FC<CrearClienteModalProps> = ({ onClose, onSucces
                 )}
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div><label htmlFor="marca" className="block text-sm font-medium text-taller-gray dark:text-gray-400">Marca</label><input type="text" id="marca" value={marca} onChange={e => setMarca(e.target.value)} className="mt-1 block w-full input-class" required /></div>
-                <div><label htmlFor="modelo" className="block text-sm font-medium text-taller-gray dark:text-gray-400">Modelo</label><input type="text" id="modelo" value={modelo} onChange={e => setModelo(e.target.value)} className="mt-1 block w-full input-class" required /></div>
+                <div><label htmlFor="marca" className="block text-sm font-medium text-taller-gray dark:text-gray-400">Marca</label><input type="text" id="marca" value={marca} onChange={e => setMarca(toTitleCase(e.target.value))} className="mt-1 block w-full input-class" required /></div>
+                <div><label htmlFor="modelo" className="block text-sm font-medium text-taller-gray dark:text-gray-400">Modelo</label><input type="text" id="modelo" value={modelo} onChange={e => setModelo(toTitleCase(e.target.value))} className="mt-1 block w-full input-class" required /></div>
                 <div><label htmlFor="año" className="block text-sm font-medium text-taller-gray dark:text-gray-400">Año</label><input type="number" id="año" value={año} onChange={e => setAño(e.target.value)} className="mt-1 block w-full input-class" required /></div>
-                <div><label htmlFor="matricula" className="block text-sm font-medium text-taller-gray dark:text-gray-400">Matrícula</label><input type="text" id="matricula" value={matricula} onChange={e => setMatricula(e.target.value)} className="mt-1 block w-full input-class" required /></div>
-                <div><label htmlFor="numero_chasis" className="block text-sm font-medium text-taller-gray dark:text-gray-400">Nº Chasis (opcional)</label><input type="text" id="numero_chasis" value={numero_chasis} onChange={e => setNumeroChasis(e.target.value)} className="mt-1 block w-full input-class" /></div>
-                <div><label htmlFor="numero_motor" className="block text-sm font-medium text-taller-gray dark:text-gray-400">Nº Motor (opcional)</label><input type="text" id="numero_motor" value={numero_motor} onChange={e => setNumeroMotor(e.target.value)} className="mt-1 block w-full input-class" /></div>
+                <div><label htmlFor="matricula" className="block text-sm font-medium text-taller-gray dark:text-gray-400">Matrícula</label><input type="text" id="matricula" value={matricula} onChange={e => setMatricula(e.target.value.toUpperCase())} className="mt-1 block w-full input-class" required /></div>
+                <div><label htmlFor="numero_chasis" className="block text-sm font-medium text-taller-gray dark:text-gray-400">Nº Chasis (opcional)</label><input type="text" id="numero_chasis" value={numero_chasis} onChange={e => setNumeroChasis(e.target.value.toUpperCase())} className="mt-1 block w-full input-class" /></div>
+                <div><label htmlFor="numero_motor" className="block text-sm font-medium text-taller-gray dark:text-gray-400">Nº Motor (opcional)</label><input type="text" id="numero_motor" value={numero_motor} onChange={e => setNumeroMotor(e.target.value.toUpperCase())} className="mt-1 block w-full input-class" /></div>
             </div>
         </>
     );
@@ -306,7 +343,7 @@ const CrearClienteModal: React.FC<CrearClienteModalProps> = ({ onClose, onSucces
                             <div><label htmlFor="nombre" className="block text-sm font-medium text-taller-gray dark:text-gray-400">Nombre</label><input type="text" id="nombre" value={nombre} onChange={e => setNombre(e.target.value)} className="mt-1 block w-full input-class" required /></div>
                             <div><label htmlFor="telefono" className="block text-sm font-medium text-taller-gray dark:text-gray-400">Teléfono</label><input type="tel" id="telefono" value={telefono} onChange={e => setTelefono(e.target.value)} className="mt-1 block w-full input-class" required /></div>
                         </div>
-                        <div><label htmlFor="email" className="block text-sm font-medium text-taller-gray dark:text-gray-400">Email (necesario para portal cliente)</label><input type="email" id="email" value={email} onChange={e => setEmail(e.target.value)} className="mt-1 block w-full input-class" required /></div>
+                        <div><label htmlFor="email" className="block text-sm font-medium text-taller-gray dark:text-gray-400">Email (opcional para portal cliente)</label><input type="email" id="email" value={email} onChange={e => setEmail(e.target.value)} className="mt-1 block w-full input-class" /></div>
                         {isEditMode ? renderEditForm() : renderCreateForm()}
                         {error && <p className="text-sm text-red-600 mt-2">{error}</p>}
                         <div className="pt-4 flex flex-col-reverse sm:flex-row items-center gap-4 w-full">
