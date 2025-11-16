@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import type { TallerInfo } from './TallerDashboard';
+// FIX: The 'TallerInfo' type is now imported from '../types' where it is defined, resolving the module export error.
+import type { TallerInfo } from '../types';
 import { supabase } from '../supabaseClient';
 import { ArrowRightOnRectangleIcon, BuildingOffice2Icon, PhotoIcon, ArrowUpOnSquareIcon, PaintBrushIcon, DevicePhoneMobileIcon, SunIcon, MoonIcon, ComputerDesktopIcon, DocumentTextIcon, SparklesIcon, CheckCircleIcon, ExclamationTriangleIcon, KeyIcon } from '@heroicons/react/24/solid';
 import ChangePasswordModal from './ChangePasswordModal';

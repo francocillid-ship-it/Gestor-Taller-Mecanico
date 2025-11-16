@@ -1,9 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
-import type { Trabajo, Cliente, Vehiculo, JobStatus, Parte } from '../types';
+// FIX: The 'TallerInfo' type is now imported from '../types' where it is defined, resolving the module export error.
+import type { Trabajo, Cliente, Vehiculo, JobStatus, Parte, TallerInfo } from '../types';
 import { JobStatus as JobStatusEnum } from '../types';
 import { ChevronDownIcon, ChevronUpIcon, PencilIcon, ArrowRightIcon, PrinterIcon, CurrencyDollarIcon } from '@heroicons/react/24/solid';
 import CrearTrabajoModal from './CrearTrabajoModal';
-import type { TallerInfo } from './TallerDashboard';
 import { jsPDF } from 'jspdf';
 import { supabase } from '../supabaseClient';
 import autoTable from 'jspdf-autotable';

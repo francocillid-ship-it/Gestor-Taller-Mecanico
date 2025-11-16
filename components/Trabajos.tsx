@@ -1,9 +1,9 @@
 import React, { useMemo, useState } from 'react';
-import type { Trabajo, Cliente } from '../types';
+// FIX: The 'TallerInfo' type is now imported from '../types' where it is defined, resolving the module export error.
+import type { Trabajo, Cliente, TallerInfo } from '../types';
 import { JobStatus } from '../types';
 import JobCard from './JobCard';
 import CrearTrabajoModal from './CrearTrabajoModal';
-import type { TallerInfo } from './TallerDashboard';
 import { PlusIcon } from '@heroicons/react/24/solid';
 
 interface TrabajosProps {

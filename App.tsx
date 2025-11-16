@@ -5,6 +5,7 @@ import Login from './components/Login';
 import TallerDashboard from './components/TallerDashboard';
 import ClientPortal from './components/ClientPortal';
 import ResetPassword from './components/ResetPassword';
+import SetInitialPassword from './components/SetInitialPassword';
 import type { Cliente, Trabajo } from './types';
 
 const App: React.FC = () => {
@@ -12,7 +13,7 @@ const App: React.FC = () => {
     const [user, setUser] = useState<User | null>(null);
     const [role, setRole] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
-    const [authView, setAuthView] = useState<'APP' | 'PASSWORD_RECOVERY'>('APP');
+    const [authView, setAuthView] = useState<'APP' | 'PASSWORD_RECOVERY' | 'SET_INITIAL_PASSWORD'>('APP');
 
     // Client-specific state
     const [clientData, setClientData] = useState<Cliente | null>(null);
@@ -22,32 +23,42 @@ const App: React.FC = () => {
     useEffect(() => {
         setLoading(true);
         const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
-            // The 'PASSWORD_RECOVERY' event fires when the user lands on the page
-            // from the email link. It provides a temporary session.
-            if (_event === 'PASSWORD_RECOVERY') {
-                setAuthView('PASSWORD_RECOVERY');
-            } else {
-                setSession(session);
-                setUser(session?.user ?? null);
-                const userRole = session?.user?.user_metadata?.role || null;
-                setRole(userRole);
-                if (userRole === 'cliente') {
-                    setTallerName(session?.user?.user_metadata?.taller_nombre_ref || 'Mi Taller');
-                }
+            const user = session?.user;
 
-                if (_event === 'SIGNED_OUT') {
-                    setClientData(null);
-                    setAuthView('APP'); // Go back to normal app view on sign out
-                }
+            // Priority 1: Password Recovery
+            if (_event === 'PASSWORD_RECOVERY' || (session && window.location.hash.includes('type=recovery'))) {
+                setAuthView('PASSWORD_RECOVERY');
+                setSession(session);
+                setLoading(false);
+                return;
             }
+
+            // Priority 2: New Client Initial Password Setup
+            if (user && user.email_confirmed_at && !user.last_sign_in_at && user.user_metadata?.role === 'cliente') {
+                setAuthView('SET_INITIAL_PASSWORD');
+                setSession(session);
+                setUser(user);
+                setLoading(false);
+                return;
+            }
+
+            // Default: Normal App View
+            setAuthView('APP');
+            setSession(session);
+            setUser(user ?? null);
+            const userRole = user?.user_metadata?.role || null;
+            setRole(userRole);
+
+            if (userRole === 'cliente') {
+                setTallerName(user?.user_metadata?.taller_nombre_ref || 'Mi Taller');
+            }
+
+            if (_event === 'SIGNED_OUT') {
+                setClientData(null);
+            }
+            
             setLoading(false);
         });
-
-        // Fallback check for hash on initial load, in case the event is missed.
-        if (window.location.hash.includes('type=recovery')) {
-            setAuthView('PASSWORD_RECOVERY');
-        }
-
 
         return () => {
             authListener.subscription.unsubscribe();
@@ -116,15 +127,19 @@ const App: React.FC = () => {
         await supabase.auth.signOut();
     };
     
-    const handleResetSuccess = () => {
+    const handleAuthSuccess = () => {
         window.history.replaceState(null, '', window.location.pathname);
         supabase.auth.signOut();
         setAuthView('APP');
         setSession(null);
     };
 
+    if (authView === 'SET_INITIAL_PASSWORD') {
+        return <SetInitialPassword onSetSuccess={handleAuthSuccess} />;
+    }
+
     if (authView === 'PASSWORD_RECOVERY') {
-        return <ResetPassword onResetSuccess={handleResetSuccess} />;
+        return <ResetPassword onResetSuccess={handleAuthSuccess} />;
     }
     
     if (loading) {

@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 import { XMarkIcon, TrashIcon, ClipboardDocumentCheckIcon, ChevronDownIcon, PlusIcon, CameraIcon } from '@heroicons/react/24/solid';
-import type { Cliente, Vehiculo } from '../types';
-import type { TallerInfo } from './TallerDashboard';
+import type { Cliente, Vehiculo, TallerInfo } from '../types';
 import { isGeminiAvailable, VehiculoData } from '../gemini';
 import CameraRecognitionModal from './CameraRecognitionModal';
 
@@ -22,6 +21,8 @@ const CrearClienteModal: React.FC<CrearClienteModalProps> = ({ onClose, onSucces
     const [modelo, setModelo] = useState('');
     const [año, setAño] = useState('');
     const [matricula, setMatricula] = useState('');
+    const [numero_chasis, setNumeroChasis] = useState('');
+    const [numero_motor, setNumeroMotor] = useState('');
     const [vehicles, setVehicles] = useState<VehicleFormState[]>([]);
     const [deletedVehicleIds, setDeletedVehicleIds] = useState<string[]>([]);
     const [expandedVehicleId, setExpandedVehicleId] = useState<string | null>(null);
@@ -126,12 +127,68 @@ const CrearClienteModal: React.FC<CrearClienteModalProps> = ({ onClose, onSucces
                 }
             } else {
                 const yearNumber = parseInt(año);
-                if (isNaN(yearNumber) || yearNumber <= 1900 || yearNumber > new Date().getFullYear() + 2) throw new Error('Por favor, ingrese un año válido.');
-                const { data: { user } } = await supabase.auth.getUser();
-                if (!user) throw new Error("User not authenticated");
-                const { data: clienteData } = await supabase.from('clientes').insert({ taller_id: user.id, nombre, email, telefono }).select().single();
-                if (!clienteData) throw new Error("Could not create client");
-                await supabase.from('vehiculos').insert({ cliente_id: clienteData.id, marca, modelo, año: yearNumber, matricula });
+                if (isNaN(yearNumber) || yearNumber <= 1900 || yearNumber > new Date().getFullYear() + 2) {
+                    throw new Error('Por favor, ingrese un año válido.');
+                }
+
+                // 1. Get current taller session
+                const { data: { session: currentTallerSession } } = await supabase.auth.getSession();
+                if (!currentTallerSession || !currentTallerSession.user) {
+                    throw new Error("Sesión de taller no encontrada. Por favor, inicie sesión de nuevo.");
+                }
+                const tallerUser = currentTallerSession.user;
+
+                // 2. Sign up the new client user. This temporarily changes the auth state.
+                const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+                    email,
+                    password: `temp_${crypto.randomUUID()}`, // Secure, temporary password
+                    options: {
+                        data: {
+                            role: 'cliente',
+                            taller_nombre_ref: (tallerUser.user_metadata?.taller_info as TallerInfo)?.nombre || 'Mi Taller'
+                        },
+                    }
+                });
+                
+                // If there was a sign up error, the session was NOT changed. We can show the error and stop.
+                if (signUpError) {
+                    if (signUpError.message.includes('User already registered')) {
+                        throw new Error('Un cliente con este email ya existe.');
+                    }
+                    throw signUpError;
+                }
+                if (!signUpData.user) {
+                    throw new Error('No se pudo crear la cuenta de usuario para el cliente.');
+                }
+                
+                // 3. IMPORTANT: Restore the taller's session immediately as signUp was successful
+                const { error: sessionError } = await supabase.auth.setSession({
+                    access_token: currentTallerSession.access_token,
+                    refresh_token: currentTallerSession.refresh_token,
+                });
+                if (sessionError) {
+                    // This is a critical failure. Inform the user to reload.
+                    throw new Error("Error al restaurar sesión. El cliente fue creado. Por favor, recargue la página.");
+                }
+                
+                const newUserId = signUpData.user.id;
+
+                // 4. With the taller session restored, create the client's profile and vehicle records.
+                const { error: clientInsertError } = await supabase
+                    .from('clientes')
+                    .insert({ id: newUserId, taller_id: tallerUser.id, nombre, email, telefono });
+
+                if (clientInsertError) {
+                    throw new Error(`Usuario creado, pero falló la creación del perfil: ${clientInsertError.message}`);
+                }
+                
+                const { error: vehicleInsertError } = await supabase
+                    .from('vehiculos')
+                    .insert({ cliente_id: newUserId, marca, modelo, año: yearNumber, matricula, numero_chasis, numero_motor });
+                
+                if (vehicleInsertError) {
+                    throw new Error(`Cliente creado, pero falló al agregar el vehículo: ${vehicleInsertError.message}`);
+                }
             }
             onSuccess();
         } catch (err: any) {
@@ -153,6 +210,8 @@ const CrearClienteModal: React.FC<CrearClienteModalProps> = ({ onClose, onSucces
             if (data.modelo) setModelo(data.modelo);
             if (data.año) setAño(data.año);
             if (data.matricula) setMatricula(data.matricula);
+            if (data.numero_chasis) setNumeroChasis(data.numero_chasis);
+            if (data.numero_motor) setNumeroMotor(data.numero_motor);
         }
         setIsCameraModalOpen(false);
         setScanningVehicleIndex(null);
@@ -178,6 +237,8 @@ const CrearClienteModal: React.FC<CrearClienteModalProps> = ({ onClose, onSucces
                 <div><label htmlFor="modelo" className="block text-sm font-medium text-taller-gray dark:text-gray-400">Modelo</label><input type="text" id="modelo" value={modelo} onChange={e => setModelo(e.target.value)} className="mt-1 block w-full input-class" required /></div>
                 <div><label htmlFor="año" className="block text-sm font-medium text-taller-gray dark:text-gray-400">Año</label><input type="number" id="año" value={año} onChange={e => setAño(e.target.value)} className="mt-1 block w-full input-class" required /></div>
                 <div><label htmlFor="matricula" className="block text-sm font-medium text-taller-gray dark:text-gray-400">Matrícula</label><input type="text" id="matricula" value={matricula} onChange={e => setMatricula(e.target.value)} className="mt-1 block w-full input-class" required /></div>
+                <div><label htmlFor="numero_chasis" className="block text-sm font-medium text-taller-gray dark:text-gray-400">Nº Chasis (opcional)</label><input type="text" id="numero_chasis" value={numero_chasis} onChange={e => setNumeroChasis(e.target.value)} className="mt-1 block w-full input-class" /></div>
+                <div><label htmlFor="numero_motor" className="block text-sm font-medium text-taller-gray dark:text-gray-400">Nº Motor (opcional)</label><input type="text" id="numero_motor" value={numero_motor} onChange={e => setNumeroMotor(e.target.value)} className="mt-1 block w-full input-class" /></div>
             </div>
         </>
     );
@@ -241,7 +302,7 @@ const CrearClienteModal: React.FC<CrearClienteModalProps> = ({ onClose, onSucces
                             <div><label htmlFor="nombre" className="block text-sm font-medium text-taller-gray dark:text-gray-400">Nombre</label><input type="text" id="nombre" value={nombre} onChange={e => setNombre(e.target.value)} className="mt-1 block w-full input-class" required /></div>
                             <div><label htmlFor="telefono" className="block text-sm font-medium text-taller-gray dark:text-gray-400">Teléfono</label><input type="tel" id="telefono" value={telefono} onChange={e => setTelefono(e.target.value)} className="mt-1 block w-full input-class" required /></div>
                         </div>
-                        <div><label htmlFor="email" className="block text-sm font-medium text-taller-gray dark:text-gray-400">Email (opcional)</label><input type="email" id="email" value={email} onChange={e => setEmail(e.target.value)} className="mt-1 block w-full input-class" /></div>
+                        <div><label htmlFor="email" className="block text-sm font-medium text-taller-gray dark:text-gray-400">Email (necesario para portal cliente)</label><input type="email" id="email" value={email} onChange={e => setEmail(e.target.value)} className="mt-1 block w-full input-class" required /></div>
                         {isEditMode ? renderEditForm() : renderCreateForm()}
                         {error && <p className="text-sm text-red-600 mt-2">{error}</p>}
                         <div className="pt-4 flex flex-col-reverse sm:flex-row items-center gap-4 w-full">

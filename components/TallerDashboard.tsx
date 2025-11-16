@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../supabaseClient';
-import type { Cliente, Trabajo, Gasto, JobStatus } from '../types';
+import type { Cliente, Trabajo, Gasto, JobStatus, TallerInfo } from '../types';
 import { JobStatus as JobStatusEnum } from '../types';
 import Dashboard from './Dashboard';
 import Trabajos from './Trabajos';
@@ -8,17 +8,6 @@ import Clientes from './Clientes';
 import Ajustes from './Ajustes';
 import Header from './Header';
 import { ChartPieIcon, WrenchScrewdriverIcon, UsersIcon, Cog6ToothIcon, XMarkIcon } from '@heroicons/react/24/solid';
-
-export interface TallerInfo {
-    nombre: string;
-    telefono: string;
-    direccion: string;
-    cuit: string;
-    logoUrl?: string;
-    pdfTemplate: 'classic' | 'modern';
-    mobileNavStyle: 'sidebar' | 'bottom_nav';
-    showLogoOnPdf: boolean;
-}
 
 interface TallerDashboardProps {
     onLogout: () => void;

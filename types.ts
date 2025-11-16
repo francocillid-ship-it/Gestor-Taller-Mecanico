@@ -57,3 +57,14 @@ export interface Gasto {
     descripcion: string;
     monto: number;
 }
+
+export interface TallerInfo {
+    nombre: string;
+    telefono: string;
+    direccion: string;
+    cuit: string;
+    logoUrl?: string;
+    pdfTemplate: 'classic' | 'modern';
+    mobileNavStyle: 'sidebar' | 'bottom_nav';
+    showLogoOnPdf: boolean;
+}
