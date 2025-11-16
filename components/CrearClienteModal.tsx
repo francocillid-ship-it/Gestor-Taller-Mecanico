@@ -141,7 +141,6 @@ const CrearClienteModal: React.FC<CrearClienteModalProps> = ({ onClose, onSucces
                 // 2. Sign up the new client user. This temporarily changes the auth state.
                 const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
                     email,
-                    password: `temp_${crypto.randomUUID()}`, // Secure, temporary password
                     options: {
                         data: {
                             role: 'cliente',

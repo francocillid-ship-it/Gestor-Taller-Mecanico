@@ -24,24 +24,31 @@ const App: React.FC = () => {
         setLoading(true);
         const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
             const user = session?.user;
+            const hashParams = new URLSearchParams(window.location.hash.substring(1));
+            const type = hashParams.get('type');
 
-            // Priority 1: Password Recovery
-            if (_event === 'PASSWORD_RECOVERY' || (session && window.location.hash.includes('type=recovery'))) {
-                setAuthView('PASSWORD_RECOVERY');
-                setSession(session);
-                setLoading(false);
-                return;
-            }
-
-            // Priority 2: New Client Initial Password Setup
-            if (user && user.email_confirmed_at && !user.last_sign_in_at && user.user_metadata?.role === 'cliente') {
+            // Priority 1: New Client Initial Password Setup (from invite link)
+            if (_event === 'SIGNED_IN' && type === 'invite') {
                 setAuthView('SET_INITIAL_PASSWORD');
                 setSession(session);
                 setUser(user);
                 setLoading(false);
+                // Clean up the URL hash to prevent re-triggering on refresh
+                window.history.replaceState(null, '', window.location.pathname + window.location.search);
                 return;
             }
 
+            // Priority 2: Password Recovery
+            if (_event === 'PASSWORD_RECOVERY' || type === 'recovery') {
+                setAuthView('PASSWORD_RECOVERY');
+                setSession(session);
+                setLoading(false);
+                if (type === 'recovery') {
+                    window.history.replaceState(null, '', window.location.pathname + window.location.search);
+                }
+                return;
+            }
+            
             // Default: Normal App View
             setAuthView('APP');
             setSession(session);
