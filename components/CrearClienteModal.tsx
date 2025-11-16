@@ -131,16 +131,17 @@ const CrearClienteModal: React.FC<CrearClienteModalProps> = ({ onClose, onSucces
                     throw new Error('Por favor, ingrese un año válido.');
                 }
 
-                // 1. Get current taller session
                 const { data: { session: currentTallerSession } } = await supabase.auth.getSession();
                 if (!currentTallerSession || !currentTallerSession.user) {
                     throw new Error("Sesión de taller no encontrada. Por favor, inicie sesión de nuevo.");
                 }
                 const tallerUser = currentTallerSession.user;
 
-                // 2. Sign up the new client user. This temporarily changes the auth state.
+                const tempPassword = Math.random().toString(36).slice(-12) + 'A1!';
+
                 const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
                     email,
+                    password: tempPassword,
                     options: {
                         data: {
                             role: 'cliente',
@@ -149,7 +150,6 @@ const CrearClienteModal: React.FC<CrearClienteModalProps> = ({ onClose, onSucces
                     }
                 });
                 
-                // If there was a sign up error, the session was NOT changed. We can show the error and stop.
                 if (signUpError) {
                     if (signUpError.message.includes('User already registered')) {
                         throw new Error('Un cliente con este email ya existe.');
@@ -160,19 +160,24 @@ const CrearClienteModal: React.FC<CrearClienteModalProps> = ({ onClose, onSucces
                     throw new Error('No se pudo crear la cuenta de usuario para el cliente.');
                 }
                 
-                // 3. IMPORTANT: Restore the taller's session immediately as signUp was successful
+                const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
+                    redirectTo: window.location.origin,
+                });
+
+                if (resetError) {
+                    console.warn(`User ${email} created, but failed to send password reset email:`, resetError.message);
+                }
+
                 const { error: sessionError } = await supabase.auth.setSession({
                     access_token: currentTallerSession.access_token,
                     refresh_token: currentTallerSession.refresh_token,
                 });
                 if (sessionError) {
-                    // This is a critical failure. Inform the user to reload.
                     throw new Error("Error al restaurar sesión. El cliente fue creado. Por favor, recargue la página.");
                 }
                 
                 const newUserId = signUpData.user.id;
 
-                // 4. With the taller session restored, create the client's profile and vehicle records.
                 const { error: clientInsertError } = await supabase
                     .from('clientes')
                     .insert({ id: newUserId, taller_id: tallerUser.id, nombre, email, telefono });
