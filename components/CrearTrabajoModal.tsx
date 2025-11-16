@@ -25,7 +25,7 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
     const [selectedClienteId, setSelectedClienteId] = useState('');
     const [selectedVehiculoId, setSelectedVehiculoId] = useState('');
     const [descripcion, setDescripcion] = useState('');
-    const [partes, setPartes] = useState<ParteState[]>([{ nombre: '', cantidad: 1, precioUnitario: '' }]);
+    const [partes, setPartes] = useState<ParteState[]>([]);
     const [costoManoDeObra, setCostoManoDeObra] = useState('');
     const [status, setStatus] = useState<JobStatus>(JobStatus.Presupuesto);
     const [pagos, setPagos] = useState<Parte[]>([]);
@@ -55,13 +55,19 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
         if (num === undefined || isNaN(num)) return '';
         return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(num);
     }
+    
+    const handleTextareaResize = (e: React.FormEvent<HTMLTextAreaElement>) => {
+        const textarea = e.currentTarget;
+        textarea.style.height = 'auto'; // Reset height to shrink if text is deleted
+        textarea.style.height = `${textarea.scrollHeight}px`; // Set height to match content
+    };
 
     useEffect(() => {
         if (trabajoToEdit) {
             setSelectedClienteId(trabajoToEdit.clienteId);
             setSelectedVehiculoId(trabajoToEdit.vehiculoId);
             setDescripcion(trabajoToEdit.descripcion);
-            const initialPartes = trabajoToEdit.partes.length > 0 ? trabajoToEdit.partes.filter(p => p.nombre !== '__PAGO_REGISTRADO__') : [{ nombre: '', cantidad: 1, precioUnitario: 0 }];
+            const initialPartes = trabajoToEdit.partes.filter(p => p.nombre !== '__PAGO_REGISTRADO__');
             setPartes(initialPartes.map(p => ({
                 ...p,
                 precioUnitario: formatNumberToCurrency(p.precioUnitario)
@@ -112,11 +118,8 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
 
 
     const removeParte = (index: number) => {
-        if (partes.length > 1) {
-            setPartes(partes.filter((_, i) => i !== index));
-        } else {
-            setPartes([{ nombre: '', cantidad: 1, precioUnitario: '' }]);
-        }
+        const newPartes = partes.filter((_, i) => i !== index);
+        setPartes(newPartes);
     };
     
     const handleRemovePago = (indexToRemove: number) => {
@@ -250,7 +253,7 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
                         )}
 
                         <div>
-                            <h3 className="text-md font-semibold text-taller-dark dark:text-taller-light mb-2">Partes y Repuestos</h3>
+                            <h3 className="text-md font-semibold text-taller-dark dark:text-taller-light mb-2">Items</h3>
                             {partes.map((parte, index) => (
                                 <div key={index} className="flex items-center gap-2 mb-2">
                                     {parte.isCategory ? (
@@ -259,11 +262,18 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
                                             <button type="button" onClick={() => removeParte(index)} className="p-2 text-red-500 hover:bg-red-100 dark:hover:bg-red-900/50 rounded-full flex-shrink-0"><TrashIcon className="h-5 w-5"/></button>
                                         </>
                                     ) : (
-                                        <div className="grid grid-cols-[1fr,80px,120px,auto] items-center gap-2 w-full">
-                                            <input type="text" placeholder="Nombre de la parte" value={parte.nombre} onChange={e => handleParteChange(index, 'nombre', e.target.value)} className="block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-taller-primary focus:border-taller-primary sm:text-sm" />
-                                            <input type="number" placeholder="Cant." value={parte.cantidad} onChange={e => handleParteChange(index, 'cantidad', parseInt(e.target.value, 10) || 1)} className="block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-taller-primary focus:border-taller-primary sm:text-sm" />
-                                            <input type="text" inputMode="decimal" placeholder="$ 0,00" value={parte.precioUnitario} onChange={e => handleParteChange(index, 'precioUnitario', formatCurrency(e.target.value))} className="block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-taller-primary focus:border-taller-primary sm:text-sm" />
-                                            <button type="button" onClick={() => removeParte(index)} className="p-2 text-red-500 hover:bg-red-100 dark:hover:bg-red-900/50 rounded-full"><TrashIcon className="h-5 w-5"/></button>
+                                        <div className="grid grid-cols-6 sm:grid-cols-[1fr_80px_120px_auto] items-center gap-2 w-full">
+                                            <textarea
+                                                rows={1}
+                                                placeholder="Nombre del ítem"
+                                                value={parte.nombre}
+                                                onChange={e => handleParteChange(index, 'nombre', e.target.value)}
+                                                onInput={handleTextareaResize}
+                                                className="col-span-6 sm:col-span-1 block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-taller-primary focus:border-taller-primary sm:text-sm resize-none overflow-hidden"
+                                            />
+                                            <input type="number" placeholder="Cant." value={parte.cantidad} onChange={e => handleParteChange(index, 'cantidad', parseInt(e.target.value, 10) || 1)} className="col-span-2 sm:col-span-1 block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-taller-primary focus:border-taller-primary sm:text-sm" />
+                                            <input type="text" inputMode="decimal" placeholder="$ 0,00" value={parte.precioUnitario} onChange={e => handleParteChange(index, 'precioUnitario', formatCurrency(e.target.value))} className="col-span-3 sm:col-span-1 block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-taller-primary focus:border-taller-primary sm:text-sm" />
+                                            <button type="button" onClick={() => removeParte(index)} className="col-span-1 sm:col-span-1 p-2 text-red-500 hover:bg-red-100 dark:hover:bg-red-900/50 rounded-full justify-self-center sm:justify-self-auto"><TrashIcon className="h-5 w-5"/></button>
                                         </div>
                                     )}
                                 </div>
