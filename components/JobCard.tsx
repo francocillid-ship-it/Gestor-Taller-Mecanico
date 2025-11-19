@@ -1,7 +1,8 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import type { Trabajo, Cliente, Vehiculo, JobStatus, Parte, TallerInfo } from '../types';
 import { JobStatus as JobStatusEnum } from '../types';
-import { ChevronDownIcon, ChevronUpIcon, PencilIcon, ArrowRightIcon, PrinterIcon, CurrencyDollarIcon } from '@heroicons/react/24/solid';
+import { ChevronDownIcon, ChevronUpIcon, PencilIcon, ArrowRightIcon, PrinterIcon, CurrencyDollarIcon, WrenchScrewdriverIcon } from '@heroicons/react/24/solid';
 import CrearTrabajoModal from './CrearTrabajoModal';
 import { supabase } from '../supabaseClient';
 import { generateClientPDF } from './pdfGenerator';
@@ -119,6 +120,8 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
     
     const nextStatus = getNextStatus(trabajo.status);
     const pagos = trabajo.partes.filter(p => p.nombre === '__PAGO_REGISTRADO__');
+    const realParts = trabajo.partes.filter(p => p.nombre !== '__PAGO_REGISTRADO__');
+    const hasServices = realParts.some(p => p.isService);
 
     return (
         <>
@@ -139,25 +142,31 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
                     <div className="p-3 border-t dark:border-gray-700">
                         <h4 className="font-semibold text-xs mb-2">Detalles:</h4>
                         <ul className="text-xs space-y-1 text-taller-dark dark:text-gray-300 mb-3">
-                            {trabajo.partes.filter(p => p.nombre !== '__PAGO_REGISTRADO__').map((parte, i) => (
+                            {realParts.map((parte, i) => (
                                 parte.isCategory ? (
                                     <li key={i} className="font-semibold text-taller-dark dark:text-taller-light pt-2 first:pt-0">
                                         {parte.nombre}
                                     </li>
                                 ) : (
-                                    <li key={i} className="flex justify-between pl-2">
-                                        <span>{parte.cantidad}x {parte.nombre}</span>
+                                    <li key={i} className={`flex justify-between pl-2 ${parte.isService ? 'text-blue-700 dark:text-blue-300 font-medium' : ''}`}>
+                                        <span className="flex items-center gap-1">
+                                            {parte.isService && <WrenchScrewdriverIcon className="h-3 w-3" />}
+                                            {parte.cantidad}x {parte.nombre}
+                                        </span>
                                         <span>{formatCurrency(parte.cantidad * parte.precioUnitario)}</span>
                                     </li>
                                 )
                             ))}
-                            {trabajo.costoManoDeObra ? (
+                            
+                            {/* Only show "Mano de Obra" separate line if there are NO services listed individually and there IS a cost (Legacy compatibility) */}
+                            {!hasServices && trabajo.costoManoDeObra ? (
                                 <li className="flex justify-between pt-2 border-t dark:border-gray-600 mt-2">
                                     <span>Mano de Obra</span>
                                     <span>{formatCurrency(trabajo.costoManoDeObra)}</span>
                                 </li>
                             ) : null}
-                            <li className="flex justify-between font-bold border-t dark:border-gray-600 pt-1">
+
+                            <li className="flex justify-between font-bold border-t dark:border-gray-600 pt-1 mt-2">
                                 <span>Total Estimado</span>
                                 <span>{formatCurrency(trabajo.costoEstimado)}</span>
                             </li>

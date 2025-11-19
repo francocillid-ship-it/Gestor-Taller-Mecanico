@@ -1,3 +1,4 @@
+
 export type UserRole = 'taller' | 'cliente';
 
 export enum JobStatus {
@@ -13,6 +14,7 @@ export interface Parte {
     precioUnitario: number;
     fecha?: string; // Para registrar la fecha de los pagos
     isCategory?: boolean;
+    isService?: boolean;
 }
 
 export interface Pago {

@@ -1,3 +1,4 @@
+
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import type { Trabajo, Cliente, Vehiculo, TallerInfo } from '../types';
@@ -104,6 +105,7 @@ export const generateClientPDF = async (
 
     // --- PARTS TABLE ---
     const partesSinPagos = trabajo.partes.filter(p => p.nombre !== '__PAGO_REGISTRADO__');
+    const hasServices = partesSinPagos.some(p => p.isService);
     const formatCurrencyPDF = (val: number) => new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(val);
 
     if (partesSinPagos.some(p => p.nombre)) {
@@ -115,9 +117,11 @@ export const generateClientPDF = async (
                     styles: { fontStyle: 'bold', fillColor: '#f1f5f9', textColor: '#0f172a', halign: 'left' }
                 }];
             } else if (p.nombre) {
+                // Removed [SERVICIO] prefix as requested
+                const description = p.nombre;
                 return [
                     p.cantidad,
-                    p.nombre,
+                    description,
                     formatCurrencyPDF(p.precioUnitario),
                     formatCurrencyPDF(p.cantidad * p.precioUnitario)
                 ];
@@ -148,28 +152,36 @@ export const generateClientPDF = async (
     
     // --- TOTALS ---
     let finalY = (doc as any).lastAutoTable?.finalY || lastDescLineY + 10;
-    // FIX: Removed an unused variable from the reduce function to resolve a comma operator error.
-    const totalPartes = partesSinPagos.filter(p => !p.isCategory).reduce((sum, p) => sum + (p.cantidad * p.precioUnitario), 0);
     const totalPagado = trabajo.partes.filter(p => p.nombre === '__PAGO_REGISTRADO__').reduce((sum, p) => sum + p.precioUnitario, 0);
     
     const totalsX = a4Width / 2;
     const valuesX = a4Width - margin;
 
     doc.setFontSize(10);
+    
+    // Calculate subtotal of items listed in table
+    const tableTotal = partesSinPagos.filter(p => !p.isCategory).reduce((sum, p) => sum + (p.cantidad * p.precioUnitario), 0);
+    
     doc.text(`Subtotal:`, totalsX, finalY + 10);
-    doc.text(formatCurrencyPDF(totalPartes), valuesX, finalY + 10, { align: 'right' });
-    doc.text(`Mano de Obra:`, totalsX, finalY + 17);
-    doc.text(formatCurrencyPDF(trabajo.costoManoDeObra || 0), valuesX, finalY + 17, { align: 'right' });
+    doc.text(formatCurrencyPDF(tableTotal), valuesX, finalY + 10, { align: 'right' });
+    
+    let extraOffset = 0;
+    // Only show "Mano de Obra" line if it's a legacy record (has cost but no service items)
+    if (!hasServices && trabajo.costoManoDeObra) {
+        doc.text(`Mano de Obra:`, totalsX, finalY + 17);
+        doc.text(formatCurrencyPDF(trabajo.costoManoDeObra || 0), valuesX, finalY + 17, { align: 'right' });
+        extraOffset = 7;
+    }
     
     doc.setLineWidth(0.5);
-    doc.line(totalsX, finalY + 22, valuesX, finalY + 22);
+    doc.line(totalsX, finalY + 15 + extraOffset, valuesX, finalY + 15 + extraOffset);
 
     doc.setFontSize(14);
     doc.setFont('helvetica', 'bold');
-    doc.text(`TOTAL:`, totalsX, finalY + 29);
-    doc.text(formatCurrencyPDF(trabajo.costoEstimado), valuesX, finalY + 29, { align: 'right' });
+    doc.text(`TOTAL:`, totalsX, finalY + 22 + extraOffset);
+    doc.text(formatCurrencyPDF(trabajo.costoEstimado), valuesX, finalY + 22 + extraOffset, { align: 'right' });
     doc.setFont('helvetica', 'normal');
-    finalY += 29;
+    finalY += 22 + extraOffset;
     
     if (trabajo.status !== JobStatusEnum.Presupuesto && totalPagado > 0) {
         doc.setFontSize(10);

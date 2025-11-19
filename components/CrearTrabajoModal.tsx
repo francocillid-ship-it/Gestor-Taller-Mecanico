@@ -1,8 +1,9 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../supabaseClient';
 import type { Cliente, Parte, Trabajo } from '../types';
 import { JobStatus } from '../types';
-import { XMarkIcon, PlusIcon, TrashIcon, UserPlusIcon } from '@heroicons/react/24/solid';
+import { XMarkIcon, TrashIcon, UserPlusIcon, WrenchScrewdriverIcon, TagIcon, ArchiveBoxIcon } from '@heroicons/react/24/solid';
 import CrearClienteModal from './CrearClienteModal';
 
 interface CrearTrabajoModalProps {
@@ -18,6 +19,7 @@ type ParteState = {
     cantidad: number;
     precioUnitario: string; // Storing the formatted string
     isCategory?: boolean;
+    isService?: boolean;
 };
 
 
@@ -26,7 +28,6 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
     const [selectedVehiculoId, setSelectedVehiculoId] = useState('');
     const [descripcion, setDescripcion] = useState('');
     const [partes, setPartes] = useState<ParteState[]>([]);
-    const [costoManoDeObra, setCostoManoDeObra] = useState('');
     const [status, setStatus] = useState<JobStatus>(JobStatus.Presupuesto);
     const [pagos, setPagos] = useState<Parte[]>([]);
 
@@ -67,13 +68,31 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
             setSelectedClienteId(trabajoToEdit.clienteId);
             setSelectedVehiculoId(trabajoToEdit.vehiculoId);
             setDescripcion(trabajoToEdit.descripcion);
+            
             const initialPartes = trabajoToEdit.partes.filter(p => p.nombre !== '__PAGO_REGISTRADO__');
-            setPartes(initialPartes.map(p => ({
+            
+            // Si es un trabajo antiguo con costoManoDeObra pero sin servicios explícitos,
+            // convertimos el costo de mano de obra en un ítem de servicio.
+            const hasServices = initialPartes.some(p => p.isService);
+            const legacyLabor = trabajoToEdit.costoManoDeObra || 0;
+            
+            let processedPartes = initialPartes.map(p => ({
                 ...p,
                 precioUnitario: formatNumberToCurrency(p.precioUnitario)
-            })));
+            }));
+
+            if (!hasServices && legacyLabor > 0) {
+                processedPartes.push({
+                    nombre: 'Mano de Obra (General)',
+                    cantidad: 1,
+                    precioUnitario: formatNumberToCurrency(legacyLabor),
+                    isService: true,
+                    isCategory: false
+                });
+            }
+
+            setPartes(processedPartes);
             setPagos(trabajoToEdit.partes.filter(p => p.nombre === '__PAGO_REGISTRADO__'));
-            setCostoManoDeObra(formatNumberToCurrency(trabajoToEdit.costoManoDeObra));
             setStatus(trabajoToEdit.status);
         }
     }, [trabajoToEdit]);
@@ -97,19 +116,31 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
     }, [selectedClienteId, clientes]);
 
     const costoEstimado = useMemo(() => {
-        const totalPartes = partes.filter(p => !p.isCategory).reduce((sum, p) => sum + (Number(p.cantidad) * parseCurrency(p.precioUnitario)), 0);
-        return totalPartes + parseCurrency(costoManoDeObra);
-    }, [partes, costoManoDeObra]);
+        // El costo estimado es la suma de Items + Servicios
+        return partes.filter(p => !p.isCategory).reduce((sum, p) => sum + (Number(p.cantidad) * parseCurrency(p.precioUnitario)), 0);
+    }, [partes]);
 
 
     const handleParteChange = (index: number, field: keyof ParteState, value: string | number) => {
         const newPartes = [...partes];
-        (newPartes[index] as any)[field] = value;
+        
+        // Capitalize first letter if editing the name
+        if (field === 'nombre' && typeof value === 'string' && value.length > 0) {
+             const capitalizedValue = value.charAt(0).toUpperCase() + value.slice(1);
+             (newPartes[index] as any)[field] = capitalizedValue;
+        } else {
+             (newPartes[index] as any)[field] = value;
+        }
+        
         setPartes(newPartes);
     };
 
     const addParte = () => {
-        setPartes([...partes, { nombre: '', cantidad: 1, precioUnitario: '' }]);
+        setPartes([...partes, { nombre: '', cantidad: 1, precioUnitario: '', isService: false }]);
+    };
+    
+    const addService = () => {
+        setPartes([...partes, { nombre: '', cantidad: 1, precioUnitario: '', isService: true }]);
     };
     
     const addCategory = () => {
@@ -171,15 +202,21 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
                     cantidad: p.isCategory ? 0 : Number(p.cantidad),
                     precioUnitario: p.isCategory ? 0 : parseCurrency(p.precioUnitario),
                     isCategory: !!p.isCategory,
+                    isService: !!p.isService,
                 }));
             
+            // Computamos la ganancia de mano de obra sumando exclusivamente los servicios
+            const calculatedManoDeObra = cleanPartes
+                .filter(p => p.isService && !p.isCategory)
+                .reduce((sum, p) => sum + (p.cantidad * p.precioUnitario), 0);
+
             const jobData = {
                 cliente_id: selectedClienteId,
                 vehiculo_id: selectedVehiculoId,
                 taller_id: user.id,
                 descripcion,
                 partes: [...cleanPartes, ...pagos],
-                costo_mano_de_obra: parseCurrency(costoManoDeObra),
+                costo_mano_de_obra: calculatedManoDeObra, // Se guarda para estadísticas (dashboard)
                 costo_estimado: costoEstimado,
                 status: status,
                 fecha_entrada: trabajoToEdit?.fechaEntrada || new Date().toISOString(),
@@ -210,7 +247,7 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
     return (
         <>
             <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
-                <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+                <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-3xl max-h-[90vh] overflow-y-auto">
                     <div className="flex justify-between items-center mb-4">
                         <h2 className="text-xl font-bold text-taller-dark dark:text-taller-light">{isEditMode ? 'Editar Trabajo' : 'Crear Nuevo Presupuesto'}</h2>
                         <button onClick={onClose} className="text-taller-gray dark:text-gray-400 hover:text-taller-dark dark:hover:text-white"><XMarkIcon className="h-6 w-6" /></button>
@@ -253,19 +290,31 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
                         )}
 
                         <div>
-                            <h3 className="text-md font-semibold text-taller-dark dark:text-taller-light mb-2">Items</h3>
+                            <h3 className="text-md font-semibold text-taller-dark dark:text-taller-light mb-2">Items y Servicios</h3>
                             {partes.map((parte, index) => (
                                 <div key={index} className="flex items-center gap-2 mb-2">
                                     {parte.isCategory ? (
                                         <>
+                                            <div className="p-2 bg-taller-accent/10 rounded-full"><TagIcon className="h-5 w-5 text-taller-accent"/></div>
                                             <input type="text" placeholder="Nombre de la categoría" value={parte.nombre} onChange={e => handleParteChange(index, 'nombre', e.target.value)} className="block w-full px-3 py-2 bg-blue-50 dark:bg-gray-700/50 border border-blue-200 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-taller-primary focus:border-taller-primary sm:text-sm font-semibold" />
                                             <button type="button" onClick={() => removeParte(index)} className="p-2 text-red-500 hover:bg-red-100 dark:hover:bg-red-900/50 rounded-full flex-shrink-0"><TrashIcon className="h-5 w-5"/></button>
                                         </>
                                     ) : (
-                                        <div className="grid grid-cols-6 sm:grid-cols-[1fr_80px_120px_auto] items-center gap-2 w-full">
+                                        <div className={`grid grid-cols-6 sm:grid-cols-[auto_1fr_80px_120px_auto] items-center gap-2 w-full p-2 rounded-md ${parte.isService ? 'bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800' : 'bg-gray-50 dark:bg-gray-700/30'}`}>
+                                            <div className="col-span-6 sm:col-span-1 flex justify-center sm:justify-start">
+                                                {parte.isService ? (
+                                                    <div title="Servicio (Mano de Obra)" className="p-1.5 bg-blue-100 dark:bg-blue-900 rounded text-blue-600 dark:text-blue-300">
+                                                        <WrenchScrewdriverIcon className="h-4 w-4"/>
+                                                    </div>
+                                                ) : (
+                                                    <div title="Ítem (Repuesto)" className="p-1.5 bg-gray-200 dark:bg-gray-600 rounded text-gray-600 dark:text-gray-300">
+                                                        <ArchiveBoxIcon className="h-4 w-4"/>
+                                                    </div>
+                                                )}
+                                            </div>
                                             <textarea
                                                 rows={1}
-                                                placeholder="Nombre del ítem"
+                                                placeholder={parte.isService ? "Descripción del servicio" : "Nombre del repuesto"}
                                                 value={parte.nombre}
                                                 onChange={e => handleParteChange(index, 'nombre', e.target.value)}
                                                 onInput={handleTextareaResize}
@@ -278,12 +327,15 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
                                     )}
                                 </div>
                             ))}
-                           <div className="flex items-center gap-4 mt-2">
-                                <button type="button" onClick={addParte} className="flex items-center gap-1 text-sm text-taller-primary font-medium hover:underline">
-                                    <PlusIcon className="h-4 w-4"/> Añadir Ítem
+                           <div className="flex flex-wrap items-center gap-3 mt-4 p-3 bg-gray-50 dark:bg-gray-800 border border-dashed dark:border-gray-600 rounded-lg justify-center sm:justify-start">
+                                <button type="button" onClick={addParte} className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-600 font-medium shadow-sm transition-colors">
+                                    <ArchiveBoxIcon className="h-4 w-4 text-gray-500"/> Agregar Ítem
                                 </button>
-                                <button type="button" onClick={addCategory} className="flex items-center gap-1 text-sm text-taller-secondary font-medium hover:underline">
-                                    <PlusIcon className="h-4 w-4"/> Añadir Categoría
+                                <button type="button" onClick={addService} className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-md hover:bg-blue-100 dark:hover:bg-blue-900/50 font-medium shadow-sm transition-colors">
+                                    <WrenchScrewdriverIcon className="h-4 w-4"/> Agregar Servicio
+                                </button>
+                                <button type="button" onClick={addCategory} className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-orange-700 dark:text-orange-300 bg-orange-50 dark:bg-orange-900/30 border border-orange-200 dark:border-orange-800 rounded-md hover:bg-orange-100 dark:hover:bg-orange-900/50 font-medium shadow-sm transition-colors">
+                                    <TagIcon className="h-4 w-4"/> Agregar Categoría
                                 </button>
                             </div>
                         </div>
@@ -309,18 +361,14 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
                             </div>
                         )}
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
-                            <div>
-                                <label htmlFor="costoManoDeObra" className="block text-sm font-medium text-taller-gray dark:text-gray-400">Costo Mano de Obra ($)</label>
-                                <input type="text" id="costoManoDeObra" inputMode="decimal" placeholder="$ 0,00" value={costoManoDeObra} onChange={e => setCostoManoDeObra(formatCurrency(e.target.value))} className="mt-1 block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-taller-primary focus:border-taller-primary sm:text-sm" />
-                            </div>
-                            <div className="bg-taller-light dark:bg-gray-700/50 p-3 rounded-md text-right">
-                                <p className="text-sm text-taller-gray dark:text-gray-400">Costo Total Estimado</p>
-                                <p className="text-xl font-bold text-taller-dark dark:text-taller-light">{new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(costoEstimado)}</p>
+                        <div className="flex justify-end items-center pt-4 border-t dark:border-gray-700">
+                            <div className="bg-taller-light dark:bg-gray-700/50 p-4 rounded-lg text-right w-full sm:w-auto">
+                                <p className="text-sm text-taller-gray dark:text-gray-400 font-medium">Costo Total Estimado</p>
+                                <p className="text-2xl font-bold text-taller-primary dark:text-blue-400">{new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(costoEstimado)}</p>
                             </div>
                         </div>
                         
-                        {error && <p className="text-sm text-red-600">{error}</p>}
+                        {error && <p className="text-sm text-red-600 text-center">{error}</p>}
 
                         <div className="pt-4 flex flex-col-reverse sm:flex-row items-center gap-4 w-full">
                             {isEditMode ? (

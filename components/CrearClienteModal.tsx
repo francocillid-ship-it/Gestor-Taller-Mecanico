@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 import { XMarkIcon, TrashIcon, ClipboardDocumentCheckIcon, ChevronDownIcon, PlusIcon, CameraIcon } from '@heroicons/react/24/solid';
@@ -131,6 +132,25 @@ const CrearClienteModal: React.FC<CrearClienteModalProps> = ({ onClose, onSucces
         setError('');
         try {
             if (isEditMode) {
+                // Intentar actualizar el email de Auth si ha cambiado
+                if (clienteToEdit && clienteToEdit.email !== email && email.trim() !== '') {
+                    const { error: rpcError } = await supabase.rpc('update_client_email', {
+                        user_id: clienteToEdit.id,
+                        new_email: email
+                    });
+
+                    if (rpcError) {
+                        if (rpcError.code === '42883') {
+                             console.warn("Falta la función RPC 'update_client_email'. Solo se actualizará la ficha pública.");
+                             // No lanzamos error para permitir que se guarde el resto de la info, 
+                             // pero podrías descomentar la siguiente línea si prefieres bloquear la acción.
+                             // throw new Error("Falta configuración en la base de datos (RPC update_client_email) para cambiar el email de acceso.");
+                        } else {
+                            throw new Error(`Error al actualizar el email de acceso: ${rpcError.message}`);
+                        }
+                    }
+                }
+
                 await supabase.from('clientes').update({ nombre, email, telefono }).eq('id', clienteToEdit!.id);
                 if (deletedVehicleIds.length > 0) await supabase.from('vehiculos').delete().in('id', deletedVehicleIds);
                 for (const vehicle of vehicles) {
