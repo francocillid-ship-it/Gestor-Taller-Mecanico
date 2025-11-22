@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 // FIX: The 'TallerInfo' type is now imported from '../types' where it is defined, resolving the module export error.
 import type { TallerInfo } from '../types';
@@ -330,17 +331,17 @@ const Ajustes: React.FC<AjustesProps> = ({ tallerInfo, onUpdateTallerInfo, onLog
                      <div className="flex flex-wrap gap-4">
                          <button
                             onClick={() => setIsChangePasswordModalOpen(true)}
-                            className="flex items-center space-x-2 px-4 py-2 text-sm font-medium text-taller-secondary bg-blue-100 rounded-lg hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-taller-secondary dark:bg-blue-900/50 dark:text-blue-300 dark:hover:bg-blue-900"
+                            className="flex-1 justify-center flex items-center space-x-2 px-4 py-2 text-sm font-medium text-taller-secondary bg-blue-100 rounded-lg hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-taller-secondary dark:bg-blue-900/50 dark:text-blue-300 dark:hover:bg-blue-900"
                         >
                             <KeyIcon className="h-5 w-5" />
-                            <span>Cambiar Contraseña</span>
+                            <span className="whitespace-nowrap">Cambiar Contraseña</span>
                         </button>
                         <button
                             onClick={onLogout}
-                            className="flex items-center space-x-2 px-4 py-2 text-sm font-medium text-red-700 bg-red-100 rounded-lg hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 dark:bg-red-900/50 dark:text-red-300 dark:hover:bg-red-900"
+                            className="flex-1 justify-center flex items-center space-x-2 px-4 py-2 text-sm font-medium text-red-700 bg-red-100 rounded-lg hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 dark:bg-red-900/50 dark:text-red-300 dark:hover:bg-red-900"
                         >
                             <ArrowRightOnRectangleIcon className="h-5 w-5" />
-                            <span>Salir de la Cuenta</span>
+                            <span className="whitespace-nowrap">Salir de la Cuenta</span>
                         </button>
                      </div>
                 </div>
