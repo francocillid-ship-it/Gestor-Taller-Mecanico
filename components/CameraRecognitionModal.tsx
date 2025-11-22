@@ -1,6 +1,7 @@
+
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { recognizeVehicleDataFromImage, VehiculoData } from '../gemini';
-import { CameraIcon, XMarkIcon, ArrowPathIcon } from '@heroicons/react/24/solid';
+import { CameraIcon, XMarkIcon, ArrowPathIcon, VideoCameraIcon } from '@heroicons/react/24/solid';
 
 // Type definition for the browser's experimental TextDetector API
 interface DetectedText {
@@ -31,6 +32,11 @@ const CameraRecognitionModal: React.FC<CameraRecognitionModalProps> = ({ onClose
     const [detectedTexts, setDetectedTexts] = useState<DetectedText[]>([]);
     const [videoDimensions, setVideoDimensions] = useState({ width: 0, height: 0 });
     const [capturedImage, setCapturedImage] = useState<string | null>(null);
+    
+    // State to track if we should try to start the camera automatically
+    const [permissionGranted, setPermissionGranted] = useState(() => {
+        return localStorage.getItem('camera_permission_granted') === 'true';
+    });
 
     const stopCamera = useCallback(() => {
         if (streamRef.current) {
@@ -84,10 +90,20 @@ const CameraRecognitionModal: React.FC<CameraRecognitionModalProps> = ({ onClose
                         if (videoRef.current) setVideoDimensions({ width: videoRef.current.videoWidth, height: videoRef.current.videoHeight });
                     };
                     await videoRef.current.play();
+                    
+                    // Permission successfully granted/used
+                    setPermissionGranted(true);
+                    localStorage.setItem('camera_permission_granted', 'true');
+
                     if (detector) { animationFrameId.current = requestAnimationFrame(detectText); }
                 }
             } catch (err) {
-                if (isMounted) setError("No se pudo acceder a la cámara. Verifique los permisos.");
+                if (isMounted) {
+                    setError("No se pudo acceder a la cámara. Verifique los permisos.");
+                    // Reset permission flag on error so user can try again
+                    setPermissionGranted(false);
+                    localStorage.removeItem('camera_permission_granted');
+                }
             }
         };
 
@@ -97,7 +113,8 @@ const CameraRecognitionModal: React.FC<CameraRecognitionModalProps> = ({ onClose
     }, []);
 
     useEffect(() => {
-        if (!capturedImage) {
+        // Only auto-start if we previously had permission and we aren't showing a captured image
+        if (permissionGranted && !capturedImage) {
             startCamera();
         }
         return () => {
@@ -105,7 +122,7 @@ const CameraRecognitionModal: React.FC<CameraRecognitionModalProps> = ({ onClose
                 stopCamera();
             }
         };
-    }, [capturedImage, startCamera, stopCamera]);
+    }, [capturedImage, startCamera, stopCamera, permissionGranted]);
     
     const handleCapture = async () => {
         if (!videoRef.current || !canvasRef.current || !streamRef.current) return;
@@ -154,6 +171,9 @@ const CameraRecognitionModal: React.FC<CameraRecognitionModalProps> = ({ onClose
         setCapturedImage(null);
         setError(null);
         setIsLoading(false);
+        // If we are retrying, we assume we want to start the camera
+        // If permission was lost, the startCamera logic will handle the error and reset the flag
+        setPermissionGranted(true); 
     };
 
     const scaleX = videoRef.current ? videoRef.current.clientWidth / videoDimensions.width : 0;
@@ -168,27 +188,42 @@ const CameraRecognitionModal: React.FC<CameraRecognitionModalProps> = ({ onClose
                 
                 <h2 className="text-lg font-bold text-taller-dark dark:text-taller-light mb-2">Escanear Cédula del Vehículo</h2>
 
-                <div className="relative w-full aspect-video bg-black rounded-md overflow-hidden">
+                <div className="relative w-full aspect-video bg-black rounded-md overflow-hidden flex flex-col items-center justify-center">
                     {capturedImage ? (
                         <img src={capturedImage} alt="Captura de cédula" className="w-full h-full object-cover" />
                     ) : (
                         <>
-                            <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover"></video>
-                             {detectedTexts.length > 0 && videoDimensions.width > 0 && (
-                                <div className="absolute inset-0">
-                                    {detectedTexts.map((text, i) => (
-                                        <div
-                                            key={i}
-                                            className="absolute border-2 border-yellow-400 bg-yellow-400/20"
-                                            style={{
-                                                left: `${text.boundingBox.x * scaleX}px`,
-                                                top: `${text.boundingBox.y * scaleY}px`,
-                                                width: `${text.boundingBox.width * scaleX}px`,
-                                                height: `${text.boundingBox.height * scaleY}px`,
-                                            }}
-                                        />
-                                    ))}
+                            {!permissionGranted ? (
+                                <div className="p-6 text-center text-white">
+                                    <VideoCameraIcon className="h-12 w-12 mx-auto mb-3 text-gray-400" />
+                                    <p className="text-sm text-gray-300 mb-4">Se requiere acceso a la cámara para escanear el documento.</p>
+                                    <button 
+                                        onClick={() => { setPermissionGranted(true); }} // This triggers useEffect -> startCamera
+                                        className="px-4 py-2 bg-taller-primary text-white font-semibold rounded-lg hover:bg-taller-secondary transition-colors"
+                                    >
+                                        Habilitar Cámara
+                                    </button>
                                 </div>
+                            ) : (
+                                <>
+                                    <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover"></video>
+                                    {detectedTexts.length > 0 && videoDimensions.width > 0 && (
+                                        <div className="absolute inset-0">
+                                            {detectedTexts.map((text, i) => (
+                                                <div
+                                                    key={i}
+                                                    className="absolute border-2 border-yellow-400 bg-yellow-400/20"
+                                                    style={{
+                                                        left: `${text.boundingBox.x * scaleX}px`,
+                                                        top: `${text.boundingBox.y * scaleY}px`,
+                                                        width: `${text.boundingBox.width * scaleX}px`,
+                                                        height: `${text.boundingBox.height * scaleY}px`,
+                                                    }}
+                                                />
+                                            ))}
+                                        </div>
+                                    )}
+                                </>
                             )}
                         </>
                     )}
@@ -210,7 +245,7 @@ const CameraRecognitionModal: React.FC<CameraRecognitionModalProps> = ({ onClose
                         >
                             <ArrowPathIcon className="h-5 w-5"/> Reintentar
                         </button>
-                    ) : !capturedImage ? (
+                    ) : (!capturedImage && permissionGranted) ? (
                         <button
                             onClick={handleCapture}
                             disabled={isLoading}
