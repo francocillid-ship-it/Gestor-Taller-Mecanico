@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import type { UserRole } from '../types';
 import { supabase } from '../supabaseClient';
@@ -232,9 +233,13 @@ const Login: React.FC = () => {
             </form>
             <p className="text-sm text-center text-taller-gray dark:text-gray-400">
                 {view === 'login' ? (
-                    <>
-                        ¿No tienes una cuenta? <button onClick={() => { setView('signup'); setError(null); setPassword(''); }} className="font-medium text-taller-primary hover:underline">Crea una</button>
-                    </>
+                    role === 'taller' ? (
+                        <>
+                            ¿No tienes una cuenta? <button onClick={() => { setView('signup'); setError(null); setPassword(''); }} className="font-medium text-taller-primary hover:underline">Crea una</button>
+                        </>
+                    ) : (
+                        <span className="text-xs block mt-2 opacity-75">Solicite su acceso a su taller de confianza.</span>
+                    )
                 ) : (
                      <>
                         ¿Ya tienes una cuenta? <button onClick={() => { setView('login'); setError(null); setPassword(''); setConfirmPassword(''); }} className="font-medium text-taller-primary hover:underline">Inicia sesión</button>

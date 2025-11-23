@@ -209,7 +209,7 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
                 <Header 
                     tallerName={tallerInfo.nombre} 
                     onMenuClick={() => setIsMobileMenuOpen(true)} 
-                    showMenuButton={true}
+                    showMenuButton={tallerInfo.mobileNavStyle === 'sidebar'}
                 />
                 
                 <main className="flex-1 overflow-y-auto p-4 md:p-6 scroll-smooth">
@@ -224,7 +224,7 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
 
                 {/* Bottom Navigation for Mobile (optional via settings) */}
                 {tallerInfo.mobileNavStyle === 'bottom_nav' && (
-                    <div className="md:hidden bg-white dark:bg-gray-800 border-t dark:border-gray-700 pb-safe">
+                    <div className="md:hidden bg-white dark:bg-gray-800 border-t dark:border-gray-700 pb-5">
                          <nav className="flex justify-around items-center h-16">
                             {navItems.map((item) => (
                                 <button
