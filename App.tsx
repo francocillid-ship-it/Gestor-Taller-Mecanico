@@ -25,6 +25,9 @@ const App: React.FC = () => {
 
 
     useEffect(() => {
+        // Analizar parámetros del hash de la URL para determinar la acción inicial.
+        // NOTA CRÍTICA: No debemos limpiar el hash (window.history.replaceState) aquí inmediatamente.
+        // Supabase necesita leer el access_token y type del hash para establecer la sesión.
         const hashParams = new URLSearchParams(window.location.hash.substring(1));
         const type = hashParams.get('type');
 
@@ -33,15 +36,17 @@ const App: React.FC = () => {
         } else if (type === 'invite') {
             setAuthAction('SET_INITIAL_PASSWORD');
         }
-        
-        if (type) {
-            window.history.replaceState(null, '', window.location.pathname + window.location.search);
-        }
     }, []);
 
     useEffect(() => {
         const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
             setSession(session);
+
+            // Supabase emite este evento específicamente cuando se entra por link de recuperación
+            if (_event === 'PASSWORD_RECOVERY') {
+                setAuthAction('PASSWORD_RECOVERY');
+            }
+
             if (_event === 'SIGNED_OUT') {
                 setAuthAction('APP');
                 setRole(null);
@@ -60,6 +65,7 @@ const App: React.FC = () => {
             setLoading(true);
             
             if (authAction !== 'APP') {
+                // Durante recuperación, necesitamos la sesión activa para poder cambiar el password (updateUser)
                 setUser(session?.user ?? null);
                 setRole(null);
                 setClientData(null);
@@ -145,6 +151,8 @@ const App: React.FC = () => {
     };
     
     const handleAuthSuccess = () => {
+        // Limpiamos la URL una vez que el proceso ha sido exitoso
+        window.history.replaceState(null, '', window.location.pathname);
         supabase.auth.signOut();
         setAuthAction('APP');
     };
