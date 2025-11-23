@@ -4,7 +4,7 @@ import type { Trabajo, Cliente, TallerInfo } from '../types';
 import { JobStatus } from '../types';
 import JobCard from './JobCard';
 import CrearTrabajoModal from './CrearTrabajoModal';
-import { PlusIcon, ChevronUpIcon, ChevronDownIcon } from '@heroicons/react/24/solid';
+import { PlusIcon, ChevronUpIcon, ChevronDownIcon, MagnifyingGlassIcon } from '@heroicons/react/24/solid';
 
 interface TrabajosProps {
     trabajos: Trabajo[];
@@ -92,7 +92,7 @@ const StatusColumn: React.FC<{
                 ) : (
                     <div className="py-8 text-center animate-pulse">
                         <p className="text-sm text-taller-gray dark:text-gray-400">
-                            {searchQuery ? "No hay coincidencias en este estado." : "No hay trabajos en este estado."}
+                            {searchQuery ? "No hay coincidencias." : "No hay trabajos en este estado."}
                         </p>
                     </div>
                 )}
@@ -128,6 +128,9 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
             return acc;
         }, {} as Record<JobStatus, Trabajo[]>);
     }, [trabajos, searchQuery, clientes]);
+
+    // Check if there are any results at all across all columns
+    const hasResults = useMemo(() => (Object.values(trabajosByStatus) as Trabajo[][]).some(list => list.length > 0), [trabajosByStatus]);
     
     return (
         <div className="h-full flex flex-col">
@@ -144,18 +147,33 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
                 </div>
             </div>
             <div className="flex-1 flex flex-col gap-4 lg:gap-6 lg:flex-row lg:space-x-4 lg:overflow-x-auto pb-4">
-                {statusOrder.map(status => (
-                    <StatusColumn
-                        key={status}
-                        status={status}
-                        trabajos={trabajosByStatus[status] || []}
-                        clientes={clientes}
-                        onUpdateStatus={onUpdateStatus}
-                        tallerInfo={tallerInfo}
-                        onDataRefresh={onDataRefresh}
-                        searchQuery={searchQuery}
-                    />
-                ))}
+                {searchQuery && !hasResults ? (
+                    <div className="w-full flex flex-col items-center justify-center mt-12 text-taller-gray dark:text-gray-400">
+                        <MagnifyingGlassIcon className="h-16 w-16 mb-4 opacity-50"/>
+                        <p className="text-lg font-medium">No se encontraron resultados para "{searchQuery}"</p>
+                        <p className="text-sm mt-2 opacity-75">Intenta buscar por cliente, vehículo o descripción.</p>
+                    </div>
+                ) : (
+                    statusOrder.map(status => {
+                        const jobs = trabajosByStatus[status] || [];
+                        
+                        // Hide column if searching and no matches in this column to save space (esp. on mobile)
+                        if (searchQuery && jobs.length === 0) return null;
+
+                        return (
+                            <StatusColumn
+                                key={status}
+                                status={status}
+                                trabajos={jobs}
+                                clientes={clientes}
+                                onUpdateStatus={onUpdateStatus}
+                                tallerInfo={tallerInfo}
+                                onDataRefresh={onDataRefresh}
+                                searchQuery={searchQuery}
+                            />
+                        );
+                    })
+                )}
                 {/* Spacer for bottom nav on mobile */}
                 {tallerInfo.mobileNavStyle === 'bottom_nav' && <div className="h-16 md:hidden flex-shrink-0" />}
             </div>
