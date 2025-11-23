@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../supabaseClient';
 import type { Cliente, Trabajo, Gasto, JobStatus, TallerInfo } from '../types';
@@ -80,6 +81,7 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
                     status: t.status,
                     fechaEntrada: t.fecha_entrada,
                     fechaSalida: t.fecha_salida,
+                    kilometraje: t.kilometraje, // Added kilometraje mapping
                 }));
                 setTrabajos(mappedTrabajos as Trabajo[]);
             }

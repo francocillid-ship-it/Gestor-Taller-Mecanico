@@ -90,7 +90,11 @@ export const generateClientPDF = async (
     
     const vehicleText = `${vehiculo?.marca || ''} ${vehiculo?.modelo || ''} (${vehiculo?.año || 'N/A'})`;
     doc.text(vehicleText, (a4Width / 2), 85);
-    doc.text(`Matrícula: ${vehiculo?.matricula || 'N/A'}`, (a4Width / 2), 92);
+    let vehicleSubText = `Matrícula: ${vehiculo?.matricula || 'N/A'}`;
+    if (trabajo.kilometraje) {
+        vehicleSubText += ` - KM: ${trabajo.kilometraje}`;
+    }
+    doc.text(vehicleSubText, (a4Width / 2), 92);
 
     // --- DESCRIPTION ---
     doc.setFontSize(11);

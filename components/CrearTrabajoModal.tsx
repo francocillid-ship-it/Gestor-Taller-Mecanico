@@ -27,6 +27,7 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
     const [selectedClienteId, setSelectedClienteId] = useState('');
     const [selectedVehiculoId, setSelectedVehiculoId] = useState('');
     const [descripcion, setDescripcion] = useState('');
+    const [kilometraje, setKilometraje] = useState(''); 
     const [partes, setPartes] = useState<ParteState[]>([]);
     const [status, setStatus] = useState<JobStatus>(JobStatus.Presupuesto);
     const [pagos, setPagos] = useState<Parte[]>([]);
@@ -68,6 +69,7 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
             setSelectedClienteId(trabajoToEdit.clienteId);
             setSelectedVehiculoId(trabajoToEdit.vehiculoId);
             setDescripcion(trabajoToEdit.descripcion);
+            setKilometraje(trabajoToEdit.kilometraje ? String(trabajoToEdit.kilometraje) : '');
             
             const initialPartes = trabajoToEdit.partes.filter(p => p.nombre !== '__PAGO_REGISTRADO__');
             
@@ -209,6 +211,8 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
             const calculatedManoDeObra = cleanPartes
                 .filter(p => p.isService && !p.isCategory)
                 .reduce((sum, p) => sum + (p.cantidad * p.precioUnitario), 0);
+            
+            const kmValue = kilometraje ? parseInt(kilometraje, 10) : null;
 
             const jobData = {
                 cliente_id: selectedClienteId,
@@ -216,10 +220,11 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
                 taller_id: user.id,
                 descripcion,
                 partes: [...cleanPartes, ...pagos],
-                costo_mano_de_obra: calculatedManoDeObra, // Se guarda para estadísticas (dashboard)
+                costo_mano_de_obra: calculatedManoDeObra,
                 costo_estimado: costoEstimado,
                 status: status,
                 fecha_entrada: trabajoToEdit?.fechaEntrada || new Date().toISOString(),
+                kilometraje: kmValue,
             };
 
             if (isEditMode) {
@@ -275,9 +280,22 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
                             </div>
                         </div>
 
-                        <div>
-                            <label htmlFor="descripcion" className="block text-sm font-medium text-taller-gray dark:text-gray-400">Descripción del Problema/Trabajo</label>
-                            <textarea id="descripcion" value={descripcion} onChange={e => setDescripcion(e.target.value)} rows={3} className="mt-1 block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-taller-primary focus:border-taller-primary sm:text-sm" required />
+                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                             <div className="md:col-span-2">
+                                <label htmlFor="descripcion" className="block text-sm font-medium text-taller-gray dark:text-gray-400">Descripción del Problema/Trabajo</label>
+                                <textarea id="descripcion" value={descripcion} onChange={e => setDescripcion(e.target.value)} rows={2} className="mt-1 block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-taller-primary focus:border-taller-primary sm:text-sm" required />
+                            </div>
+                             <div>
+                                <label htmlFor="kilometraje" className="block text-sm font-medium text-taller-gray dark:text-gray-400">Kilometraje (Opcional)</label>
+                                <input 
+                                    type="number" 
+                                    id="kilometraje" 
+                                    value={kilometraje} 
+                                    onChange={e => setKilometraje(e.target.value)} 
+                                    placeholder="Ej. 150000"
+                                    className="mt-1 block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-taller-primary focus:border-taller-primary sm:text-sm" 
+                                />
+                            </div>
                         </div>
 
                         {isEditMode && (

@@ -33,6 +33,7 @@ export interface Trabajo {
     status: JobStatus;
     fechaEntrada: string;
     fechaSalida?: string;
+    kilometraje?: number; // Nuevo campo
 }
 
 export interface Vehiculo {

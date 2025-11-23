@@ -130,7 +130,14 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
                     <div className="flex justify-between items-start">
                         <div>
                             <p className="font-bold text-sm text-taller-dark dark:text-taller-light">{cliente?.nombre || 'Cliente no encontrado'}</p>
-                            <p className="text-xs text-taller-gray dark:text-gray-400">{vehiculo ? `${vehiculo.marca} ${vehiculo.modelo} (${vehiculo.matricula})` : 'Vehículo no encontrado'}</p>
+                            <p className="text-xs text-taller-gray dark:text-gray-400">
+                                {vehiculo ? `${vehiculo.marca} ${vehiculo.modelo} (${vehiculo.matricula})` : 'Vehículo no encontrado'}
+                            </p>
+                            {trabajo.kilometraje && (
+                                <p className="text-xs text-taller-gray dark:text-gray-400 mt-0.5 font-medium">
+                                    {trabajo.kilometraje} km
+                                </p>
+                            )}
                         </div>
                          <button onClick={() => setIsExpanded(!isExpanded)} className="p-1 text-taller-gray dark:text-gray-400 hover:text-taller-dark dark:hover:text-white">
                             {isExpanded ? <ChevronUpIcon className="h-5 w-5" /> : <ChevronDownIcon className="h-5 w-5" />}

@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import type { Trabajo, Vehiculo, Cliente, TallerInfo } from '../types';
-import { CurrencyDollarIcon, CalendarDaysIcon, ChevronDownIcon, PrinterIcon, WrenchScrewdriverIcon } from '@heroicons/react/24/solid';
+import { CurrencyDollarIcon, CalendarDaysIcon, ChevronDownIcon, PrinterIcon, WrenchScrewdriverIcon, MapPinIcon } from '@heroicons/react/24/solid';
 import { generateClientPDF } from './pdfGenerator';
 
 interface TrabajoListItemProps {
@@ -83,9 +83,17 @@ const TrabajoListItem: React.FC<TrabajoListItemProps> = ({ trabajo, vehiculo, cl
                     </div>
                 </div>
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mt-2 text-xs text-taller-gray dark:text-gray-400">
-                    <div className="flex items-center gap-1.5">
-                        <CalendarDaysIcon className="h-4 w-4" />
-                        <span>{new Date(trabajo.fechaEntrada).toLocaleDateString('es-ES')}</span>
+                    <div className="flex gap-4">
+                        <div className="flex items-center gap-1.5">
+                            <CalendarDaysIcon className="h-4 w-4" />
+                            <span>{new Date(trabajo.fechaEntrada).toLocaleDateString('es-ES')}</span>
+                        </div>
+                        {trabajo.kilometraje && (
+                            <div className="flex items-center gap-1.5">
+                                <MapPinIcon className="h-4 w-4" />
+                                <span>{trabajo.kilometraje} km</span>
+                            </div>
+                        )}
                     </div>
                     <div className="flex items-center gap-1.5">
                         <CurrencyDollarIcon className="h-4 w-4" />
@@ -114,7 +122,6 @@ const TrabajoListItem: React.FC<TrabajoListItemProps> = ({ trabajo, vehiculo, cl
                                 )
                             ))}
                             
-                            {/* Only show "Mano de Obra" separate line if there are NO services listed individually and there IS a cost (Legacy compatibility) */}
                             {!hasServices && trabajo.costoManoDeObra ? (
                                 <li className="flex justify-between pt-2 border-t dark:border-gray-600 mt-2">
                                     <span>Mano de Obra</span>

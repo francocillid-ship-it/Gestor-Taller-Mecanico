@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { supabase } from './supabaseClient';
 import type { Session, User } from '@supabase/supabase-js';
@@ -120,6 +121,7 @@ const App: React.FC = () => {
                             status: t.status,
                             fechaEntrada: t.fecha_entrada,
                             fechaSalida: t.fecha_salida,
+                            kilometraje: t.kilometraje, // Added kilometraje mapping
                         }));
                         setClientTrabajos(finalTrabajos as Trabajo[]);
                     }
