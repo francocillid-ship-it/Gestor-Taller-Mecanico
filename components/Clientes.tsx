@@ -1,23 +1,34 @@
 import React, { useState, useMemo } from 'react';
 import type { Cliente, Trabajo } from '../types';
-import { ChevronDownIcon, ChevronUpIcon, PhoneIcon, EnvelopeIcon, MagnifyingGlassIcon, UserPlusIcon, PencilIcon } from '@heroicons/react/24/solid';
+import { ChevronDownIcon, ChevronUpIcon, PhoneIcon, EnvelopeIcon, UserPlusIcon, PencilIcon } from '@heroicons/react/24/solid';
 import CrearClienteModal from './CrearClienteModal';
 
 interface ClientesProps {
     clientes: Cliente[];
     trabajos: Trabajo[];
     onDataRefresh: () => void;
+    searchQuery: string;
 }
 
 interface ClientCardProps {
     cliente: Cliente;
     trabajos: Trabajo[];
     onEdit: (cliente: Cliente) => void;
+    forceExpand?: boolean;
 }
 
-const ClientCard: React.FC<ClientCardProps> = ({ cliente, trabajos, onEdit }) => {
+const ClientCard: React.FC<ClientCardProps> = ({ cliente, trabajos, onEdit, forceExpand }) => {
     const [isExpanded, setIsExpanded] = useState(false);
     const clientTrabajos = trabajos.filter(t => t.clienteId === cliente.id);
+    
+    // Auto-expand if search is active (forceExpand)
+    React.useEffect(() => {
+        if (forceExpand) {
+            setIsExpanded(true);
+        } else {
+             setIsExpanded(false);
+        }
+    }, [forceExpand]);
 
     return (
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
@@ -87,8 +98,7 @@ const ClientCard: React.FC<ClientCardProps> = ({ cliente, trabajos, onEdit }) =>
     );
 };
 
-const Clientes: React.FC<ClientesProps> = ({ clientes, trabajos, onDataRefresh }) => {
-    const [searchQuery, setSearchQuery] = useState('');
+const Clientes: React.FC<ClientesProps> = ({ clientes, trabajos, onDataRefresh, searchQuery }) => {
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [clienteToEdit, setClienteToEdit] = useState<Cliente | null>(null);
 
@@ -121,16 +131,6 @@ const Clientes: React.FC<ClientesProps> = ({ clientes, trabajos, onDataRefresh }
             <div className="flex flex-col gap-4 sm:flex-row sm:justify-between sm:items-center">
                 <h2 className="text-2xl font-bold text-taller-dark dark:text-taller-light">Gestión de Clientes</h2>
                 <div className="flex flex-col sm:flex-row gap-3">
-                    <div className="relative">
-                        <input
-                            type="text"
-                            placeholder="Buscar cliente, vehículo..."
-                            value={searchQuery}
-                            onChange={e => setSearchQuery(e.target.value)}
-                            className="w-full sm:w-64 pl-10 pr-4 py-2 border dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-taller-primary bg-white dark:bg-gray-800 text-taller-dark dark:text-taller-light"
-                        />
-                        <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-taller-gray dark:text-gray-400"/>
-                    </div>
                      <button
                         onClick={() => setIsCreateModalOpen(true)}
                         className="flex items-center justify-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-taller-primary rounded-lg shadow-md hover:bg-taller-secondary focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-taller-primary transition-colors"
@@ -143,7 +143,13 @@ const Clientes: React.FC<ClientesProps> = ({ clientes, trabajos, onDataRefresh }
             <div className="space-y-4">
                 {filteredClientes.length > 0 ? (
                     filteredClientes.map(cliente => (
-                        <ClientCard key={cliente.id} cliente={cliente} trabajos={trabajos} onEdit={handleEditClick} />
+                        <ClientCard 
+                            key={cliente.id} 
+                            cliente={cliente} 
+                            trabajos={trabajos} 
+                            onEdit={handleEditClick} 
+                            forceExpand={searchQuery.length > 0} 
+                        />
                     ))
                 ) : (
                     <div className="text-center py-10 bg-white dark:bg-gray-800 rounded-lg shadow-md">

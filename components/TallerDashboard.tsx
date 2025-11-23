@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../supabaseClient';
 import type { Cliente, Trabajo, Gasto, JobStatus, TallerInfo } from '../types';
@@ -39,6 +38,7 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
     });
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [loading, setLoading] = useState(true);
+    const [searchQuery, setSearchQuery] = useState('');
 
     const fetchData = useCallback(async () => {
         setLoading(true);
@@ -108,6 +108,7 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
     useEffect(() => {
         localStorage.setItem('taller_view', view);
         setIsMobileMenuOpen(false);
+        setSearchQuery(''); // Reset search when changing views
     }, [view]);
 
     const handleUpdateStatus = async (trabajoId: string, newStatus: JobStatus) => {
@@ -146,15 +147,15 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
     const renderContent = () => {
         switch (view) {
             case 'dashboard':
-                return <Dashboard clientes={clientes} trabajos={trabajos} gastos={gastos} onDataRefresh={fetchData} />;
+                return <Dashboard clientes={clientes} trabajos={trabajos} gastos={gastos} onDataRefresh={fetchData} searchQuery={searchQuery} />;
             case 'trabajos':
-                return <Trabajos trabajos={trabajos} clientes={clientes} onUpdateStatus={handleUpdateStatus} onDataRefresh={fetchData} tallerInfo={tallerInfo} />;
+                return <Trabajos trabajos={trabajos} clientes={clientes} onUpdateStatus={handleUpdateStatus} onDataRefresh={fetchData} tallerInfo={tallerInfo} searchQuery={searchQuery} />;
             case 'clientes':
-                return <Clientes clientes={clientes} trabajos={trabajos} onDataRefresh={fetchData} />;
+                return <Clientes clientes={clientes} trabajos={trabajos} onDataRefresh={fetchData} searchQuery={searchQuery} />;
             case 'ajustes':
-                return <Ajustes tallerInfo={tallerInfo} onUpdateTallerInfo={handleUpdateTallerInfo} onLogout={onLogout} />;
+                return <Ajustes tallerInfo={tallerInfo} onUpdateTallerInfo={handleUpdateTallerInfo} onLogout={onLogout} searchQuery={searchQuery} />;
             default:
-                return <Dashboard clientes={clientes} trabajos={trabajos} gastos={gastos} onDataRefresh={fetchData} />;
+                return <Dashboard clientes={clientes} trabajos={trabajos} gastos={gastos} onDataRefresh={fetchData} searchQuery={searchQuery} />;
         }
     };
 
@@ -210,6 +211,8 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
                     tallerName={tallerInfo.nombre} 
                     onMenuClick={() => setIsMobileMenuOpen(true)} 
                     showMenuButton={tallerInfo.mobileNavStyle === 'sidebar'}
+                    searchQuery={searchQuery}
+                    onSearchChange={setSearchQuery}
                 />
                 
                 <main className="flex-1 overflow-y-auto p-4 md:p-6 scroll-smooth">

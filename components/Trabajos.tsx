@@ -1,10 +1,10 @@
-import React, { useMemo, useState } from 'react';
-// FIX: The 'TallerInfo' type is now imported from '../types' where it is defined, resolving the module export error.
+
+import React, { useMemo, useState, useEffect } from 'react';
 import type { Trabajo, Cliente, TallerInfo } from '../types';
 import { JobStatus } from '../types';
 import JobCard from './JobCard';
 import CrearTrabajoModal from './CrearTrabajoModal';
-import { PlusIcon } from '@heroicons/react/24/solid';
+import { PlusIcon, ChevronUpIcon, ChevronDownIcon } from '@heroicons/react/24/solid';
 
 interface TrabajosProps {
     trabajos: Trabajo[];
@@ -12,6 +12,7 @@ interface TrabajosProps {
     onUpdateStatus: (trabajoId: string, newStatus: JobStatus) => void;
     onDataRefresh: () => void;
     tallerInfo: TallerInfo;
+    searchQuery: string;
 }
 
 const statusOrder = [JobStatus.Presupuesto, JobStatus.Programado, JobStatus.EnProceso, JobStatus.Finalizado];
@@ -23,7 +24,21 @@ const StatusColumn: React.FC<{
     onUpdateStatus: (trabajoId: string, newStatus: JobStatus) => void;
     tallerInfo: TallerInfo;
     onDataRefresh: () => void;
-}> = ({ status, trabajos, clientes, onUpdateStatus, tallerInfo, onDataRefresh }) => {
+    searchQuery: string;
+}> = ({ status, trabajos, clientes, onUpdateStatus, tallerInfo, onDataRefresh, searchQuery }) => {
+    const [isExpanded, setIsExpanded] = useState(false);
+
+    // Effect to handle auto-expansion based on search results
+    useEffect(() => {
+        if (searchQuery.trim().length > 0) {
+            // If searching, only expand if there are matches in this column
+            // If no matches, collapse it to reduce visual noise
+            setIsExpanded(trabajos.length > 0);
+        } else {
+            // If search is cleared, revert to default collapsed state
+            setIsExpanded(false);
+        }
+    }, [searchQuery, trabajos.length]);
 
     const getStatusColor = (status: JobStatus) => {
         switch (status) {
@@ -36,13 +51,27 @@ const StatusColumn: React.FC<{
     };
 
     return (
-        <div className="w-full lg:w-80 bg-gray-100 dark:bg-gray-800 rounded-lg p-3 lg:flex-shrink-0">
-            <div className={`flex justify-between items-center mb-4 pb-2 border-b-2 ${getStatusColor(status)}`}>
-                 <h3 className="font-bold text-taller-dark dark:text-taller-light">{status}</h3>
-                 <span className="bg-taller-primary text-white text-xs font-semibold px-2 py-1 rounded-full">{trabajos.length}</span>
+        <div className={`w-full lg:w-80 bg-gray-100 dark:bg-gray-800 rounded-lg p-3 lg:flex-shrink-0 transition-all duration-500 ease-in-out ${!isExpanded ? 'h-fit' : ''}`}>
+            <div 
+                className={`flex justify-between items-center ${isExpanded ? 'mb-4 border-b-2' : ''} pb-2 ${getStatusColor(status)} cursor-pointer hover:opacity-80 transition-all duration-300`}
+                onClick={() => setIsExpanded(!isExpanded)}
+            >
+                 <div className="flex items-center gap-2">
+                    <h3 className="font-bold text-taller-dark dark:text-taller-light transition-colors duration-300">{status}</h3>
+                    <span className={`text-xs font-semibold px-2 py-1 rounded-full transition-all duration-300 ${trabajos.length > 0 ? 'bg-taller-primary text-white' : 'bg-gray-300 text-gray-600 dark:bg-gray-700 dark:text-gray-400'}`}>
+                        {trabajos.length}
+                    </span>
+                 </div>
+                 <div className="transform transition-transform duration-300">
+                    {isExpanded ? (
+                        <ChevronUpIcon className="h-5 w-5 text-taller-gray dark:text-gray-400" />
+                    ) : (
+                        <ChevronDownIcon className="h-5 w-5 text-taller-gray dark:text-gray-400" />
+                    )}
+                 </div>
             </div>
            
-            <div className="space-y-4 lg:overflow-y-auto lg:h-[calc(100vh-20rem)] lg:pr-1">
+            <div className={`space-y-4 lg:overflow-y-auto lg:pr-1 transition-all duration-500 ease-in-out ${isExpanded ? 'opacity-100 max-h-[1000px] lg:max-h-[calc(100vh-20rem)]' : 'opacity-0 max-h-0 overflow-hidden'}`}>
                 {trabajos.length > 0 ? (
                     trabajos.map(trabajo => {
                         const cliente = clientes.find(c => c.id === trabajo.clienteId);
@@ -61,7 +90,11 @@ const StatusColumn: React.FC<{
                         );
                     })
                 ) : (
-                    <p className="text-sm text-center text-taller-gray dark:text-gray-400 py-4">No hay trabajos en este estado.</p>
+                    <div className="py-8 text-center animate-pulse">
+                        <p className="text-sm text-taller-gray dark:text-gray-400">
+                            {searchQuery ? "No hay coincidencias en este estado." : "No hay trabajos en este estado."}
+                        </p>
+                    </div>
                 )}
             </div>
         </div>
@@ -69,15 +102,32 @@ const StatusColumn: React.FC<{
 };
 
 
-const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus, onDataRefresh, tallerInfo }) => {
+const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus, onDataRefresh, tallerInfo, searchQuery }) => {
     const [isJobModalOpen, setIsJobModalOpen] = useState(false);
     
     const trabajosByStatus = useMemo(() => {
+        let filteredTrabajos = trabajos;
+        if (searchQuery) {
+            const query = searchQuery.toLowerCase();
+            filteredTrabajos = trabajos.filter(t => {
+                const cliente = clientes.find(c => c.id === t.clienteId);
+                const vehiculo = cliente?.vehiculos.find(v => v.id === t.vehiculoId);
+                return (
+                    t.descripcion.toLowerCase().includes(query) ||
+                    cliente?.nombre.toLowerCase().includes(query) ||
+                    vehiculo?.marca.toLowerCase().includes(query) ||
+                    vehiculo?.modelo.toLowerCase().includes(query) ||
+                    vehiculo?.matricula.toLowerCase().includes(query) ||
+                    t.status.toLowerCase().includes(query)
+                );
+            });
+        }
+
         return statusOrder.reduce((acc, status) => {
-            acc[status] = trabajos.filter(t => t.status === status).sort((a,b) => new Date(b.fechaEntrada).getTime() - new Date(a.fechaEntrada).getTime());
+            acc[status] = filteredTrabajos.filter(t => t.status === status).sort((a,b) => new Date(b.fechaEntrada).getTime() - new Date(a.fechaEntrada).getTime());
             return acc;
         }, {} as Record<JobStatus, Trabajo[]>);
-    }, [trabajos]);
+    }, [trabajos, searchQuery, clientes]);
     
     return (
         <div className="h-full flex flex-col">
@@ -93,7 +143,7 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
                     </button>
                 </div>
             </div>
-            <div className="flex-1 flex flex-col gap-6 lg:flex-row lg:space-x-4 lg:overflow-x-auto pb-4">
+            <div className="flex-1 flex flex-col gap-4 lg:gap-6 lg:flex-row lg:space-x-4 lg:overflow-x-auto pb-4">
                 {statusOrder.map(status => (
                     <StatusColumn
                         key={status}
@@ -103,6 +153,7 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
                         onUpdateStatus={onUpdateStatus}
                         tallerInfo={tallerInfo}
                         onDataRefresh={onDataRefresh}
+                        searchQuery={searchQuery}
                     />
                 ))}
                 {/* Spacer for bottom nav on mobile */}

@@ -1,4 +1,5 @@
-import React, { useMemo, useState } from 'react';
+
+import React, { useMemo, useState, useEffect, useRef } from 'react';
 import type { Cliente, Trabajo, Gasto } from '../types';
 import { JobStatus } from '../types';
 import { CurrencyDollarIcon, UsersIcon, WrenchScrewdriverIcon, PlusIcon, PencilIcon, TrashIcon, ChartPieIcon, BuildingLibraryIcon, ScaleIcon } from '@heroicons/react/24/solid';
@@ -11,6 +12,7 @@ interface DashboardProps {
     trabajos: Trabajo[];
     gastos: Gasto[];
     onDataRefresh: () => void;
+    searchQuery: string;
 }
 
 interface StatCardProps {
@@ -34,11 +36,21 @@ const StatCard: React.FC<StatCardProps> = ({ title, value, icon, color }) => (
 
 type Period = 'this_month' | 'last_7_days' | 'last_15_days' | 'last_month';
 
-const Dashboard: React.FC<DashboardProps> = ({ clientes, trabajos, gastos, onDataRefresh }) => {
+const Dashboard: React.FC<DashboardProps> = ({ clientes, trabajos, gastos, onDataRefresh, searchQuery }) => {
     const [isAddGastoModalOpen, setIsAddGastoModalOpen] = useState(false);
     const [gastoToEdit, setGastoToEdit] = useState<Gasto | null>(null);
     const [period, setPeriod] = useState<Period>('this_month');
     const [confirmingDeleteGastoId, setConfirmingDeleteGastoId] = useState<string | null>(null);
+    
+    // Referencia para la sección de gastos
+    const gastosSectionRef = useRef<HTMLDivElement>(null);
+
+    // Efecto para hacer scroll a la sección de gastos cuando se busca
+    useEffect(() => {
+        if (searchQuery && gastosSectionRef.current) {
+            gastosSectionRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+    }, [searchQuery]);
 
     const stats = useMemo(() => {
         const formatCurrency = (amount: number) => new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(amount);
@@ -151,8 +163,16 @@ const Dashboard: React.FC<DashboardProps> = ({ clientes, trabajos, gastos, onDat
     };
 
     const recentGastos = useMemo(() => {
-        return [...gastos].slice(0, 10);
-    }, [gastos]);
+        let filtered = [...gastos];
+        if (searchQuery) {
+            const query = searchQuery.toLowerCase();
+            filtered = filtered.filter(g => 
+                g.descripcion.toLowerCase().includes(query) || 
+                g.monto.toString().includes(query)
+            );
+        }
+        return filtered.slice(0, 10);
+    }, [gastos, searchQuery]);
 
     const FilterControls = () => (
         <div className="flex flex-wrap items-center gap-2 bg-white dark:bg-gray-800 p-2 rounded-lg shadow-sm">
@@ -188,7 +208,7 @@ const Dashboard: React.FC<DashboardProps> = ({ clientes, trabajos, gastos, onDat
                 <StatCard title="Total Clientes" value={stats.totalClientes} icon={<UsersIcon className="h-6 w-6 text-white"/>} color="bg-purple-500" />
             </div>
 
-            <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md">
+            <div ref={gastosSectionRef} className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md scroll-mt-24">
                 <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 gap-4">
                     <h3 className="text-lg font-bold text-taller-dark dark:text-taller-light">Gastos Recientes</h3>
                     <button
@@ -231,7 +251,7 @@ const Dashboard: React.FC<DashboardProps> = ({ clientes, trabajos, gastos, onDat
                                 )}
                             </div>
                         </div>
-                    )) : <p className="text-center text-taller-gray dark:text-gray-400 py-4">No hay gastos registrados.</p>}
+                    )) : <p className="text-center text-taller-gray dark:text-gray-400 py-4">No hay gastos registrados que coincidan con la búsqueda.</p>}
                 </div>
             </div>
 
