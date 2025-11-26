@@ -118,6 +118,7 @@ const App: React.FC = () => {
                         
                         const finalTrabajos = (trabajosData || []).map(t => ({
                             id: t.id,
+                            tallerId: t.taller_id,
                             clienteId: t.cliente_id,
                             vehiculoId: t.vehiculo_id,
                             descripcion: t.descripcion,
@@ -127,7 +128,7 @@ const App: React.FC = () => {
                             status: t.status,
                             fechaEntrada: t.fecha_entrada,
                             fechaSalida: t.fecha_salida,
-                            kilometraje: t.kilometraje, // Added kilometraje mapping
+                            kilometraje: t.kilometraje,
                         }));
                         setClientTrabajos(finalTrabajos as Trabajo[]);
                     }

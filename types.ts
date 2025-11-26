@@ -24,6 +24,7 @@ export interface Pago {
 
 export interface Trabajo {
     id: string;
+    tallerId: string; // Nuevo campo para identificar el taller y calcular secuencia
     clienteId: string;
     vehiculoId: string;
     descripcion: string;
@@ -33,7 +34,7 @@ export interface Trabajo {
     status: JobStatus;
     fechaEntrada: string;
     fechaSalida?: string;
-    kilometraje?: number; // Nuevo campo
+    kilometraje?: number;
 }
 
 export interface Vehiculo {

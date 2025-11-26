@@ -72,6 +72,7 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
             if (trabajosData) {
                  const mappedTrabajos = trabajosData.map(t => ({
                     id: t.id,
+                    tallerId: t.taller_id,
                     clienteId: t.cliente_id,
                     vehiculoId: t.vehiculo_id,
                     descripcion: t.descripcion,
@@ -81,7 +82,7 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
                     status: t.status,
                     fechaEntrada: t.fecha_entrada,
                     fechaSalida: t.fecha_salida,
-                    kilometraje: t.kilometraje, // Added kilometraje mapping
+                    kilometraje: t.kilometraje,
                 }));
                 setTrabajos(mappedTrabajos as Trabajo[]);
             }

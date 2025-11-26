@@ -3,6 +3,7 @@ import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import type { Trabajo, Cliente, Vehiculo, TallerInfo } from '../types';
 import { JobStatus as JobStatusEnum } from '../types';
+import { supabase } from '../supabaseClient';
 
 export const generateClientPDF = async (
     trabajo: Trabajo,
@@ -17,6 +18,34 @@ export const generateClientPDF = async (
     const primaryColor = '#1e40af';
     const lightBgColor = '#f1f5f9';
     const lightTextColor = '#64748b';
+
+    // --- CALCULATE SEQUENTIAL NUMBER ---
+    let formattedNumber = trabajo.id.substring(0, 8); // Fallback
+
+    if (trabajo.tallerId) {
+        try {
+            // Count how many jobs exist for this taller created before or at the same time as this one
+            // We use fecha_entrada as the primary sorting key, and created_at (if available internally) or ID as secondary to be deterministic
+            // Since we can't easily rely on 'created_at' in the frontend type, we fetch a light list and calculate index
+            
+            const { data: allJobs } = await supabase
+                .from('trabajos')
+                .select('id, fecha_entrada') // We select minimal fields
+                .eq('taller_id', trabajo.tallerId)
+                .order('fecha_entrada', { ascending: true })
+                .order('id', { ascending: true }); // Deterministic tie-breaker
+            
+            if (allJobs) {
+                const index = allJobs.findIndex(j => j.id === trabajo.id);
+                if (index !== -1) {
+                    const sequenceNumber = index + 1;
+                    formattedNumber = sequenceNumber.toString().padStart(6, '0');
+                }
+            }
+        } catch (e) {
+            console.error("Error calculating sequence number", e);
+        }
+    }
 
     // --- HEADER ---
     doc.setFillColor(primaryColor);
@@ -71,7 +100,8 @@ export const generateClientPDF = async (
     doc.text(docTitle, a4Width - margin, 45, { align: 'right' });
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
-    doc.text(`N°: ${trabajo.id.substring(0, 8)}`, a4Width - margin, 52, { align: 'right' });
+    // Updated Numbering
+    doc.text(`N°: ${formattedNumber}`, a4Width - margin, 52, { align: 'right' });
     doc.text(`Fecha: ${new Date(trabajo.fechaEntrada).toLocaleDateString('es-ES')}`, a4Width - margin, 59, { align: 'right' });
 
     // --- CLIENT & VEHICLE INFO ---
