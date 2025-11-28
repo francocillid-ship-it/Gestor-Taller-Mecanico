@@ -1,7 +1,8 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import type { TallerInfo } from '../types';
 import { supabase } from '../supabaseClient';
-import { ArrowRightOnRectangleIcon, BuildingOffice2Icon, PhotoIcon, ArrowUpOnSquareIcon, PaintBrushIcon, DevicePhoneMobileIcon, SunIcon, MoonIcon, ComputerDesktopIcon, DocumentTextIcon, SparklesIcon, CheckCircleIcon, ExclamationTriangleIcon, KeyIcon } from '@heroicons/react/24/solid';
+import { ArrowRightOnRectangleIcon, BuildingOffice2Icon, PhotoIcon, ArrowUpOnSquareIcon, PaintBrushIcon, DevicePhoneMobileIcon, SunIcon, MoonIcon, ComputerDesktopIcon, DocumentTextIcon, SparklesIcon, CheckCircleIcon, ExclamationTriangleIcon, KeyIcon, ArrowTopRightOnSquareIcon } from '@heroicons/react/24/solid';
 import ChangePasswordModal from './ChangePasswordModal';
 
 interface AjustesProps {
@@ -220,6 +221,14 @@ const Ajustes: React.FC<AjustesProps> = ({ tallerInfo, onUpdateTallerInfo, onLog
                             <h3 className="text-lg font-bold mb-2 flex items-center"><SparklesIcon className="h-6 w-6 mr-2 text-taller-primary"/>Integración con IA (Gemini)</h3>
                             <p className="text-sm text-taller-gray dark:text-gray-400 mb-4">
                                 Usa la cámara para escanear y rellenar datos del vehículo automáticamente. Ingresa tu API Key de Google AI Studio para activar esta función.
+                                {geminiStatus !== 'active' && (
+                                     <>
+                                        {' '}
+                                        <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="text-taller-primary hover:underline font-medium inline-flex items-center gap-1">
+                                            Obtén tu API Key gratis aquí <ArrowTopRightOnSquareIcon className="h-3 w-3"/>
+                                        </a>
+                                    </>
+                                )}
                             </p>
                             <div className="space-y-2">
                                 <label htmlFor="gemini-api-key" className="block text-sm font-medium text-taller-gray dark:text-gray-400">Tu API Key de Gemini</label>
