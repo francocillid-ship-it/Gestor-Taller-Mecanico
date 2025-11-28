@@ -2,13 +2,14 @@
 import React, { useState, useEffect } from 'react';
 import type { UserRole } from '../types';
 import { supabase } from '../supabaseClient';
-import { WrenchScrewdriverIcon, UserIcon, ArrowLeftIcon, CheckCircleIcon, XCircleIcon } from '@heroicons/react/24/solid';
+import { WrenchScrewdriverIcon, ArrowLeftIcon, CheckCircleIcon, XCircleIcon } from '@heroicons/react/24/solid';
 
-type View = 'selection' | 'login' | 'signup' | 'forgotPassword';
+type View = 'login' | 'signup' | 'forgotPassword';
 
 const Login: React.FC = () => {
-    const [view, setView] = useState<View>('selection');
-    const [role, setRole] = useState<UserRole | null>(null);
+    const [view, setView] = useState<View>('login');
+    // Default role to 'taller', user cannot change this during signup anymore
+    const [role, setRole] = useState<UserRole>('taller');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
@@ -19,24 +20,15 @@ const Login: React.FC = () => {
     const [passwordValid, setPasswordValid] = useState(false);
 
     useEffect(() => {
-        if (view === 'signup' && role === 'taller') {
+        if (view === 'signup') {
             const hasLength = password.length >= 6;
             const hasContent = /^(?=.*[A-Za-z])(?=.*\d).+$/.test(password);
             const matches = password === confirmPassword && password !== '';
             setPasswordValid(hasLength && hasContent && matches);
         } else {
-            setPasswordValid(true); // Validation not needed for login or client signup
+            setPasswordValid(true); // Validation not needed for login
         }
-    }, [password, confirmPassword, view, role]);
-
-    const handleRoleSelect = (selectedRole: UserRole) => {
-        setRole(selectedRole);
-        setView('login');
-        setError(null);
-        setSuccessMessage(null);
-        setPassword('');
-        setConfirmPassword('');
-    };
+    }, [password, confirmPassword, view]);
 
     const handleAuthAction = async (action: 'login' | 'signup') => {
         setLoading(true);
@@ -45,6 +37,7 @@ const Login: React.FC = () => {
 
         try {
             if (action === 'login') {
+                // Login is generic, role is determined by metadata after login in App.tsx
                 const { error } = await supabase.auth.signInWithPassword({ email, password });
                 if (error) throw error;
             } else if (action === 'signup') {
@@ -53,7 +46,7 @@ const Login: React.FC = () => {
                     password,
                     options: {
                         data: {
-                            role: role,
+                            role: 'taller', // Always register as taller from the public signup form
                         },
                     },
                 });
@@ -84,44 +77,19 @@ const Login: React.FC = () => {
             setLoading(false);
         }
     };
-
-    const renderSelectionView = () => (
-        <>
-            <div className="flex justify-center">
-                <WrenchScrewdriverIcon className="h-16 w-16 text-taller-primary"/>
-            </div>
-            <h1 className="text-3xl font-bold text-taller-dark dark:text-taller-light">Bienvenido a Gestor Taller</h1>
-            <p className="text-taller-gray dark:text-gray-400">
-                Seleccione su tipo de acceso para continuar.
-            </p>
-            <div className="space-y-4 pt-4">
-                <button
-                    onClick={() => handleRoleSelect('taller')}
-                    className="w-full flex items-center justify-center gap-3 px-4 py-3 font-semibold text-white bg-taller-primary rounded-lg shadow-md hover:bg-taller-secondary focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-taller-secondary transition-transform transform hover:scale-105"
-                >
-                    <WrenchScrewdriverIcon className="h-6 w-6" />
-                    <span>Entrar como Taller</span>
-                </button>
-                <button
-                    onClick={() => handleRoleSelect('cliente')}
-                    className="w-full flex items-center justify-center gap-3 px-4 py-3 font-semibold text-taller-primary bg-taller-light border border-taller-primary rounded-lg hover:bg-blue-100 dark:bg-gray-700 dark:text-taller-light dark:border-taller-secondary dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-taller-primary transition-transform transform hover:scale-105"
-                >
-                    <UserIcon className="h-6 w-6" />
-                    <span>Entrar como Cliente</span>
-                </button>
-            </div>
-        </>
-    );
     
     const renderForgotPasswordForm = () => (
          <>
             <button onClick={() => { setView('login'); setError(null); setSuccessMessage(null); }} className="absolute top-4 left-4 text-taller-gray hover:text-taller-dark dark:hover:text-taller-light">
                 <ArrowLeftIcon className="h-6 w-6"/>
             </button>
-            <h2 className="text-2xl font-bold text-taller-dark dark:text-taller-light pt-8">
+            <div className="flex justify-center mb-4">
+                <WrenchScrewdriverIcon className="h-12 w-12 text-taller-primary"/>
+            </div>
+            <h2 className="text-2xl font-bold text-taller-dark dark:text-taller-light mb-2">
                 Restablecer Contraseña
             </h2>
-             <p className="text-sm text-taller-gray dark:text-gray-400">
+             <p className="text-sm text-taller-gray dark:text-gray-400 mb-6">
                 Ingresa tu email y te enviaremos las instrucciones.
             </p>
             <form
@@ -132,7 +100,7 @@ const Login: React.FC = () => {
                 className="space-y-4"
             >
                 <div>
-                    <label htmlFor="email" className="block text-sm font-medium text-taller-gray dark:text-gray-400">Email</label>
+                    <label htmlFor="email" className="block text-sm font-medium text-taller-gray dark:text-gray-400 text-left">Email</label>
                     <input type="email" id="email" value={email} onChange={e => setEmail(e.target.value)} className="mt-1 block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-taller-primary focus:border-taller-primary text-taller-dark dark:text-taller-light sm:text-sm" required/>
                 </div>
                 {error && <p className="text-sm text-red-600">{error}</p>}
@@ -148,34 +116,39 @@ const Login: React.FC = () => {
 
     const renderAuthForm = () => (
         <>
-            <button onClick={() => { setView('selection'); setRole(null); }} className="absolute top-4 left-4 text-taller-gray hover:text-taller-dark dark:hover:text-taller-light">
-                <ArrowLeftIcon className="h-6 w-6"/>
-            </button>
-            <h2 className="text-2xl font-bold text-taller-dark dark:text-taller-light pt-8">
-                {view === 'login' ? 'Iniciar Sesión' : 'Crear Cuenta'} como <span className="capitalize text-taller-primary">{role}</span>
+            {view === 'signup' && (
+                <button onClick={() => { setView('login'); setError(null); }} className="absolute top-4 left-4 text-taller-gray hover:text-taller-dark dark:hover:text-taller-light">
+                    <ArrowLeftIcon className="h-6 w-6"/>
+                </button>
+            )}
+            
+            <div className="flex justify-center mb-4">
+                <WrenchScrewdriverIcon className="h-12 w-12 text-taller-primary"/>
+            </div>
+
+            <h2 className="text-2xl font-bold text-taller-dark dark:text-taller-light mb-6">
+                {view === 'login' ? 'Iniciar Sesión' : 'Registrar Taller'}
             </h2>
+
             <form
                 onSubmit={(e) => {
                     e.preventDefault();
-                    // FIX: Resolved a TypeScript error by narrowing the type of the `view` variable. The `if` condition now explicitly checks for 'login' or 'signup' before calling `handleAuthAction`, ensuring type safety.
-                    if (view === 'login' || view === 'signup') {
-                        handleAuthAction(view);
-                    }
+                    handleAuthAction(view);
                 }}
                 className="space-y-4"
             >
                 <div>
-                    <label htmlFor="email" className="block text-sm font-medium text-taller-gray dark:text-gray-400">Email</label>
+                    <label htmlFor="email" className="block text-sm font-medium text-taller-gray dark:text-gray-400 text-left">Email</label>
                     <input type="email" id="email" value={email} onChange={e => setEmail(e.target.value)} className="mt-1 block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-taller-primary focus:border-taller-primary text-taller-dark dark:text-taller-light sm:text-sm" required/>
                 </div>
                  <div>
-                    <label htmlFor="password" className="block text-sm font-medium text-taller-gray dark:text-gray-400">Contraseña</label>
+                    <label htmlFor="password" className="block text-sm font-medium text-taller-gray dark:text-gray-400 text-left">Contraseña</label>
                     <input type="password" id="password" value={password} onChange={e => setPassword(e.target.value)} className="mt-1 block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-taller-primary focus:border-taller-primary text-taller-dark dark:text-taller-light sm:text-sm" required/>
                 </div>
-                {view === 'signup' && role === 'taller' && (
+                {view === 'signup' && (
                     <>
                         <div>
-                            <label htmlFor="confirmPassword" className="block text-sm font-medium text-taller-gray dark:text-gray-400">Confirmar Contraseña</label>
+                            <label htmlFor="confirmPassword" className="block text-sm font-medium text-taller-gray dark:text-gray-400 text-left">Confirmar Contraseña</label>
                             <input type="password" id="confirmPassword" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} className="mt-1 block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-taller-primary focus:border-taller-primary text-taller-dark dark:text-taller-light sm:text-sm" required/>
                         </div>
                         <div className="text-xs text-left text-taller-gray dark:text-gray-400 space-y-1 pt-1">
@@ -227,32 +200,28 @@ const Login: React.FC = () => {
                  {error && <p className="text-sm text-red-600">{error}</p>}
                 <div className="pt-2">
                     <button type="submit" disabled={loading || !passwordValid} className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-taller-primary hover:bg-taller-secondary focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-taller-primary disabled:opacity-50 disabled:cursor-not-allowed">
-                        {loading ? 'Procesando...' : (view === 'login' ? 'Iniciar Sesión' : 'Crear Cuenta')}
+                        {loading ? 'Procesando...' : (view === 'login' ? 'Iniciar Sesión' : 'Registrarse')}
                     </button>
                 </div>
             </form>
-            <p className="text-sm text-center text-taller-gray dark:text-gray-400">
-                {view === 'login' ? (
-                    role === 'taller' ? (
+            <div className="mt-6">
+                <p className="text-sm text-center text-taller-gray dark:text-gray-400">
+                    {view === 'login' ? (
                         <>
-                            ¿No tienes una cuenta? <button onClick={() => { setView('signup'); setError(null); setPassword(''); }} className="font-medium text-taller-primary hover:underline">Crea una</button>
+                            ¿No tienes una cuenta? <button onClick={() => { setView('signup'); setError(null); setPassword(''); }} className="font-medium text-taller-primary hover:underline">Registra tu Taller</button>
                         </>
                     ) : (
-                        <span className="text-xs block mt-2 opacity-75">Solicite su acceso a su taller de confianza.</span>
-                    )
-                ) : (
-                     <>
-                        ¿Ya tienes una cuenta? <button onClick={() => { setView('login'); setError(null); setPassword(''); setConfirmPassword(''); }} className="font-medium text-taller-primary hover:underline">Inicia sesión</button>
-                    </>
-                )}
-            </p>
+                         <>
+                            ¿Ya tienes una cuenta? <button onClick={() => { setView('login'); setError(null); setPassword(''); setConfirmPassword(''); }} className="font-medium text-taller-primary hover:underline">Inicia sesión</button>
+                        </>
+                    )}
+                </p>
+            </div>
         </>
     )
 
     const renderCurrentView = () => {
         switch (view) {
-            case 'selection':
-                return renderSelectionView();
             case 'forgotPassword':
                 return renderForgotPasswordForm();
             default:

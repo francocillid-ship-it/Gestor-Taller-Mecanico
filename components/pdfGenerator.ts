@@ -13,6 +13,7 @@ export const generateClientPDF = async (
 ): Promise<void> => {
     const doc = new jsPDF();
     const a4Width = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
     const margin = 15;
     const mainTextColor = '#0f172a';
     const primaryColor = '#1e40af';
@@ -25,9 +26,6 @@ export const generateClientPDF = async (
     if (trabajo.tallerId) {
         try {
             // Count how many jobs exist for this taller created before or at the same time as this one
-            // We use fecha_entrada as the primary sorting key, and created_at (if available internally) or ID as secondary to be deterministic
-            // Since we can't easily rely on 'created_at' in the frontend type, we fetch a light list and calculate index
-            
             const { data: allJobs } = await supabase
                 .from('trabajos')
                 .select('id, fecha_entrada') // We select minimal fields
@@ -48,12 +46,12 @@ export const generateClientPDF = async (
     }
 
     // --- HEADER ---
-    doc.setFillColor(primaryColor);
-    doc.rect(0, 0, a4Width, 30, 'F');
-    doc.setTextColor('#FFFFFF');
-    doc.setFont('helvetica', 'bold');
+    const drawHeader = async (logoOffset = 0) => {
+        doc.setFillColor(primaryColor);
+        doc.rect(0, 0, a4Width, 30, 'F');
+        doc.setTextColor('#FFFFFF');
+        doc.setFont('helvetica', 'bold');
 
-    const renderHeaderText = (logoOffset = 0) => {
         doc.setFontSize(20);
         doc.text(tallerInfo.nombre || 'Mi Taller', margin + logoOffset, 15);
         doc.setFontSize(9);
@@ -64,33 +62,39 @@ export const generateClientPDF = async (
         doc.text(`${address} | Tel: ${phone} | CUIT: ${cuit}`, margin + logoOffset, 22);
     };
 
+    let logoImgData: string | null = null;
+    let logoWidth = 0;
+
     if (tallerInfo.showLogoOnPdf && tallerInfo.logoUrl) {
         try {
             const response = await fetch(tallerInfo.logoUrl);
             if (!response.ok) throw new Error('Network response was not ok');
             const blob = await response.blob();
             
-            const imageBase64 = await new Promise<string>((resolve, reject) => {
+            logoImgData = await new Promise<string>((resolve, reject) => {
                 const reader = new FileReader();
                 reader.onloadend = () => resolve(reader.result as string);
                 reader.onerror = reject;
                 reader.readAsDataURL(blob);
             });
 
-            const imgProps = doc.getImageProperties(imageBase64);
+            const imgProps = doc.getImageProperties(logoImgData);
             const aspectRatio = imgProps.width / imgProps.height;
             const imgHeight = 20;
-            const imgWidth = imgHeight * aspectRatio;
-
-            doc.addImage(imageBase64, 'PNG', margin, 5, imgWidth, imgHeight);
-            renderHeaderText(imgWidth + 5);
+            logoWidth = imgHeight * aspectRatio;
         } catch (error) {
             console.error("Could not add logo to PDF, rendering without it.", error);
-            renderHeaderText();
         }
-    } else {
-        renderHeaderText();
     }
+
+    // Draw header content
+    if (logoImgData) {
+        doc.addImage(logoImgData, 'PNG', margin, 5, logoWidth, 20);
+        await drawHeader(logoWidth + 5);
+    } else {
+        await drawHeader();
+    }
+
 
     // --- DOCUMENT TITLE ---
     const docTitle = trabajo.status === JobStatusEnum.Presupuesto ? 'PRESUPUESTO' : 'RECIBO';
@@ -151,7 +155,6 @@ export const generateClientPDF = async (
                     styles: { fontStyle: 'bold', fillColor: '#f1f5f9', textColor: '#0f172a', halign: 'left' }
                 }];
             } else if (p.nombre) {
-                // Removed [SERVICIO] prefix as requested
                 const description = p.nombre;
                 return [
                     p.cantidad,
@@ -180,28 +183,46 @@ export const generateClientPDF = async (
             styles: {
                 cellPadding: 2,
                 fontSize: 9,
-            }
+            },
+            margin: { bottom: 25 }, // Ensure table doesn't hit the very bottom
         });
     }
     
-    // --- TOTALS ---
+    // --- TOTALS & PAGE BREAK LOGIC ---
     let finalY = (doc as any).lastAutoTable?.finalY || lastDescLineY + 10;
     const totalPagado = trabajo.partes.filter(p => p.nombre === '__PAGO_REGISTRADO__').reduce((sum, p) => sum + p.precioUnitario, 0);
+    const tableTotal = partesSinPagos.filter(p => !p.isCategory).reduce((sum, p) => sum + (p.cantidad * p.precioUnitario), 0);
+    const isLegacyLabor = !hasServices && trabajo.costoManoDeObra;
+    const showPayments = trabajo.status !== JobStatusEnum.Presupuesto && totalPagado > 0;
+
+    // Calculate height needed for the Totals Block
+    // Base lines (Subtotal + Total) ~ 25 units
+    // Optional Labor ~ 7 units
+    // Optional Payments/Balance ~ 14 units
+    // Margin buffer ~ 20 units (footer area)
+    let requiredHeight = 25; 
+    if (isLegacyLabor) requiredHeight += 7;
+    if (showPayments) requiredHeight += 14;
+    const footerMargin = 25;
+
+    // Check if we need to add a new page
+    if (finalY + requiredHeight > pageHeight - footerMargin) {
+        doc.addPage();
+        finalY = 20; // Start at top of new page
+    }
     
+    // --- DRAW TOTALS ---
     const totalsX = a4Width / 2;
     const valuesX = a4Width - margin;
 
     doc.setFontSize(10);
-    
-    // Calculate subtotal of items listed in table
-    const tableTotal = partesSinPagos.filter(p => !p.isCategory).reduce((sum, p) => sum + (p.cantidad * p.precioUnitario), 0);
     
     doc.text(`Subtotal:`, totalsX, finalY + 10);
     doc.text(formatCurrencyPDF(tableTotal), valuesX, finalY + 10, { align: 'right' });
     
     let extraOffset = 0;
     // Only show "Mano de Obra" line if it's a legacy record (has cost but no service items)
-    if (!hasServices && trabajo.costoManoDeObra) {
+    if (isLegacyLabor) {
         doc.text(`Mano de Obra:`, totalsX, finalY + 17);
         doc.text(formatCurrencyPDF(trabajo.costoManoDeObra || 0), valuesX, finalY + 17, { align: 'right' });
         extraOffset = 7;
@@ -217,7 +238,7 @@ export const generateClientPDF = async (
     doc.setFont('helvetica', 'normal');
     finalY += 22 + extraOffset;
     
-    if (trabajo.status !== JobStatusEnum.Presupuesto && totalPagado > 0) {
+    if (showPayments) {
         doc.setFontSize(10);
         doc.setTextColor(mainTextColor);
         doc.text(`Total Pagado:`, totalsX, finalY + 7);
@@ -228,17 +249,26 @@ export const generateClientPDF = async (
         doc.text(formatCurrencyPDF(trabajo.costoEstimado - totalPagado), valuesX, finalY + 14, { align: 'right' });
     }
     
-    // --- FOOTER ---
+    // --- FOOTER ON ALL PAGES ---
     const footerText = trabajo.status === JobStatusEnum.Presupuesto
         ? 'Validez del presupuesto: 30 días.'
         : '¡Gracias por su confianza!';
+    
+    const totalPages = doc.getNumberOfPages();
 
-    const pageHeight = doc.internal.pageSize.getHeight();
-    doc.setLineWidth(0.2);
-    doc.line(margin, pageHeight - 20, a4Width - margin, pageHeight - 20);
-    doc.setFontSize(9);
-    doc.setTextColor(lightTextColor);
-    doc.text(footerText, a4Width / 2, pageHeight - 15, { align: 'center' });
+    for (let i = 1; i <= totalPages; i++) {
+        doc.setPage(i);
+        doc.setLineWidth(0.2);
+        doc.setDrawColor(200, 200, 200);
+        doc.line(margin, pageHeight - 20, a4Width - margin, pageHeight - 20);
+        
+        doc.setFontSize(9);
+        doc.setTextColor(lightTextColor);
+        doc.text(footerText, a4Width / 2, pageHeight - 15, { align: 'center' });
+        
+        doc.setFontSize(8);
+        doc.text(`Página ${i} de ${totalPages}`, a4Width - margin, pageHeight - 15, { align: 'right' });
+    }
 
     doc.save(`${docTitle.toLowerCase()}-${cliente?.nombre?.replace(' ', '_') || 'cliente'}.pdf`);
 };

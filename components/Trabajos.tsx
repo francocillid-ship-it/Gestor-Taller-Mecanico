@@ -71,7 +71,7 @@ const StatusColumn: React.FC<{
                  </div>
             </div>
            
-            <div className={`space-y-4 lg:overflow-y-auto lg:pr-1 transition-all duration-500 ease-in-out ${isExpanded ? 'opacity-100 max-h-[1000px] lg:max-h-[calc(100vh-20rem)]' : 'opacity-0 max-h-0 overflow-hidden'}`}>
+            <div className={`space-y-4 overflow-y-auto lg:pr-1 transition-all duration-500 ease-in-out ${isExpanded ? 'opacity-100 max-h-[5000px] lg:max-h-[calc(100vh-20rem)]' : 'opacity-0 max-h-0 overflow-hidden'}`}>
                 {trabajos.length > 0 ? (
                     trabajos.map(trabajo => {
                         const cliente = clientes.find(c => c.id === trabajo.clienteId);
