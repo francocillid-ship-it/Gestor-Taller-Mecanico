@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { supabase } from '../supabaseClient';
 import { XMarkIcon, CameraIcon } from '@heroicons/react/24/solid';
@@ -25,11 +26,14 @@ const AddVehicleModal: React.FC<AddVehicleModalProps> = ({ onClose, onSuccess, c
         setIsSubmitting(true);
         setError('');
 
-        const yearNumber = parseInt(año);
-        if (isNaN(yearNumber) || yearNumber <= 1900 || yearNumber > new Date().getFullYear() + 2) {
-            setError('Por favor, ingrese un año válido para el vehículo.');
-            setIsSubmitting(false);
-            return;
+        let yearNumber: number | null = null;
+        if (año.trim() !== '') {
+            yearNumber = parseInt(año);
+            if (isNaN(yearNumber) || yearNumber <= 1900 || yearNumber > new Date().getFullYear() + 2) {
+                setError('Por favor, ingrese un año válido para el vehículo.');
+                setIsSubmitting(false);
+                return;
+            }
         }
 
         try {
@@ -82,8 +86,8 @@ const AddVehicleModal: React.FC<AddVehicleModalProps> = ({ onClose, onSuccess, c
                                 <input type="text" id="modelo" value={modelo} onChange={e => setModelo(e.target.value)} className="mt-1 block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-taller-primary focus:border-taller-primary text-taller-dark dark:text-taller-light sm:text-sm" required />
                             </div>
                             <div>
-                                <label htmlFor="año" className="block text-sm font-medium text-taller-gray dark:text-gray-400">Año</label>
-                                <input type="number" id="año" value={año} onChange={e => setAño(e.target.value)} className="mt-1 block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-taller-primary focus:border-taller-primary text-taller-dark dark:text-taller-light sm:text-sm" required />
+                                <label htmlFor="año" className="block text-sm font-medium text-taller-gray dark:text-gray-400">Año (Opcional)</label>
+                                <input type="number" id="año" value={año} onChange={e => setAño(e.target.value)} className="mt-1 block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-taller-primary focus:border-taller-primary text-taller-dark dark:text-taller-light sm:text-sm" />
                             </div>
                             <div>
                                 <label htmlFor="matricula" className="block text-sm font-medium text-taller-gray dark:text-gray-400">Matrícula</label>

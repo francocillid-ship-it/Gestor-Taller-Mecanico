@@ -47,9 +47,30 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) return;
 
-            // Fetch Taller Info from user metadata
-            if (user.user_metadata?.taller_info) {
-                setTallerInfo(prev => ({ ...prev, ...user.user_metadata.taller_info }));
+            // Fetch Taller Info from dedicated table
+            const { data: tallerInfoData, error: tallerInfoError } = await supabase
+                .from('taller_info')
+                .select('*')
+                .eq('taller_id', user.id)
+                .maybeSingle();
+
+            if (!tallerInfoError && tallerInfoData) {
+                // Map snake_case database columns to camelCase TallerInfo type
+                setTallerInfo({
+                    nombre: tallerInfoData.nombre || '',
+                    telefono: tallerInfoData.telefono || '',
+                    direccion: tallerInfoData.direccion || '',
+                    cuit: tallerInfoData.cuit || '',
+                    logoUrl: tallerInfoData.logo_url,
+                    pdfTemplate: tallerInfoData.pdf_template || 'classic',
+                    mobileNavStyle: tallerInfoData.mobile_nav_style || 'sidebar',
+                    showLogoOnPdf: tallerInfoData.show_logo_on_pdf || false,
+                });
+            } else if (!tallerInfoData) {
+                // Fallback to metadata if table is empty (migration scenario)
+                if (user.user_metadata?.taller_info) {
+                    setTallerInfo(prev => ({ ...prev, ...user.user_metadata.taller_info }));
+                }
             }
 
             // Fetch Clientes
@@ -136,11 +157,27 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
              const { data: { user } } = await supabase.auth.getUser();
              if (!user) return;
 
-             const { error } = await supabase.auth.updateUser({
+             // Update in Database Table
+             const { error: dbError } = await supabase.from('taller_info').upsert({
+                 taller_id: user.id,
+                 nombre: newInfo.nombre,
+                 telefono: newInfo.telefono,
+                 direccion: newInfo.direccion,
+                 cuit: newInfo.cuit,
+                 logo_url: newInfo.logoUrl,
+                 pdf_template: newInfo.pdfTemplate,
+                 mobile_nav_style: newInfo.mobileNavStyle,
+                 show_logo_on_pdf: newInfo.showLogoOnPdf,
+                 updated_at: new Date().toISOString()
+             });
+
+             if (dbError) throw dbError;
+
+             // Keep metadata in sync just in case, but app relies on DB now
+             await supabase.auth.updateUser({
                  data: { taller_info: newInfo }
              });
 
-             if (error) throw error;
              setTallerInfo(newInfo);
         } catch (error) {
             console.error("Error updating taller info:", error);

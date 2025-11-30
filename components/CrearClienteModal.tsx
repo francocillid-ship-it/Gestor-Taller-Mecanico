@@ -18,6 +18,7 @@ const toTitleCase = (str: string) => str.replace(/\p{L}+/gu, (txt) => txt.charAt
 
 const CrearClienteModal: React.FC<CrearClienteModalProps> = ({ onClose, onSuccess, clienteToEdit }) => {
     const [nombre, setNombre] = useState('');
+    const [apellido, setApellido] = useState('');
     const [email, setEmail] = useState('');
     const [telefono, setTelefono] = useState('');
     const [marca, setMarca] = useState('');
@@ -44,9 +45,10 @@ const CrearClienteModal: React.FC<CrearClienteModalProps> = ({ onClose, onSucces
         setContactApiAvailable('contacts' in navigator && 'select' in (navigator as any).contacts);
         if (clienteToEdit) {
             setNombre(clienteToEdit.nombre);
+            setApellido(clienteToEdit.apellido || '');
             setEmail(clienteToEdit.email || '');
             setTelefono(clienteToEdit.telefono);
-            setVehicles(clienteToEdit.vehiculos.map(v => ({...v, año: String(v.año)})) || []);
+            setVehicles(clienteToEdit.vehiculos.map(v => ({...v, año: v.año ? String(v.año) : ''})) || []);
         }
     }, [clienteToEdit]);
 
@@ -55,7 +57,17 @@ const CrearClienteModal: React.FC<CrearClienteModalProps> = ({ onClose, onSucces
             const contacts = await (navigator as any).contacts.select(['name', 'email', 'tel'], { multiple: false });
             if (contacts.length > 0) {
                 const c = contacts[0];
-                if (c.name?.length) setNombre(c.name[0]);
+                if (c.name?.length) {
+                    const fullName = c.name[0];
+                    const parts = fullName.split(' ');
+                    if (parts.length > 1) {
+                        setNombre(parts[0]);
+                        setApellido(parts.slice(1).join(' '));
+                    } else {
+                        setNombre(fullName);
+                        setApellido('');
+                    }
+                }
                 if (c.tel?.length) setTelefono(c.tel[0]);
                 if (c.email?.length) setEmail(c.email[0]);
             }
@@ -70,20 +82,16 @@ const CrearClienteModal: React.FC<CrearClienteModalProps> = ({ onClose, onSucces
         setError(''); // Clear previous errors
         try {
             // Step 1: Delete all associated data from public tables.
-            // The order is important if there are foreign key constraints without ON DELETE CASCADE.
             await supabase.from('trabajos').delete().eq('cliente_id', clienteToEdit.id);
             await supabase.from('vehiculos').delete().eq('cliente_id', clienteToEdit.id);
             await supabase.from('clientes').delete().eq('id', clienteToEdit.id);
 
             // Step 2: Delete the user from the authentication system.
-            // This is a protected operation and requires a database function (RPC)
-            // because client-side code doesn't have permission to delete users directly.
             const { error: rpcError } = await supabase.rpc('delete_auth_user', { user_id: clienteToEdit.id });
 
             if (rpcError) {
-                // Provide a specific error if the function is missing, guiding the user.
-                if (rpcError.code === '42883') { // PostgreSQL's "undefined_function" code
-                    throw new Error("La función de base de datos 'delete_auth_user' no existe. Los datos del cliente fueron eliminados, pero su cuenta de acceso no. Por favor, siga las instrucciones para crear la función en Supabase.");
+                if (rpcError.code === '42883') {
+                    throw new Error("La función de base de datos 'delete_auth_user' no existe. Los datos del cliente fueron eliminados, pero su cuenta de acceso no.");
                 }
                 throw rpcError;
             }
@@ -132,30 +140,26 @@ const CrearClienteModal: React.FC<CrearClienteModalProps> = ({ onClose, onSucces
         setError('');
         try {
             if (isEditMode) {
-                // Intentar actualizar el email de Auth si ha cambiado
                 if (clienteToEdit && clienteToEdit.email !== email && email.trim() !== '') {
                     const { error: rpcError } = await supabase.rpc('update_client_email', {
                         user_id: clienteToEdit.id,
                         new_email: email
                     });
 
-                    if (rpcError) {
-                        if (rpcError.code === '42883') {
-                             console.warn("Falta la función RPC 'update_client_email'. Solo se actualizará la ficha pública.");
-                             // No lanzamos error para permitir que se guarde el resto de la info, 
-                             // pero podrías descomentar la siguiente línea si prefieres bloquear la acción.
-                             // throw new Error("Falta configuración en la base de datos (RPC update_client_email) para cambiar el email de acceso.");
-                        } else {
-                            throw new Error(`Error al actualizar el email de acceso: ${rpcError.message}`);
-                        }
+                    if (rpcError && rpcError.code !== '42883') {
+                         throw new Error(`Error al actualizar el email de acceso: ${rpcError.message}`);
                     }
                 }
 
-                await supabase.from('clientes').update({ nombre, email, telefono }).eq('id', clienteToEdit!.id);
+                await supabase.from('clientes').update({ nombre, apellido, email, telefono }).eq('id', clienteToEdit!.id);
                 if (deletedVehicleIds.length > 0) await supabase.from('vehiculos').delete().in('id', deletedVehicleIds);
                 for (const vehicle of vehicles) {
-                    const yearNumber = parseInt(vehicle.año);
-                    if (isNaN(yearNumber) || yearNumber <= 1900 || yearNumber > new Date().getFullYear() + 2) throw new Error(`Año inválido para ${vehicle.marca} ${vehicle.modelo}.`);
+                    let yearNumber: number | null = null;
+                    if (vehicle.año && vehicle.año.trim() !== '') {
+                        yearNumber = parseInt(vehicle.año);
+                        if (isNaN(yearNumber) || yearNumber <= 1900 || yearNumber > new Date().getFullYear() + 2) throw new Error(`Año inválido para ${vehicle.marca} ${vehicle.modelo}.`);
+                    }
+                    
                     const vehicleData = { marca: vehicle.marca, modelo: vehicle.modelo, año: yearNumber, matricula: vehicle.matricula, numero_chasis: vehicle.numero_chasis, numero_motor: vehicle.numero_motor, cliente_id: clienteToEdit!.id };
                     if (vehicle.id) {
                         const { data: updatedData, error: updateError } = await supabase
@@ -165,17 +169,17 @@ const CrearClienteModal: React.FC<CrearClienteModalProps> = ({ onClose, onSucces
                             .select();
 
                         if (updateError) throw updateError;
-                        if (!updatedData || updatedData.length === 0) {
-                            throw new Error(`No se pudo actualizar el vehículo ${vehicle.marca} ${vehicle.modelo}. Verifique los permisos o contacte a soporte.`);
-                        }
                     } else {
                         await supabase.from('vehiculos').insert(vehicleData);
                     }
                 }
             } else {
-                const yearNumber = parseInt(año);
-                if (isNaN(yearNumber) || yearNumber <= 1900 || yearNumber > new Date().getFullYear() + 2) {
-                    throw new Error('Por favor, ingrese un año válido.');
+                let yearNumber: number | null = null;
+                if (año.trim() !== '') {
+                    yearNumber = parseInt(año);
+                    if (isNaN(yearNumber) || yearNumber <= 1900 || yearNumber > new Date().getFullYear() + 2) {
+                        throw new Error('Por favor, ingrese un año válido.');
+                    }
                 }
 
                 const { data: { session: currentTallerSession } } = await supabase.auth.getSession();
@@ -202,54 +206,34 @@ const CrearClienteModal: React.FC<CrearClienteModalProps> = ({ onClose, onSucces
                     }
                 });
                 
-                if (signUpError) {
-                    if (signUpError.message.includes('User already registered')) {
-                        throw new Error('Un cliente con este email ya existe.');
-                    }
-                     if (signUpError.message.includes('valid password')) {
-                        throw new Error('Error de sistema: La contraseña generada no es válida. Intente de nuevo.');
-                    }
-                    throw signUpError;
-                }
-                if (!signUpData.user) {
-                    throw new Error('No se pudo crear la cuenta de usuario para el cliente.');
-                }
+                if (signUpError) throw signUpError;
+                if (!signUpData.user) throw new Error('No se pudo crear la cuenta de usuario.');
                 
                 if (shouldCreatePortalAccess) {
-                    const { error: resetError } = await supabase.auth.resetPasswordForEmail(userEmail, {
+                    await supabase.auth.resetPasswordForEmail(userEmail, {
                         redirectTo: window.location.origin,
                     });
-
-                    if (resetError) {
-                        console.warn(`User ${userEmail} created, but failed to send password reset email:`, resetError.message);
-                    }
                 }
 
                 const { error: sessionError } = await supabase.auth.setSession({
                     access_token: currentTallerSession.access_token,
                     refresh_token: currentTallerSession.refresh_token,
                 });
-                if (sessionError) {
-                    throw new Error("Error al restaurar sesión. El cliente fue creado. Por favor, recargue la página.");
-                }
+                if (sessionError) throw new Error("Error al restaurar sesión.");
                 
                 const newUserId = signUpData.user.id;
 
                 const { error: clientInsertError } = await supabase
                     .from('clientes')
-                    .insert({ id: newUserId, taller_id: tallerUser.id, nombre, email: userEmail, telefono });
+                    .insert({ id: newUserId, taller_id: tallerUser.id, nombre, apellido, email: userEmail, telefono });
 
-                if (clientInsertError) {
-                    throw new Error(`Usuario creado, pero falló la creación del perfil: ${clientInsertError.message}`);
-                }
+                if (clientInsertError) throw new Error(`Usuario creado, pero falló la creación del perfil: ${clientInsertError.message}`);
                 
                 const { error: vehicleInsertError } = await supabase
                     .from('vehiculos')
                     .insert({ cliente_id: newUserId, marca, modelo, año: yearNumber, matricula, numero_chasis, numero_motor });
                 
-                if (vehicleInsertError) {
-                    throw new Error(`Cliente creado, pero falló al agregar el vehículo: ${vehicleInsertError.message}`);
-                }
+                if (vehicleInsertError) throw new Error(`Cliente creado, pero falló al agregar el vehículo: ${vehicleInsertError.message}`);
             }
             onSuccess();
         } catch (err: any) {
@@ -296,7 +280,7 @@ const CrearClienteModal: React.FC<CrearClienteModalProps> = ({ onClose, onSucces
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div><label htmlFor="marca" className="block text-sm font-medium text-taller-gray dark:text-gray-400">Marca</label><input type="text" id="marca" value={marca} onChange={e => setMarca(toTitleCase(e.target.value))} className="mt-1 block w-full input-class" required /></div>
                 <div><label htmlFor="modelo" className="block text-sm font-medium text-taller-gray dark:text-gray-400">Modelo</label><input type="text" id="modelo" value={modelo} onChange={e => setModelo(toTitleCase(e.target.value))} className="mt-1 block w-full input-class" required /></div>
-                <div><label htmlFor="año" className="block text-sm font-medium text-taller-gray dark:text-gray-400">Año</label><input type="number" id="año" value={año} onChange={e => setAño(e.target.value)} className="mt-1 block w-full input-class" required /></div>
+                <div><label htmlFor="año" className="block text-sm font-medium text-taller-gray dark:text-gray-400">Año (Opcional)</label><input type="number" id="año" value={año} onChange={e => setAño(e.target.value)} className="mt-1 block w-full input-class" /></div>
                 <div><label htmlFor="matricula" className="block text-sm font-medium text-taller-gray dark:text-gray-400">Matrícula</label><input type="text" id="matricula" value={matricula} onChange={e => setMatricula(e.target.value.toUpperCase())} className="mt-1 block w-full input-class" required /></div>
                 <div><label htmlFor="numero_chasis" className="block text-sm font-medium text-taller-gray dark:text-gray-400">Nº Chasis (opcional)</label><input type="text" id="numero_chasis" value={numero_chasis} onChange={e => setNumeroChasis(e.target.value.toUpperCase())} className="mt-1 block w-full input-class" /></div>
                 <div><label htmlFor="numero_motor" className="block text-sm font-medium text-taller-gray dark:text-gray-400">Nº Motor (opcional)</label><input type="text" id="numero_motor" value={numero_motor} onChange={e => setNumeroMotor(e.target.value.toUpperCase())} className="mt-1 block w-full input-class" /></div>
@@ -325,7 +309,7 @@ const CrearClienteModal: React.FC<CrearClienteModalProps> = ({ onClose, onSucces
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div><label className="block text-sm font-medium text-taller-gray dark:text-gray-400">Marca</label><input type="text" value={vehicle.marca} onChange={e => handleVehicleChange(index, 'marca', e.target.value)} className="mt-1 block w-full input-class" required /></div>
                                     <div><label className="block text-sm font-medium text-taller-gray dark:text-gray-400">Modelo</label><input type="text" value={vehicle.modelo} onChange={e => handleVehicleChange(index, 'modelo', e.target.value)} className="mt-1 block w-full input-class" required /></div>
-                                    <div><label className="block text-sm font-medium text-taller-gray dark:text-gray-400">Año</label><input type="number" value={vehicle.año} onChange={e => handleVehicleChange(index, 'año', e.target.value)} className="mt-1 block w-full input-class" required /></div>
+                                    <div><label className="block text-sm font-medium text-taller-gray dark:text-gray-400">Año (Opcional)</label><input type="number" value={vehicle.año} onChange={e => handleVehicleChange(index, 'año', e.target.value)} className="mt-1 block w-full input-class" /></div>
                                     <div><label className="block text-sm font-medium text-taller-gray dark:text-gray-400">Matrícula</label><input type="text" value={vehicle.matricula} onChange={e => handleVehicleChange(index, 'matricula', e.target.value)} className="mt-1 block w-full input-class" required /></div>
                                     <div><label className="block text-sm font-medium text-taller-gray dark:text-gray-400">Nº Chasis (opcional)</label><input type="text" value={vehicle.numero_chasis || ''} onChange={e => handleVehicleChange(index, 'numero_chasis', e.target.value)} className="mt-1 block w-full input-class" /></div>
                                     <div><label className="block text-sm font-medium text-taller-gray dark:text-gray-400">Nº Motor (opcional)</label><input type="text" value={vehicle.numero_motor || ''} onChange={e => handleVehicleChange(index, 'numero_motor', e.target.value)} className="mt-1 block w-full input-class" /></div>
@@ -361,10 +345,13 @@ const CrearClienteModal: React.FC<CrearClienteModalProps> = ({ onClose, onSucces
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div><label htmlFor="nombre" className="block text-sm font-medium text-taller-gray dark:text-gray-400">Nombre</label><input type="text" id="nombre" value={nombre} onChange={e => setNombre(e.target.value)} className="mt-1 block w-full input-class" required /></div>
+                            <div><label htmlFor="apellido" className="block text-sm font-medium text-taller-gray dark:text-gray-400">Apellido</label><input type="text" id="apellido" value={apellido} onChange={e => setApellido(e.target.value)} className="mt-1 block w-full input-class" /></div>
                             <div><label htmlFor="telefono" className="block text-sm font-medium text-taller-gray dark:text-gray-400">Teléfono (Opcional)</label><input type="tel" id="telefono" value={telefono} onChange={e => setTelefono(e.target.value)} className="mt-1 block w-full input-class" /></div>
+                            <div><label htmlFor="email" className="block text-sm font-medium text-taller-gray dark:text-gray-400">Email (opcional para portal)</label><input type="email" id="email" value={email} onChange={e => setEmail(e.target.value)} className="mt-1 block w-full input-class" /></div>
                         </div>
-                        <div><label htmlFor="email" className="block text-sm font-medium text-taller-gray dark:text-gray-400">Email (opcional para portal cliente)</label><input type="email" id="email" value={email} onChange={e => setEmail(e.target.value)} className="mt-1 block w-full input-class" /></div>
+                        
                         {isEditMode ? renderEditForm() : renderCreateForm()}
+                        
                         {error && <p className="text-sm text-red-600 mt-2">{error}</p>}
                         <div className="pt-4 flex flex-col-reverse sm:flex-row items-center gap-4 w-full">
                            {isEditMode ? (

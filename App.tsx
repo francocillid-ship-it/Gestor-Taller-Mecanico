@@ -90,10 +90,6 @@ const App: React.FC = () => {
             if (userRole === 'taller') {
                 setLoading(false);
             } else if (userRole === 'cliente') {
-                const tallerInfo = currentUser.user_metadata?.taller_info_ref || null;
-                const tallerName = tallerInfo?.nombre || currentUser.user_metadata?.taller_nombre_ref || 'Mi Taller';
-                setTallerInfoForClient({ ...tallerInfo, nombre: tallerName });
-
                 try {
                     const { data: clientProfile, error: clientError } = await supabase
                         .from('clientes')
@@ -107,6 +103,32 @@ const App: React.FC = () => {
                     
                     if (clientProfile) {
                         setClientData(clientProfile as any);
+                        
+                        // FETCH UPDATED TALLER INFO FROM DB
+                        // Instead of relying on stale metadata
+                        const { data: tallerInfoData, error: tallerInfoError } = await supabase
+                            .from('taller_info')
+                            .select('*')
+                            .eq('taller_id', clientProfile.taller_id)
+                            .maybeSingle();
+
+                        if (!tallerInfoError && tallerInfoData) {
+                             setTallerInfoForClient({
+                                nombre: tallerInfoData.nombre || 'Taller Mecánico',
+                                telefono: tallerInfoData.telefono || '',
+                                direccion: tallerInfoData.direccion || '',
+                                cuit: tallerInfoData.cuit || '',
+                                logoUrl: tallerInfoData.logo_url,
+                                pdfTemplate: tallerInfoData.pdf_template || 'classic',
+                                mobileNavStyle: tallerInfoData.mobile_nav_style || 'sidebar',
+                                showLogoOnPdf: tallerInfoData.show_logo_on_pdf || false,
+                            });
+                        } else {
+                            // Fallback to metadata if DB entry missing
+                            const tallerInfo = currentUser.user_metadata?.taller_info_ref || null;
+                            const tallerName = tallerInfo?.nombre || currentUser.user_metadata?.taller_nombre_ref || 'Mi Taller';
+                            setTallerInfoForClient({ ...tallerInfo, nombre: tallerName });
+                        }
 
                         const { data: trabajosData, error: trabajosError } = await supabase
                             .from('trabajos')

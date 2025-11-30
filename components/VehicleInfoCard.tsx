@@ -329,7 +329,7 @@ const VehicleInfoCard: React.FC<VehicleInfoCardProps> = ({ vehiculo, trabajos, o
                 className="w-full p-4 flex justify-between items-center text-left hover:bg-gray-50 dark:hover:bg-gray-700/50 focus:outline-none"
             >
                 <div className="flex-1">
-                    <h4 className="font-bold text-lg text-taller-dark dark:text-taller-light">{vehiculo.marca} {vehiculo.modelo} ({vehiculo.año})</h4>
+                    <h4 className="font-bold text-lg text-taller-dark dark:text-taller-light">{vehiculo.marca} {vehiculo.modelo} {vehiculo.año ? `(${vehiculo.año})` : ''}</h4>
                     <p className="text-sm text-taller-gray dark:text-gray-400 mb-2">{vehiculo.matricula}</p>
                     
                      {/* Mini indicator */}

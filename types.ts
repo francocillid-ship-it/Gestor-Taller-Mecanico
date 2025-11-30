@@ -52,7 +52,7 @@ export interface Vehiculo {
     id: string;
     marca: string;
     modelo: string;
-    año: number;
+    año?: number;
     matricula: string;
     numero_chasis?: string;
     numero_motor?: string;
@@ -62,6 +62,7 @@ export interface Vehiculo {
 export interface Cliente {
     id: string;
     nombre: string;
+    apellido: string;
     email: string;
     telefono: string;
     vehiculos: Vehiculo[];

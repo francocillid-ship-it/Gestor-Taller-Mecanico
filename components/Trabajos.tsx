@@ -112,9 +112,10 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
             filteredTrabajos = trabajos.filter(t => {
                 const cliente = clientes.find(c => c.id === t.clienteId);
                 const vehiculo = cliente?.vehiculos.find(v => v.id === t.vehiculoId);
+                const fullName = cliente ? `${cliente.nombre} ${cliente.apellido || ''}`.toLowerCase() : '';
                 return (
                     t.descripcion.toLowerCase().includes(query) ||
-                    cliente?.nombre.toLowerCase().includes(query) ||
+                    fullName.includes(query) ||
                     vehiculo?.marca.toLowerCase().includes(query) ||
                     vehiculo?.modelo.toLowerCase().includes(query) ||
                     vehiculo?.matricula.toLowerCase().includes(query) ||

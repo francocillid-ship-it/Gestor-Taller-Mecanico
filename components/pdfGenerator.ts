@@ -119,7 +119,8 @@ export const generateClientPDF = async (
     doc.text('Vehículo:', (a4Width / 2), 78);
 
     doc.setFont('helvetica', 'normal');
-    doc.text(cliente?.nombre || 'N/A', margin + 5, 85);
+    const clientFullName = `${cliente?.nombre} ${cliente?.apellido || ''}`.trim();
+    doc.text(clientFullName || 'N/A', margin + 5, 85);
     doc.text(cliente?.telefono || '', margin + 5, 92);
     
     const vehicleText = `${vehiculo?.marca || ''} ${vehiculo?.modelo || ''} (${vehiculo?.año || 'N/A'})`;
@@ -270,5 +271,32 @@ export const generateClientPDF = async (
         doc.text(`Página ${i} de ${totalPages}`, a4Width - margin, pageHeight - 15, { align: 'right' });
     }
 
-    doc.save(`${docTitle.toLowerCase()}-${cliente?.nombre?.replace(' ', '_') || 'cliente'}.pdf`);
+    // --- SAVE / SHARE ---
+    // Sanitize filename
+    const sanitizedClientName = (cliente?.nombre || 'cliente').replace(/[^a-z0-9]/gi, '_').toLowerCase();
+    const sanitizedLastName = (cliente?.apellido || '').replace(/[^a-z0-9]/gi, '_').toLowerCase();
+    const fullSanitizedName = sanitizedLastName ? `${sanitizedClientName}_${sanitizedLastName}` : sanitizedClientName;
+    
+    const fileName = `${docTitle.toLowerCase()}_${fullSanitizedName}_${formattedNumber}.pdf`;
+
+    if (navigator.share) {
+        try {
+            const blob = doc.output('blob');
+            const file = new File([blob], fileName, { type: 'application/pdf' });
+            
+            if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                await navigator.share({
+                    files: [file],
+                    title: `${docTitle} - ${tallerInfo.nombre}`,
+                    text: `Hola ${cliente.nombre}, adjunto el ${docTitle.toLowerCase()} correspondiente.`,
+                });
+                return;
+            }
+        } catch (error) {
+            console.error("Error sharing PDF via Web Share API, falling back to download.", error);
+        }
+    }
+    
+    // Fallback to standard download
+    doc.save(fileName);
 };

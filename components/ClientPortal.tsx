@@ -145,7 +145,7 @@ const ClientPortal: React.FC<ClientPortalProps> = ({ client, trabajos, onLogout,
                 
                 <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
                     <div className="mb-8">
-                        <h2 className="text-3xl font-bold text-taller-dark dark:text-taller-light">Bienvenido, {client.nombre}</h2>
+                        <h2 className="text-3xl font-bold text-taller-dark dark:text-taller-light">Hola, {client.nombre}</h2>
                         <p className="text-taller-gray dark:text-gray-400 mt-1 text-base">Aquí puede ver el estado de sus trabajos y vehículos.</p>
                     </div>
 

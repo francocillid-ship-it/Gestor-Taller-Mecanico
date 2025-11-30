@@ -162,13 +162,15 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
     const realParts = trabajo.partes.filter(p => p.nombre !== '__PAGO_REGISTRADO__');
     const hasServices = realParts.some(p => p.isService);
 
+    const clientFullName = cliente ? `${cliente.nombre} ${cliente.apellido || ''}`.trim() : 'Cliente no encontrado';
+
     return (
         <>
             <div ref={cardRef} className={`bg-white dark:bg-gray-800 rounded-lg shadow-md border-l-4 border-taller-secondary/50 dark:border-taller-secondary transition-all duration-300 ${isExpanded ? 'mb-4' : ''}`}>
                 <div className="p-3">
                     <div className="flex justify-between items-start">
                         <div>
-                            <p className="font-bold text-sm text-taller-dark dark:text-taller-light">{cliente?.nombre || 'Cliente no encontrado'}</p>
+                            <p className="font-bold text-sm text-taller-dark dark:text-taller-light">{clientFullName}</p>
                             <p className="text-xs text-taller-gray dark:text-gray-400">
                                 {vehiculo ? `${vehiculo.marca} ${vehiculo.modelo} (${vehiculo.matricula})` : 'Vehículo no encontrado'}
                             </p>
@@ -204,7 +206,6 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
                                 )
                             ))}
                             
-                            {/* Only show "Mano de Obra" separate line if there are NO services listed individually and there IS a cost (Legacy compatibility) */}
                             {!hasServices && trabajo.costoManoDeObra ? (
                                 <li className="flex justify-between pt-2 border-t dark:border-gray-600 mt-2">
                                     <span>Mano de Obra</span>

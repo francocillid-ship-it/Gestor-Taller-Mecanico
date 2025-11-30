@@ -33,6 +33,8 @@ const ClientCard: React.FC<ClientCardProps> = ({ cliente, trabajos, onEdit, onCo
         }
     }, [forceExpand]);
 
+    const fullName = `${cliente.nombre} ${cliente.apellido || ''}`.trim();
+
     return (
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
             <button
@@ -40,7 +42,7 @@ const ClientCard: React.FC<ClientCardProps> = ({ cliente, trabajos, onEdit, onCo
                 className="w-full p-4 flex justify-between items-center text-left hover:bg-gray-50 dark:hover:bg-gray-700/50 focus:outline-none"
             >
                 <div>
-                    <h3 className="font-bold text-lg text-taller-dark dark:text-taller-light">{cliente.nombre}</h3>
+                    <h3 className="font-bold text-lg text-taller-dark dark:text-taller-light">{fullName}</h3>
                     <p className="text-sm text-taller-gray dark:text-gray-400">{cliente.vehiculos.map(v => `${v.marca} ${v.modelo}`).join(', ')}</p>
                 </div>
                 <div className="flex items-center">
@@ -63,7 +65,7 @@ const ClientCard: React.FC<ClientCardProps> = ({ cliente, trabajos, onEdit, onCo
                             <div className="space-y-2 text-sm text-taller-dark dark:text-gray-300">
                                 {cliente.vehiculos.map(v => (
                                     <div key={v.id} className="flex justify-between items-center bg-white dark:bg-gray-700 p-2 rounded border dark:border-gray-600">
-                                        <p><strong>{v.marca} {v.modelo} ({v.año})</strong> - {v.matricula}</p>
+                                        <p><strong>{v.marca} {v.modelo} {v.año ? `(${v.año})` : ''}</strong> - {v.matricula}</p>
                                         <button 
                                             onClick={(e) => { e.stopPropagation(); onConfigVehicle(v); }}
                                             className="text-taller-gray hover:text-taller-primary dark:text-gray-400 dark:hover:text-white p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
@@ -129,7 +131,8 @@ const Clientes: React.FC<ClientesProps> = ({ clientes, trabajos, onDataRefresh, 
         if (!lowercasedQuery) return clientes;
 
         return clientes.filter(cliente => {
-            const nameMatch = cliente.nombre.toLowerCase().includes(lowercasedQuery);
+            const fullName = `${cliente.nombre} ${cliente.apellido || ''}`.toLowerCase();
+            const nameMatch = fullName.includes(lowercasedQuery);
             const vehicleMatch = cliente.vehiculos.some(v => 
                 v.marca.toLowerCase().includes(lowercasedQuery) ||
                 v.modelo.toLowerCase().includes(lowercasedQuery) ||
