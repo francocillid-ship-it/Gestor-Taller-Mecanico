@@ -1,8 +1,9 @@
 
 import React, { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import type { Trabajo, Cliente, Vehiculo, JobStatus, Parte, TallerInfo } from '../types';
 import { JobStatus as JobStatusEnum } from '../types';
-import { ChevronDownIcon, ChevronUpIcon, PencilIcon, ArrowRightIcon, PrinterIcon, CurrencyDollarIcon, WrenchScrewdriverIcon } from '@heroicons/react/24/solid';
+import { ChevronDownIcon, ChevronUpIcon, PencilIcon, PrinterIcon, CurrencyDollarIcon, WrenchScrewdriverIcon, EllipsisVerticalIcon, ArrowPathIcon } from '@heroicons/react/24/solid';
 import CrearTrabajoModal from './CrearTrabajoModal';
 import { supabase } from '../supabaseClient';
 import { generateClientPDF } from './pdfGenerator';
@@ -23,6 +24,12 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
     const [isAddingPayment, setIsAddingPayment] = useState(false);
     const [paymentAmount, setPaymentAmount] = useState('');
     const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+    
+    // Status Menu State
+    const [isStatusMenuOpen, setIsStatusMenuOpen] = useState(false);
+    const [menuCoords, setMenuCoords] = useState<{ top?: number; bottom?: number; left: number } | null>(null);
+    const buttonRef = useRef<HTMLButtonElement>(null);
+    
     const cardRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
@@ -36,6 +43,48 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
             return () => clearTimeout(timer);
         }
     }, [isExpanded]);
+
+    // Close menu on scroll or resize to prevent it from detaching visually
+    useEffect(() => {
+        if (isStatusMenuOpen) {
+            const handleClose = () => setIsStatusMenuOpen(false);
+            // Capture scroll events on any parent container
+            document.addEventListener('scroll', handleClose, true);
+            window.addEventListener('resize', handleClose);
+            return () => {
+                document.removeEventListener('scroll', handleClose, true);
+                window.removeEventListener('resize', handleClose);
+            };
+        }
+    }, [isStatusMenuOpen]);
+
+    const toggleStatusMenu = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (isStatusMenuOpen) {
+            setIsStatusMenuOpen(false);
+            setMenuCoords(null);
+        } else {
+             if (buttonRef.current) {
+                const rect = buttonRef.current.getBoundingClientRect();
+                const spaceBelow = window.innerHeight - rect.bottom;
+                const menuHeight = 180; // Estimate for ~4 items
+
+                // If space below is limited, open upwards
+                if (spaceBelow < menuHeight) {
+                    setMenuCoords({
+                        bottom: window.innerHeight - rect.top + 4,
+                        left: rect.left
+                    });
+                } else {
+                    setMenuCoords({
+                        top: rect.bottom + 4,
+                        left: rect.left
+                    });
+                }
+                setIsStatusMenuOpen(true);
+            }
+        }
+    };
 
     const totalPagado = trabajo.partes
         .filter(p => p.nombre === '__PAGO_REGISTRADO__')
@@ -109,23 +158,13 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
         return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(val);
     };
     
-    const getNextStatus = (currentStatus: JobStatus): JobStatus | null => {
-        const statusOrder = [JobStatusEnum.Presupuesto, JobStatusEnum.Programado, JobStatusEnum.EnProceso, JobStatusEnum.Finalizado];
-        const currentIndex = statusOrder.indexOf(currentStatus);
-        if (currentIndex !== -1 && currentIndex < statusOrder.length - 1) {
-            return statusOrder[currentIndex + 1];
-        }
-        return null;
-    };
-    
-    const nextStatus = getNextStatus(trabajo.status);
     const pagos = trabajo.partes.filter(p => p.nombre === '__PAGO_REGISTRADO__');
     const realParts = trabajo.partes.filter(p => p.nombre !== '__PAGO_REGISTRADO__');
     const hasServices = realParts.some(p => p.isService);
 
     return (
         <>
-            <div ref={cardRef} className={`bg-white dark:bg-gray-800 rounded-lg shadow-md border-l-4 border-taller-secondary/50 dark:border-taller-secondary transition-all duration-300 ${isExpanded ? 'mb-32' : ''}`}>
+            <div ref={cardRef} className={`bg-white dark:bg-gray-800 rounded-lg shadow-md border-l-4 border-taller-secondary/50 dark:border-taller-secondary transition-all duration-300 ${isExpanded ? 'mb-4' : ''}`}>
                 <div className="p-3">
                     <div className="flex justify-between items-start">
                         <div>
@@ -232,18 +271,15 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
                     </div>
                 )}
                  <div className="bg-gray-50 dark:bg-gray-700/50 px-3 py-2 flex items-center justify-between">
-                    <div>
-                         {nextStatus ? (
-                            <button
-                                onClick={() => onUpdateStatus(trabajo.id, nextStatus)}
-                                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-taller-primary rounded-md shadow-sm hover:bg-taller-secondary transition-colors"
-                            >
-                                <span>Mover a {nextStatus}</span>
-                                <ArrowRightIcon className="h-3 w-3" />
-                            </button>
-                        ) : (
-                            <p className="text-xs font-semibold text-green-600 dark:text-green-500">Finalizado</p>
-                        )}
+                    <div className="relative">
+                        <button
+                            ref={buttonRef}
+                            onClick={toggleStatusMenu}
+                            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-taller-primary rounded-md shadow-sm hover:bg-taller-secondary transition-colors"
+                        >
+                            <span>Cambiar Estado</span>
+                            <ChevronDownIcon className="h-3 w-3" />
+                        </button>
                     </div>
                     <div className="flex items-center space-x-2">
                          <button onClick={handleGeneratePDF} disabled={isGeneratingPdf} className="p-1.5 text-taller-gray dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 disabled:opacity-50" title="Imprimir Presupuesto">
@@ -255,6 +291,48 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
                     </div>
                  </div>
             </div>
+            
+            {/* Floating Status Menu Portal */}
+            {isStatusMenuOpen && menuCoords && createPortal(
+                <div className="fixed inset-0 z-50 flex flex-col" style={{ pointerEvents: 'none' }}>
+                    {/* Backdrop */}
+                    <div 
+                        className="fixed inset-0 bg-transparent" 
+                        style={{ pointerEvents: 'auto' }} 
+                        onClick={() => setIsStatusMenuOpen(false)}
+                    />
+                    
+                    {/* Menu */}
+                    <div 
+                        className="fixed w-40 bg-white dark:bg-gray-700 rounded-md shadow-lg border dark:border-gray-600 overflow-hidden"
+                        style={{ 
+                            top: menuCoords.top, 
+                            bottom: menuCoords.bottom, 
+                            left: menuCoords.left,
+                            pointerEvents: 'auto'
+                        }}
+                    >
+                        {Object.values(JobStatusEnum).map((status) => (
+                            <button
+                                key={status}
+                                onClick={() => {
+                                    onUpdateStatus(trabajo.id, status);
+                                    setIsStatusMenuOpen(false);
+                                }}
+                                className={`block w-full text-left px-4 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-600 border-b dark:border-gray-600 last:border-0 ${
+                                    status === trabajo.status
+                                        ? 'font-bold text-taller-primary bg-blue-50 dark:bg-blue-900/20'
+                                        : 'text-taller-dark dark:text-gray-200'
+                                }`}
+                            >
+                                {status}
+                            </button>
+                        ))}
+                    </div>
+                </div>,
+                document.body
+            )}
+
             {isJobModalOpen && (
                 <CrearTrabajoModal
                     onClose={() => setIsJobModalOpen(false)}
