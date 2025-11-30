@@ -1,7 +1,9 @@
+
 import React, { useState, useMemo } from 'react';
-import type { Cliente, Trabajo } from '../types';
-import { ChevronDownIcon, ChevronUpIcon, PhoneIcon, EnvelopeIcon, UserPlusIcon, PencilIcon } from '@heroicons/react/24/solid';
+import type { Cliente, Trabajo, Vehiculo } from '../types';
+import { ChevronDownIcon, ChevronUpIcon, PhoneIcon, EnvelopeIcon, UserPlusIcon, PencilIcon, Cog6ToothIcon } from '@heroicons/react/24/solid';
 import CrearClienteModal from './CrearClienteModal';
+import MaintenanceConfigModal from './MaintenanceConfigModal';
 
 interface ClientesProps {
     clientes: Cliente[];
@@ -14,10 +16,11 @@ interface ClientCardProps {
     cliente: Cliente;
     trabajos: Trabajo[];
     onEdit: (cliente: Cliente) => void;
+    onConfigVehicle: (vehiculo: Vehiculo) => void;
     forceExpand?: boolean;
 }
 
-const ClientCard: React.FC<ClientCardProps> = ({ cliente, trabajos, onEdit, forceExpand }) => {
+const ClientCard: React.FC<ClientCardProps> = ({ cliente, trabajos, onEdit, onConfigVehicle, forceExpand }) => {
     const [isExpanded, setIsExpanded] = useState(false);
     const clientTrabajos = trabajos.filter(t => t.clienteId === cliente.id);
     
@@ -57,9 +60,18 @@ const ClientCard: React.FC<ClientCardProps> = ({ cliente, trabajos, onEdit, forc
                         </div>
                          <div>
                             <h4 className="font-semibold mb-2 text-taller-dark dark:text-taller-light">Vehículos</h4>
-                            <div className="space-y-1 text-sm text-taller-dark dark:text-gray-300">
+                            <div className="space-y-2 text-sm text-taller-dark dark:text-gray-300">
                                 {cliente.vehiculos.map(v => (
-                                    <p key={v.id}><strong>{v.marca} {v.modelo} ({v.año})</strong> - {v.matricula}</p>
+                                    <div key={v.id} className="flex justify-between items-center bg-white dark:bg-gray-700 p-2 rounded border dark:border-gray-600">
+                                        <p><strong>{v.marca} {v.modelo} ({v.año})</strong> - {v.matricula}</p>
+                                        <button 
+                                            onClick={(e) => { e.stopPropagation(); onConfigVehicle(v); }}
+                                            className="text-taller-gray hover:text-taller-primary dark:text-gray-400 dark:hover:text-white p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
+                                            title="Configurar intervalos de mantenimiento"
+                                        >
+                                            <Cog6ToothIcon className="h-5 w-5" />
+                                        </button>
+                                    </div>
                                 ))}
                             </div>
                         </div>
@@ -101,6 +113,7 @@ const ClientCard: React.FC<ClientCardProps> = ({ cliente, trabajos, onEdit, forc
 const Clientes: React.FC<ClientesProps> = ({ clientes, trabajos, onDataRefresh, searchQuery }) => {
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [clienteToEdit, setClienteToEdit] = useState<Cliente | null>(null);
+    const [vehicleToConfig, setVehicleToConfig] = useState<Vehiculo | null>(null);
 
     const handleEditClick = (cliente: Cliente) => {
         setClienteToEdit(cliente);
@@ -148,6 +161,7 @@ const Clientes: React.FC<ClientesProps> = ({ clientes, trabajos, onDataRefresh, 
                             cliente={cliente} 
                             trabajos={trabajos} 
                             onEdit={handleEditClick} 
+                            onConfigVehicle={setVehicleToConfig}
                             forceExpand={searchQuery.length > 0} 
                         />
                     ))
@@ -165,6 +179,17 @@ const Clientes: React.FC<ClientesProps> = ({ clientes, trabajos, onDataRefresh, 
                     onClose={handleCloseModal}
                     onSuccess={() => {
                         handleCloseModal();
+                        onDataRefresh();
+                    }}
+                />
+            )}
+
+            {vehicleToConfig && (
+                <MaintenanceConfigModal 
+                    vehiculo={vehicleToConfig}
+                    onClose={() => setVehicleToConfig(null)}
+                    onSuccess={() => {
+                        setVehicleToConfig(null);
                         onDataRefresh();
                     }}
                 />

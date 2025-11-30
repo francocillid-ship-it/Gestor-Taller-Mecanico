@@ -15,6 +15,7 @@ export interface Parte {
     fecha?: string; // Para registrar la fecha de los pagos
     isCategory?: boolean;
     isService?: boolean;
+    maintenanceType?: string; // Nuevo campo: "oil", "transmission_fluid", etc.
 }
 
 export interface Pago {
@@ -24,7 +25,7 @@ export interface Pago {
 
 export interface Trabajo {
     id: string;
-    tallerId: string; // Nuevo campo para identificar el taller y calcular secuencia
+    tallerId: string;
     clienteId: string;
     vehiculoId: string;
     descripcion: string;
@@ -37,6 +38,16 @@ export interface Trabajo {
     kilometraje?: number;
 }
 
+export interface MaintenanceItemConfig {
+    months: number;
+    mileage: number;
+    enabled: boolean;
+}
+
+export interface MaintenanceConfig {
+    [key: string]: MaintenanceItemConfig;
+}
+
 export interface Vehiculo {
     id: string;
     marca: string;
@@ -45,6 +56,7 @@ export interface Vehiculo {
     matricula: string;
     numero_chasis?: string;
     numero_motor?: string;
+    maintenance_config?: MaintenanceConfig;
 }
 
 export interface Cliente {

@@ -9,7 +9,7 @@ const getGeminiClient = (): GoogleGenAI | null => {
     return null;
 };
 
-export type VehiculoData = Partial<Omit<Vehiculo, 'id' | 'año'> & { año: string }>;
+export type VehiculoData = Partial<Omit<Vehiculo, 'id' | 'año' | 'maintenance_config'> & { año: string }>;
 
 export const isGeminiAvailable = (): boolean => {
     return !!localStorage.getItem('gemini_api_key');

@@ -5,6 +5,7 @@ import type { Cliente, Parte, Trabajo } from '../types';
 import { JobStatus } from '../types';
 import { XMarkIcon, TrashIcon, UserPlusIcon, WrenchScrewdriverIcon, TagIcon, ArchiveBoxIcon } from '@heroicons/react/24/solid';
 import CrearClienteModal from './CrearClienteModal';
+import { ALL_MAINTENANCE_OPTS } from '../constants';
 
 interface CrearTrabajoModalProps {
     onClose: () => void;
@@ -16,10 +17,11 @@ interface CrearTrabajoModalProps {
 
 type ParteState = {
     nombre: string;
-    cantidad: number;
+    cantidad: number | ''; // Changed to allow empty string for input handling
     precioUnitario: string; // Storing the formatted string
     isCategory?: boolean;
     isService?: boolean;
+    maintenanceType?: string;
 };
 
 
@@ -80,7 +82,8 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
             
             let processedPartes = initialPartes.map(p => ({
                 ...p,
-                precioUnitario: formatNumberToCurrency(p.precioUnitario)
+                precioUnitario: formatNumberToCurrency(p.precioUnitario),
+                maintenanceType: p.maintenanceType || ''
             }));
 
             if (!hasServices && legacyLabor > 0) {
@@ -119,30 +122,43 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
 
     const costoEstimado = useMemo(() => {
         // El costo estimado es la suma de Items + Servicios
-        return partes.filter(p => !p.isCategory).reduce((sum, p) => sum + (Number(p.cantidad) * parseCurrency(p.precioUnitario)), 0);
+        return partes.filter(p => !p.isCategory).reduce((sum, p) => sum + (Number(p.cantidad || 0) * parseCurrency(p.precioUnitario)), 0);
     }, [partes]);
 
 
     const handleParteChange = (index: number, field: keyof ParteState, value: string | number) => {
         const newPartes = [...partes];
+        const currentParte = newPartes[index];
         
-        // Capitalize first letter if editing the name
-        if (field === 'nombre' && typeof value === 'string' && value.length > 0) {
-             const capitalizedValue = value.charAt(0).toUpperCase() + value.slice(1);
-             (newPartes[index] as any)[field] = capitalizedValue;
+        // Auto-detect maintenance type based on name input
+        if (field === 'nombre' && typeof value === 'string') {
+            const lowerValue = value.toLowerCase();
+            // Capitalize first letter
+            const capitalizedValue = value.length > 0 ? value.charAt(0).toUpperCase() + value.slice(1) : value;
+             (currentParte as any)[field] = capitalizedValue;
+
+            // Only auto-detect if user hasn't manually selected a specific type yet (or if it's empty)
+            if (!currentParte.maintenanceType) {
+                const matchedType = ALL_MAINTENANCE_OPTS.find(opt => 
+                    opt.keywords.some(keyword => lowerValue.includes(keyword))
+                );
+                if (matchedType) {
+                    currentParte.maintenanceType = matchedType.key;
+                }
+            }
         } else {
-             (newPartes[index] as any)[field] = value;
+             (currentParte as any)[field] = value;
         }
         
         setPartes(newPartes);
     };
 
     const addParte = () => {
-        setPartes([...partes, { nombre: '', cantidad: 1, precioUnitario: '', isService: false }]);
+        setPartes([...partes, { nombre: '', cantidad: 1, precioUnitario: '', isService: false, maintenanceType: '' }]);
     };
     
     const addService = () => {
-        setPartes([...partes, { nombre: '', cantidad: 1, precioUnitario: '', isService: true }]);
+        setPartes([...partes, { nombre: '', cantidad: 1, precioUnitario: '', isService: true, maintenanceType: '' }]);
     };
     
     const addCategory = () => {
@@ -201,10 +217,11 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
                 .filter(p => p.nombre.trim() !== '')
                 .map(p => ({
                     nombre: p.nombre,
-                    cantidad: p.isCategory ? 0 : Number(p.cantidad),
+                    cantidad: p.isCategory ? 0 : Number(p.cantidad || 1), // Default to 1 if empty/0 on submit
                     precioUnitario: p.isCategory ? 0 : parseCurrency(p.precioUnitario),
                     isCategory: !!p.isCategory,
                     isService: !!p.isService,
+                    maintenanceType: p.maintenanceType || undefined
                 }));
             
             // Computamos la ganancia de mano de obra sumando exclusivamente los servicios
@@ -318,7 +335,7 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
                                             <button type="button" onClick={() => removeParte(index)} className="p-2 text-red-500 hover:bg-red-100 dark:hover:bg-red-900/50 rounded-full flex-shrink-0"><TrashIcon className="h-5 w-5"/></button>
                                         </>
                                     ) : (
-                                        <div className={`grid grid-cols-6 sm:grid-cols-[auto_1fr_80px_120px_auto] items-center gap-2 w-full p-2 rounded-md ${parte.isService ? 'bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800' : 'bg-gray-50 dark:bg-gray-700/30'}`}>
+                                        <div className={`grid grid-cols-6 sm:grid-cols-[auto_1fr_130px_70px_100px_auto] items-center gap-2 w-full p-2 rounded-md ${parte.isService ? 'bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800' : 'bg-gray-50 dark:bg-gray-700/30'}`}>
                                             <div className="col-span-6 sm:col-span-1 flex justify-center sm:justify-start">
                                                 {parte.isService ? (
                                                     <div title="Servicio (Mano de Obra)" className="p-1.5 bg-blue-100 dark:bg-blue-900 rounded text-blue-600 dark:text-blue-300">
@@ -330,6 +347,7 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
                                                     </div>
                                                 )}
                                             </div>
+                                            
                                             <textarea
                                                 rows={1}
                                                 placeholder={parte.isService ? "Descripción del servicio" : "Nombre del repuesto"}
@@ -338,8 +356,41 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
                                                 onInput={handleTextareaResize}
                                                 className="col-span-6 sm:col-span-1 block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-taller-primary focus:border-taller-primary sm:text-sm resize-none overflow-hidden"
                                             />
-                                            <input type="number" placeholder="Cant." value={parte.cantidad} onChange={e => handleParteChange(index, 'cantidad', parseInt(e.target.value, 10) || 1)} className="col-span-2 sm:col-span-1 block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-taller-primary focus:border-taller-primary sm:text-sm" />
-                                            <input type="text" inputMode="decimal" placeholder="$ 0,00" value={parte.precioUnitario} onChange={e => handleParteChange(index, 'precioUnitario', formatCurrency(e.target.value))} className="col-span-3 sm:col-span-1 block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-taller-primary focus:border-taller-primary sm:text-sm" />
+
+                                            <select
+                                                value={parte.maintenanceType || ''}
+                                                onChange={e => handleParteChange(index, 'maintenanceType', e.target.value)}
+                                                className="col-span-3 sm:col-span-1 block w-full px-2 py-2 text-xs bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-taller-primary focus:border-taller-primary text-gray-600 dark:text-gray-300"
+                                            >
+                                                <option value="">Etiqueta (Opcional)</option>
+                                                {ALL_MAINTENANCE_OPTS.map(opt => (
+                                                    <option key={opt.key} value={opt.key}>{opt.label}</option>
+                                                ))}
+                                            </select>
+
+                                            <input 
+                                                type="number" 
+                                                placeholder="Cant." 
+                                                value={parte.cantidad} 
+                                                onFocus={(e) => {
+                                                    // Si el valor es 1 al enfocar, lo limpiamos para que el usuario escriba
+                                                    if (parte.cantidad === 1) {
+                                                        handleParteChange(index, 'cantidad', '');
+                                                    }
+                                                }}
+                                                onBlur={() => {
+                                                    // Si se deja vacío o en 0, lo restauramos a 1
+                                                    if (parte.cantidad === '' || parte.cantidad === 0) {
+                                                        handleParteChange(index, 'cantidad', 1);
+                                                    }
+                                                }}
+                                                onChange={e => {
+                                                    const val = e.target.value;
+                                                    handleParteChange(index, 'cantidad', val === '' ? '' : parseInt(val, 10));
+                                                }} 
+                                                className="col-span-1 sm:col-span-1 block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-taller-primary focus:border-taller-primary sm:text-sm no-spinner" 
+                                            />
+                                            <input type="text" inputMode="decimal" placeholder="$ 0,00" value={parte.precioUnitario} onChange={e => handleParteChange(index, 'precioUnitario', formatCurrency(e.target.value))} className="col-span-2 sm:col-span-1 block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-taller-primary focus:border-taller-primary sm:text-sm" />
                                             <button type="button" onClick={() => removeParte(index)} className="col-span-1 sm:col-span-1 p-2 text-red-500 hover:bg-red-100 dark:hover:bg-red-900/50 rounded-full justify-self-center sm:justify-self-auto"><TrashIcon className="h-5 w-5"/></button>
                                         </div>
                                     )}
@@ -446,6 +497,16 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
                     }}
                 />
             )}
+            <style>{`
+                .no-spinner::-webkit-inner-spin-button,
+                .no-spinner::-webkit-outer-spin-button {
+                    -webkit-appearance: none;
+                    margin: 0;
+                }
+                .no-spinner {
+                    -moz-appearance: textfield;
+                }
+            `}</style>
         </>
     );
 };
