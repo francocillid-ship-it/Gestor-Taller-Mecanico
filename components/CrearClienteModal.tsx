@@ -14,8 +14,6 @@ interface CrearClienteModalProps {
 
 type VehicleFormState = Omit<Vehiculo, 'id' | 'año'> & { id?: string; año: string };
 
-const toTitleCase = (str: string) => str.replace(/\p{L}+/gu, (txt) => txt.charAt(0).toUpperCase() + txt.slice(1).toLowerCase());
-
 const CrearClienteModal: React.FC<CrearClienteModalProps> = ({ onClose, onSuccess, clienteToEdit }) => {
     const [nombre, setNombre] = useState('');
     const [apellido, setApellido] = useState('');
@@ -106,9 +104,7 @@ const CrearClienteModal: React.FC<CrearClienteModalProps> = ({ onClose, onSucces
     
     const handleVehicleChange = (index: number, field: keyof VehicleFormState, value: string) => {
         let processedValue = value;
-        if (field === 'marca' || field === 'modelo') {
-            processedValue = toTitleCase(value);
-        } else if (field === 'matricula' || field === 'numero_chasis' || field === 'numero_motor') {
+        if (field === 'marca' || field === 'modelo' || field === 'matricula' || field === 'numero_chasis' || field === 'numero_motor') {
             processedValue = value.toUpperCase();
         }
 
@@ -248,11 +244,19 @@ const CrearClienteModal: React.FC<CrearClienteModalProps> = ({ onClose, onSucces
             if (scanningVehicleIndex === null) return;
             const updatedVehicles = [...vehicles];
             const currentVehicle = updatedVehicles[scanningVehicleIndex];
-            updatedVehicles[scanningVehicleIndex] = { ...currentVehicle, ...data };
+            
+            const processedData = { ...data };
+            if (processedData.marca) processedData.marca = processedData.marca.toUpperCase();
+            if (processedData.modelo) processedData.modelo = processedData.modelo.toUpperCase();
+            if (processedData.matricula) processedData.matricula = processedData.matricula?.toUpperCase();
+            if (processedData.numero_chasis) processedData.numero_chasis = processedData.numero_chasis?.toUpperCase();
+            if (processedData.numero_motor) processedData.numero_motor = processedData.numero_motor?.toUpperCase();
+
+            updatedVehicles[scanningVehicleIndex] = { ...currentVehicle, ...processedData };
             setVehicles(updatedVehicles);
         } else {
-            if (data.marca) setMarca(toTitleCase(data.marca));
-            if (data.modelo) setModelo(toTitleCase(data.modelo));
+            if (data.marca) setMarca(data.marca.toUpperCase());
+            if (data.modelo) setModelo(data.modelo.toUpperCase());
             if (data.año) setAño(data.año);
             if (data.matricula) setMatricula(data.matricula.toUpperCase());
             if (data.numero_chasis) setNumeroChasis(data.numero_chasis.toUpperCase());
@@ -278,8 +282,8 @@ const CrearClienteModal: React.FC<CrearClienteModalProps> = ({ onClose, onSucces
                 )}
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div><label htmlFor="marca" className="block text-sm font-medium text-taller-gray dark:text-gray-400">Marca</label><input type="text" id="marca" value={marca} onChange={e => setMarca(toTitleCase(e.target.value))} className="mt-1 block w-full input-class" required /></div>
-                <div><label htmlFor="modelo" className="block text-sm font-medium text-taller-gray dark:text-gray-400">Modelo</label><input type="text" id="modelo" value={modelo} onChange={e => setModelo(toTitleCase(e.target.value))} className="mt-1 block w-full input-class" required /></div>
+                <div><label htmlFor="marca" className="block text-sm font-medium text-taller-gray dark:text-gray-400">Marca</label><input type="text" id="marca" value={marca} onChange={e => setMarca(e.target.value.toUpperCase())} className="mt-1 block w-full input-class" required /></div>
+                <div><label htmlFor="modelo" className="block text-sm font-medium text-taller-gray dark:text-gray-400">Modelo</label><input type="text" id="modelo" value={modelo} onChange={e => setModelo(e.target.value.toUpperCase())} className="mt-1 block w-full input-class" required /></div>
                 <div><label htmlFor="año" className="block text-sm font-medium text-taller-gray dark:text-gray-400">Año (Opcional)</label><input type="number" id="año" value={año} onChange={e => setAño(e.target.value)} className="mt-1 block w-full input-class" /></div>
                 <div><label htmlFor="matricula" className="block text-sm font-medium text-taller-gray dark:text-gray-400">Matrícula</label><input type="text" id="matricula" value={matricula} onChange={e => setMatricula(e.target.value.toUpperCase())} className="mt-1 block w-full input-class" required /></div>
                 <div><label htmlFor="numero_chasis" className="block text-sm font-medium text-taller-gray dark:text-gray-400">Nº Chasis (opcional)</label><input type="text" id="numero_chasis" value={numero_chasis} onChange={e => setNumeroChasis(e.target.value.toUpperCase())} className="mt-1 block w-full input-class" /></div>
