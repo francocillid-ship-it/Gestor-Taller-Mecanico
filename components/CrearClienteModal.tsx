@@ -8,7 +8,7 @@ import CameraRecognitionModal from './CameraRecognitionModal';
 
 interface CrearClienteModalProps {
     onClose: () => void;
-    onSuccess: () => void;
+    onSuccess: (newClientId?: string) => void;
     clienteToEdit?: Cliente | null;
 }
 
@@ -135,6 +135,8 @@ const CrearClienteModal: React.FC<CrearClienteModalProps> = ({ onClose, onSucces
         setIsSubmitting(true);
         setError('');
         try {
+            let successId: string | undefined = undefined;
+
             if (isEditMode) {
                 if (clienteToEdit && clienteToEdit.email !== email && email.trim() !== '') {
                     const { error: rpcError } = await supabase.rpc('update_client_email', {
@@ -169,6 +171,7 @@ const CrearClienteModal: React.FC<CrearClienteModalProps> = ({ onClose, onSucces
                         await supabase.from('vehiculos').insert(vehicleData);
                     }
                 }
+                successId = clienteToEdit!.id;
             } else {
                 let yearNumber: number | null = null;
                 if (año.trim() !== '') {
@@ -218,6 +221,7 @@ const CrearClienteModal: React.FC<CrearClienteModalProps> = ({ onClose, onSucces
                 if (sessionError) throw new Error("Error al restaurar sesión.");
                 
                 const newUserId = signUpData.user.id;
+                successId = newUserId;
 
                 const { error: clientInsertError } = await supabase
                     .from('clientes')
@@ -231,7 +235,7 @@ const CrearClienteModal: React.FC<CrearClienteModalProps> = ({ onClose, onSucces
                 
                 if (vehicleInsertError) throw new Error(`Cliente creado, pero falló al agregar el vehículo: ${vehicleInsertError.message}`);
             }
-            onSuccess();
+            onSuccess(successId);
         } catch (err: any) {
             setError(err.message || `Error al ${isEditMode ? 'actualizar' : 'crear'} el cliente.`);
         } finally {

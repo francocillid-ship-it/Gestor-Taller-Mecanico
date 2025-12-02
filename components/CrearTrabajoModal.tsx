@@ -39,6 +39,9 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
     const [error, setError] = useState('');
     const [isClientModalOpen, setIsClientModalOpen] = useState(false);
     const [confirmingDelete, setConfirmingDelete] = useState(false);
+    
+    // State to track if we are waiting for a new client to appear in the list
+    const [pendingClientId, setPendingClientId] = useState<string | null>(null);
 
     const isEditMode = Boolean(trabajoToEdit);
 
@@ -101,6 +104,17 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
             setStatus(trabajoToEdit.status);
         }
     }, [trabajoToEdit]);
+
+    // Effect to auto-select new client when data refreshes
+    useEffect(() => {
+        if (pendingClientId && clientes.length > 0) {
+            const found = clientes.find(c => c.id === pendingClientId);
+            if (found) {
+                setSelectedClienteId(found.id);
+                setPendingClientId(null); // Clear pending state
+            }
+        }
+    }, [clientes, pendingClientId]);
 
     const selectedClientVehiculos = useMemo(() => {
         if (!selectedClienteId) return [];
@@ -491,9 +505,12 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
             {isClientModalOpen && (
                 <CrearClienteModal
                     onClose={() => setIsClientModalOpen(false)}
-                    onSuccess={() => {
+                    onSuccess={(newClientId) => {
                         setIsClientModalOpen(false);
                         onDataRefresh();
+                        if (newClientId) {
+                            setPendingClientId(newClientId);
+                        }
                     }}
                 />
             )}
