@@ -11,6 +11,7 @@ const getImageDataUrl = (url: string): Promise<string> => {
     return new Promise((resolve, reject) => {
         const img = new Image();
         img.crossOrigin = 'Anonymous'; // Critical for loading external images (Supabase)
+        
         img.onload = () => {
             const canvas = document.createElement('canvas');
             canvas.width = img.width;
@@ -24,8 +25,15 @@ const getImageDataUrl = (url: string): Promise<string> => {
             const dataURL = canvas.toDataURL('image/png');
             resolve(dataURL);
         };
-        img.onerror = (error) => reject(error);
-        img.src = url;
+        img.onerror = (error) => {
+            console.error("Error loading image for PDF", error);
+            reject(error);
+        };
+        
+        // Cache busting to prevent browser from using a cached non-CORS response
+        // Check if url already has params
+        const separator = url.includes('?') ? '&' : '?';
+        img.src = `${url}${separator}t=${new Date().getTime()}`;
     });
 };
 
@@ -72,50 +80,44 @@ export const generateClientPDF = async (
         }
     }
 
-    // --- HEADER ---
-    const drawHeader = async (logoOffset = 0) => {
-        doc.setFillColor(primaryColor);
-        doc.rect(0, 0, a4Width, 30, 'F');
-        doc.setTextColor('#FFFFFF');
-        doc.setFont('helvetica', 'bold');
+    // --- 1. DRAW BACKGROUND HEADER FIRST ---
+    // We draw the background color first so the logo (if transparent) sits ON TOP of it, not under it.
+    doc.setFillColor(primaryColor);
+    doc.rect(0, 0, a4Width, 30, 'F');
 
-        doc.setFontSize(20);
-        doc.text(tallerInfo.nombre || 'Mi Taller', margin + logoOffset, 15);
-        doc.setFontSize(9);
-        doc.setFont('helvetica', 'normal');
-        const address = tallerInfo.direccion || '';
-        const phone = tallerInfo.telefono || '';
-        const cuit = tallerInfo.cuit || '';
-        doc.text(`${address} | Tel: ${phone} | CUIT: ${cuit}`, margin + logoOffset, 22);
-    };
-
-    let logoImgData: string | null = null;
-    let logoWidth = 0;
-
+    // --- 2. HANDLE LOGO ---
+    let logoOffset = 0;
+    
     // Strict check for boolean true
     if (tallerInfo.showLogoOnPdf === true && tallerInfo.logoUrl) {
         try {
-            // Use the canvas helper to ensure we get a valid PNG Base64 string
-            logoImgData = await getImageDataUrl(tallerInfo.logoUrl);
-
+            const logoImgData = await getImageDataUrl(tallerInfo.logoUrl);
             const imgProps = doc.getImageProperties(logoImgData);
             const aspectRatio = imgProps.width / imgProps.height;
             const imgHeight = 20;
-            logoWidth = imgHeight * aspectRatio;
+            const logoWidth = imgHeight * aspectRatio;
+            
+            // Draw Logo on top of the background
+            doc.addImage(logoImgData, 'PNG', margin, 5, logoWidth, 20);
+            logoOffset = logoWidth + 5;
         } catch (error) {
             console.error("Could not load logo for PDF:", error);
-            // Fail gracefully and render without logo
+            // Fail gracefully and continue without logo
         }
     }
 
-    // Draw header content
-    if (logoImgData) {
-        // 'PNG' format is enforced by getImageDataUrl
-        doc.addImage(logoImgData, 'PNG', margin, 5, logoWidth, 20);
-        await drawHeader(logoWidth + 5);
-    } else {
-        await drawHeader();
-    }
+    // --- 3. DRAW HEADER TEXT ---
+    doc.setTextColor('#FFFFFF');
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(20);
+    doc.text(tallerInfo.nombre || 'Mi Taller', margin + logoOffset, 15);
+    
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    const address = tallerInfo.direccion || '';
+    const phone = tallerInfo.telefono || '';
+    const cuit = tallerInfo.cuit || '';
+    doc.text(`${address} | Tel: ${phone} | CUIT: ${cuit}`, margin + logoOffset, 22);
 
 
     // --- DOCUMENT TITLE ---
