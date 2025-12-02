@@ -16,7 +16,8 @@ export const generateClientPDF = async (
     const pageHeight = doc.internal.pageSize.getHeight();
     const margin = 15;
     const mainTextColor = '#0f172a';
-    const primaryColor = '#1e40af';
+    // Use user defined color or default to blue
+    const primaryColor = tallerInfo.headerColor || '#1e40af';
     const lightBgColor = '#f1f5f9';
     const lightTextColor = '#64748b';
 
@@ -65,7 +66,8 @@ export const generateClientPDF = async (
     let logoImgData: string | null = null;
     let logoWidth = 0;
 
-    if (tallerInfo.showLogoOnPdf && tallerInfo.logoUrl) {
+    // Strict check for boolean true
+    if (tallerInfo.showLogoOnPdf === true && tallerInfo.logoUrl) {
         try {
             const response = await fetch(tallerInfo.logoUrl);
             if (!response.ok) throw new Error('Network response was not ok');
@@ -230,6 +232,7 @@ export const generateClientPDF = async (
     }
     
     doc.setLineWidth(0.5);
+    doc.setDrawColor(primaryColor); // Use primary color for the line
     doc.line(totalsX, finalY + 15 + extraOffset, valuesX, finalY + 15 + extraOffset);
 
     doc.setFontSize(14);

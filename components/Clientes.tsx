@@ -1,9 +1,10 @@
 
 import React, { useState, useMemo } from 'react';
 import type { Cliente, Trabajo, Vehiculo } from '../types';
-import { ChevronDownIcon, ChevronUpIcon, PhoneIcon, EnvelopeIcon, UserPlusIcon, PencilIcon, Cog6ToothIcon } from '@heroicons/react/24/solid';
+import { ChevronDownIcon, ChevronUpIcon, PhoneIcon, EnvelopeIcon, UserPlusIcon, PencilIcon, Cog6ToothIcon, PlusIcon } from '@heroicons/react/24/solid';
 import CrearClienteModal from './CrearClienteModal';
 import MaintenanceConfigModal from './MaintenanceConfigModal';
+import AddVehicleModal from './AddVehicleModal';
 
 interface ClientesProps {
     clientes: Cliente[];
@@ -17,10 +18,11 @@ interface ClientCardProps {
     trabajos: Trabajo[];
     onEdit: (cliente: Cliente) => void;
     onConfigVehicle: (vehiculo: Vehiculo) => void;
+    onAddVehicle: (clienteId: string) => void;
     forceExpand?: boolean;
 }
 
-const ClientCard: React.FC<ClientCardProps> = ({ cliente, trabajos, onEdit, onConfigVehicle, forceExpand }) => {
+const ClientCard: React.FC<ClientCardProps> = ({ cliente, trabajos, onEdit, onConfigVehicle, onAddVehicle, forceExpand }) => {
     const [isExpanded, setIsExpanded] = useState(false);
     const clientTrabajos = trabajos.filter(t => t.clienteId === cliente.id);
     
@@ -61,7 +63,15 @@ const ClientCard: React.FC<ClientCardProps> = ({ cliente, trabajos, onEdit, onCo
                             </div>
                         </div>
                          <div>
-                            <h4 className="font-semibold mb-2 text-taller-dark dark:text-taller-light">Vehículos</h4>
+                            <div className="flex justify-between items-center mb-2">
+                                <h4 className="font-semibold text-taller-dark dark:text-taller-light">Vehículos</h4>
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); onAddVehicle(cliente.id); }}
+                                    className="flex items-center gap-1 text-xs font-semibold text-taller-primary hover:text-taller-secondary bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/30 dark:hover:bg-blue-900/50 px-2 py-1 rounded transition-colors"
+                                >
+                                    <PlusIcon className="h-3 w-3" /> Agregar
+                                </button>
+                            </div>
                             <div className="space-y-2 text-sm text-taller-dark dark:text-gray-300">
                                 {cliente.vehiculos.map(v => (
                                     <div key={v.id} className="flex justify-between items-center bg-white dark:bg-gray-700 p-2 rounded border dark:border-gray-600">
@@ -116,6 +126,7 @@ const Clientes: React.FC<ClientesProps> = ({ clientes, trabajos, onDataRefresh, 
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [clienteToEdit, setClienteToEdit] = useState<Cliente | null>(null);
     const [vehicleToConfig, setVehicleToConfig] = useState<Vehiculo | null>(null);
+    const [clientToAddVehicle, setClientToAddVehicle] = useState<string | null>(null);
 
     const handleEditClick = (cliente: Cliente) => {
         setClienteToEdit(cliente);
@@ -165,6 +176,7 @@ const Clientes: React.FC<ClientesProps> = ({ clientes, trabajos, onDataRefresh, 
                             trabajos={trabajos} 
                             onEdit={handleEditClick} 
                             onConfigVehicle={setVehicleToConfig}
+                            onAddVehicle={setClientToAddVehicle}
                             forceExpand={searchQuery.length > 0} 
                         />
                     ))
@@ -193,6 +205,17 @@ const Clientes: React.FC<ClientesProps> = ({ clientes, trabajos, onDataRefresh, 
                     onClose={() => setVehicleToConfig(null)}
                     onSuccess={() => {
                         setVehicleToConfig(null);
+                        onDataRefresh();
+                    }}
+                />
+            )}
+
+            {clientToAddVehicle && (
+                <AddVehicleModal
+                    clienteId={clientToAddVehicle}
+                    onClose={() => setClientToAddVehicle(null)}
+                    onSuccess={() => {
+                        setClientToAddVehicle(null);
                         onDataRefresh();
                     }}
                 />

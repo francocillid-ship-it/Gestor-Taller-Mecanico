@@ -14,6 +14,16 @@ interface AjustesProps {
 
 type Theme = 'light' | 'dark' | 'system';
 
+// Professional color palette for invoices
+const HEADER_COLORS = [
+    { name: 'Clásico (Azul)', value: '#1e40af', bg: 'bg-blue-800' },
+    { name: 'Rojo Deportivo', value: '#dc2626', bg: 'bg-red-600' },
+    { name: 'Verde Taller', value: '#16a34a', bg: 'bg-green-600' },
+    { name: 'Naranja Industrial', value: '#ea580c', bg: 'bg-orange-600' },
+    { name: 'Negro Moderno', value: '#1f2937', bg: 'bg-gray-800' },
+    { name: 'Violeta', value: '#7c3aed', bg: 'bg-violet-600' },
+];
+
 const Ajustes: React.FC<AjustesProps> = ({ tallerInfo, onUpdateTallerInfo, onLogout, searchQuery }) => {
     const [formData, setFormData] = useState<TallerInfo>(tallerInfo);
     const [isSaved, setIsSaved] = useState(false);
@@ -75,8 +85,8 @@ const Ajustes: React.FC<AjustesProps> = ({ tallerInfo, onUpdateTallerInfo, onLog
         setIsSaved(false);
     };
 
-    const handleTemplateChange = (template: 'classic' | 'modern') => {
-        setFormData(prev => ({ ...prev, pdfTemplate: template }));
+    const handleColorChange = (color: string) => {
+        setFormData(prev => ({ ...prev, headerColor: color }));
         setIsSaved(false);
     };
 
@@ -148,9 +158,97 @@ const Ajustes: React.FC<AjustesProps> = ({ tallerInfo, onUpdateTallerInfo, onLog
         return keywords.some(k => k.toLowerCase().includes(searchQuery.toLowerCase()));
     };
 
+    // PDF Preview Component (Mockup)
+    const PdfPreview = () => {
+        const primaryColor = formData.headerColor || '#1e40af';
+        
+        return (
+            <div className="border border-gray-200 dark:border-gray-600 rounded-lg overflow-hidden shadow-lg bg-white w-full max-w-[300px] mx-auto aspect-[1/1.41] flex flex-col text-[6px] text-gray-800 relative select-none pointer-events-none">
+                {/* Header */}
+                <div style={{ backgroundColor: primaryColor }} className="w-full h-[15%] flex items-center px-2 text-white">
+                     {formData.showLogoOnPdf && formData.logoUrl && (
+                        <div className="w-8 h-8 bg-white/20 mr-2 rounded flex items-center justify-center overflow-hidden">
+                            <img src={formData.logoUrl} alt="logo" className="w-full h-full object-contain" />
+                        </div>
+                    )}
+                    <div>
+                        <div className="font-bold text-[8px]">{formData.nombre || 'Nombre Taller'}</div>
+                        <div className="opacity-80 leading-tight mt-0.5">{formData.direccion || 'Dirección'}</div>
+                        <div className="opacity-80 leading-tight">Tel: {formData.telefono || '...'}</div>
+                    </div>
+                </div>
+                
+                {/* Body Content */}
+                <div className="p-2 flex-1">
+                    <div className="flex justify-end mb-2">
+                        <div className="text-right">
+                            <div className="font-bold text-[8px]">PRESUPUESTO</div>
+                            <div>N°: 000001</div>
+                            <div>Fecha: 01/01/2024</div>
+                        </div>
+                    </div>
+
+                    <div className="bg-gray-100 p-1 mb-2 rounded">
+                        <div className="font-bold">Cliente: Juan Perez</div>
+                        <div>Vehículo: Ford Focus (AB123CD)</div>
+                    </div>
+
+                    <div className="mb-2">
+                        <div className="font-bold mb-0.5">Descripción:</div>
+                        <div className="text-[5px] text-gray-500">Service completo de 10.000km, cambio de aceite y filtros...</div>
+                    </div>
+
+                    {/* Table Mockup */}
+                    <table className="w-full text-left border-collapse">
+                        <thead>
+                            <tr style={{ backgroundColor: primaryColor }} className="text-white">
+                                <th className="p-0.5 rounded-l-sm">Cant</th>
+                                <th className="p-0.5">Desc</th>
+                                <th className="p-0.5 rounded-r-sm text-right">Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr className="border-b border-gray-100">
+                                <td className="p-0.5">1</td>
+                                <td className="p-0.5">Aceite 5w30</td>
+                                <td className="p-0.5 text-right">$ 15.000</td>
+                            </tr>
+                            <tr className="border-b border-gray-100">
+                                <td className="p-0.5">1</td>
+                                <td className="p-0.5">Filtro Aceite</td>
+                                <td className="p-0.5 text-right">$ 8.000</td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                     {/* Totals */}
+                     <div className="mt-4 flex justify-end">
+                        <div className="w-1/2 text-right space-y-0.5">
+                            <div className="flex justify-between border-b border-gray-200 pb-0.5">
+                                <span>Subtotal:</span>
+                                <span>$ 23.000</span>
+                            </div>
+                            <div className="flex justify-between font-bold text-[7px]" style={{ color: primaryColor }}>
+                                <span>TOTAL:</span>
+                                <span>$ 23.000</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                {/* Footer */}
+                <div className="mt-auto p-1 text-center text-gray-400 text-[5px] border-t border-gray-100">
+                    Gracias por su confianza
+                </div>
+
+                <div className="absolute inset-0 ring-1 ring-black/5 rounded-lg"></div>
+            </div>
+        );
+    };
+
     return (
         <>
-            <div className="space-y-8 pb-16 max-w-4xl mx-auto">
+            <div className="space-y-8 pb-16 max-w-5xl mx-auto">
                 <h2 className="text-2xl font-bold text-taller-dark dark:text-taller-light">Ajustes del Taller</h2>
                 
                 <form onSubmit={handleSubmit} className="space-y-8">
@@ -211,6 +309,76 @@ const Ajustes: React.FC<AjustesProps> = ({ tallerInfo, onUpdateTallerInfo, onLog
                                             <input type="text" id="cuit" name="cuit" value={formData.cuit} onChange={handleChange} className="mt-1 block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-taller-primary focus:border-taller-primary sm:text-sm" required/>
                                         </div>
                                     </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {shouldShow(['documentos', 'pdf', 'plantilla', 'logo', 'color', 'diseño']) && (
+                        <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md">
+                            <h3 className="text-lg font-bold mb-6 flex items-center"><DocumentTextIcon className="h-6 w-6 mr-2 text-taller-primary"/>Plantillas de Documentos</h3>
+                            
+                            <div className="flex flex-col lg:flex-row gap-8">
+                                {/* Left Side: Controls */}
+                                <div className="flex-1 space-y-6">
+                                    <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                                        <div className="flex flex-col">
+                                            <label htmlFor="showLogoOnPdf" className="font-bold text-taller-dark dark:text-taller-light">
+                                                Mostrar logo en PDF
+                                            </label>
+                                            <p className="text-xs text-taller-gray dark:text-gray-400">
+                                                Incluye el logo de tu taller en la cabecera.
+                                            </p>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            id="showLogoOnPdf"
+                                            onClick={() => {
+                                                setFormData(prev => ({ ...prev, showLogoOnPdf: !prev.showLogoOnPdf }));
+                                                setIsSaved(false);
+                                            }}
+                                            className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-taller-primary focus:ring-offset-2 dark:focus:ring-offset-gray-800 ${
+                                                formData.showLogoOnPdf ? 'bg-taller-primary' : 'bg-gray-200 dark:bg-gray-600'
+                                            }`}
+                                        >
+                                            <span
+                                                aria-hidden="true"
+                                                className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                                                    formData.showLogoOnPdf ? 'translate-x-5' : 'translate-x-0'
+                                                }`}
+                                            />
+                                        </button>
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-medium text-taller-gray dark:text-gray-400 mb-3">Color de Cabecera</label>
+                                        <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
+                                            {HEADER_COLORS.map((color) => (
+                                                <button
+                                                    key={color.value}
+                                                    type="button"
+                                                    onClick={() => handleColorChange(color.value)}
+                                                    className={`w-full aspect-square rounded-full shadow-sm flex items-center justify-center transition-transform hover:scale-110 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-taller-primary ${color.bg} ${
+                                                        (formData.headerColor || '#1e40af') === color.value ? 'ring-2 ring-offset-2 ring-taller-primary scale-110' : ''
+                                                    }`}
+                                                    title={color.name}
+                                                >
+                                                    {(formData.headerColor || '#1e40af') === color.value && (
+                                                        <CheckCircleIcon className="h-6 w-6 text-white" />
+                                                    )}
+                                                </button>
+                                            ))}
+                                        </div>
+                                        <p className="text-xs text-taller-gray dark:text-gray-500 mt-2">
+                                            Selecciona un color para personalizar tus presupuestos.
+                                        </p>
+                                    </div>
+                                </div>
+
+                                {/* Right Side: Preview */}
+                                <div className="flex-1 flex flex-col items-center">
+                                    <span className="text-sm font-medium text-taller-gray dark:text-gray-400 mb-2">Vista Previa</span>
+                                    <PdfPreview />
                                 </div>
                             </div>
                         </div>
@@ -280,40 +448,6 @@ const Ajustes: React.FC<AjustesProps> = ({ tallerInfo, onUpdateTallerInfo, onLog
                                 <ThemeButton value="dark" currentTheme={theme} onClick={handleThemeChange} icon={MoonIcon} label="Oscuro" />
                                 <ThemeButton value="system" currentTheme={theme} onClick={handleThemeChange} icon={ComputerDesktopIcon} label="Sistema" />
                                 </div>
-                            </div>
-                        </div>
-                    )}
-
-                    {shouldShow(['documentos', 'pdf', 'plantilla', 'logo']) && (
-                        <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md">
-                            <h3 className="text-lg font-bold mb-6 flex items-center"><DocumentTextIcon className="h-6 w-6 mr-2 text-taller-primary"/>Plantillas de Documentos</h3>
-                            <div className="flex items-center justify-between">
-                                <div className="flex flex-col">
-                                    <label htmlFor="showLogoOnPdf" className="font-medium text-taller-dark dark:text-taller-light">
-                                        Mostrar logo en PDF
-                                    </label>
-                                    <p className="text-sm text-taller-gray dark:text-gray-400">
-                                        Incluye el logo de tu taller en los presupuestos y remitos.
-                                    </p>
-                                </div>
-                                <button
-                                    type="button"
-                                    id="showLogoOnPdf"
-                                    onClick={() => {
-                                        setFormData(prev => ({ ...prev, showLogoOnPdf: !prev.showLogoOnPdf }));
-                                        setIsSaved(false);
-                                    }}
-                                    className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-taller-primary focus:ring-offset-2 dark:focus:ring-offset-gray-800 ${
-                                        formData.showLogoOnPdf ? 'bg-taller-primary' : 'bg-gray-200 dark:bg-gray-600'
-                                    }`}
-                                >
-                                    <span
-                                        aria-hidden="true"
-                                        className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                                            formData.showLogoOnPdf ? 'translate-x-5' : 'translate-x-0'
-                                        }`}
-                                    />
-                                </button>
                             </div>
                         </div>
                     )}

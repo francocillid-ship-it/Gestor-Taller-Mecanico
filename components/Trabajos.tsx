@@ -51,9 +51,9 @@ const StatusColumn: React.FC<{
     };
 
     return (
-        <div className={`w-full lg:w-80 bg-gray-100 dark:bg-gray-800 rounded-lg p-3 lg:flex-shrink-0 transition-all duration-500 ease-in-out ${!isExpanded ? 'h-fit' : ''}`}>
+        <div className={`w-full lg:w-80 bg-gray-100 dark:bg-gray-800 rounded-lg p-3 lg:flex-shrink-0 transition-all duration-300 ease-in-out h-fit`}>
             <div 
-                className={`flex justify-between items-center ${isExpanded ? 'mb-4 border-b-2' : ''} pb-2 ${getStatusColor(status)} cursor-pointer hover:opacity-80 transition-all duration-300`}
+                className={`flex justify-between items-center ${isExpanded ? 'mb-2 border-b-2' : ''} pb-2 ${getStatusColor(status)} cursor-pointer hover:opacity-80 transition-all duration-300`}
                 onClick={() => setIsExpanded(!isExpanded)}
             >
                  <div className="flex items-center gap-2">
@@ -62,40 +62,41 @@ const StatusColumn: React.FC<{
                         {trabajos.length}
                     </span>
                  </div>
-                 <div className="transform transition-transform duration-300">
-                    {isExpanded ? (
-                        <ChevronUpIcon className="h-5 w-5 text-taller-gray dark:text-gray-400" />
-                    ) : (
-                        <ChevronDownIcon className="h-5 w-5 text-taller-gray dark:text-gray-400" />
-                    )}
+                 <div className={`transform transition-transform duration-300 ${isExpanded ? 'rotate-180' : 'rotate-0'}`}>
+                    <ChevronDownIcon className="h-5 w-5 text-taller-gray dark:text-gray-400" />
                  </div>
             </div>
            
-            <div className={`space-y-4 overflow-y-auto lg:pr-1 transition-all duration-500 ease-in-out ${isExpanded ? 'opacity-100 max-h-[5000px] lg:max-h-[calc(100vh-20rem)]' : 'opacity-0 max-h-0 overflow-hidden'}`}>
-                {trabajos.length > 0 ? (
-                    trabajos.map(trabajo => {
-                        const cliente = clientes.find(c => c.id === trabajo.clienteId);
-                        const vehiculo = cliente?.vehiculos.find(v => v.id === trabajo.vehiculoId);
-                        return (
-                            <JobCard
-                                key={trabajo.id}
-                                trabajo={trabajo}
-                                cliente={cliente}
-                                vehiculo={vehiculo}
-                                onUpdateStatus={onUpdateStatus}
-                                tallerInfo={tallerInfo}
-                                clientes={clientes}
-                                onDataRefresh={onDataRefresh}
-                            />
-                        );
-                    })
-                ) : (
-                    <div className="py-8 text-center animate-pulse">
-                        <p className="text-sm text-taller-gray dark:text-gray-400">
-                            {searchQuery ? "No hay coincidencias." : "No hay trabajos en este estado."}
-                        </p>
+            {/* Animación suave usando Grid Template Rows */}
+            <div className={`grid transition-[grid-template-rows] duration-300 ease-out ${isExpanded ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>
+                <div className="overflow-hidden">
+                    <div className={`space-y-4 pt-2 lg:pr-1 max-h-[80vh] overflow-y-auto transition-opacity duration-300 ${isExpanded ? 'opacity-100' : 'opacity-0'}`}>
+                        {trabajos.length > 0 ? (
+                            trabajos.map(trabajo => {
+                                const cliente = clientes.find(c => c.id === trabajo.clienteId);
+                                const vehiculo = cliente?.vehiculos.find(v => v.id === trabajo.vehiculoId);
+                                return (
+                                    <JobCard
+                                        key={trabajo.id}
+                                        trabajo={trabajo}
+                                        cliente={cliente}
+                                        vehiculo={vehiculo}
+                                        onUpdateStatus={onUpdateStatus}
+                                        tallerInfo={tallerInfo}
+                                        clientes={clientes}
+                                        onDataRefresh={onDataRefresh}
+                                    />
+                                );
+                            })
+                        ) : (
+                            <div className="py-8 text-center animate-pulse">
+                                <p className="text-sm text-taller-gray dark:text-gray-400">
+                                    {searchQuery ? "No hay coincidencias." : "No hay trabajos en este estado."}
+                                </p>
+                            </div>
+                        )}
                     </div>
-                )}
+                </div>
             </div>
         </div>
     );

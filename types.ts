@@ -84,4 +84,5 @@ export interface TallerInfo {
     pdfTemplate: 'classic' | 'modern';
     mobileNavStyle: 'sidebar' | 'bottom_nav';
     showLogoOnPdf: boolean;
+    headerColor?: string;
 }

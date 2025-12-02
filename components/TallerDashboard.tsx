@@ -35,7 +35,8 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
         pdfTemplate: 'classic',
         mobileNavStyle: 'sidebar',
         showLogoOnPdf: false,
-        logoUrl: undefined
+        logoUrl: undefined,
+        headerColor: '#1e40af' // Default classic blue
     });
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [loading, setLoading] = useState(true);
@@ -64,7 +65,8 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
                     logoUrl: tallerInfoData.logo_url,
                     pdfTemplate: tallerInfoData.pdf_template || 'classic',
                     mobileNavStyle: tallerInfoData.mobile_nav_style || 'sidebar',
-                    showLogoOnPdf: tallerInfoData.show_logo_on_pdf || false,
+                    showLogoOnPdf: tallerInfoData.show_logo_on_pdf === true, // Ensure boolean
+                    headerColor: tallerInfoData.header_color || '#1e40af',
                 });
             } else if (!tallerInfoData) {
                 // Fallback to metadata if table is empty (migration scenario)
@@ -168,6 +170,7 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
                  pdf_template: newInfo.pdfTemplate,
                  mobile_nav_style: newInfo.mobileNavStyle,
                  show_logo_on_pdf: newInfo.showLogoOnPdf,
+                 header_color: newInfo.headerColor,
                  updated_at: new Date().toISOString()
              });
 

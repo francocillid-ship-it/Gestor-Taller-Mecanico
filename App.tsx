@@ -121,7 +121,8 @@ const App: React.FC = () => {
                                 logoUrl: tallerInfoData.logo_url,
                                 pdfTemplate: tallerInfoData.pdf_template || 'classic',
                                 mobileNavStyle: tallerInfoData.mobile_nav_style || 'sidebar',
-                                showLogoOnPdf: tallerInfoData.show_logo_on_pdf || false,
+                                showLogoOnPdf: tallerInfoData.show_logo_on_pdf === true,
+                                headerColor: tallerInfoData.header_color || '#1e40af',
                             });
                         } else {
                             // Fallback to metadata if DB entry missing
