@@ -26,6 +26,7 @@ interface MaintenanceItemStatus {
     daysRemaining?: number;
     lastMileage?: number;
     nextMileage?: number;
+    lastProductName?: string; // Nombre del producto utilizado
 }
 
 interface CategoryGroup {
@@ -34,6 +35,69 @@ interface CategoryGroup {
     items: MaintenanceItemStatus[];
     status: 'good' | 'warning' | 'overdue' | 'unknown';
 }
+
+// Subcomponente para manejar el estado de cada ítem individualmente
+const MaintenanceItemRow: React.FC<{ item: MaintenanceItemStatus }> = ({ item }) => {
+    const [isExpanded, setIsExpanded] = useState(false);
+    const hasDetails = !!item.lastProductName && item.status !== 'unknown';
+
+    return (
+        <div 
+            className={`flex flex-col border-b dark:border-gray-700/50 last:border-0 pb-3 last:pb-0 transition-colors duration-200 ${hasDetails ? 'cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/30 rounded-md p-2 -mx-2' : ''}`}
+            onClick={() => hasDetails && setIsExpanded(!isExpanded)}
+        >
+            <div className="flex flex-col sm:flex-row gap-3 sm:items-center justify-between">
+                <div className="flex-1">
+                    <div className="flex justify-between mb-1 items-center">
+                        <span className="font-medium text-sm text-taller-dark dark:text-taller-light flex items-center gap-2">
+                            {item.label}
+                            {hasDetails && (
+                                <ChevronDownIcon className={`h-3 w-3 text-gray-400 transform transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`} />
+                            )}
+                        </span>
+                        <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-full ${
+                            item.status === 'good' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300' :
+                            item.status === 'warning' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300' :
+                            item.status === 'overdue' ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300' :
+                            'bg-gray-200 text-gray-800 dark:bg-gray-600 dark:text-gray-300'
+                        }`}>
+                            {item.status === 'unknown' ? 'Sin Datos' : item.message}
+                        </span>
+                    </div>
+                    
+                    {item.status !== 'unknown' ? (
+                        <>
+                            <div className="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-1.5 mb-1.5">
+                                <div 
+                                    className={`h-1.5 rounded-full ${item.colorClass}`} 
+                                    style={{ width: `${item.percentage}%` }}
+                                ></div>
+                            </div>
+                            <div className="flex gap-4 text-xs text-taller-gray dark:text-gray-400">
+                                <span>Último: {item.lastDate?.toLocaleDateString('es-ES')}</span>
+                                {item.lastMileage && <span>({item.lastMileage} km)</span>}
+                            </div>
+                        </>
+                    ) : (
+                        <p className="text-xs text-taller-gray dark:text-gray-400 italic">No hay registros recientes.</p>
+                    )}
+                </div>
+            </div>
+
+            {/* Animación de expansión para mostrar el detalle del producto */}
+            <div className={`grid transition-[grid-template-rows] duration-300 ease-out ${isExpanded ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>
+                <div className="overflow-hidden">
+                    <div className="pt-2 mt-1 text-xs text-taller-gray dark:text-gray-300 border-t dark:border-gray-700/50 flex items-start gap-2">
+                        <WrenchIcon className="h-3.5 w-3.5 text-taller-primary mt-0.5" />
+                        <div>
+                            <span className="font-semibold text-taller-dark dark:text-taller-light">Producto/Servicio:</span> {item.lastProductName}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
 
 const MaintenanceCategoryRow: React.FC<{ group: CategoryGroup }> = ({ group }) => {
     const [isOpen, setIsOpen] = useState(false);
@@ -81,7 +145,7 @@ const MaintenanceCategoryRow: React.FC<{ group: CategoryGroup }> = ({ group }) =
         <div className="border dark:border-gray-600 rounded-lg overflow-hidden bg-white dark:bg-gray-800 mb-3 shadow-sm">
             <button 
                 onClick={() => setIsOpen(!isOpen)}
-                className="w-full flex items-center justify-between p-4 bg-gray-50 hover:bg-gray-100 dark:bg-gray-700/50 dark:hover:bg-gray-700 transition-colors"
+                className="w-full flex items-center justify-between p-4 bg-gray-50 hover:bg-gray-100 dark:bg-gray-700/50 dark:hover:bg-gray-700 transition-colors z-10 relative"
             >
                 <div className="flex items-center gap-3">
                     <div className={`p-2 rounded-full ${getStatusColor(group.status)}/10`}>
@@ -95,50 +159,20 @@ const MaintenanceCategoryRow: React.FC<{ group: CategoryGroup }> = ({ group }) =
                         </div>
                     </div>
                 </div>
-                {isOpen ? 
-                    <ChevronUpIcon className="h-5 w-5 text-gray-400" /> : 
+                <div className={`transform transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`}>
                     <ChevronDownIcon className="h-5 w-5 text-gray-400" />
-                }
+                </div>
             </button>
 
-            {isOpen && (
-                <div className="p-4 bg-white dark:bg-gray-800 border-t dark:border-gray-600 space-y-4">
-                    {group.items.filter(i => i.status !== 'disabled').map((item) => (
-                        <div key={item.key} className="flex flex-col sm:flex-row gap-3 sm:items-center justify-between border-b dark:border-gray-700/50 last:border-0 pb-3 last:pb-0">
-                            <div className="flex-1">
-                                <div className="flex justify-between mb-1">
-                                    <span className="font-medium text-sm text-taller-dark dark:text-taller-light">{item.label}</span>
-                                    <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-full ${
-                                        item.status === 'good' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300' :
-                                        item.status === 'warning' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300' :
-                                        item.status === 'overdue' ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300' :
-                                        'bg-gray-200 text-gray-800 dark:bg-gray-600 dark:text-gray-300'
-                                    }`}>
-                                        {item.status === 'unknown' ? 'Sin Datos' : item.message}
-                                    </span>
-                                </div>
-                                
-                                {item.status !== 'unknown' ? (
-                                    <>
-                                        <div className="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-1.5 mb-1.5">
-                                            <div 
-                                                className={`h-1.5 rounded-full ${item.colorClass}`} 
-                                                style={{ width: `${item.percentage}%` }}
-                                            ></div>
-                                        </div>
-                                        <div className="flex gap-4 text-xs text-taller-gray dark:text-gray-400">
-                                            <span>Último: {item.lastDate?.toLocaleDateString('es-ES')}</span>
-                                            {item.lastMileage && <span>({item.lastMileage} km)</span>}
-                                        </div>
-                                    </>
-                                ) : (
-                                    <p className="text-xs text-taller-gray dark:text-gray-400 italic">No hay registros recientes.</p>
-                                )}
-                            </div>
-                        </div>
-                    ))}
+            <div className={`grid transition-[grid-template-rows] duration-300 ease-in-out ${isOpen ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>
+                <div className="overflow-hidden">
+                    <div className="p-4 bg-white dark:bg-gray-800 border-t dark:border-gray-600 space-y-4">
+                        {group.items.filter(i => i.status !== 'disabled').map((item) => (
+                            <MaintenanceItemRow key={item.key} item={item} />
+                        ))}
+                    </div>
                 </div>
-            )}
+            </div>
         </div>
     );
 };
@@ -211,13 +245,22 @@ const VehicleInfoCard: React.FC<VehicleInfoCardProps> = ({ vehiculo, trabajos, o
             const keywords = typeDef ? typeDef.keywords : [];
 
             // Updated Logic: Check for Explicit Tag first, then fallback to keywords
+            // Also capture the product name (p.nombre)
+            let matchingPartName: string | undefined = undefined;
+
             const lastJob = sortedTrabajos.find(t => 
                 t.status === 'Finalizado' && 
                 t.partes.some(p => {
                     // Priority 1: Check explicit tag
-                    if (p.maintenanceType === config.key) return true;
+                    if (p.maintenanceType === config.key) {
+                        matchingPartName = p.nombre;
+                        return true;
+                    }
                     // Priority 2: Check keywords (fallback for legacy data or untagged items)
-                    if (!p.maintenanceType && keywords.some(k => p.nombre.toLowerCase().includes(k))) return true;
+                    if (!p.maintenanceType && keywords.some(k => p.nombre.toLowerCase().includes(k))) {
+                        matchingPartName = p.nombre;
+                        return true;
+                    }
                     return false;
                 })
             );
@@ -230,9 +273,16 @@ const VehicleInfoCard: React.FC<VehicleInfoCardProps> = ({ vehiculo, trabajos, o
                 status: 'unknown' as const,
                 colorClass: 'bg-gray-200 dark:bg-gray-600',
                 message: 'No registrado',
+                lastProductName: undefined
             };
 
             if (!lastJob) return baseItem;
+
+            // If we found the job but somehow missed the name (rare), double check
+            if (!matchingPartName) {
+                 const part = lastJob.partes.find(p => p.maintenanceType === config.key || keywords.some(k => p.nombre.toLowerCase().includes(k)));
+                 if (part) matchingPartName = part.nombre;
+            }
 
             const serviceDateStr = lastJob.fechaSalida || lastJob.fechaEntrada;
             const serviceDate = new Date(serviceDateStr);
@@ -276,7 +326,8 @@ const VehicleInfoCard: React.FC<VehicleInfoCardProps> = ({ vehiculo, trabajos, o
                 message,
                 daysRemaining,
                 lastMileage,
-                nextMileage
+                nextMileage,
+                lastProductName: matchingPartName
             };
         });
 
@@ -314,100 +365,117 @@ const VehicleInfoCard: React.FC<VehicleInfoCardProps> = ({ vehiculo, trabajos, o
     
     // Estado global para el indicador mini
     const globalStatus = useMemo(() => {
-        // Ignorar grupos donde todos los items estan desactivados o unknown
-        const relevantGroups = maintenanceGroups.filter(g => g.items.some(i => i.status !== 'disabled' && i.status !== 'unknown'));
+        // Obtenemos todos los ítems individuales de todos los grupos
+        const allItems = maintenanceGroups.flatMap(g => g.items);
         
-        if (relevantGroups.some(g => g.status === 'overdue')) return 'overdue';
-        if (relevantGroups.some(g => g.status === 'warning')) return 'warning';
+        // Filtramos solo los que están activos (no disabled)
+        const activeItems = allItems.filter(i => i.status !== 'disabled');
+        
+        // Verificamos si hay ALGÚN dato registrado (status no es unknown)
+        const hasAnyRecords = activeItems.some(i => i.status !== 'unknown');
+
+        if (!hasAnyRecords) {
+            return 'no_data';
+        }
+
+        // Si hay datos, chequeamos prioridades
+        if (activeItems.some(i => i.status === 'overdue')) return 'overdue';
+        if (activeItems.some(i => i.status === 'warning')) return 'warning';
+        
+        // Si hay datos y nada está vencido ni en warning
         return 'good';
     }, [maintenanceGroups]);
 
     return (
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden transition-all duration-300">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
             <button
                 onClick={() => setIsExpanded(!isExpanded)}
-                className="w-full p-4 flex justify-between items-center text-left hover:bg-gray-50 dark:hover:bg-gray-700/50 focus:outline-none"
+                className="w-full p-4 flex justify-between items-center text-left hover:bg-gray-50 dark:hover:bg-gray-700/50 focus:outline-none z-10 relative"
             >
                 <div className="flex-1">
                     <h4 className="font-bold text-lg text-taller-dark dark:text-taller-light">{vehiculo.marca} {vehiculo.modelo} {vehiculo.año ? `(${vehiculo.año})` : ''}</h4>
                     <p className="text-sm text-taller-gray dark:text-gray-400 mb-2">{vehiculo.matricula}</p>
                     
-                     {/* Mini indicator */}
-                     {!isExpanded && (
-                         <div className="flex items-center gap-2 mt-1">
-                             <span className={`flex h-2.5 w-2.5 rounded-full ${
-                                 globalStatus === 'overdue' ? 'bg-red-600' : 
-                                 globalStatus === 'warning' ? 'bg-yellow-500' : 'bg-green-500'
-                             }`}></span>
-                             <span className="text-xs text-taller-gray dark:text-gray-400">
-                                 {globalStatus === 'overdue' ? 'Mantenimiento Pendiente' : 
-                                  globalStatus === 'warning' ? 'Mantenimiento Próximo' : 'Mantenimiento al día'}
-                             </span>
-                         </div>
-                     )}
+                     {/* Mini indicator (Solo visible cuando está contraído o en transición) */}
+                     <div className={`flex items-center gap-2 mt-1 transition-opacity duration-300 ${isExpanded ? 'opacity-0' : 'opacity-100'}`}>
+                         <span className={`flex h-2.5 w-2.5 rounded-full ${
+                             globalStatus === 'overdue' ? 'bg-red-600' : 
+                             globalStatus === 'warning' ? 'bg-yellow-500' : 
+                             globalStatus === 'good' ? 'bg-green-500' : 
+                             'bg-gray-400' // no_data
+                         }`}></span>
+                         <span className="text-xs text-taller-gray dark:text-gray-400">
+                             {globalStatus === 'overdue' ? 'Se requiere mantenimiento' : 
+                              globalStatus === 'warning' ? 'Mantenimiento próximo' : 
+                              globalStatus === 'good' ? 'Mantenimiento al día' : 
+                              'Sin mantenimiento registrado'}
+                         </span>
+                     </div>
                 </div>
                 <div className="flex items-center">
                     <span className="text-sm font-semibold text-taller-primary mr-4 hidden sm:inline">{trabajos.length} trabajos</span>
-                    <ChevronDownIcon className={`h-6 w-6 text-taller-gray dark:text-gray-400 transform transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                    <ChevronDownIcon className={`h-6 w-6 text-taller-gray dark:text-gray-400 transform transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`} />
                 </div>
             </button>
-            {isExpanded && (
-                <div className="p-4 border-t dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
-                    
-                    {/* --- MAINTENANCE STATUS SECTION --- */}
-                    <div className="mb-6">
+            
+            <div className={`grid transition-[grid-template-rows] duration-300 ease-in-out ${isExpanded ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>
+                <div className="overflow-hidden">
+                    <div className="p-4 border-t dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+                        {/* --- MAINTENANCE STATUS SECTION --- */}
+                        <div className="mb-6">
+                            <h5 className="font-semibold mb-3 text-taller-dark dark:text-taller-light flex items-center gap-2">
+                                <BeakerIcon className="h-5 w-5 text-taller-primary"/>
+                                Estado de Mantenimiento
+                            </h5>
+                            
+                            <div className="space-y-2">
+                                {maintenanceGroups.map(group => (
+                                    <MaintenanceCategoryRow key={group.id} group={group} />
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4 mb-6 text-sm bg-white dark:bg-gray-800 p-4 rounded-lg border dark:border-gray-600 shadow-sm">
+                            <div className="flex items-start">
+                                <DocumentTextIcon className="h-5 w-5 mr-3 mt-0.5 text-taller-gray dark:text-gray-400 flex-shrink-0"/>
+                                <div>
+                                    <p className="font-semibold text-taller-dark dark:text-taller-light">Nº Chasis</p>
+                                    <p className="text-taller-gray dark:text-gray-300">{vehiculo.numero_chasis || 'No especificado'}</p>
+                                </div>
+                            </div>
+                            <div className="flex items-start">
+                                 <Cog8ToothIcon className="h-5 w-5 mr-3 mt-0.5 text-taller-gray dark:text-gray-400 flex-shrink-0"/>
+                                <div>
+                                    <p className="font-semibold text-taller-dark dark:text-taller-light">Nº Motor</p>
+                                    <p className="text-taller-gray dark:text-gray-300">{vehiculo.numero_motor || 'No especificado'}</p>
+                                </div>
+                            </div>
+                        </div>
+
                         <h5 className="font-semibold mb-3 text-taller-dark dark:text-taller-light flex items-center gap-2">
-                            <BeakerIcon className="h-5 w-5 text-taller-primary"/>
-                            Estado de Mantenimiento
+                            <WrenchIcon className="h-5 w-5 text-taller-gray dark:text-gray-400"/>
+                            Últimas Reparaciones
                         </h5>
-                        
-                        <div className="space-y-2">
-                            {maintenanceGroups.map(group => (
-                                <MaintenanceCategoryRow key={group.id} group={group} />
-                            ))}
+                        <div className="space-y-3">
+                            {ultimosTrabajos.length > 0 ? (
+                                ultimosTrabajos.map(trabajo => <TrabajoListItem key={trabajo.id} trabajo={trabajo} cliente={cliente} tallerInfo={tallerInfo} vehiculo={vehiculo} />)
+                            ) : (
+                                <p className="text-sm text-taller-gray dark:text-gray-400 pl-7">No hay reparaciones recientes para este vehículo.</p>
+                            )}
                         </div>
-                    </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4 mb-6 text-sm bg-white dark:bg-gray-800 p-4 rounded-lg border dark:border-gray-600 shadow-sm">
-                        <div className="flex items-start">
-                            <DocumentTextIcon className="h-5 w-5 mr-3 mt-0.5 text-taller-gray dark:text-gray-400 flex-shrink-0"/>
-                            <div>
-                                <p className="font-semibold text-taller-dark dark:text-taller-light">Nº Chasis</p>
-                                <p className="text-taller-gray dark:text-gray-300">{vehiculo.numero_chasis || 'No especificado'}</p>
-                            </div>
+                        <div className="mt-4 flex justify-end">
+                            <button
+                                onClick={onViewHistory}
+                                className="flex items-center gap-2 px-3 py-1.5 text-sm font-semibold text-taller-secondary bg-blue-50 border border-taller-secondary/50 rounded-lg shadow-sm hover:bg-blue-100 dark:text-blue-300 dark:bg-blue-900/30 dark:border-blue-500/50 dark:hover:bg-blue-900/50"
+                            >
+                               <BookOpenIcon className="h-4 w-4"/>
+                                Ver Historial del Vehículo
+                            </button>
                         </div>
-                        <div className="flex items-start">
-                             <Cog8ToothIcon className="h-5 w-5 mr-3 mt-0.5 text-taller-gray dark:text-gray-400 flex-shrink-0"/>
-                            <div>
-                                <p className="font-semibold text-taller-dark dark:text-taller-light">Nº Motor</p>
-                                <p className="text-taller-gray dark:text-gray-300">{vehiculo.numero_motor || 'No especificado'}</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <h5 className="font-semibold mb-3 text-taller-dark dark:text-taller-light flex items-center gap-2">
-                        <WrenchIcon className="h-5 w-5 text-taller-gray dark:text-gray-400"/>
-                        Últimas Reparaciones
-                    </h5>
-                    <div className="space-y-3">
-                        {ultimosTrabajos.length > 0 ? (
-                            ultimosTrabajos.map(trabajo => <TrabajoListItem key={trabajo.id} trabajo={trabajo} cliente={cliente} tallerInfo={tallerInfo} vehiculo={vehiculo} />)
-                        ) : (
-                            <p className="text-sm text-taller-gray dark:text-gray-400 pl-7">No hay reparaciones recientes para este vehículo.</p>
-                        )}
-                    </div>
-
-                    <div className="mt-4 flex justify-end">
-                        <button
-                            onClick={onViewHistory}
-                            className="flex items-center gap-2 px-3 py-1.5 text-sm font-semibold text-taller-secondary bg-blue-50 border border-taller-secondary/50 rounded-lg shadow-sm hover:bg-blue-100 dark:text-blue-300 dark:bg-blue-900/30 dark:border-blue-500/50 dark:hover:bg-blue-900/50"
-                        >
-                           <BookOpenIcon className="h-4 w-4"/>
-                            Ver Historial del Vehículo
-                        </button>
                     </div>
                 </div>
-            )}
+            </div>
         </div>
     );
 };

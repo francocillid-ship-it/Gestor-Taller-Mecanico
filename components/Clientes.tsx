@@ -50,7 +50,7 @@ const ClientCard: React.FC<ClientCardProps> = ({ cliente, trabajos, onEdit, onCo
         setSendingAccess(true);
         try {
             const { error } = await supabase.auth.resetPasswordForEmail(cliente.email, {
-                redirectTo: window.location.origin + '/#type=recovery',
+                redirectTo: window.location.origin + '?type=recovery',
             });
 
             if (error) throw error;

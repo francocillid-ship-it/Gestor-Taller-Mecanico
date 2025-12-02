@@ -26,11 +26,14 @@ const App: React.FC = () => {
 
 
     useEffect(() => {
-        // Analizar parámetros del hash de la URL para determinar la acción inicial.
+        // Analizar parámetros del hash y query de la URL para determinar la acción inicial.
         // NOTA CRÍTICA: No debemos limpiar el hash (window.history.replaceState) aquí inmediatamente.
         // Supabase necesita leer el access_token y type del hash para establecer la sesión.
         const hashParams = new URLSearchParams(window.location.hash.substring(1));
-        const type = hashParams.get('type');
+        const searchParams = new URLSearchParams(window.location.search);
+        
+        // Verificamos el 'type' tanto en el query string como en el hash
+        const type = searchParams.get('type') || hashParams.get('type');
 
         if (type === 'recovery') {
             setAuthAction('PASSWORD_RECOVERY');

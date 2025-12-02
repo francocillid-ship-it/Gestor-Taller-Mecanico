@@ -66,7 +66,7 @@ const TrabajoListItem: React.FC<TrabajoListItemProps> = ({ trabajo, vehiculo, cl
         <div className="bg-white dark:bg-gray-800/80 rounded-lg shadow border dark:border-gray-700 overflow-hidden">
             <button
                 onClick={() => setIsExpanded(!isExpanded)}
-                className="w-full p-3 text-left focus:outline-none"
+                className="w-full p-3 text-left focus:outline-none z-10 relative bg-inherit"
             >
                 <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2">
                     <div>
@@ -79,7 +79,7 @@ const TrabajoListItem: React.FC<TrabajoListItemProps> = ({ trabajo, vehiculo, cl
                         <span className={`mt-1 sm:mt-0 px-2 py-1 text-xs font-semibold rounded-full ${statusStyles.bg} ${statusStyles.text}`}>
                             {trabajo.status}
                         </span>
-                        <ChevronDownIcon className={`h-5 w-5 text-taller-gray dark:text-gray-400 ml-2 transform transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                        <ChevronDownIcon className={`h-5 w-5 text-taller-gray dark:text-gray-400 ml-2 transform transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`} />
                     </div>
                 </div>
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mt-2 text-xs text-taller-gray dark:text-gray-400">
@@ -102,9 +102,10 @@ const TrabajoListItem: React.FC<TrabajoListItemProps> = ({ trabajo, vehiculo, cl
                 </div>
             </button>
 
-            {isExpanded && (
-                <div className="p-3 border-t dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50">
-                     <h4 className="font-semibold text-xs mb-2 text-taller-dark dark:text-taller-light">Detalles del Trabajo:</h4>
+            <div className={`grid transition-[grid-template-rows] duration-300 ease-in-out ${isExpanded ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>
+                <div className="overflow-hidden">
+                    <div className="p-3 border-t dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50">
+                        <h4 className="font-semibold text-xs mb-2 text-taller-dark dark:text-taller-light">Detalles del Trabajo:</h4>
                         <ul className="text-xs space-y-1 text-taller-dark dark:text-gray-300 mb-3">
                             {realParts.map((parte, i) => (
                                 parte.isCategory ? (
@@ -129,8 +130,8 @@ const TrabajoListItem: React.FC<TrabajoListItemProps> = ({ trabajo, vehiculo, cl
                                 </li>
                             ) : null}
                         </ul>
-                    
-                     {pagos.length > 0 && (
+                        
+                        {pagos.length > 0 && (
                             <div className="mt-3 pt-3 border-t dark:border-gray-700">
                                 <h5 className="font-semibold text-xs mb-2 text-taller-dark dark:text-taller-light">Historial de Pagos:</h5>
                                 <ul className="text-xs space-y-1.5 text-taller-dark dark:text-gray-300">
@@ -142,35 +143,36 @@ const TrabajoListItem: React.FC<TrabajoListItemProps> = ({ trabajo, vehiculo, cl
                                     ))}
                                 </ul>
                             </div>
-                         )}
+                        )}
 
-                    <div className="mt-3 pt-3 border-t dark:border-gray-700 space-y-1 text-xs">
-                         <div className="flex justify-between font-bold text-taller-dark dark:text-taller-light">
-                            <span>Total Estimado</span>
-                            <span>{formatCurrency(trabajo.costoEstimado)}</span>
+                        <div className="mt-3 pt-3 border-t dark:border-gray-700 space-y-1 text-xs">
+                            <div className="flex justify-between font-bold text-taller-dark dark:text-taller-light">
+                                <span>Total Estimado</span>
+                                <span>{formatCurrency(trabajo.costoEstimado)}</span>
+                            </div>
+                            <div className="flex justify-between text-green-600 dark:text-green-500">
+                                <span>Total Pagado</span>
+                                <span>{formatCurrency(totalPagado)}</span>
+                            </div>
+                            <div className="flex justify-between font-bold text-red-600 dark:text-red-500">
+                                <span>Saldo Pendiente</span>
+                                <span>{formatCurrency(saldoPendiente)}</span>
+                            </div>
                         </div>
-                        <div className="flex justify-between text-green-600 dark:text-green-500">
-                            <span>Total Pagado</span>
-                            <span>{formatCurrency(totalPagado)}</span>
-                        </div>
-                        <div className="flex justify-between font-bold text-red-600 dark:text-red-500">
-                            <span>Saldo Pendiente</span>
-                            <span>{formatCurrency(saldoPendiente)}</span>
-                        </div>
-                    </div>
 
-                    <div className="mt-4 flex justify-end">
-                         <button 
-                            onClick={handleGeneratePDF} 
-                            disabled={!tallerInfo || isGeneratingPdf} 
-                            className="flex items-center gap-2 px-3 py-1.5 text-sm font-semibold text-white bg-taller-secondary rounded-lg shadow-sm hover:bg-taller-primary disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                            <PrinterIcon className="h-4 w-4"/>
-                            {isGeneratingPdf ? 'Generando...' : 'Descargar PDF'}
-                        </button>
+                        <div className="mt-4 flex justify-end">
+                            <button 
+                                onClick={handleGeneratePDF} 
+                                disabled={!tallerInfo || isGeneratingPdf} 
+                                className="flex items-center gap-2 px-3 py-1.5 text-sm font-semibold text-white bg-taller-secondary rounded-lg shadow-sm hover:bg-taller-primary disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                <PrinterIcon className="h-4 w-4"/>
+                                {isGeneratingPdf ? 'Generando...' : 'Descargar PDF'}
+                            </button>
+                        </div>
                     </div>
                 </div>
-            )}
+            </div>
         </div>
     );
 };
