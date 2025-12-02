@@ -1,10 +1,10 @@
 
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect, useRef } from 'react';
 import type { Trabajo, Cliente, TallerInfo } from '../types';
 import { JobStatus } from '../types';
 import JobCard from './JobCard';
 import CrearTrabajoModal from './CrearTrabajoModal';
-import { PlusIcon, ChevronUpIcon, ChevronDownIcon, MagnifyingGlassIcon } from '@heroicons/react/24/solid';
+import { PlusIcon, ChevronUpIcon, ChevronDownIcon, MagnifyingGlassIcon, CalendarIcon } from '@heroicons/react/24/solid';
 
 interface TrabajosProps {
     trabajos: Trabajo[];
@@ -17,6 +17,104 @@ interface TrabajosProps {
 
 const statusOrder = [JobStatus.Presupuesto, JobStatus.Programado, JobStatus.EnProceso, JobStatus.Finalizado];
 
+// Categorías temporales
+type TimeCategory = 'Esta semana' | 'Semana pasada' | 'Mes pasado' | 'Anteriores';
+
+const getDateCategory = (dateString: string): TimeCategory => {
+    const date = new Date(dateString);
+    const now = new Date();
+    
+    // Reset hours to compare dates properly
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const jobDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    
+    // Calculate start of current week (Monday)
+    const day = today.getDay() || 7; // Get current day number, converting Sun (0) to 7
+    if(day !== 1) today.setHours(-24 * (day - 1));
+    const startOfCurrentWeek = today;
+
+    const startOfPreviousWeek = new Date(startOfCurrentWeek);
+    startOfPreviousWeek.setDate(startOfCurrentWeek.getDate() - 7);
+
+    const startOfCurrentMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const startOfPreviousMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+
+    if (jobDate >= startOfCurrentWeek) return 'Esta semana';
+    if (jobDate >= startOfPreviousWeek) return 'Semana pasada';
+    if (jobDate >= startOfPreviousMonth) return 'Mes pasado';
+    return 'Anteriores';
+};
+
+const JobGroup: React.FC<{ 
+    category: TimeCategory; 
+    trabajos: Trabajo[];
+    clientes: Cliente[];
+    onUpdateStatus: (id: string, s: JobStatus) => void;
+    tallerInfo: TallerInfo;
+    onDataRefresh: () => void;
+    defaultExpanded: boolean;
+}> = ({ category, trabajos, clientes, onUpdateStatus, tallerInfo, onDataRefresh, defaultExpanded }) => {
+    const [isExpanded, setIsExpanded] = useState(defaultExpanded);
+    const groupRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        if (isExpanded && groupRef.current) {
+            const timer = setTimeout(() => {
+                groupRef.current?.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'start',
+                    inline: 'nearest'
+                });
+            }, 350);
+            return () => clearTimeout(timer);
+        }
+    }, [isExpanded]);
+
+    if (trabajos.length === 0) return null;
+
+    return (
+        <div ref={groupRef} className="mb-4 last:mb-0 scroll-mt-4">
+            <button 
+                onClick={() => setIsExpanded(!isExpanded)}
+                className="w-full flex justify-between items-center text-xs font-semibold text-taller-gray dark:text-gray-400 uppercase tracking-wider mb-2 hover:text-taller-primary transition-colors"
+            >
+                <div className="flex items-center gap-2">
+                    <CalendarIcon className="h-3 w-3" />
+                    {category}
+                </div>
+                <div className="flex items-center gap-2">
+                    <span className="bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 px-1.5 py-0.5 rounded text-[10px]">{trabajos.length}</span>
+                    <ChevronDownIcon className={`h-3 w-3 transform transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                </div>
+            </button>
+            
+            <div className={`grid transition-[grid-template-rows] duration-300 ease-out ${isExpanded ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>
+                <div className="overflow-hidden">
+                    <div className="space-y-4 pb-2">
+                        {trabajos.map(trabajo => {
+                            const cliente = clientes.find(c => c.id === trabajo.clienteId);
+                            const vehiculo = cliente?.vehiculos.find(v => v.id === trabajo.vehiculoId);
+                            return (
+                                <JobCard
+                                    key={trabajo.id}
+                                    trabajo={trabajo}
+                                    cliente={cliente}
+                                    vehiculo={vehiculo}
+                                    onUpdateStatus={onUpdateStatus}
+                                    tallerInfo={tallerInfo}
+                                    clientes={clientes}
+                                    onDataRefresh={onDataRefresh}
+                                />
+                            );
+                        })}
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+
 const StatusColumn: React.FC<{
     status: JobStatus;
     trabajos: Trabajo[];
@@ -27,18 +125,30 @@ const StatusColumn: React.FC<{
     searchQuery: string;
 }> = ({ status, trabajos, clientes, onUpdateStatus, tallerInfo, onDataRefresh, searchQuery }) => {
     const [isExpanded, setIsExpanded] = useState(false);
+    const columnRef = useRef<HTMLDivElement>(null);
 
     // Effect to handle auto-expansion based on search results
     useEffect(() => {
         if (searchQuery.trim().length > 0) {
-            // If searching, only expand if there are matches in this column
-            // If no matches, collapse it to reduce visual noise
             setIsExpanded(trabajos.length > 0);
         } else {
-            // If search is cleared, revert to default collapsed state
             setIsExpanded(false);
         }
     }, [searchQuery, trabajos.length]);
+
+    // Effect for auto-scroll on expansion
+    useEffect(() => {
+        if (isExpanded && columnRef.current && !searchQuery) {
+            const timer = setTimeout(() => {
+                columnRef.current?.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'start',
+                    inline: 'nearest'
+                });
+            }, 350);
+            return () => clearTimeout(timer);
+        }
+    }, [isExpanded, searchQuery]);
 
     const getStatusColor = (status: JobStatus) => {
         switch (status) {
@@ -49,9 +159,33 @@ const StatusColumn: React.FC<{
             default: return 'border-gray-400';
         }
     };
+    
+    // Group logic for "Finalizado"
+    const groupedJobs = useMemo(() => {
+        if (status !== JobStatus.Finalizado) return null;
+        
+        const groups: Record<TimeCategory, Trabajo[]> = {
+            'Esta semana': [],
+            'Semana pasada': [],
+            'Mes pasado': [],
+            'Anteriores': []
+        };
+
+        trabajos.forEach(t => {
+            // Use fechaSalida if available, otherwise fechaEntrada
+            const date = t.fechaSalida || t.fechaEntrada;
+            const cat = getDateCategory(date);
+            groups[cat].push(t);
+        });
+
+        return groups;
+    }, [trabajos, status]);
 
     return (
-        <div className={`w-full lg:w-80 bg-gray-100 dark:bg-gray-800 rounded-lg p-3 lg:flex-shrink-0 transition-all duration-300 ease-in-out h-fit`}>
+        <div 
+            ref={columnRef}
+            className={`w-full lg:w-80 bg-gray-100 dark:bg-gray-800 rounded-lg p-3 lg:flex-shrink-0 transition-all duration-300 ease-in-out h-fit scroll-mt-4`}
+        >
             <div 
                 className={`flex justify-between items-center ${isExpanded ? 'mb-2 border-b-2' : ''} pb-2 ${getStatusColor(status)} cursor-pointer hover:opacity-80 transition-all duration-300`}
                 onClick={() => setIsExpanded(!isExpanded)}
@@ -70,24 +204,42 @@ const StatusColumn: React.FC<{
             {/* Animación suave usando Grid Template Rows */}
             <div className={`grid transition-[grid-template-rows] duration-300 ease-out ${isExpanded ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>
                 <div className="overflow-hidden">
-                    <div className={`space-y-4 pt-2 lg:pr-1 max-h-[80vh] overflow-y-auto transition-opacity duration-300 ${isExpanded ? 'opacity-100' : 'opacity-0'}`}>
+                    {/* 
+                        MODIFIED FOR MOBILE:
+                        On mobile (default), we remove max-h and overflow-y-auto so the list expands fully.
+                        This allows the main page scroll to handle navigation, avoiding nested scrollbars.
+                        On lg screens, we keep the column scroll behavior.
+                    */}
+                    <div className={`pt-2 lg:max-h-[80vh] lg:overflow-y-auto transition-opacity duration-300 custom-scrollbar relative ${isExpanded ? 'opacity-100' : 'opacity-0'}`}>
+                        
                         {trabajos.length > 0 ? (
-                            trabajos.map(trabajo => {
-                                const cliente = clientes.find(c => c.id === trabajo.clienteId);
-                                const vehiculo = cliente?.vehiculos.find(v => v.id === trabajo.vehiculoId);
-                                return (
-                                    <JobCard
-                                        key={trabajo.id}
-                                        trabajo={trabajo}
-                                        cliente={cliente}
-                                        vehiculo={vehiculo}
-                                        onUpdateStatus={onUpdateStatus}
-                                        tallerInfo={tallerInfo}
-                                        clientes={clientes}
-                                        onDataRefresh={onDataRefresh}
-                                    />
-                                );
-                            })
+                            status === JobStatus.Finalizado && groupedJobs ? (
+                                <>
+                                    <JobGroup category="Esta semana" trabajos={groupedJobs['Esta semana']} defaultExpanded={true} clientes={clientes} onUpdateStatus={onUpdateStatus} tallerInfo={tallerInfo} onDataRefresh={onDataRefresh} />
+                                    <JobGroup category="Semana pasada" trabajos={groupedJobs['Semana pasada']} defaultExpanded={false} clientes={clientes} onUpdateStatus={onUpdateStatus} tallerInfo={tallerInfo} onDataRefresh={onDataRefresh} />
+                                    <JobGroup category="Mes pasado" trabajos={groupedJobs['Mes pasado']} defaultExpanded={false} clientes={clientes} onUpdateStatus={onUpdateStatus} tallerInfo={tallerInfo} onDataRefresh={onDataRefresh} />
+                                    <JobGroup category="Anteriores" trabajos={groupedJobs['Anteriores']} defaultExpanded={false} clientes={clientes} onUpdateStatus={onUpdateStatus} tallerInfo={tallerInfo} onDataRefresh={onDataRefresh} />
+                                </>
+                            ) : (
+                                <div className="space-y-4 pb-2 pr-1">
+                                    {trabajos.map(trabajo => {
+                                        const cliente = clientes.find(c => c.id === trabajo.clienteId);
+                                        const vehiculo = cliente?.vehiculos.find(v => v.id === trabajo.vehiculoId);
+                                        return (
+                                            <JobCard
+                                                key={trabajo.id}
+                                                trabajo={trabajo}
+                                                cliente={cliente}
+                                                vehiculo={vehiculo}
+                                                onUpdateStatus={onUpdateStatus}
+                                                tallerInfo={tallerInfo}
+                                                clientes={clientes}
+                                                onDataRefresh={onDataRefresh}
+                                            />
+                                        );
+                                    })}
+                                </div>
+                            )
                         ) : (
                             <div className="py-8 text-center animate-pulse">
                                 <p className="text-sm text-taller-gray dark:text-gray-400">
@@ -95,6 +247,8 @@ const StatusColumn: React.FC<{
                                 </p>
                             </div>
                         )}
+                        {/* Visual indicator at the bottom to suggest more content/scrolling - Hidden on mobile as we show full content */}
+                        {trabajos.length > 2 && <div className="sticky bottom-0 left-0 right-0 h-6 bg-gradient-to-t from-gray-100 dark:from-gray-800 to-transparent pointer-events-none hidden lg:block" />}
                     </div>
                 </div>
             </div>
@@ -136,6 +290,22 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
     
     return (
         <div className="h-full flex flex-col">
+            <style>{`
+                /* Custom Scrollbar Styles for better visibility */
+                .custom-scrollbar::-webkit-scrollbar {
+                    width: 6px;
+                }
+                .custom-scrollbar::-webkit-scrollbar-track {
+                    background: transparent;
+                }
+                .custom-scrollbar::-webkit-scrollbar-thumb {
+                    background-color: rgba(156, 163, 175, 0.5);
+                    border-radius: 20px;
+                }
+                .dark .custom-scrollbar::-webkit-scrollbar-thumb {
+                    background-color: rgba(75, 85, 99, 0.5);
+                }
+            `}</style>
             <div className="flex flex-col gap-4 sm:flex-row sm:justify-between sm:items-center mb-6">
                 <h2 className="text-2xl font-bold text-taller-dark dark:text-taller-light">Flujo de Trabajos</h2>
                 <div className="flex">

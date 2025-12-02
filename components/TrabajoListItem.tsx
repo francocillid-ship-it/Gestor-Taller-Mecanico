@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import type { Trabajo, Vehiculo, Cliente, TallerInfo } from '../types';
 import { CurrencyDollarIcon, CalendarDaysIcon, ChevronDownIcon, PrinterIcon, WrenchScrewdriverIcon, MapPinIcon } from '@heroicons/react/24/solid';
 import { generateClientPDF } from './pdfGenerator';
@@ -34,6 +34,34 @@ const formatCurrency = (val: number | undefined) => {
 const TrabajoListItem: React.FC<TrabajoListItemProps> = ({ trabajo, vehiculo, cliente, tallerInfo }) => {
     const [isExpanded, setIsExpanded] = useState(false);
     const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+    const cardRef = useRef<HTMLDivElement>(null);
+
+    // Auto-scroll when expanded with conditional logic
+    useEffect(() => {
+        if (isExpanded && cardRef.current) {
+            const timer = setTimeout(() => {
+                const element = cardRef.current;
+                if (!element) return;
+
+                const rect = element.getBoundingClientRect();
+                const windowHeight = window.innerHeight;
+                // Header offset (approx for sticky header in client portal or fixed nav in dashboard)
+                const headerOffset = 80;
+
+                const isTopHidden = rect.top < headerOffset;
+                const isBottomHidden = rect.bottom > windowHeight;
+
+                if (isTopHidden || isBottomHidden) {
+                    element.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start',
+                        inline: 'nearest'
+                    });
+                }
+            }, 350);
+            return () => clearTimeout(timer);
+        }
+    }, [isExpanded]);
     
     const statusStyles = getStatusStyles(trabajo.status);
     
@@ -63,7 +91,7 @@ const TrabajoListItem: React.FC<TrabajoListItemProps> = ({ trabajo, vehiculo, cl
     };
 
     return (
-        <div className="bg-white dark:bg-gray-800/80 rounded-lg shadow border dark:border-gray-700 overflow-hidden">
+        <div ref={cardRef} className="bg-white dark:bg-gray-800/80 rounded-lg shadow border dark:border-gray-700 overflow-hidden scroll-mt-24 transition-all duration-300">
             <button
                 onClick={() => setIsExpanded(!isExpanded)}
                 className="w-full p-3 text-left focus:outline-none z-10 relative bg-inherit"

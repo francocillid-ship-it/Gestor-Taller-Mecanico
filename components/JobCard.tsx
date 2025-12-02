@@ -33,13 +33,29 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
     const cardRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
-        if (isExpanded) {
+        if (isExpanded && cardRef.current) {
+            // Esperar a que termine la animación de CSS (300ms)
             const timer = setTimeout(() => {
-                cardRef.current?.scrollIntoView({
-                    behavior: 'smooth',
-                    block: 'end',
-                });
-            }, 150);
+                const element = cardRef.current;
+                if (!element) return;
+
+                const rect = element.getBoundingClientRect();
+                const windowHeight = window.innerHeight;
+                // Asumimos un margen superior seguro (header) de ~80px
+                const headerOffset = 80;
+
+                // Condición: Si la parte superior está oculta por el header O la parte inferior se sale de la pantalla
+                const isTopHidden = rect.top < headerOffset;
+                const isBottomHidden = rect.bottom > windowHeight;
+
+                if (isTopHidden || isBottomHidden) {
+                    element.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start',
+                        inline: 'nearest'
+                    });
+                }
+            }, 350);
             return () => clearTimeout(timer);
         }
     }, [isExpanded]);
@@ -166,7 +182,7 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
 
     return (
         <>
-            <div ref={cardRef} className={`bg-white dark:bg-gray-800 rounded-lg shadow-md border-l-4 border-taller-secondary/50 dark:border-taller-secondary transition-all duration-300 ${isExpanded ? 'mb-4' : ''}`}>
+            <div ref={cardRef} className={`bg-white dark:bg-gray-800 rounded-lg shadow-md border-l-4 border-taller-secondary/50 dark:border-taller-secondary transition-all duration-300 scroll-mt-4 ${isExpanded ? 'mb-4 ring-2 ring-taller-primary/20 dark:ring-taller-primary/40' : ''}`}>
                 <div className="p-3">
                     <div className="flex justify-between items-start">
                         <div>

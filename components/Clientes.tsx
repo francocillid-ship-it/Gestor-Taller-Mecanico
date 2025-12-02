@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import type { Cliente, Trabajo, Vehiculo } from '../types';
 import { ChevronDownIcon, ChevronUpIcon, PhoneIcon, EnvelopeIcon, UserPlusIcon, PencilIcon, Cog6ToothIcon, PlusIcon, PaperAirplaneIcon, ShareIcon } from '@heroicons/react/24/solid';
 import CrearClienteModal from './CrearClienteModal';
@@ -27,15 +27,42 @@ const ClientCard: React.FC<ClientCardProps> = ({ cliente, trabajos, onEdit, onCo
     const [isExpanded, setIsExpanded] = useState(false);
     const [sendingAccess, setSendingAccess] = useState(false);
     const clientTrabajos = trabajos.filter(t => t.clienteId === cliente.id);
+    const cardRef = useRef<HTMLDivElement>(null);
     
     // Auto-expand if search is active (forceExpand)
-    React.useEffect(() => {
+    useEffect(() => {
         if (forceExpand) {
             setIsExpanded(true);
         } else {
              setIsExpanded(false);
         }
     }, [forceExpand]);
+
+    // Auto-scroll logic
+    useEffect(() => {
+        if (isExpanded && cardRef.current) {
+            const timer = setTimeout(() => {
+                const element = cardRef.current;
+                if (!element) return;
+
+                const rect = element.getBoundingClientRect();
+                const windowHeight = window.innerHeight;
+                const headerOffset = 80;
+
+                const isTopHidden = rect.top < headerOffset;
+                const isBottomHidden = rect.bottom > windowHeight;
+
+                if (isTopHidden || isBottomHidden) {
+                    element.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start',
+                        inline: 'nearest'
+                    });
+                }
+            }, 350);
+            return () => clearTimeout(timer);
+        }
+    }, [isExpanded]);
 
     const handleSendAccess = async (e: React.MouseEvent) => {
         e.stopPropagation();
@@ -85,7 +112,7 @@ const ClientCard: React.FC<ClientCardProps> = ({ cliente, trabajos, onEdit, onCo
     const fullName = `${cliente.nombre} ${cliente.apellido || ''}`.trim();
 
     return (
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
+        <div ref={cardRef} className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden scroll-mt-4 transition-all duration-300">
             <button
                 onClick={() => setIsExpanded(!isExpanded)}
                 className="w-full p-4 flex justify-between items-center text-left hover:bg-gray-50 dark:hover:bg-gray-700/50 focus:outline-none"

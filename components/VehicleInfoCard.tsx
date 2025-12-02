@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import type { Vehiculo, Trabajo, Cliente, TallerInfo } from '../types';
 import { ChevronDownIcon, DocumentTextIcon, Cog8ToothIcon, WrenchIcon, BookOpenIcon, BeakerIcon, FunnelIcon, EllipsisHorizontalCircleIcon, ChevronUpIcon } from '@heroicons/react/24/solid';
 import TrabajoListItem from './TrabajoListItem';
@@ -179,6 +179,34 @@ const MaintenanceCategoryRow: React.FC<{ group: CategoryGroup }> = ({ group }) =
 
 const VehicleInfoCard: React.FC<VehicleInfoCardProps> = ({ vehiculo, trabajos, onViewHistory, cliente, tallerInfo }) => {
     const [isExpanded, setIsExpanded] = useState(false);
+    const cardRef = useRef<HTMLDivElement>(null);
+
+    // Auto-scroll when expanded with conditions
+    useEffect(() => {
+        if (isExpanded && cardRef.current) {
+            const timer = setTimeout(() => {
+                const element = cardRef.current;
+                if (!element) return;
+
+                const rect = element.getBoundingClientRect();
+                const windowHeight = window.innerHeight;
+                const headerOffset = 80; // Altura aproximada del header sticky
+
+                // Condición: Si está tapado por el header o se sale por abajo
+                const isTopHidden = rect.top < headerOffset;
+                const isBottomHidden = rect.bottom > windowHeight;
+
+                if (isTopHidden || isBottomHidden) {
+                    element.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start',
+                        inline: 'nearest'
+                    });
+                }
+            }, 350); 
+            return () => clearTimeout(timer);
+        }
+    }, [isExpanded]);
 
     const ultimosTrabajos = trabajos.slice(0, 3);
 
@@ -387,7 +415,7 @@ const VehicleInfoCard: React.FC<VehicleInfoCardProps> = ({ vehiculo, trabajos, o
     }, [maintenanceGroups]);
 
     return (
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
+        <div ref={cardRef} className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden scroll-mt-24 transition-all duration-300">
             <button
                 onClick={() => setIsExpanded(!isExpanded)}
                 className="w-full p-4 flex justify-between items-center text-left hover:bg-gray-50 dark:hover:bg-gray-700/50 focus:outline-none z-10 relative"
