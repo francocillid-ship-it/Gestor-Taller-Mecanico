@@ -315,6 +315,22 @@ const Ajustes: React.FC<AjustesProps> = ({ tallerInfo, onUpdateTallerInfo, onLog
                                         <div className="sm:col-span-2">
                                             <label htmlFor="cuit" className="block text-sm font-medium text-taller-gray dark:text-gray-400">CUIT</label>
                                             <input type="text" id="cuit" name="cuit" value={formData.cuit} onChange={handleChange} className="mt-1 block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-taller-primary focus:border-taller-primary sm:text-sm" required/>
+                                            <div className="flex items-center mt-3">
+                                                <input
+                                                    id="showCuitOnPdf"
+                                                    name="showCuitOnPdf"
+                                                    type="checkbox"
+                                                    checked={formData.showCuitOnPdf !== false} // Default to true if undefined
+                                                    onChange={(e) => {
+                                                         setFormData(prev => ({ ...prev, showCuitOnPdf: e.target.checked }));
+                                                         setIsSaved(false);
+                                                    }}
+                                                    className="h-4 w-4 text-taller-primary focus:ring-taller-primary border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700"
+                                                />
+                                                <label htmlFor="showCuitOnPdf" className="ml-2 block text-sm text-taller-gray dark:text-gray-400">
+                                                    Mostrar CUIT en presupuestos y recibos PDF
+                                                </label>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>

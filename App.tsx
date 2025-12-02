@@ -128,6 +128,7 @@ const App: React.FC = () => {
                                 pdfTemplate: tallerInfoData.pdf_template || 'classic',
                                 mobileNavStyle: tallerInfoData.mobile_nav_style || 'sidebar',
                                 showLogoOnPdf: tallerInfoData.show_logo_on_pdf === true,
+                                showCuitOnPdf: tallerInfoData.show_cuit_on_pdf !== false, // Default to true if null/undefined
                                 headerColor: tallerInfoData.header_color || '#334155',
                                 appTheme: tallerInfoData.app_theme || 'slate'
                             };

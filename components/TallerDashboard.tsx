@@ -36,6 +36,7 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
         pdfTemplate: 'classic',
         mobileNavStyle: 'sidebar',
         showLogoOnPdf: false,
+        showCuitOnPdf: true,
         logoUrl: undefined,
         headerColor: '#334155', // Default Slate 700
         appTheme: 'slate'
@@ -68,6 +69,7 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
                     pdfTemplate: tallerInfoData.pdf_template || 'classic',
                     mobileNavStyle: tallerInfoData.mobile_nav_style || 'sidebar',
                     showLogoOnPdf: tallerInfoData.show_logo_on_pdf === true, // Ensure boolean
+                    showCuitOnPdf: tallerInfoData.show_cuit_on_pdf !== false, // Default to true if null/undefined
                     headerColor: tallerInfoData.header_color || '#334155',
                     appTheme: tallerInfoData.app_theme || 'slate',
                 };
@@ -180,6 +182,7 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
                  pdf_template: newInfo.pdfTemplate,
                  mobile_nav_style: newInfo.mobileNavStyle,
                  show_logo_on_pdf: newInfo.showLogoOnPdf,
+                 show_cuit_on_pdf: newInfo.showCuitOnPdf,
                  header_color: newInfo.headerColor,
                  app_theme: newInfo.appTheme,
                  updated_at: new Date().toISOString()

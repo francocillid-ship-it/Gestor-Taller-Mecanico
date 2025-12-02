@@ -116,8 +116,12 @@ export const generateClientPDF = async (
     doc.setFont('helvetica', 'normal');
     const address = tallerInfo.direccion || '';
     const phone = tallerInfo.telefono || '';
-    const cuit = tallerInfo.cuit || '';
-    doc.text(`${address} | Tel: ${phone} | CUIT: ${cuit}`, margin + logoOffset, 22);
+    
+    // Logic for CUIT display based on settings
+    const cuit = (tallerInfo.showCuitOnPdf !== false && tallerInfo.cuit) ? tallerInfo.cuit : '';
+    const headerSubtext = `${address} | Tel: ${phone}${cuit ? ` | CUIT: ${cuit}` : ''}`;
+
+    doc.text(headerSubtext, margin + logoOffset, 22);
 
 
     // --- DOCUMENT TITLE ---
