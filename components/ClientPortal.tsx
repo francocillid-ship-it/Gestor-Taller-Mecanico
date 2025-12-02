@@ -1,10 +1,22 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import type { Cliente, Trabajo, TallerInfo } from '../types';
-import { ArrowRightOnRectangleIcon, WrenchScrewdriverIcon, BookOpenIcon, ClockIcon,  ComputerDesktopIcon } from '@heroicons/react/24/solid';
+import { 
+    WrenchScrewdriverIcon, 
+    BookOpenIcon, 
+    ClockIcon, 
+    Cog6ToothIcon, 
+    XMarkIcon,
+    SwatchIcon,
+    ArrowRightOnRectangleIcon,
+    KeyIcon,
+    MagnifyingGlassPlusIcon
+} from '@heroicons/react/24/solid';
 import VehicleInfoCard from './VehicleInfoCard';
 import TrabajoListItem from './TrabajoListItem';
 import TrabajoHistorialModal from './TrabajoHistorialModal';
+import ChangePasswordModal from './ChangePasswordModal';
+import { APP_THEMES, applyAppTheme } from '../constants';
 
 interface ClientPortalProps {
     client: Cliente;
@@ -20,16 +32,41 @@ const ClientPortal: React.FC<ClientPortalProps> = ({ client, trabajos, onLogout,
     const [modalTrabajos, setModalTrabajos] = useState<Trabajo[]>([]);
     const [modalTitle, setModalTitle] = useState('');
     
+    // Settings State
+    const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+    const [isChangePasswordModalOpen, setIsChangePasswordModalOpen] = useState(false);
+
     // Estado para el tamaño de fuente, inicializado desde localStorage
     const [fontSize, setFontSize] = useState<FontSize>(() => {
         return (localStorage.getItem('client_font_size') as FontSize) || 'normal';
     });
     
-    const [showFontMenu, setShowFontMenu] = useState(false);
+    // Estado para el tema del cliente (local override)
+    const [clientTheme, setClientTheme] = useState<string>(() => {
+        return localStorage.getItem('client_custom_theme') || tallerInfo?.appTheme || 'slate';
+    });
 
     useEffect(() => {
         localStorage.setItem('client_font_size', fontSize);
     }, [fontSize]);
+
+    // Apply theme on mount and change
+    useEffect(() => {
+        const savedTheme = localStorage.getItem('client_custom_theme');
+        if (savedTheme) {
+            applyAppTheme(savedTheme);
+            setClientTheme(savedTheme);
+        } else if (tallerInfo?.appTheme) {
+            applyAppTheme(tallerInfo.appTheme);
+            setClientTheme(tallerInfo.appTheme);
+        }
+    }, [tallerInfo]);
+
+    const handleThemeChange = (themeKey: string) => {
+        setClientTheme(themeKey);
+        applyAppTheme(themeKey);
+        localStorage.setItem('client_custom_theme', themeKey);
+    };
 
     const openHistorialModal = (trabajosParaMostrar: Trabajo[], title: string) => {
         setModalTrabajos(trabajosParaMostrar);
@@ -45,14 +82,9 @@ const ClientPortal: React.FC<ClientPortalProps> = ({ client, trabajos, onLogout,
         return trabajos.slice(0, 5);
     }, [trabajos]);
 
-    // Lógica para inyectar estilos dinámicos que sobrescriben las clases de Tailwind
-    // Esto permite que toda la interfaz escale proporcionalmente
     const getFontStyles = () => {
         if (fontSize === 'normal') return '';
 
-        // Definimos los escalas. 
-        // Large sube 1 nivel aprox.
-        // XL sube 2 niveles aprox.
         if (fontSize === 'large') {
             return `
                 .portal-wrapper .text-xs { font-size: 0.85rem !important; line-height: 1.2rem !important; }
@@ -92,52 +124,12 @@ const ClientPortal: React.FC<ClientPortalProps> = ({ client, trabajos, onLogout,
                         </div>
                         
                         <div className="flex items-center gap-2 sm:gap-4">
-                            {/* Selector de Apariencia */}
-                            <div className="relative">
-                                <button
-                                    onClick={() => setShowFontMenu(!showFontMenu)}
-                                    className="p-2 text-taller-gray hover:text-taller-primary dark:text-gray-400 dark:hover:text-white rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                                    title="Tamaño de letra"
-                                >
-                                    <span className="font-serif font-bold text-lg">Aa</span>
-                                </button>
-                                
-                                {showFontMenu && (
-                                    <>
-                                        <div className="fixed inset-0 z-10" onClick={() => setShowFontMenu(false)} />
-                                        <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-700 rounded-md shadow-lg z-20 border dark:border-gray-600 py-1">
-                                            <p className="px-4 py-2 text-xs font-semibold text-taller-gray dark:text-gray-400 uppercase tracking-wider">
-                                                Tamaño de letra
-                                            </p>
-                                            <button
-                                                onClick={() => { setFontSize('normal'); setShowFontMenu(false); }}
-                                                className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-600 flex items-center justify-between ${fontSize === 'normal' ? 'text-taller-primary font-bold bg-blue-50 dark:bg-blue-900/30' : 'text-taller-dark dark:text-gray-200'}`}
-                                            >
-                                                <span>Normal</span>
-                                            </button>
-                                            <button
-                                                onClick={() => { setFontSize('large'); setShowFontMenu(false); }}
-                                                className={`w-full text-left px-4 py-2 text-base hover:bg-gray-100 dark:hover:bg-gray-600 flex items-center justify-between ${fontSize === 'large' ? 'text-taller-primary font-bold bg-blue-50 dark:bg-blue-900/30' : 'text-taller-dark dark:text-gray-200'}`}
-                                            >
-                                                <span>Grande</span>
-                                            </button>
-                                            <button
-                                                onClick={() => { setFontSize('xl'); setShowFontMenu(false); }}
-                                                className={`w-full text-left px-4 py-2 text-lg hover:bg-gray-100 dark:hover:bg-gray-600 flex items-center justify-between ${fontSize === 'xl' ? 'text-taller-primary font-bold bg-blue-50 dark:bg-blue-900/30' : 'text-taller-dark dark:text-gray-200'}`}
-                                            >
-                                                <span>Muy Grande</span>
-                                            </button>
-                                        </div>
-                                    </>
-                                )}
-                            </div>
-
-                            <button 
-                                onClick={onLogout}
-                                className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-red-700 bg-red-100 rounded-lg hover:bg-red-200 dark:bg-red-900/50 dark:text-red-300 dark:hover:bg-red-900"
+                            <button
+                                onClick={() => setIsSettingsOpen(true)}
+                                className="p-2 text-taller-gray hover:text-taller-primary dark:text-gray-400 dark:hover:text-white rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                                title="Ajustes"
                             >
-                                <ArrowRightOnRectangleIcon className="h-5 w-5" />
-                                <span className="hidden sm:inline">Salir</span>
+                                <Cog6ToothIcon className="h-7 w-7" />
                             </button>
                         </div>
                     </div>
@@ -198,9 +190,7 @@ const ClientPortal: React.FC<ClientPortalProps> = ({ client, trabajos, onLogout,
                 </main>
             </div>
             
-            {/* El modal debe estar fuera del wrapper portal-wrapper si no queremos que herede el tamaño gigante en su estructura base, 
-                pero si queremos que el contenido del modal sea grande, debemos envolver su contenido o aplicarle la clase. 
-                En este caso, dejamos que herede para mantener consistencia. */}
+            {/* Historial Modal */}
             {isHistorialModalOpen && (
                 <div className={`portal-wrapper ${fontSize !== 'normal' ? 'font-scaled' : ''}`}>
                     <TrabajoHistorialModal 
@@ -211,6 +201,102 @@ const ClientPortal: React.FC<ClientPortalProps> = ({ client, trabajos, onLogout,
                         tallerInfo={tallerInfo}
                     />
                 </div>
+            )}
+
+            {/* Settings Modal */}
+            {isSettingsOpen && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4">
+                    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto">
+                         <div className="flex justify-between items-center p-4 border-b dark:border-gray-700 sticky top-0 bg-white dark:bg-gray-800 z-10">
+                            <h2 className="text-lg font-bold text-taller-dark dark:text-taller-light flex items-center gap-2">
+                                <Cog6ToothIcon className="h-5 w-5 text-taller-primary" />
+                                Ajustes
+                            </h2>
+                            <button onClick={() => setIsSettingsOpen(false)} className="text-taller-gray dark:text-gray-400 hover:text-taller-dark dark:hover:text-white">
+                                <XMarkIcon className="h-6 w-6" />
+                            </button>
+                        </div>
+                        
+                        <div className="p-4 space-y-6">
+                            
+                            {/* Theme Selection */}
+                            <div>
+                                <h3 className="text-sm font-semibold text-taller-gray dark:text-gray-400 mb-3 flex items-center gap-2">
+                                    <SwatchIcon className="h-4 w-4" /> Tema de la Aplicación
+                                </h3>
+                                <div className="grid grid-cols-2 gap-2">
+                                    {Object.entries(APP_THEMES).map(([key, themeDef]) => (
+                                        <button
+                                            key={key}
+                                            onClick={() => handleThemeChange(key)}
+                                            className={`flex items-center gap-2 p-2 rounded-lg border text-sm font-medium transition-all ${
+                                                clientTheme === key
+                                                    ? 'border-taller-primary bg-taller-light dark:bg-gray-700 ring-1 ring-taller-primary'
+                                                    : 'border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700'
+                                            }`}
+                                        >
+                                            <div className="w-4 h-4 rounded-full flex-shrink-0" style={{ backgroundColor: `rgb(${themeDef.primary})` }}></div>
+                                            <span className="text-taller-dark dark:text-taller-light">{themeDef.name}</span>
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Font Size Selection */}
+                            <div>
+                                <h3 className="text-sm font-semibold text-taller-gray dark:text-gray-400 mb-3 flex items-center gap-2">
+                                    <MagnifyingGlassPlusIcon className="h-4 w-4" /> Tamaño de la Fuente
+                                </h3>
+                                <div className="flex gap-2 bg-gray-100 dark:bg-gray-700/50 p-1 rounded-lg">
+                                    {[
+                                        { id: 'normal', label: 'Normal' },
+                                        { id: 'large', label: 'Grande' },
+                                        { id: 'xl', label: 'Extra' }
+                                    ].map((opt) => (
+                                        <button
+                                            key={opt.id}
+                                            onClick={() => setFontSize(opt.id as FontSize)}
+                                            className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-all ${
+                                                fontSize === opt.id
+                                                    ? 'bg-white dark:bg-gray-600 text-taller-primary shadow-sm'
+                                                    : 'text-taller-gray dark:text-gray-400 hover:text-taller-dark dark:hover:text-white'
+                                            }`}
+                                        >
+                                            {opt.label}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Account Actions */}
+                            <div className="border-t dark:border-gray-700 pt-4 space-y-3">
+                                <h3 className="text-sm font-semibold text-taller-gray dark:text-gray-400 mb-2">Cuenta</h3>
+                                
+                                <button
+                                    onClick={() => setIsChangePasswordModalOpen(true)}
+                                    className="w-full flex items-center justify-between p-3 rounded-lg bg-gray-50 dark:bg-gray-700/30 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors text-left"
+                                >
+                                    <span className="flex items-center gap-2 text-sm font-medium text-taller-dark dark:text-taller-light">
+                                        <KeyIcon className="h-4 w-4 text-taller-gray dark:text-gray-400" />
+                                        Cambiar Contraseña
+                                    </span>
+                                </button>
+
+                                <button 
+                                    onClick={onLogout}
+                                    className="w-full flex items-center justify-center gap-2 px-4 py-3 text-sm font-semibold text-white bg-red-600 rounded-lg shadow-sm hover:bg-red-700 transition-colors"
+                                >
+                                    <ArrowRightOnRectangleIcon className="h-5 w-5" />
+                                    Cerrar Sesión
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {isChangePasswordModalOpen && (
+                <ChangePasswordModal onClose={() => setIsChangePasswordModalOpen(false)} />
             )}
         </>
     );
