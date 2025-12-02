@@ -60,11 +60,23 @@ const JobGroup: React.FC<{
     useEffect(() => {
         if (isExpanded && groupRef.current) {
             const timer = setTimeout(() => {
-                groupRef.current?.scrollIntoView({
-                    behavior: 'smooth',
-                    block: 'start',
-                    inline: 'nearest'
-                });
+                const element = groupRef.current;
+                if (!element) return;
+
+                const rect = element.getBoundingClientRect();
+                const windowHeight = window.innerHeight;
+                const headerOffset = 80;
+
+                const isTopHidden = rect.top < headerOffset;
+                const isBottomHidden = rect.bottom > windowHeight;
+
+                if (isTopHidden || isBottomHidden) {
+                    element.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start',
+                        inline: 'nearest'
+                    });
+                }
             }, 350);
             return () => clearTimeout(timer);
         }
@@ -136,15 +148,27 @@ const StatusColumn: React.FC<{
         }
     }, [searchQuery, trabajos.length]);
 
-    // Effect for auto-scroll on expansion
+    // Effect for auto-scroll on expansion (Conditional)
     useEffect(() => {
         if (isExpanded && columnRef.current && !searchQuery) {
             const timer = setTimeout(() => {
-                columnRef.current?.scrollIntoView({
-                    behavior: 'smooth',
-                    block: 'start',
-                    inline: 'nearest'
-                });
+                const element = columnRef.current;
+                if (!element) return;
+
+                const rect = element.getBoundingClientRect();
+                const windowHeight = window.innerHeight;
+                const headerOffset = 80;
+
+                const isTopHidden = rect.top < headerOffset;
+                const isBottomHidden = rect.bottom > windowHeight;
+
+                if (isTopHidden || isBottomHidden) {
+                    element.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start',
+                        inline: 'nearest'
+                    });
+                }
             }, 350);
             return () => clearTimeout(timer);
         }
