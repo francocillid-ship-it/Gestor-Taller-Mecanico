@@ -1,10 +1,11 @@
 
 import React, { useState, useMemo } from 'react';
 import type { Cliente, Trabajo, Vehiculo } from '../types';
-import { ChevronDownIcon, ChevronUpIcon, PhoneIcon, EnvelopeIcon, UserPlusIcon, PencilIcon, Cog6ToothIcon, PlusIcon } from '@heroicons/react/24/solid';
+import { ChevronDownIcon, ChevronUpIcon, PhoneIcon, EnvelopeIcon, UserPlusIcon, PencilIcon, Cog6ToothIcon, PlusIcon, PaperAirplaneIcon, ShareIcon } from '@heroicons/react/24/solid';
 import CrearClienteModal from './CrearClienteModal';
 import MaintenanceConfigModal from './MaintenanceConfigModal';
 import AddVehicleModal from './AddVehicleModal';
+import { supabase } from '../supabaseClient';
 
 interface ClientesProps {
     clientes: Cliente[];
@@ -24,6 +25,7 @@ interface ClientCardProps {
 
 const ClientCard: React.FC<ClientCardProps> = ({ cliente, trabajos, onEdit, onConfigVehicle, onAddVehicle, forceExpand }) => {
     const [isExpanded, setIsExpanded] = useState(false);
+    const [sendingAccess, setSendingAccess] = useState(false);
     const clientTrabajos = trabajos.filter(t => t.clienteId === cliente.id);
     
     // Auto-expand if search is active (forceExpand)
@@ -34,6 +36,51 @@ const ClientCard: React.FC<ClientCardProps> = ({ cliente, trabajos, onEdit, onCo
              setIsExpanded(false);
         }
     }, [forceExpand]);
+
+    const handleSendAccess = async (e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (!cliente.email) {
+            alert("El cliente no tiene email registrado.");
+            return;
+        }
+
+        const confirmSend = window.confirm(`¿Enviar instrucciones de acceso a ${cliente.email}? Esto permitirá al cliente restablecer su contraseña y entrar al portal.`);
+        if (!confirmSend) return;
+
+        setSendingAccess(true);
+        try {
+            const { error } = await supabase.auth.resetPasswordForEmail(cliente.email, {
+                redirectTo: window.location.origin + '/#type=recovery',
+            });
+
+            if (error) throw error;
+
+            const shareText = `Hola ${cliente.nombre}, te envié un correo a ${cliente.email} para que puedas acceder a tu portal de cliente. Por favor revísalo y sigue el enlace para crear tu contraseña.`;
+            const shareUrl = window.location.origin;
+
+            if (navigator.share) {
+                try {
+                    await navigator.share({
+                        title: 'Acceso al Portal Taller',
+                        text: shareText,
+                        url: shareUrl
+                    });
+                } catch (shareError) {
+                    // Ignore abort error
+                    alert("Correo enviado con éxito. Puedes avisarle al cliente por WhatsApp.");
+                }
+            } else {
+                // Fallback: Copy text or just alert
+                 alert("¡Correo de acceso enviado con éxito! Dile al cliente que revise su bandeja de entrada (y spam).");
+            }
+
+        } catch (error: any) {
+            console.error("Error sending access:", error);
+            alert("Error al enviar el correo: " + error.message);
+        } finally {
+            setSendingAccess(false);
+        }
+    };
 
     const fullName = `${cliente.nombre} ${cliente.apellido || ''}`.trim();
 
@@ -59,7 +106,26 @@ const ClientCard: React.FC<ClientCardProps> = ({ cliente, trabajos, onEdit, onCo
                             <h4 className="font-semibold mb-2 text-taller-dark dark:text-taller-light">Información de Contacto</h4>
                             <div className="space-y-2 text-sm text-taller-dark dark:text-gray-300">
                                 <p className="flex items-center"><PhoneIcon className="h-4 w-4 mr-2 text-taller-gray dark:text-gray-400"/> {cliente.telefono}</p>
-                                <p className="flex items-center"><EnvelopeIcon className="h-4 w-4 mr-2 text-taller-gray dark:text-gray-400"/> {cliente.email}</p>
+                                <div className="flex items-center justify-between group">
+                                    <p className="flex items-center"><EnvelopeIcon className="h-4 w-4 mr-2 text-taller-gray dark:text-gray-400"/> {cliente.email}</p>
+                                    {cliente.email && (
+                                        <button 
+                                            onClick={handleSendAccess}
+                                            disabled={sendingAccess}
+                                            className="ml-2 flex items-center gap-1 text-xs font-semibold text-taller-primary bg-blue-100 hover:bg-blue-200 dark:bg-blue-900/40 dark:hover:bg-blue-900/60 px-2 py-1 rounded transition-colors"
+                                            title="Enviar correo de recuperación y compartir aviso"
+                                        >
+                                            {sendingAccess ? (
+                                                <span>Enviando...</span>
+                                            ) : (
+                                                <>
+                                                    <PaperAirplaneIcon className="h-3 w-3" />
+                                                    Enviar Acceso
+                                                </>
+                                            )}
+                                        </button>
+                                    )}
+                                </div>
                             </div>
                         </div>
                          <div>

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 import { KeyIcon, CheckCircleIcon, XCircleIcon } from '@heroicons/react/24/solid';
@@ -35,7 +36,7 @@ const ResetPassword: React.FC<ResetPasswordProps> = ({ onResetSuccess }) => {
         try {
             const { error } = await supabase.auth.updateUser({ password });
             if (error) throw error;
-            setSuccessMessage('¡Tu contraseña ha sido actualizada con éxito! Ahora puedes iniciar sesión.');
+            setSuccessMessage('¡Tu contraseña ha sido establecida con éxito!');
         } catch (err: any) {
             setError(err.message || 'No se pudo actualizar la contraseña. El enlace puede haber expirado.');
         } finally {
@@ -53,15 +54,15 @@ const ResetPassword: React.FC<ResetPasswordProps> = ({ onResetSuccess }) => {
                 
                 {successMessage ? (
                     <div className="space-y-4">
-                         <p className="text-green-600">{successMessage}</p>
-                         <button onClick={onResetSuccess} className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-taller-primary hover:bg-taller-secondary focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-taller-primary">
-                            Ir a Iniciar Sesión
+                         <p className="text-green-600 font-medium">{successMessage}</p>
+                         <button onClick={onResetSuccess} className="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-base font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors">
+                            Ingresar al Portal
                         </button>
                     </div>
                 ) : (
                     <>
                         <p className="text-taller-gray dark:text-gray-400">
-                            Ingresa tu nueva contraseña a continuación.
+                            Ingresa tu nueva contraseña para acceder a tu cuenta.
                         </p>
                         <form onSubmit={handlePasswordUpdate} className="space-y-4">
                             <div>
@@ -91,7 +92,7 @@ const ResetPassword: React.FC<ResetPasswordProps> = ({ onResetSuccess }) => {
                             
                             <div className="pt-2">
                                 <button type="submit" disabled={loading || !passwordValid} className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-taller-primary hover:bg-taller-secondary focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-taller-primary disabled:opacity-50 disabled:cursor-not-allowed">
-                                    {loading ? 'Actualizando...' : 'Actualizar Contraseña'}
+                                    {loading ? 'Guardando...' : 'Establecer Contraseña'}
                                 </button>
                             </div>
                         </form>

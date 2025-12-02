@@ -189,7 +189,8 @@ const App: React.FC = () => {
     const handleAuthSuccess = () => {
         // Limpiamos la URL una vez que el proceso ha sido exitoso
         window.history.replaceState(null, '', window.location.pathname);
-        supabase.auth.signOut();
+        // NO cerramos sesión aquí. Al cambiar authAction a 'APP', el useEffect detectará la sesión activa y cargará el portal.
+        // supabase.auth.signOut(); 
         setAuthAction('APP');
     };
 
