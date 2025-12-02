@@ -325,7 +325,7 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
                         style={{ 
                             top: menuCoords.top, 
                             bottom: menuCoords.bottom, 
-                            left: menuCoords.left,
+                            left: menuCoords.left, 
                             pointerEvents: 'auto'
                         }}
                     >
@@ -338,7 +338,7 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
                                 }}
                                 className={`block w-full text-left px-4 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-600 border-b dark:border-gray-600 last:border-0 ${
                                     status === trabajo.status
-                                        ? 'font-bold text-taller-primary bg-blue-50 dark:bg-blue-900/20'
+                                        ? 'font-bold text-taller-primary bg-blue-50 dark:bg-blue-600/30 dark:text-white'
                                         : 'text-taller-dark dark:text-gray-200'
                                 }`}
                             >
