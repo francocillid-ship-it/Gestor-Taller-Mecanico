@@ -5,20 +5,46 @@ import type { Trabajo, Cliente, Vehiculo, TallerInfo } from '../types';
 import { JobStatus as JobStatusEnum } from '../types';
 import { supabase } from '../supabaseClient';
 
+// Helper function to convert image URL to Base64 PNG using Canvas
+// This solves CORS issues and format compatibility for jsPDF
+const getImageDataUrl = (url: string): Promise<string> => {
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.crossOrigin = 'Anonymous'; // Critical for loading external images (Supabase)
+        img.onload = () => {
+            const canvas = document.createElement('canvas');
+            canvas.width = img.width;
+            canvas.height = img.height;
+            const ctx = canvas.getContext('2d');
+            if (!ctx) {
+                reject(new Error('Could not get canvas context'));
+                return;
+            }
+            ctx.drawImage(img, 0, 0);
+            const dataURL = canvas.toDataURL('image/png');
+            resolve(dataURL);
+        };
+        img.onerror = (error) => reject(error);
+        img.src = url;
+    });
+};
+
 export const generateClientPDF = async (
     trabajo: Trabajo,
     cliente: Cliente,
     vehiculo: Vehiculo | undefined,
-    tallerInfo: TallerInfo
+    tallerInfo: TallerInfo,
+    forceDownload: boolean = false
 ): Promise<void> => {
     const doc = new jsPDF();
     const a4Width = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
     const margin = 15;
     const mainTextColor = '#0f172a';
-    // Use user defined color or default to blue
-    const primaryColor = tallerInfo.headerColor || '#1e40af';
-    const lightBgColor = '#f1f5f9';
+    
+    // Use user defined color or default to the new sober slate
+    const primaryColor = tallerInfo.headerColor || '#334155';
+    const lightBgColor = '#f8fafc';
     const lightTextColor = '#64748b';
 
     // --- CALCULATE SEQUENTIAL NUMBER ---
@@ -69,28 +95,22 @@ export const generateClientPDF = async (
     // Strict check for boolean true
     if (tallerInfo.showLogoOnPdf === true && tallerInfo.logoUrl) {
         try {
-            const response = await fetch(tallerInfo.logoUrl);
-            if (!response.ok) throw new Error('Network response was not ok');
-            const blob = await response.blob();
-            
-            logoImgData = await new Promise<string>((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onloadend = () => resolve(reader.result as string);
-                reader.onerror = reject;
-                reader.readAsDataURL(blob);
-            });
+            // Use the canvas helper to ensure we get a valid PNG Base64 string
+            logoImgData = await getImageDataUrl(tallerInfo.logoUrl);
 
             const imgProps = doc.getImageProperties(logoImgData);
             const aspectRatio = imgProps.width / imgProps.height;
             const imgHeight = 20;
             logoWidth = imgHeight * aspectRatio;
         } catch (error) {
-            console.error("Could not add logo to PDF, rendering without it.", error);
+            console.error("Could not load logo for PDF:", error);
+            // Fail gracefully and render without logo
         }
     }
 
     // Draw header content
     if (logoImgData) {
+        // 'PNG' format is enforced by getImageDataUrl
         doc.addImage(logoImgData, 'PNG', margin, 5, logoWidth, 20);
         await drawHeader(logoWidth + 5);
     } else {
@@ -282,7 +302,7 @@ export const generateClientPDF = async (
     
     const fileName = `${docTitle.toLowerCase()}_${fullSanitizedName}_${formattedNumber}.pdf`;
 
-    if (navigator.share) {
+    if (!forceDownload && navigator.share) {
         try {
             const blob = doc.output('blob');
             const file = new File([blob], fileName, { type: 'application/pdf' });
@@ -293,13 +313,18 @@ export const generateClientPDF = async (
                     title: `${docTitle} - ${tallerInfo.nombre}`,
                     text: `Hola ${cliente.nombre}, adjunto el ${docTitle.toLowerCase()} correspondiente.`,
                 });
-                return;
+                return; // Stop here if shared successfully
             }
-        } catch (error) {
-            console.error("Error sharing PDF via Web Share API, falling back to download.", error);
+        } catch (error: any) {
+            // Ignore AbortError (User cancelled share menu)
+            if (error.name !== 'AbortError') {
+                console.error("Error sharing PDF via Web Share API, falling back to download.", error);
+                doc.save(fileName); // Fallback only on real errors, not cancellation
+            }
+            return; // Exit
         }
     }
     
-    // Fallback to standard download
+    // Fallback to standard download if share not supported or forced download
     doc.save(fileName);
 };

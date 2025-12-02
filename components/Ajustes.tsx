@@ -2,8 +2,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import type { TallerInfo } from '../types';
 import { supabase } from '../supabaseClient';
-import { ArrowRightOnRectangleIcon, BuildingOffice2Icon, PhotoIcon, ArrowUpOnSquareIcon, PaintBrushIcon, DevicePhoneMobileIcon, SunIcon, MoonIcon, ComputerDesktopIcon, DocumentTextIcon, SparklesIcon, CheckCircleIcon, ExclamationTriangleIcon, KeyIcon, ArrowTopRightOnSquareIcon } from '@heroicons/react/24/solid';
+import { BuildingOffice2Icon, PhotoIcon, ArrowUpOnSquareIcon, PaintBrushIcon, DevicePhoneMobileIcon, SunIcon, MoonIcon, ComputerDesktopIcon, DocumentTextIcon, SparklesIcon, CheckCircleIcon, ExclamationTriangleIcon, KeyIcon, ArrowTopRightOnSquareIcon, SwatchIcon, ArrowRightOnRectangleIcon } from '@heroicons/react/24/solid';
 import ChangePasswordModal from './ChangePasswordModal';
+import { APP_THEMES, applyAppTheme } from '../constants';
 
 interface AjustesProps {
     tallerInfo: TallerInfo;
@@ -14,14 +15,14 @@ interface AjustesProps {
 
 type Theme = 'light' | 'dark' | 'system';
 
-// Professional color palette for invoices
+// Professional, less saturated color palette for invoices (Sobrios)
 const HEADER_COLORS = [
-    { name: 'Clásico (Azul)', value: '#1e40af', bg: 'bg-blue-800' },
-    { name: 'Rojo Deportivo', value: '#dc2626', bg: 'bg-red-600' },
-    { name: 'Verde Taller', value: '#16a34a', bg: 'bg-green-600' },
-    { name: 'Naranja Industrial', value: '#ea580c', bg: 'bg-orange-600' },
-    { name: 'Negro Moderno', value: '#1f2937', bg: 'bg-gray-800' },
-    { name: 'Violeta', value: '#7c3aed', bg: 'bg-violet-600' },
+    { name: 'Gris Ejecutivo', value: '#334155', bg: 'bg-slate-700' }, // Slate 700
+    { name: 'Azul Marino', value: '#1e3a8a', bg: 'bg-blue-900' },     // Blue 900
+    { name: 'Verde Bosque', value: '#14532d', bg: 'bg-green-900' },   // Green 900
+    { name: 'Borggoña', value: '#7f1d1d', bg: 'bg-red-900' },         // Red 900
+    { name: 'Carbón', value: '#18181b', bg: 'bg-zinc-900' },          // Zinc 900
+    { name: 'Bronce', value: '#78350f', bg: 'bg-amber-900' },         // Amber 900
 ];
 
 const Ajustes: React.FC<AjustesProps> = ({ tallerInfo, onUpdateTallerInfo, onLogout, searchQuery }) => {
@@ -77,6 +78,13 @@ const Ajustes: React.FC<AjustesProps> = ({ tallerInfo, onUpdateTallerInfo, onLog
                 document.documentElement.classList.remove('dark');
             }
         }
+    };
+    
+    const handleAppThemeChange = (themeKey: string) => {
+        setFormData(prev => ({ ...prev, appTheme: themeKey }));
+        // Apply instantly for preview
+        applyAppTheme(themeKey);
+        setIsSaved(false);
     };
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -160,7 +168,7 @@ const Ajustes: React.FC<AjustesProps> = ({ tallerInfo, onUpdateTallerInfo, onLog
 
     // PDF Preview Component (Mockup)
     const PdfPreview = () => {
-        const primaryColor = formData.headerColor || '#1e40af';
+        const primaryColor = formData.headerColor || '#334155';
         
         return (
             <div className="border border-gray-200 dark:border-gray-600 rounded-lg overflow-hidden shadow-lg bg-white w-full max-w-[300px] mx-auto aspect-[1/1.41] flex flex-col text-[6px] text-gray-800 relative select-none pointer-events-none">
@@ -351,7 +359,7 @@ const Ajustes: React.FC<AjustesProps> = ({ tallerInfo, onUpdateTallerInfo, onLog
                                     </div>
 
                                     <div>
-                                        <label className="block text-sm font-medium text-taller-gray dark:text-gray-400 mb-3">Color de Cabecera</label>
+                                        <label className="block text-sm font-medium text-taller-gray dark:text-gray-400 mb-3">Color de Cabecera del PDF</label>
                                         <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
                                             {HEADER_COLORS.map((color) => (
                                                 <button
@@ -359,18 +367,18 @@ const Ajustes: React.FC<AjustesProps> = ({ tallerInfo, onUpdateTallerInfo, onLog
                                                     type="button"
                                                     onClick={() => handleColorChange(color.value)}
                                                     className={`w-full aspect-square rounded-full shadow-sm flex items-center justify-center transition-transform hover:scale-110 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-taller-primary ${color.bg} ${
-                                                        (formData.headerColor || '#1e40af') === color.value ? 'ring-2 ring-offset-2 ring-taller-primary scale-110' : ''
+                                                        (formData.headerColor || '#334155') === color.value ? 'ring-2 ring-offset-2 ring-taller-primary scale-110' : ''
                                                     }`}
                                                     title={color.name}
                                                 >
-                                                    {(formData.headerColor || '#1e40af') === color.value && (
+                                                    {(formData.headerColor || '#334155') === color.value && (
                                                         <CheckCircleIcon className="h-6 w-6 text-white" />
                                                     )}
                                                 </button>
                                             ))}
                                         </div>
                                         <p className="text-xs text-taller-gray dark:text-gray-500 mt-2">
-                                            Selecciona un color para personalizar tus presupuestos.
+                                            Selecciona un color sobrio para tus documentos.
                                         </p>
                                     </div>
                                 </div>
@@ -379,6 +387,45 @@ const Ajustes: React.FC<AjustesProps> = ({ tallerInfo, onUpdateTallerInfo, onLog
                                 <div className="flex-1 flex flex-col items-center">
                                     <span className="text-sm font-medium text-taller-gray dark:text-gray-400 mb-2">Vista Previa</span>
                                     <PdfPreview />
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                    
+                    {shouldShow(['apariencia', 'tema', 'oscuro', 'claro']) && (
+                        <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md">
+                            <h3 className="text-lg font-bold mb-4 flex items-center"><PaintBrushIcon className="h-6 w-6 mr-2 text-taller-primary"/>Apariencia de la App</h3>
+                            
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                <div>
+                                    <label className="block text-sm font-medium text-taller-gray dark:text-gray-400 mb-2">Tema de la Aplicación</label>
+                                    <p className="text-xs text-taller-gray dark:text-gray-500 mb-3">Elige la paleta de colores principal de la interfaz.</p>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        {Object.entries(APP_THEMES).map(([key, themeDef]) => (
+                                            <button
+                                                key={key}
+                                                type="button"
+                                                onClick={() => handleAppThemeChange(key)}
+                                                className={`flex items-center gap-2 p-3 rounded-lg border text-sm font-medium transition-all ${
+                                                    (formData.appTheme || 'slate') === key
+                                                        ? 'border-taller-primary bg-taller-light dark:bg-gray-700 ring-1 ring-taller-primary'
+                                                        : 'border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'
+                                                }`}
+                                            >
+                                                <div className="w-6 h-6 rounded-full flex-shrink-0" style={{ backgroundColor: `rgb(${themeDef.primary})` }}></div>
+                                                <span className="text-taller-dark dark:text-taller-light">{themeDef.name}</span>
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-taller-gray dark:text-gray-400 mb-2">Modo Oscuro</label>
+                                    <div className="grid grid-cols-3 gap-2 rounded-lg bg-taller-light dark:bg-gray-900/50 p-1">
+                                        <ThemeButton value="light" currentTheme={theme} onClick={handleThemeChange} icon={SunIcon} label="Claro" />
+                                        <ThemeButton value="dark" currentTheme={theme} onClick={handleThemeChange} icon={MoonIcon} label="Oscuro" />
+                                        <ThemeButton value="system" currentTheme={theme} onClick={handleThemeChange} icon={ComputerDesktopIcon} label="Sistema" />
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -435,20 +482,6 @@ const Ajustes: React.FC<AjustesProps> = ({ tallerInfo, onUpdateTallerInfo, onLog
                                     API Key no configurada. La función de escaneo está desactivada.
                                 </div>
                             )}
-                        </div>
-                    )}
-
-                    {shouldShow(['apariencia', 'tema', 'oscuro', 'claro']) && (
-                        <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md">
-                            <h3 className="text-lg font-bold mb-4 flex items-center"><PaintBrushIcon className="h-6 w-6 mr-2 text-taller-primary"/>Apariencia</h3>
-                            <div>
-                                <label className="block text-sm font-medium text-taller-gray dark:text-gray-400 mb-2">Tema de la aplicación</label>
-                                <div className="grid grid-cols-3 gap-2 rounded-lg bg-taller-light dark:bg-gray-900/50 p-1">
-                                <ThemeButton value="light" currentTheme={theme} onClick={handleThemeChange} icon={SunIcon} label="Claro" />
-                                <ThemeButton value="dark" currentTheme={theme} onClick={handleThemeChange} icon={MoonIcon} label="Oscuro" />
-                                <ThemeButton value="system" currentTheme={theme} onClick={handleThemeChange} icon={ComputerDesktopIcon} label="Sistema" />
-                                </div>
-                            </div>
                         </div>
                     )}
 

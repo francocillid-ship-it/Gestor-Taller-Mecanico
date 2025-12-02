@@ -8,6 +8,7 @@ import ClientPortal from './components/ClientPortal';
 import ResetPassword from './components/ResetPassword';
 import SetInitialPassword from './components/SetInitialPassword';
 import type { Cliente, Trabajo, TallerInfo } from './types';
+import { applyAppTheme } from './constants';
 
 type AuthAction = 'APP' | 'PASSWORD_RECOVERY' | 'SET_INITIAL_PASSWORD';
 
@@ -52,6 +53,8 @@ const App: React.FC = () => {
                 setRole(null);
                 setUser(null);
                 setClientData(null);
+                // Reset to default theme on logout
+                applyAppTheme('slate'); 
             }
         });
 
@@ -113,7 +116,7 @@ const App: React.FC = () => {
                             .maybeSingle();
 
                         if (!tallerInfoError && tallerInfoData) {
-                             setTallerInfoForClient({
+                             const info = {
                                 nombre: tallerInfoData.nombre || 'Taller Mecánico',
                                 telefono: tallerInfoData.telefono || '',
                                 direccion: tallerInfoData.direccion || '',
@@ -122,13 +125,22 @@ const App: React.FC = () => {
                                 pdfTemplate: tallerInfoData.pdf_template || 'classic',
                                 mobileNavStyle: tallerInfoData.mobile_nav_style || 'sidebar',
                                 showLogoOnPdf: tallerInfoData.show_logo_on_pdf === true,
-                                headerColor: tallerInfoData.header_color || '#1e40af',
-                            });
+                                headerColor: tallerInfoData.header_color || '#334155',
+                                appTheme: tallerInfoData.app_theme || 'slate'
+                            };
+                            setTallerInfoForClient(info);
+                            
+                            // Apply the workshop's theme for the client view
+                            if (info.appTheme) {
+                                applyAppTheme(info.appTheme);
+                            }
+
                         } else {
                             // Fallback to metadata if DB entry missing
                             const tallerInfo = currentUser.user_metadata?.taller_info_ref || null;
                             const tallerName = tallerInfo?.nombre || currentUser.user_metadata?.taller_nombre_ref || 'Mi Taller';
-                            setTallerInfoForClient({ ...tallerInfo, nombre: tallerName });
+                            const fallbackInfo = { ...tallerInfo, nombre: tallerName };
+                            setTallerInfoForClient(fallbackInfo);
                         }
 
                         const { data: trabajosData, error: trabajosError } = await supabase

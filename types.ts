@@ -85,4 +85,5 @@ export interface TallerInfo {
     mobileNavStyle: 'sidebar' | 'bottom_nav';
     showLogoOnPdf: boolean;
     headerColor?: string;
+    appTheme?: string;
 }

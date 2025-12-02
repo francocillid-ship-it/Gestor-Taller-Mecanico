@@ -53,7 +53,7 @@ const TrabajoListItem: React.FC<TrabajoListItemProps> = ({ trabajo, vehiculo, cl
         }
         setIsGeneratingPdf(true);
         try {
-            await generateClientPDF(trabajo, cliente, vehiculo, tallerInfo);
+            await generateClientPDF(trabajo, cliente, vehiculo, tallerInfo, true);
         } catch (error) {
             console.error("PDF generation failed:", error);
             alert("No se pudo generar el PDF.");

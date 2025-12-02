@@ -6,20 +6,35 @@
     <title>Gestor Taller Mecánico</title>
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="manifest" href="/manifest.json" />
-    <meta name="theme-color" content="#1e40af">
+    <meta name="theme-color" content="#334155">
     <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      /* Definición de variables CSS para el tema dinámico.
+         Los valores son RGB separados por espacio para que Tailwind pueda aplicar opacidad.
+      */
+      :root {
+        /* Default Theme: Slate (Sobrio profesional) */
+        --color-taller-primary: 51 65 85;    /* Slate 700 */
+        --color-taller-secondary: 71 85 105; /* Slate 600 */
+        --color-taller-accent: 217 119 6;    /* Amber 600 */
+        --color-taller-light: 248 250 252;   /* Slate 50 */
+        --color-taller-dark: 15 23 42;       /* Slate 900 */
+        --color-taller-gray: 100 116 139;    /* Slate 500 */
+      }
+    </style>
     <script>
       tailwind.config = {
         darkMode: 'class',
         theme: {
           extend: {
             colors: {
-              'taller-primary': '#1e40af', // a deep blue
-              'taller-secondary': '#1d4ed8',
-              'taller-accent': '#f97316', // a vibrant orange
-              'taller-light': '#f1f5f9',
-              'taller-dark': '#0f172a',
-              'taller-gray': '#64748b',
+              // Usamos rgb(var(...) / <alpha-value>) para soportar clases como bg-opacity-50
+              'taller-primary': 'rgb(var(--color-taller-primary) / <alpha-value>)',
+              'taller-secondary': 'rgb(var(--color-taller-secondary) / <alpha-value>)',
+              'taller-accent': 'rgb(var(--color-taller-accent) / <alpha-value>)',
+              'taller-light': 'rgb(var(--color-taller-light) / <alpha-value>)',
+              'taller-dark': 'rgb(var(--color-taller-dark) / <alpha-value>)',
+              'taller-gray': 'rgb(var(--color-taller-gray) / <alpha-value>)',
             }
           }
         }
@@ -41,7 +56,7 @@
 }
 </script>
 <script>
-    // Aplica el tema inmediatamente para evitar FOUC (Flash of Unstyled Content)
+    // Aplica el tema oscuro si es necesario
     if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
         document.documentElement.classList.add('dark');
     } else {
@@ -49,7 +64,7 @@
     }
 </script>
 </head>
-<body class="bg-taller-light dark:bg-taller-dark text-taller-dark dark:text-taller-light">
+<body class="bg-taller-light dark:bg-taller-dark text-taller-dark dark:text-taller-light transition-colors duration-300">
     <div id="root"></div>
     <script type="module" src="/index.tsx"></script>
 </body>

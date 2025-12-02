@@ -8,6 +8,7 @@ import Clientes from './Clientes';
 import Ajustes from './Ajustes';
 import Header from './Header';
 import { ChartPieIcon, WrenchScrewdriverIcon, UsersIcon, Cog6ToothIcon } from '@heroicons/react/24/solid';
+import { applyAppTheme } from '../constants';
 
 interface TallerDashboardProps {
     onLogout: () => void;
@@ -36,7 +37,8 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
         mobileNavStyle: 'sidebar',
         showLogoOnPdf: false,
         logoUrl: undefined,
-        headerColor: '#1e40af' // Default classic blue
+        headerColor: '#334155', // Default Slate 700
+        appTheme: 'slate'
     });
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [loading, setLoading] = useState(true);
@@ -57,7 +59,7 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
 
             if (!tallerInfoError && tallerInfoData) {
                 // Map snake_case database columns to camelCase TallerInfo type
-                setTallerInfo({
+                const loadedInfo: TallerInfo = {
                     nombre: tallerInfoData.nombre || '',
                     telefono: tallerInfoData.telefono || '',
                     direccion: tallerInfoData.direccion || '',
@@ -66,8 +68,16 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
                     pdfTemplate: tallerInfoData.pdf_template || 'classic',
                     mobileNavStyle: tallerInfoData.mobile_nav_style || 'sidebar',
                     showLogoOnPdf: tallerInfoData.show_logo_on_pdf === true, // Ensure boolean
-                    headerColor: tallerInfoData.header_color || '#1e40af',
-                });
+                    headerColor: tallerInfoData.header_color || '#334155',
+                    appTheme: tallerInfoData.app_theme || 'slate',
+                };
+                setTallerInfo(loadedInfo);
+                
+                // Apply the theme immediately
+                if (loadedInfo.appTheme) {
+                    applyAppTheme(loadedInfo.appTheme);
+                }
+
             } else if (!tallerInfoData) {
                 // Fallback to metadata if table is empty (migration scenario)
                 if (user.user_metadata?.taller_info) {
@@ -171,6 +181,7 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
                  mobile_nav_style: newInfo.mobileNavStyle,
                  show_logo_on_pdf: newInfo.showLogoOnPdf,
                  header_color: newInfo.headerColor,
+                 app_theme: newInfo.appTheme,
                  updated_at: new Date().toISOString()
              });
 
@@ -182,6 +193,10 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
              });
 
              setTallerInfo(newInfo);
+             // Ensure theme is applied if it was changed
+             if (newInfo.appTheme) {
+                 applyAppTheme(newInfo.appTheme);
+             }
         } catch (error) {
             console.error("Error updating taller info:", error);
         }
@@ -205,7 +220,7 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
     const sidebarClasses = `fixed inset-y-0 left-0 z-30 w-64 bg-white dark:bg-gray-800 transform transition-transform duration-300 ease-in-out shadow-lg md:translate-x-0 md:static md:inset-0 ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`;
 
     return (
-        <div className="flex h-screen bg-taller-light dark:bg-taller-dark text-taller-dark dark:text-taller-light overflow-hidden">
+        <div className="flex h-screen bg-taller-light dark:bg-taller-dark text-taller-dark dark:text-taller-light overflow-hidden transition-colors duration-300">
             {/* Sidebar Navigation */}
             <aside className={sidebarClasses}>
                 <div className="h-full flex flex-col">
