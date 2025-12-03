@@ -351,7 +351,7 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
     };
 
     return (
-        <div className="h-full flex flex-col">
+        <div className="h-full flex flex-col relative">
             <style>{`
                 /* Custom Scrollbar Styles for better visibility */
                 .custom-scrollbar::-webkit-scrollbar {
@@ -386,58 +386,7 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
                 </div>
             </div>
 
-            {/* Mobile Tabs Navigation - Redesigned Grid */}
-            <div className="lg:hidden mb-4">
-                <div className="grid grid-cols-4 gap-2 bg-gray-100 dark:bg-gray-800 p-1.5 rounded-xl">
-                    {statusOrder.map(status => {
-                        const Icon = getMobileTabIcon(status);
-                        const isActive = activeMobileTab === status;
-                        const count = trabajosByStatus[status]?.length || 0;
-                        
-                        return (
-                            <button
-                                key={status}
-                                onClick={() => setActiveMobileTab(status)}
-                                className={`relative flex flex-col items-center justify-center h-16 rounded-lg transition-all duration-200 ${
-                                    isActive 
-                                    ? 'bg-white dark:bg-gray-700 text-taller-primary dark:text-white shadow-sm ring-1 ring-black/5 dark:ring-white/10' 
-                                    : 'text-gray-500 dark:text-gray-400 hover:bg-gray-200/50 dark:hover:bg-gray-700/50'
-                                }`}
-                            >
-                                <Icon className={`h-5 w-5 mb-1 ${isActive ? 'text-taller-primary dark:text-white' : 'text-gray-400 dark:text-gray-500'}`} />
-                                <span className={`text-[10px] font-medium leading-none tracking-tight ${isActive ? 'text-taller-primary dark:text-white' : ''}`}>{getMobileTabLabel(status)}</span>
-                                {count > 0 && (
-                                    <span className={`absolute top-1 right-1 flex h-4 w-4 items-center justify-center rounded-full text-[9px] font-bold ${
-                                        isActive 
-                                        ? 'bg-taller-primary text-white dark:bg-white dark:text-taller-primary' 
-                                        : 'bg-gray-300 dark:bg-gray-600 text-gray-700 dark:text-gray-300'
-                                    }`}>
-                                        {count}
-                                    </span>
-                                )}
-                            </button>
-                        );
-                    })}
-                </div>
-            </div>
-
-            {/* Mobile Action Button - Only for 'Presupuestos' tab - Smaller size */}
-            <div className="lg:hidden mb-4">
-                {activeMobileTab === JobStatus.Presupuesto && (
-                    <button
-                        onClick={() => {
-                            setInitialClientIdForModal(undefined);
-                            setIsJobModalOpen(true);
-                        }}
-                        className="w-full flex items-center justify-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-taller-primary rounded-lg shadow-md hover:bg-taller-secondary transition-colors"
-                    >
-                       <PlusIcon className="h-4 w-4"/>
-                        Nuevo Presupuesto
-                    </button>
-                )}
-            </div>
-
-            <div className="flex-1 flex flex-col lg:flex-row lg:gap-6 lg:space-x-4 lg:overflow-x-auto pb-4">
+            <div className="flex-1 flex flex-col lg:flex-row lg:gap-6 lg:space-x-4 lg:overflow-x-auto pb-48 lg:pb-4">
                 {searchQuery && !hasResults ? (
                     <div className="w-full flex flex-col items-center justify-center mt-12 text-taller-gray dark:text-gray-400">
                         <MagnifyingGlassIcon className="h-16 w-16 mb-4 opacity-50"/>
@@ -484,8 +433,73 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
                         })}
                     </>
                 )}
-                {/* Spacer for bottom nav on mobile */}
-                {tallerInfo.mobileNavStyle === 'bottom_nav' && <div className="h-16 md:hidden flex-shrink-0" />}
+            </div>
+
+            {/* Mobile Bottom Fixed Interface (Tabs + Floating Button) */}
+            <div className={`lg:hidden fixed left-1/2 -translate-x-1/2 z-20 flex flex-col items-center pointer-events-none transition-all duration-300 w-full ${
+                tallerInfo.mobileNavStyle === 'bottom_nav' ? 'bottom-[96px]' : 'bottom-6'
+            }`}>
+                {/* Floating Button for 'Nuevo Presupuesto' - Only visible in Presupuesto Tab */}
+                {activeMobileTab === JobStatus.Presupuesto && (
+                    <div className="w-full flex justify-center mb-4 pointer-events-auto px-4">
+                        <button
+                            onClick={() => {
+                                setInitialClientIdForModal(undefined);
+                                setIsJobModalOpen(true);
+                            }}
+                            className="flex items-center justify-center gap-2 px-6 py-2.5 text-xs font-bold text-white bg-taller-primary rounded-full shadow-lg shadow-taller-primary/40 hover:bg-taller-secondary hover:scale-105 transition-all transform active:scale-95"
+                        >
+                           <PlusIcon className="h-4 w-4"/>
+                            NUEVO PRESUPUESTO
+                        </button>
+                    </div>
+                )}
+
+                {/* Floating Tabs Bar (Pill) */}
+                <div className="w-[95%] max-w-sm bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 pointer-events-auto overflow-hidden">
+                    <div className="grid grid-cols-4 h-14">
+                        {statusOrder.map(status => {
+                            const Icon = getMobileTabIcon(status);
+                            const isActive = activeMobileTab === status;
+                            const count = trabajosByStatus[status]?.length || 0;
+                            
+                            return (
+                                <button
+                                    key={status}
+                                    onClick={() => setActiveMobileTab(status)}
+                                    className={`relative flex flex-col items-center justify-center transition-colors duration-200 group ${
+                                        isActive 
+                                        ? 'bg-blue-50 dark:bg-gray-700/50' 
+                                        : 'hover:bg-gray-50 dark:hover:bg-gray-700/30'
+                                    }`}
+                                >
+                                    <Icon className={`h-5 w-5 mb-0.5 transition-colors ${
+                                        isActive 
+                                        ? 'text-taller-primary dark:text-white' 
+                                        : 'text-gray-400 dark:text-gray-500 group-hover:text-gray-600 dark:group-hover:text-gray-400'
+                                    }`} />
+                                    <span className={`text-[9px] font-bold leading-none tracking-tight transition-colors ${
+                                        isActive 
+                                        ? 'text-taller-primary dark:text-white' 
+                                        : 'text-gray-400 dark:text-gray-500'
+                                    }`}>
+                                        {getMobileTabLabel(status)}
+                                    </span>
+                                    
+                                    {count > 0 && (
+                                        <span className={`absolute top-1 right-2 flex h-3.5 w-3.5 items-center justify-center rounded-full text-[8px] font-bold shadow-sm ${
+                                            isActive 
+                                            ? 'bg-taller-primary text-white dark:bg-white dark:text-taller-primary' 
+                                            : 'bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300'
+                                        }`}>
+                                            {count}
+                                        </span>
+                                    )}
+                                </button>
+                            );
+                        })}
+                    </div>
+                </div>
             </div>
 
             {isJobModalOpen && (
