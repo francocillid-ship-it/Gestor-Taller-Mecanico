@@ -13,6 +13,7 @@ interface CrearTrabajoModalProps {
     onDataRefresh: () => void;
     clientes: Cliente[];
     trabajoToEdit?: Trabajo;
+    initialClientId?: string;
 }
 
 type ParteState = {
@@ -25,7 +26,7 @@ type ParteState = {
 };
 
 
-const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSuccess, onDataRefresh, clientes, trabajoToEdit }) => {
+const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSuccess, onDataRefresh, clientes, trabajoToEdit, initialClientId }) => {
     const [selectedClienteId, setSelectedClienteId] = useState('');
     const [selectedVehiculoId, setSelectedVehiculoId] = useState('');
     const [descripcion, setDescripcion] = useState('');
@@ -41,13 +42,10 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
     const [confirmingDelete, setConfirmingDelete] = useState(false);
     
     // Almacenamiento local temporal para el cliente recién creado
-    // Esto es vital para que aparezca inmediatamente en el dropdown aunque el fetch global tarde.
     const [localNewClient, setLocalNewClient] = useState<Cliente | null>(null);
 
     const isEditMode = Boolean(trabajoToEdit);
 
-    // Combinamos los clientes globales con el cliente local (si existe)
-    // Usamos un Map para asegurar unicidad por ID, dando prioridad al localNewClient (más reciente)
     const mergedClientes = useMemo(() => {
         const map = new Map<string, Cliente>();
         clientes.forEach(c => map.set(c.id, c));
@@ -77,10 +75,11 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
     
     const handleTextareaResize = (e: React.FormEvent<HTMLTextAreaElement>) => {
         const textarea = e.currentTarget;
-        textarea.style.height = 'auto'; // Reset height to shrink if text is deleted
-        textarea.style.height = `${textarea.scrollHeight}px`; // Set height to match content
+        textarea.style.height = 'auto';
+        textarea.style.height = `${textarea.scrollHeight}px`;
     };
 
+    // Initialization Effect
     useEffect(() => {
         if (trabajoToEdit) {
             setSelectedClienteId(trabajoToEdit.clienteId);
@@ -90,7 +89,6 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
             
             const initialPartes = trabajoToEdit.partes.filter(p => p.nombre !== '__PAGO_REGISTRADO__');
             
-            // Si es un trabajo antiguo con costoManoDeObra pero sin servicios explícitos
             const hasServices = initialPartes.some(p => p.isService);
             const legacyLabor = trabajoToEdit.costoManoDeObra || 0;
             
@@ -113,61 +111,72 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
             setPartes(processedPartes);
             setPagos(trabajoToEdit.partes.filter(p => p.nombre === '__PAGO_REGISTRADO__'));
             setStatus(trabajoToEdit.status);
+        } else if (initialClientId) {
+            // Set client visually immediate to avoid empty dropdown
+            setSelectedClienteId(initialClientId);
+
+            // AGGRESSIVE POLLING: 
+            // Ignore global 'clientes' prop initially and fetch direct from DB to ensure vehicle data is present.
+            // This handles the race condition where page reloads before DB propagates completely.
+            const fetchVehicleData = async () => {
+                let attempts = 0;
+                // Try for up to 7.5 seconds
+                while (attempts < 15) { 
+                    const { data } = await supabase
+                        .from('clientes')
+                        .select('*, vehiculos(*)')
+                        .eq('id', initialClientId)
+                        .maybeSingle();
+                    
+                    if (data && data.vehiculos && data.vehiculos.length > 0) {
+                        const clientData = data as Cliente;
+                        setLocalNewClient(clientData);
+                        
+                        // Force update selectedClient to trigger downstream effects if needed
+                        setSelectedClienteId(clientData.id); 
+                        
+                        // Automatically select the last vehicle (newest)
+                        const lastVehicle = clientData.vehiculos[clientData.vehiculos.length - 1];
+                        setSelectedVehiculoId(lastVehicle.id);
+                        return; // Success
+                    }
+                    
+                    // Wait 500ms before retry
+                    await new Promise(r => setTimeout(r, 500));
+                    attempts++;
+                }
+                
+                // Fallback: If polling timed out, check if it loaded in the global list meanwhile
+                const existing = clientes.find(c => c.id === initialClientId);
+                if (existing && existing.vehiculos && existing.vehiculos.length > 0) {
+                     const lastVehicle = existing.vehiculos[existing.vehiculos.length - 1];
+                     setSelectedVehiculoId(lastVehicle.id);
+                }
+            };
+            
+            fetchVehicleData();
         }
-    }, [trabajoToEdit]);
+    }, [trabajoToEdit, initialClientId]); // Dependencies clean to prevent unnecessary re-runs
+
+    const handleClientCreatedIntermediate = (newClientId: string) => {
+        // This is called BEFORE session restore/reload
+        localStorage.setItem('pending_job_client_id', newClientId);
+    };
 
     const handleClientCreated = async (newClientId?: string, hasVehicles?: boolean) => {
         setIsClientModalOpen(false);
-        
-        try {
-            // Disparar actualización global en segundo plano
-            onDataRefresh();
-        } catch (e) {
-            console.error("Error triggering data refresh", e);
-        }
-
+        // Standard flow for edit mode (no reload)
         if (newClientId) {
-            // Polling (reintento) para esperar a que la DB consista los datos del vehículo
-            let attempts = 0;
-            const maxAttempts = 5; // Intentar durante ~3 segundos
-            let foundClient: Cliente | null = null;
-
-            while (attempts < maxAttempts) {
-                try {
-                    const { data, error } = await supabase
-                        .from('clientes')
-                        .select('*, vehiculos(*)')
-                        .eq('id', newClientId)
-                        .single();
-
-                    if (data && !error) {
-                        // Si esperamos vehículos, verificamos que existan
-                        if (hasVehicles === false || (data.vehiculos && data.vehiculos.length > 0)) {
-                            foundClient = data as Cliente;
-                            break; // Éxito, salir del bucle
-                        }
-                    }
-                } catch (err) {
-                    console.warn("Polling error:", err);
-                }
-                
-                // Esperar 500ms antes del siguiente intento
-                await new Promise(resolve => setTimeout(resolve, 600));
-                attempts++;
+             const { data } = await supabase
+                .from('clientes')
+                .select('*, vehiculos(*)')
+                .eq('id', newClientId)
+                .single();
+            if (data) {
+                setLocalNewClient(data as Cliente);
+                setSelectedClienteId(data.id);
             }
-
-            if (foundClient) {
-                setLocalNewClient(foundClient); // Inyectar en estado local
-                setSelectedClienteId(foundClient.id); // Seleccionar inmediatamente
-                
-                if (foundClient.vehiculos && foundClient.vehiculos.length > 0) {
-                    // Seleccionar el último vehículo (el más reciente)
-                    const lastVehicle = foundClient.vehiculos[foundClient.vehiculos.length - 1];
-                    setSelectedVehiculoId(lastVehicle.id);
-                }
-            } else {
-                console.error("Could not find new client/vehicle after multiple attempts");
-            }
+            onDataRefresh();
         }
     };
 
@@ -178,27 +187,26 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
     }, [selectedClienteId, mergedClientes]);
     
     useEffect(() => {
-        // Solo auto-seleccionar vehículo si NO es edición y el cliente ya está seleccionado
-        // Evitamos sobrescribir si ya seleccionamos uno manualmente (localNewClient logic handled in handleClientCreated)
-        if(selectedClienteId && !isEditMode && !localNewClient) {
+        if(selectedClienteId && !isEditMode) {
              const cliente = mergedClientes.find(c => c.id === selectedClienteId);
-             if (cliente && cliente.vehiculos.length === 1) {
-                 setSelectedVehiculoId(cliente.vehiculos[0].id);
-             } else if (cliente && cliente.vehiculos.length === 0) {
-                 setSelectedVehiculoId('');
+             
+             if (selectedVehiculoId) {
+                 const vehicleExists = cliente?.vehiculos.some(v => v.id === selectedVehiculoId);
+                 if (!vehicleExists) setSelectedVehiculoId('');
              }
-        }
-        // Si acabamos de inyectar un cliente local, ya manejamos la selección en handleClientCreated,
-        // así que limpiamos el localNewClient para que el comportamiento vuelva a la normalidad
-        // una vez que el usuario interactúe
-        if (localNewClient && selectedClienteId !== localNewClient.id) {
-             setLocalNewClient(null);
+
+             if (cliente && cliente.vehiculos.length > 0 && !selectedVehiculoId) {
+                 const vehicleToSelect = cliente.vehiculos.length === 1 
+                    ? cliente.vehiculos[0] 
+                    : cliente.vehiculos[cliente.vehiculos.length - 1]; 
+                 
+                 setSelectedVehiculoId(vehicleToSelect.id);
+             }
         }
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [selectedClienteId, mergedClientes]);
 
     const costoEstimado = useMemo(() => {
-        // El costo estimado es la suma de Items + Servicios
         return partes.filter(p => !p.isCategory).reduce((sum, p) => sum + (Number(p.cantidad || 0) * parseCurrency(p.precioUnitario)), 0);
     }, [partes]);
 
@@ -207,7 +215,6 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
         const newPartes = [...partes];
         const currentParte = newPartes[index];
         
-        // Auto-detect maintenance type based on name input
         if (field === 'nombre' && typeof value === 'string') {
             const lowerValue = value.toLowerCase();
             const capitalizedValue = value.length > 0 ? value.charAt(0).toUpperCase() + value.slice(1) : value;
@@ -263,7 +270,7 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
 
             if (deleteError) throw deleteError;
 
-            onDataRefresh(); // Refresh data to update dashboard and other components
+            onDataRefresh();
             onSuccess();
         } catch (err: any) {
             setError(err.message || 'Error al eliminar el trabajo.');
@@ -292,7 +299,7 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
                 .filter(p => p.nombre.trim() !== '')
                 .map(p => ({
                     nombre: p.nombre,
-                    cantidad: p.isCategory ? 0 : Number(p.cantidad || 1), // Default to 1 if empty/0 on submit
+                    cantidad: p.isCategory ? 0 : Number(p.cantidad || 1),
                     precioUnitario: p.isCategory ? 0 : parseCurrency(p.precioUnitario),
                     isCategory: !!p.isCategory,
                     isService: !!p.isService,
@@ -331,6 +338,7 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
                 if (insertError) throw insertError;
             }
 
+            localStorage.removeItem('pending_job_client_id');
             onSuccess();
         } catch (err: any) {
             setError(err.message || 'Error al guardar el trabajo.');
@@ -564,6 +572,7 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
                 <CrearClienteModal
                     onClose={() => setIsClientModalOpen(false)}
                     onSuccess={handleClientCreated}
+                    onClientCreated={handleClientCreatedIntermediate}
                 />
             )}
             <style>{`

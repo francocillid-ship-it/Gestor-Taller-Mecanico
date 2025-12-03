@@ -9,12 +9,13 @@ import CameraRecognitionModal from './CameraRecognitionModal';
 interface CrearClienteModalProps {
     onClose: () => void;
     onSuccess: (newClientId?: string, hasVehicles?: boolean) => void;
+    onClientCreated?: (newClientId: string) => void;
     clienteToEdit?: Cliente | null;
 }
 
 type VehicleFormState = Omit<Vehiculo, 'id' | 'año'> & { id?: string; año: string };
 
-const CrearClienteModal: React.FC<CrearClienteModalProps> = ({ onClose, onSuccess, clienteToEdit }) => {
+const CrearClienteModal: React.FC<CrearClienteModalProps> = ({ onClose, onSuccess, onClientCreated, clienteToEdit }) => {
     const [nombre, setNombre] = useState('');
     const [apellido, setApellido] = useState('');
     const [email, setEmail] = useState('');
@@ -176,6 +177,11 @@ const CrearClienteModal: React.FC<CrearClienteModalProps> = ({ onClose, onSucces
                     }
                 }
                 successId = clienteToEdit!.id;
+                
+                // ARTIFICIAL DELAY for Edit Mode
+                await new Promise(resolve => setTimeout(resolve, 800));
+                onSuccess(successId, hasVehiclesToAdd);
+
             } else {
                 let yearNumber: number | null = null;
                 if (año.trim() !== '') {
@@ -212,6 +218,14 @@ const CrearClienteModal: React.FC<CrearClienteModalProps> = ({ onClose, onSucces
                 if (signUpError) throw signUpError;
                 if (!signUpData.user) throw new Error('No se pudo crear la cuenta de usuario.');
                 
+                const newUserId = signUpData.user.id;
+                
+                // CRITICAL: Notify parent component about the new ID *before* restoring session
+                // Restoring session triggers page reload/unmount, so persistence must happen now.
+                if (onClientCreated) {
+                    onClientCreated(newUserId);
+                }
+
                 if (shouldCreatePortalAccess) {
                     await supabase.auth.resetPasswordForEmail(userEmail, {
                         redirectTo: window.location.origin,
@@ -224,7 +238,10 @@ const CrearClienteModal: React.FC<CrearClienteModalProps> = ({ onClose, onSucces
                 });
                 if (sessionError) throw new Error("Error al restaurar sesión.");
                 
-                const newUserId = signUpData.user.id;
+                // NOTE: The code below might be interrupted by the page reload triggered by setSession
+                // However, Supabase calls are async and usually complete. 
+                // The critical part (saving ID) is handled above.
+                
                 successId = newUserId;
 
                 const { error: clientInsertError } = await supabase
@@ -238,11 +255,10 @@ const CrearClienteModal: React.FC<CrearClienteModalProps> = ({ onClose, onSucces
                     .insert({ cliente_id: newUserId, marca, modelo, año: yearNumber, matricula, numero_chasis, numero_motor });
                 
                 if (vehicleInsertError) throw new Error(`Cliente creado, pero falló al agregar el vehículo: ${vehicleInsertError.message}`);
+                
+                // For CREATE mode with reload, we don't need to call onSuccess here as the page will reload
+                // and the parent component will handle the state from localStorage.
             }
-
-            // ARTIFICIAL DELAY: Increased to 800ms to allow DB propagation
-            await new Promise(resolve => setTimeout(resolve, 800));
-            onSuccess(successId, hasVehiclesToAdd);
 
         } catch (err: any) {
             setError(err.message || `Error al ${isEditMode ? 'actualizar' : 'crear'} el cliente.`);

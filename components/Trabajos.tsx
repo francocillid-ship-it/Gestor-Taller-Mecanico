@@ -283,7 +283,19 @@ const StatusColumn: React.FC<{
 
 const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus, onDataRefresh, tallerInfo, searchQuery }) => {
     const [isJobModalOpen, setIsJobModalOpen] = useState(false);
+    const [initialClientIdForModal, setInitialClientIdForModal] = useState<string | undefined>(undefined);
     
+    // Check local storage on mount to see if we need to reopen the modal after a reload
+    useEffect(() => {
+        const pendingClientId = localStorage.getItem('pending_job_client_id');
+        if (pendingClientId) {
+            setInitialClientIdForModal(pendingClientId);
+            setIsJobModalOpen(true);
+            // Clear it immediately so it doesn't open on next random reload
+            localStorage.removeItem('pending_job_client_id');
+        }
+    }, []);
+
     const trabajosByStatus = useMemo(() => {
         let filteredTrabajos = trabajos;
         if (searchQuery) {
@@ -334,7 +346,10 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
                 <h2 className="text-2xl font-bold text-taller-dark dark:text-taller-light">Flujo de Trabajos</h2>
                 <div className="flex">
                     <button
-                        onClick={() => setIsJobModalOpen(true)}
+                        onClick={() => {
+                            setInitialClientIdForModal(undefined);
+                            setIsJobModalOpen(true);
+                        }}
                         className="flex items-center justify-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-taller-primary rounded-lg shadow-md hover:bg-taller-secondary focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-taller-secondary transition-colors"
                     >
                        <PlusIcon className="h-5 w-5"/>
@@ -383,6 +398,7 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
                         onDataRefresh();
                     }}
                     onDataRefresh={onDataRefresh}
+                    initialClientId={initialClientIdForModal}
                 />
             )}
         </div>
