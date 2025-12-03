@@ -38,6 +38,11 @@ const Ajustes: React.FC<AjustesProps> = ({ tallerInfo, onUpdateTallerInfo, onLog
 
     useEffect(() => {
         setFormData(tallerInfo);
+        // FIX CRÍTICO: Sincronizar visuales con el estado guardado al montar el componente.
+        // Si el usuario cambió la fuente antes pero no guardó y salió, esto revierte el cambio visual
+        // para coincidir con la base de datos (tallerInfo), asegurando consistencia.
+        if (tallerInfo.appTheme) applyAppTheme(tallerInfo.appTheme);
+        if (tallerInfo.fontSize) applyFontSize(tallerInfo.fontSize as any);
     }, [tallerInfo]);
 
     useEffect(() => {
@@ -464,7 +469,7 @@ const Ajustes: React.FC<AjustesProps> = ({ tallerInfo, onUpdateTallerInfo, onLog
                                         <MagnifyingGlassPlusIcon className="h-5 w-5"/> Tamaño de Fuente
                                     </label>
                                     <div className="flex flex-col sm:flex-row gap-4">
-                                        <div className="flex-1 bg-gray-50 dark:bg-gray-700/50 p-1 rounded-lg flex gap-1">
+                                        <div className="flex-1 bg-gray-50 dark:bg-gray-700/50 p-1 rounded-lg flex flex-wrap gap-1">
                                             {[
                                                 { id: 'small', label: 'Pequeño', desc: 'Más compacto' },
                                                 { id: 'normal', label: 'Normal', desc: 'Predeterminado' },
@@ -474,7 +479,7 @@ const Ajustes: React.FC<AjustesProps> = ({ tallerInfo, onUpdateTallerInfo, onLog
                                                     key={opt.id}
                                                     type="button"
                                                     onClick={() => handleFontSizeChange(opt.id as any)}
-                                                    className={`flex-1 py-2 px-4 rounded-md transition-all flex flex-col items-center justify-center ${
+                                                    className={`flex-1 min-w-[80px] py-2 px-4 rounded-md transition-all flex flex-col items-center justify-center ${
                                                         (formData.fontSize || 'normal') === opt.id
                                                             ? 'bg-white dark:bg-gray-600 text-taller-primary shadow-sm ring-1 ring-black/5 dark:ring-white/10'
                                                             : 'text-gray-500 dark:text-gray-400 hover:text-taller-dark dark:hover:text-white'
