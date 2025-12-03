@@ -34,7 +34,7 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
         direccion: '',
         cuit: '',
         pdfTemplate: 'classic',
-        mobileNavStyle: 'sidebar',
+        mobileNavStyle: 'bottom_nav', // Default changed to bottom_nav
         showLogoOnPdf: false,
         showCuitOnPdf: true,
         logoUrl: undefined,
@@ -73,7 +73,7 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
                     cuit: tallerInfoData.cuit || '',
                     logoUrl: tallerInfoData.logo_url,
                     pdfTemplate: tallerInfoData.pdf_template || 'classic',
-                    mobileNavStyle: tallerInfoData.mobile_nav_style || 'sidebar',
+                    mobileNavStyle: tallerInfoData.mobile_nav_style || 'bottom_nav', // Default fallback to bottom_nav
                     showLogoOnPdf: tallerInfoData.show_logo_on_pdf === true, // Ensure boolean
                     showCuitOnPdf: tallerInfoData.show_cuit_on_pdf !== false, // Default to true if null/undefined
                     headerColor: tallerInfoData.header_color || '#334155',

@@ -126,7 +126,7 @@ const App: React.FC = () => {
                                 cuit: tallerInfoData.cuit || '',
                                 logoUrl: tallerInfoData.logo_url,
                                 pdfTemplate: tallerInfoData.pdf_template || 'classic',
-                                mobileNavStyle: tallerInfoData.mobile_nav_style || 'sidebar',
+                                mobileNavStyle: tallerInfoData.mobile_nav_style || 'bottom_nav', // Default to bottom_nav
                                 showLogoOnPdf: tallerInfoData.show_logo_on_pdf === true,
                                 showCuitOnPdf: tallerInfoData.show_cuit_on_pdf !== false, // Default to true if null/undefined
                                 headerColor: tallerInfoData.header_color || '#334155',
