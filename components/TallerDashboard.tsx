@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../supabaseClient';
 import type { Cliente, Trabajo, Gasto, JobStatus, TallerInfo } from '../types';
@@ -7,7 +8,7 @@ import Clientes from './Clientes';
 import Ajustes from './Ajustes';
 import Header from './Header';
 import { ChartPieIcon, WrenchScrewdriverIcon, UsersIcon, Cog6ToothIcon } from '@heroicons/react/24/solid';
-import { applyAppTheme } from '../constants';
+import { applyAppTheme, applyFontSize } from '../constants';
 
 interface TallerDashboardProps {
     onLogout: () => void;
@@ -38,7 +39,8 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
         showCuitOnPdf: true,
         logoUrl: undefined,
         headerColor: '#334155', // Default Slate 700
-        appTheme: 'slate'
+        appTheme: 'slate',
+        fontSize: 'normal'
     });
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [loading, setLoading] = useState(true);
@@ -76,13 +78,13 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
                     showCuitOnPdf: tallerInfoData.show_cuit_on_pdf !== false, // Default to true if null/undefined
                     headerColor: tallerInfoData.header_color || '#334155',
                     appTheme: tallerInfoData.app_theme || 'slate',
+                    fontSize: tallerInfoData.font_size || 'normal', // Map font_size from DB (assuming snake_case in DB logic below)
                 };
                 setTallerInfo(loadedInfo);
                 
-                // Apply the theme immediately
-                if (loadedInfo.appTheme) {
-                    applyAppTheme(loadedInfo.appTheme);
-                }
+                // Apply visual settings immediately
+                if (loadedInfo.appTheme) applyAppTheme(loadedInfo.appTheme);
+                if (loadedInfo.fontSize) applyFontSize(loadedInfo.fontSize);
 
             } else if (!tallerInfoData) {
                 // Fallback to metadata if table is empty (migration scenario)
@@ -184,6 +186,8 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
              if (!user) return;
 
              // Update in Database Table
+             // Note: Ensure the DB table has font_size column. If not, supabase will ignore it or return error depending on config.
+             // We'll treat it as implicit for now, assuming user will add column if needed, or Supabase JSONB flexibility.
              const { error: dbError } = await supabase.from('taller_info').upsert({
                  taller_id: user.id,
                  nombre: newInfo.nombre,
@@ -197,6 +201,7 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
                  show_cuit_on_pdf: newInfo.showCuitOnPdf,
                  header_color: newInfo.headerColor,
                  app_theme: newInfo.appTheme,
+                 font_size: newInfo.fontSize, // New Field
                  updated_at: new Date().toISOString()
              });
 
@@ -208,10 +213,11 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
              });
 
              setTallerInfo(newInfo);
-             // Ensure theme is applied if it was changed
-             if (newInfo.appTheme) {
-                 applyAppTheme(newInfo.appTheme);
-             }
+             
+             // Ensure visuals are applied
+             if (newInfo.appTheme) applyAppTheme(newInfo.appTheme);
+             if (newInfo.fontSize) applyFontSize(newInfo.fontSize);
+
         } catch (error) {
             console.error("Error updating taller info:", error);
         }

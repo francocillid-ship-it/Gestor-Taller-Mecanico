@@ -79,3 +79,22 @@ export const applyAppTheme = (themeName: string) => {
     root.style.setProperty('--color-taller-dark', theme.dark);
     root.style.setProperty('--color-taller-gray', theme.gray);
 };
+
+export const applyFontSize = (size: 'small' | 'normal' | 'large') => {
+    const root = document.documentElement;
+    // Default base size is 16px (100%). We scale from there.
+    // Tailwind uses rems, so changing root font-size scales the entire UI.
+    switch (size) {
+        case 'small':
+            root.style.fontSize = '14px';
+            break;
+        case 'normal':
+            root.style.fontSize = '16px';
+            break;
+        case 'large':
+            root.style.fontSize = '18px';
+            break;
+        default:
+            root.style.fontSize = '16px';
+    }
+};

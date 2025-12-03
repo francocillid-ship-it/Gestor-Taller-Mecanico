@@ -2,9 +2,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import type { TallerInfo } from '../types';
 import { supabase } from '../supabaseClient';
-import { BuildingOffice2Icon, PhotoIcon, ArrowUpOnSquareIcon, PaintBrushIcon, DevicePhoneMobileIcon, SunIcon, MoonIcon, ComputerDesktopIcon, DocumentTextIcon, SparklesIcon, CheckCircleIcon, ExclamationTriangleIcon, KeyIcon, ArrowTopRightOnSquareIcon, SwatchIcon, ArrowRightOnRectangleIcon } from '@heroicons/react/24/solid';
+import { BuildingOffice2Icon, PhotoIcon, ArrowUpOnSquareIcon, PaintBrushIcon, DevicePhoneMobileIcon, SunIcon, MoonIcon, ComputerDesktopIcon, DocumentTextIcon, SparklesIcon, CheckCircleIcon, ExclamationTriangleIcon, KeyIcon, ArrowTopRightOnSquareIcon, SwatchIcon, ArrowRightOnRectangleIcon, MagnifyingGlassPlusIcon } from '@heroicons/react/24/solid';
 import ChangePasswordModal from './ChangePasswordModal';
-import { APP_THEMES, applyAppTheme } from '../constants';
+import { APP_THEMES, applyAppTheme, applyFontSize } from '../constants';
 
 interface AjustesProps {
     tallerInfo: TallerInfo;
@@ -84,6 +84,12 @@ const Ajustes: React.FC<AjustesProps> = ({ tallerInfo, onUpdateTallerInfo, onLog
         setFormData(prev => ({ ...prev, appTheme: themeKey }));
         // Apply instantly for preview
         applyAppTheme(themeKey);
+        setIsSaved(false);
+    };
+
+    const handleFontSizeChange = (size: 'small' | 'normal' | 'large') => {
+        setFormData(prev => ({ ...prev, fontSize: size }));
+        applyFontSize(size);
         setIsSaved(false);
     };
 
@@ -408,39 +414,77 @@ const Ajustes: React.FC<AjustesProps> = ({ tallerInfo, onUpdateTallerInfo, onLog
                         </div>
                     )}
                     
-                    {shouldShow(['apariencia', 'tema', 'oscuro', 'claro']) && (
+                    {shouldShow(['apariencia', 'tema', 'oscuro', 'claro', 'fuente', 'texto']) && (
                         <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md">
                             <h3 className="text-lg font-bold mb-4 flex items-center"><PaintBrushIcon className="h-6 w-6 mr-2 text-taller-primary"/>Apariencia de la App</h3>
                             
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                <div>
-                                    <label className="block text-sm font-medium text-taller-gray dark:text-gray-400 mb-2">Tema de la Aplicación</label>
-                                    <p className="text-xs text-taller-gray dark:text-gray-500 mb-3">Elige la paleta de colores principal de la interfaz.</p>
-                                    <div className="grid grid-cols-2 gap-3">
-                                        {Object.entries(APP_THEMES).map(([key, themeDef]) => (
-                                            <button
-                                                key={key}
-                                                type="button"
-                                                onClick={() => handleAppThemeChange(key)}
-                                                className={`flex items-center gap-2 p-3 rounded-lg border text-sm font-medium transition-all ${
-                                                    (formData.appTheme || 'slate') === key
-                                                        ? 'border-taller-primary bg-taller-light dark:bg-gray-700 ring-1 ring-taller-primary'
-                                                        : 'border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'
-                                                }`}
-                                            >
-                                                <div className="w-6 h-6 rounded-full flex-shrink-0" style={{ backgroundColor: `rgb(${themeDef.primary})` }}></div>
-                                                <span className="text-taller-dark dark:text-taller-light">{themeDef.name}</span>
-                                            </button>
-                                        ))}
+                            <div className="space-y-8">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                    <div>
+                                        <label className="block text-sm font-medium text-taller-gray dark:text-gray-400 mb-2">Tema de la Aplicación</label>
+                                        <p className="text-xs text-taller-gray dark:text-gray-500 mb-3">Elige la paleta de colores principal.</p>
+                                        <div className="grid grid-cols-2 gap-3">
+                                            {Object.entries(APP_THEMES).map(([key, themeDef]) => (
+                                                <button
+                                                    key={key}
+                                                    type="button"
+                                                    onClick={() => handleAppThemeChange(key)}
+                                                    className={`flex items-center gap-2 p-3 rounded-lg border text-sm font-medium transition-all ${
+                                                        (formData.appTheme || 'slate') === key
+                                                            ? 'border-taller-primary bg-taller-light dark:bg-gray-700 ring-1 ring-taller-primary'
+                                                            : 'border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'
+                                                    }`}
+                                                >
+                                                    <div className="w-6 h-6 rounded-full flex-shrink-0" style={{ backgroundColor: `rgb(${themeDef.primary})` }}></div>
+                                                    <span className="text-taller-dark dark:text-taller-light">{themeDef.name}</span>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-medium text-taller-gray dark:text-gray-400 mb-2">Modo Oscuro</label>
+                                        <p className="text-xs text-taller-gray dark:text-gray-500 mb-3">Preferencia de luz y contraste.</p>
+                                        <div className="grid grid-cols-3 gap-2 rounded-lg bg-taller-light dark:bg-gray-900/50 p-1">
+                                            <ThemeButton value="light" currentTheme={theme} onClick={handleThemeChange} icon={SunIcon} label="Claro" />
+                                            <ThemeButton value="dark" currentTheme={theme} onClick={handleThemeChange} icon={MoonIcon} label="Oscuro" />
+                                            <ThemeButton value="system" currentTheme={theme} onClick={handleThemeChange} icon={ComputerDesktopIcon} label="Sistema" />
+                                        </div>
                                     </div>
                                 </div>
 
-                                <div>
-                                    <label className="block text-sm font-medium text-taller-gray dark:text-gray-400 mb-2">Modo Oscuro</label>
-                                    <div className="grid grid-cols-3 gap-2 rounded-lg bg-taller-light dark:bg-gray-900/50 p-1">
-                                        <ThemeButton value="light" currentTheme={theme} onClick={handleThemeChange} icon={SunIcon} label="Claro" />
-                                        <ThemeButton value="dark" currentTheme={theme} onClick={handleThemeChange} icon={MoonIcon} label="Oscuro" />
-                                        <ThemeButton value="system" currentTheme={theme} onClick={handleThemeChange} icon={ComputerDesktopIcon} label="Sistema" />
+                                <div className="border-t dark:border-gray-700 pt-6">
+                                    <label className="block text-sm font-medium text-taller-gray dark:text-gray-400 mb-3 flex items-center gap-2">
+                                        <MagnifyingGlassPlusIcon className="h-5 w-5"/> Tamaño de Fuente
+                                    </label>
+                                    <div className="flex flex-col sm:flex-row gap-4">
+                                        <div className="flex-1 bg-gray-50 dark:bg-gray-700/50 p-1 rounded-lg flex gap-1">
+                                            {[
+                                                { id: 'small', label: 'Pequeño', desc: 'Más compacto' },
+                                                { id: 'normal', label: 'Normal', desc: 'Predeterminado' },
+                                                { id: 'large', label: 'Grande', desc: 'Mayor legibilidad' }
+                                            ].map((opt) => (
+                                                <button
+                                                    key={opt.id}
+                                                    type="button"
+                                                    onClick={() => handleFontSizeChange(opt.id as any)}
+                                                    className={`flex-1 py-2 px-4 rounded-md transition-all flex flex-col items-center justify-center ${
+                                                        (formData.fontSize || 'normal') === opt.id
+                                                            ? 'bg-white dark:bg-gray-600 text-taller-primary shadow-sm ring-1 ring-black/5 dark:ring-white/10'
+                                                            : 'text-gray-500 dark:text-gray-400 hover:text-taller-dark dark:hover:text-white'
+                                                    }`}
+                                                >
+                                                    <span className="text-sm font-medium">{opt.label}</span>
+                                                    <span className="text-[10px] opacity-70">{opt.desc}</span>
+                                                </button>
+                                            ))}
+                                        </div>
+                                        <div className="sm:w-1/3 flex items-center justify-center p-4 bg-white dark:bg-gray-900 border dark:border-gray-700 rounded-lg">
+                                            <div className="space-y-1">
+                                                <p className="text-sm font-bold text-taller-dark dark:text-taller-light">Ejemplo de texto</p>
+                                                <p className="text-xs text-taller-gray dark:text-gray-400">Así se verá el contenido en la aplicación.</p>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>

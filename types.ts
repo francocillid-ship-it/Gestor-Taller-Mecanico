@@ -87,4 +87,5 @@ export interface TallerInfo {
     showCuitOnPdf?: boolean;
     headerColor?: string;
     appTheme?: string;
+    fontSize?: 'small' | 'normal' | 'large'; // Nuevo campo
 }
