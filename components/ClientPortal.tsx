@@ -117,10 +117,16 @@ const ClientPortal: React.FC<ClientPortalProps> = ({ client, trabajos, onLogout,
                 <header className="bg-white dark:bg-gray-800 shadow-md sticky top-0 z-20">
                     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
                         <div className="flex items-center gap-3 overflow-hidden">
-                            <WrenchScrewdriverIcon className="h-8 w-8 text-taller-primary flex-shrink-0"/>
-                            <h1 className="text-xl font-bold text-taller-dark dark:text-taller-light truncate">
-                                {tallerInfo?.nombre || 'Portal Cliente'}
-                            </h1>
+                            {tallerInfo?.logoUrl ? (
+                                <img src={tallerInfo.logoUrl} alt={tallerInfo.nombre} className="h-14 md:h-16 object-contain" />
+                            ) : (
+                                <>
+                                    <WrenchScrewdriverIcon className="h-8 w-8 text-taller-primary flex-shrink-0"/>
+                                    <h1 className="text-xl font-bold text-taller-dark dark:text-taller-light truncate">
+                                        {tallerInfo?.nombre || 'Portal Cliente'}
+                                    </h1>
+                                </>
+                            )}
                         </div>
                         
                         <div className="flex items-center gap-2 sm:gap-4">

@@ -4,13 +4,14 @@ import { MagnifyingGlassIcon, Bars3Icon, XMarkIcon } from '@heroicons/react/24/o
 
 interface HeaderProps {
     tallerName: string;
+    logoUrl?: string;
     onMenuClick?: () => void;
     showMenuButton?: boolean;
     searchQuery: string;
     onSearchChange: (query: string) => void;
 }
 
-const Header: React.FC<HeaderProps> = ({ tallerName, onMenuClick, showMenuButton, searchQuery, onSearchChange }) => {
+const Header: React.FC<HeaderProps> = ({ tallerName, logoUrl, onMenuClick, showMenuButton, searchQuery, onSearchChange }) => {
     const [isSearchExpanded, setIsSearchExpanded] = useState(false);
     const mobileInputRef = useRef<HTMLInputElement>(null);
 
@@ -31,15 +32,23 @@ const Header: React.FC<HeaderProps> = ({ tallerName, onMenuClick, showMenuButton
         <header className="relative h-20 flex items-center justify-between px-4 md:px-6 bg-white dark:bg-gray-800 shadow-md dark:shadow-none dark:border-b dark:border-gray-700 z-10 flex-shrink-0">
             
             {/* --- Left Side: Logo & Menu --- */}
-            <div className="flex items-center gap-4 z-0">
+            <div className="flex items-center gap-4 z-0 overflow-hidden">
                  {showMenuButton && (
-                    <button onClick={onMenuClick} className="md:hidden p-2 -ml-2 text-taller-gray hover:text-taller-dark dark:hover:text-taller-light">
+                    <button onClick={onMenuClick} className="md:hidden p-2 -ml-2 text-taller-gray hover:text-taller-dark dark:hover:text-taller-light flex-shrink-0">
                         <Bars3Icon className="h-6 w-6" />
                     </button>
                 )}
-                <h2 className="text-xl md:text-2xl font-semibold text-taller-dark dark:text-taller-light truncate max-w-[200px] sm:max-w-none">
-                    {tallerName}
-                </h2>
+                {logoUrl ? (
+                    <img 
+                        src={logoUrl} 
+                        alt={tallerName} 
+                        className="h-14 md:h-16 object-contain max-w-[200px] sm:max-w-[300px]" 
+                    />
+                ) : (
+                    <h2 className="text-xl md:text-2xl font-semibold text-taller-dark dark:text-taller-light truncate max-w-[200px] sm:max-w-none">
+                        {tallerName}
+                    </h2>
+                )}
             </div>
 
             {/* --- Right Side: Search Controls --- */}

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../supabaseClient';
 import type { Cliente, Trabajo, Gasto, JobStatus, TallerInfo } from '../types';
@@ -282,6 +283,7 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
             <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
                 <Header 
                     tallerName={tallerInfo.nombre} 
+                    logoUrl={tallerInfo.logoUrl}
                     onMenuClick={() => setIsMobileMenuOpen(true)} 
                     showMenuButton={tallerInfo.mobileNavStyle === 'sidebar'}
                     searchQuery={searchQuery}

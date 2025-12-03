@@ -4,7 +4,7 @@ import type { Trabajo, Cliente, TallerInfo } from '../types';
 import { JobStatus } from '../types';
 import JobCard from './JobCard';
 import CrearTrabajoModal from './CrearTrabajoModal';
-import { PlusIcon, ChevronUpIcon, ChevronDownIcon, MagnifyingGlassIcon, CalendarIcon } from '@heroicons/react/24/solid';
+import { PlusIcon, ChevronDownIcon, MagnifyingGlassIcon, CalendarIcon, CurrencyDollarIcon, WrenchScrewdriverIcon, ClockIcon } from '@heroicons/react/24/solid';
 
 interface TrabajosProps {
     trabajos: Trabajo[];
@@ -65,7 +65,7 @@ const JobGroup: React.FC<{
 
                 const rect = element.getBoundingClientRect();
                 const windowHeight = window.innerHeight;
-                const headerOffset = 80;
+                const headerOffset = 180; // Adjusted offset for mobile tabs + header
 
                 const isTopHidden = rect.top < headerOffset;
                 const isBottomHidden = rect.bottom > windowHeight;
@@ -85,10 +85,10 @@ const JobGroup: React.FC<{
     if (trabajos.length === 0) return null;
 
     return (
-        <div ref={groupRef} className="mb-4 last:mb-0 scroll-mt-4">
+        <div ref={groupRef} className="mb-4 last:mb-0 scroll-mt-32">
             <button 
                 onClick={() => setIsExpanded(!isExpanded)}
-                className="w-full flex justify-between items-center text-xs font-semibold text-taller-gray dark:text-gray-400 uppercase tracking-wider mb-2 hover:text-taller-primary transition-colors"
+                className="w-full flex justify-between items-center text-xs font-semibold text-taller-gray dark:text-gray-400 uppercase tracking-wider mb-2 hover:text-taller-primary transition-colors bg-gray-50 dark:bg-gray-800/50 p-2 rounded"
             >
                 <div className="flex items-center gap-2">
                     <CalendarIcon className="h-3 w-3" />
@@ -135,22 +135,25 @@ const StatusColumn: React.FC<{
     tallerInfo: TallerInfo;
     onDataRefresh: () => void;
     searchQuery: string;
-}> = ({ status, trabajos, clientes, onUpdateStatus, tallerInfo, onDataRefresh, searchQuery }) => {
+    forceExpanded?: boolean; // Prop to force expansion (Mobile Tab Mode)
+}> = ({ status, trabajos, clientes, onUpdateStatus, tallerInfo, onDataRefresh, searchQuery, forceExpanded }) => {
     const [isExpanded, setIsExpanded] = useState(false);
     const columnRef = useRef<HTMLDivElement>(null);
 
-    // Effect to handle auto-expansion based on search results
+    // Effect to handle auto-expansion based on search results (only for Desktop accordion mode)
     useEffect(() => {
-        if (searchQuery.trim().length > 0) {
-            setIsExpanded(trabajos.length > 0);
-        } else {
-            setIsExpanded(false);
+        if (!forceExpanded) {
+            if (searchQuery.trim().length > 0) {
+                setIsExpanded(trabajos.length > 0);
+            } else {
+                setIsExpanded(false);
+            }
         }
-    }, [searchQuery, trabajos.length]);
+    }, [searchQuery, trabajos.length, forceExpanded]);
 
-    // Effect for auto-scroll on expansion (Conditional)
+    // Effect for auto-scroll on expansion (Conditional, only for Desktop accordion mode)
     useEffect(() => {
-        if (isExpanded && columnRef.current && !searchQuery) {
+        if (!forceExpanded && isExpanded && columnRef.current && !searchQuery) {
             const timer = setTimeout(() => {
                 const element = columnRef.current;
                 if (!element) return;
@@ -172,15 +175,15 @@ const StatusColumn: React.FC<{
             }, 350);
             return () => clearTimeout(timer);
         }
-    }, [isExpanded, searchQuery]);
+    }, [isExpanded, searchQuery, forceExpanded]);
 
     const getStatusColor = (status: JobStatus) => {
         switch (status) {
-            case JobStatus.Presupuesto: return 'border-yellow-400';
-            case JobStatus.Programado: return 'border-blue-400';
-            case JobStatus.EnProceso: return 'border-orange-400';
-            case JobStatus.Finalizado: return 'border-green-400';
-            default: return 'border-gray-400';
+            case JobStatus.Presupuesto: return 'border-yellow-400 text-yellow-600 dark:text-yellow-400';
+            case JobStatus.Programado: return 'border-blue-400 text-blue-600 dark:text-blue-400';
+            case JobStatus.EnProceso: return 'border-orange-400 text-orange-600 dark:text-orange-400';
+            case JobStatus.Finalizado: return 'border-green-400 text-green-600 dark:text-green-400';
+            default: return 'border-gray-400 text-gray-600';
         }
     };
     
@@ -196,7 +199,6 @@ const StatusColumn: React.FC<{
         };
 
         trabajos.forEach(t => {
-            // Use fechaSalida if available, otherwise fechaEntrada
             const date = t.fechaSalida || t.fechaEntrada;
             const cat = getDateCategory(date);
             groups[cat].push(t);
@@ -205,36 +207,36 @@ const StatusColumn: React.FC<{
         return groups;
     }, [trabajos, status]);
 
+    const isColumnExpanded = forceExpanded || isExpanded;
+
     return (
         <div 
             ref={columnRef}
-            className={`w-full lg:w-80 bg-gray-100 dark:bg-gray-800 rounded-lg p-3 lg:flex-shrink-0 transition-all duration-300 ease-in-out h-fit scroll-mt-4`}
+            className={`w-full ${forceExpanded ? '' : 'lg:w-80 bg-gray-100 dark:bg-gray-800 rounded-lg p-3 lg:flex-shrink-0 transition-all duration-300 ease-in-out h-fit scroll-mt-4'}`}
         >
-            <div 
-                className={`flex justify-between items-center ${isExpanded ? 'mb-2 border-b-2' : ''} pb-2 ${getStatusColor(status)} cursor-pointer hover:opacity-80 transition-all duration-300`}
-                onClick={() => setIsExpanded(!isExpanded)}
-            >
-                 <div className="flex items-center gap-2">
-                    <h3 className="font-bold text-taller-dark dark:text-taller-light transition-colors duration-300">{status}</h3>
-                    <span className={`text-xs font-semibold px-2 py-1 rounded-full transition-all duration-300 ${trabajos.length > 0 ? 'bg-taller-primary text-white' : 'bg-gray-300 text-gray-600 dark:bg-gray-700 dark:text-gray-400'}`}>
-                        {trabajos.length}
-                    </span>
-                 </div>
-                 <div className={`transform transition-transform duration-300 ${isExpanded ? 'rotate-180' : 'rotate-0'}`}>
-                    <ChevronDownIcon className="h-5 w-5 text-taller-gray dark:text-gray-400" />
-                 </div>
-            </div>
+            {/* Header: Visible only in Desktop/Accordion Mode OR if forceExpanded is false */}
+            {!forceExpanded && (
+                <div 
+                    className={`flex justify-between items-center ${isExpanded ? 'mb-2 border-b-2' : ''} pb-2 ${getStatusColor(status).split(' ')[0]} cursor-pointer hover:opacity-80 transition-all duration-300`}
+                    onClick={() => setIsExpanded(!isExpanded)}
+                >
+                     <div className="flex items-center gap-2">
+                        <h3 className="font-bold text-taller-dark dark:text-taller-light transition-colors duration-300">{status}</h3>
+                        <span className={`text-xs font-semibold px-2 py-1 rounded-full transition-all duration-300 ${trabajos.length > 0 ? 'bg-taller-primary text-white' : 'bg-gray-300 text-gray-600 dark:bg-gray-700 dark:text-gray-400'}`}>
+                            {trabajos.length}
+                        </span>
+                     </div>
+                     <div className={`transform transition-transform duration-300 ${isExpanded ? 'rotate-180' : 'rotate-0'}`}>
+                        <ChevronDownIcon className="h-5 w-5 text-taller-gray dark:text-gray-400" />
+                     </div>
+                </div>
+            )}
            
-            {/* Animación suave usando Grid Template Rows */}
-            <div className={`grid transition-[grid-template-rows] duration-300 ease-out ${isExpanded ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>
-                <div className="overflow-hidden">
-                    {/* 
-                        MODIFIED FOR MOBILE:
-                        On mobile (default), we remove max-h and overflow-y-auto so the list expands fully.
-                        This allows the main page scroll to handle navigation, avoiding nested scrollbars.
-                        On lg screens, we keep the column scroll behavior.
-                    */}
-                    <div className={`pt-2 lg:max-h-[80vh] lg:overflow-y-auto transition-opacity duration-300 custom-scrollbar relative ${isExpanded ? 'opacity-100' : 'opacity-0'}`}>
+            {/* Animación suave usando Grid Template Rows (Only relevant for accordion mode) */}
+            {/* If forceExpanded, we just show content without animation container for better performance */}
+            <div className={`${forceExpanded ? 'block' : `grid transition-[grid-template-rows] duration-300 ease-out ${isExpanded ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}`}>
+                <div className={`${forceExpanded ? '' : 'overflow-hidden'}`}>
+                    <div className={`${forceExpanded ? 'pt-0' : 'pt-2 lg:max-h-[80vh] lg:overflow-y-auto transition-opacity duration-300 custom-scrollbar relative'} ${isColumnExpanded ? 'opacity-100' : 'opacity-0'}`}>
                         
                         {trabajos.length > 0 ? (
                             status === JobStatus.Finalizado && groupedJobs ? (
@@ -265,14 +267,17 @@ const StatusColumn: React.FC<{
                                 </div>
                             )
                         ) : (
-                            <div className="py-8 text-center animate-pulse">
+                            <div className="py-12 text-center">
+                                <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-gray-100 dark:bg-gray-800 mb-3">
+                                    <MagnifyingGlassIcon className="h-6 w-6 text-gray-400" />
+                                </div>
                                 <p className="text-sm text-taller-gray dark:text-gray-400">
-                                    {searchQuery ? "No hay coincidencias." : "No hay trabajos en este estado."}
+                                    {searchQuery ? "No hay coincidencias." : `No hay trabajos en ${status}.`}
                                 </p>
                             </div>
                         )}
-                        {/* Visual indicator at the bottom to suggest more content/scrolling - Hidden on mobile as we show full content */}
-                        {trabajos.length > 2 && <div className="sticky bottom-0 left-0 right-0 h-6 bg-gradient-to-t from-gray-100 dark:from-gray-800 to-transparent pointer-events-none hidden lg:block" />}
+                        {/* Visual indicator at the bottom to suggest more content/scrolling - Hidden on mobile */}
+                        {!forceExpanded && trabajos.length > 2 && <div className="sticky bottom-0 left-0 right-0 h-6 bg-gradient-to-t from-gray-100 dark:from-gray-800 to-transparent pointer-events-none hidden lg:block" />}
                     </div>
                 </div>
             </div>
@@ -284,7 +289,8 @@ const StatusColumn: React.FC<{
 const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus, onDataRefresh, tallerInfo, searchQuery }) => {
     const [isJobModalOpen, setIsJobModalOpen] = useState(false);
     const [initialClientIdForModal, setInitialClientIdForModal] = useState<string | undefined>(undefined);
-    
+    const [activeMobileTab, setActiveMobileTab] = useState<JobStatus>(JobStatus.Presupuesto); // Default tab
+
     // Check local storage on mount to see if we need to reopen the modal after a reload
     useEffect(() => {
         const pendingClientId = localStorage.getItem('pending_job_client_id');
@@ -324,6 +330,26 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
     // Check if there are any results at all across all columns
     const hasResults = useMemo(() => (Object.values(trabajosByStatus) as Trabajo[][]).some(list => list.length > 0), [trabajosByStatus]);
     
+    const getMobileTabLabel = (status: JobStatus) => {
+        switch(status) {
+            case JobStatus.Presupuesto: return 'Presupuestos';
+            case JobStatus.Programado: return 'Programados';
+            case JobStatus.EnProceso: return 'En Proceso';
+            case JobStatus.Finalizado: return 'Historial';
+            default: return status;
+        }
+    };
+
+    const getMobileTabIcon = (status: JobStatus) => {
+        switch(status) {
+            case JobStatus.Presupuesto: return CurrencyDollarIcon;
+            case JobStatus.Programado: return CalendarIcon;
+            case JobStatus.EnProceso: return WrenchScrewdriverIcon;
+            case JobStatus.Finalizado: return ClockIcon;
+            default: return CalendarIcon;
+        }
+    };
+
     return (
         <div className="h-full flex flex-col">
             <style>{`
@@ -342,9 +368,11 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
                     background-color: rgba(75, 85, 99, 0.5);
                 }
             `}</style>
-            <div className="flex flex-col gap-4 sm:flex-row sm:justify-between sm:items-center mb-6">
+            
+            <div className="flex flex-col gap-4 sm:flex-row sm:justify-between sm:items-center mb-4 lg:mb-6">
                 <h2 className="text-2xl font-bold text-taller-dark dark:text-taller-light">Flujo de Trabajos</h2>
-                <div className="flex">
+                {/* Desktop "Nuevo Presupuesto" Button - Hidden on mobile */}
+                <div className="hidden lg:flex">
                     <button
                         onClick={() => {
                             setInitialClientIdForModal(undefined);
@@ -357,7 +385,59 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
                     </button>
                 </div>
             </div>
-            <div className="flex-1 flex flex-col gap-4 lg:gap-6 lg:flex-row lg:space-x-4 lg:overflow-x-auto pb-4">
+
+            {/* Mobile Tabs Navigation - Redesigned Grid */}
+            <div className="lg:hidden mb-4">
+                <div className="grid grid-cols-4 gap-2 bg-gray-100 dark:bg-gray-800 p-1.5 rounded-xl">
+                    {statusOrder.map(status => {
+                        const Icon = getMobileTabIcon(status);
+                        const isActive = activeMobileTab === status;
+                        const count = trabajosByStatus[status]?.length || 0;
+                        
+                        return (
+                            <button
+                                key={status}
+                                onClick={() => setActiveMobileTab(status)}
+                                className={`relative flex flex-col items-center justify-center h-16 rounded-lg transition-all duration-200 ${
+                                    isActive 
+                                    ? 'bg-white dark:bg-gray-700 text-taller-primary dark:text-white shadow-sm ring-1 ring-black/5 dark:ring-white/10' 
+                                    : 'text-gray-500 dark:text-gray-400 hover:bg-gray-200/50 dark:hover:bg-gray-700/50'
+                                }`}
+                            >
+                                <Icon className={`h-5 w-5 mb-1 ${isActive ? 'text-taller-primary dark:text-white' : 'text-gray-400 dark:text-gray-500'}`} />
+                                <span className={`text-[10px] font-medium leading-none tracking-tight ${isActive ? 'text-taller-primary dark:text-white' : ''}`}>{getMobileTabLabel(status)}</span>
+                                {count > 0 && (
+                                    <span className={`absolute top-1 right-1 flex h-4 w-4 items-center justify-center rounded-full text-[9px] font-bold ${
+                                        isActive 
+                                        ? 'bg-taller-primary text-white dark:bg-white dark:text-taller-primary' 
+                                        : 'bg-gray-300 dark:bg-gray-600 text-gray-700 dark:text-gray-300'
+                                    }`}>
+                                        {count}
+                                    </span>
+                                )}
+                            </button>
+                        );
+                    })}
+                </div>
+            </div>
+
+            {/* Mobile Action Button - Only for 'Presupuestos' tab - Smaller size */}
+            <div className="lg:hidden mb-4">
+                {activeMobileTab === JobStatus.Presupuesto && (
+                    <button
+                        onClick={() => {
+                            setInitialClientIdForModal(undefined);
+                            setIsJobModalOpen(true);
+                        }}
+                        className="w-full flex items-center justify-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-taller-primary rounded-lg shadow-md hover:bg-taller-secondary transition-colors"
+                    >
+                       <PlusIcon className="h-4 w-4"/>
+                        Nuevo Presupuesto
+                    </button>
+                )}
+            </div>
+
+            <div className="flex-1 flex flex-col lg:flex-row lg:gap-6 lg:space-x-4 lg:overflow-x-auto pb-4">
                 {searchQuery && !hasResults ? (
                     <div className="w-full flex flex-col items-center justify-center mt-12 text-taller-gray dark:text-gray-400">
                         <MagnifyingGlassIcon className="h-16 w-16 mb-4 opacity-50"/>
@@ -365,25 +445,44 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
                         <p className="text-sm mt-2 opacity-75">Intenta buscar por cliente, vehículo o descripción.</p>
                     </div>
                 ) : (
-                    statusOrder.map(status => {
-                        const jobs = trabajosByStatus[status] || [];
-                        
-                        // Hide column if searching and no matches in this column to save space (esp. on mobile)
-                        if (searchQuery && jobs.length === 0) return null;
-
-                        return (
+                    <>
+                        {/* Mobile View: Render only ACTIVE tab */}
+                        <div className="lg:hidden h-full">
                             <StatusColumn
-                                key={status}
-                                status={status}
-                                trabajos={jobs}
+                                key={activeMobileTab}
+                                status={activeMobileTab}
+                                trabajos={trabajosByStatus[activeMobileTab] || []}
                                 clientes={clientes}
                                 onUpdateStatus={onUpdateStatus}
                                 tallerInfo={tallerInfo}
                                 onDataRefresh={onDataRefresh}
                                 searchQuery={searchQuery}
+                                forceExpanded={true}
                             />
-                        );
-                    })
+                        </div>
+
+                        {/* Desktop View: Render ALL columns side by side */}
+                        {statusOrder.map(status => {
+                            const jobs = trabajosByStatus[status] || [];
+                            // In Desktop, hide column if searching and no matches, but keep structure
+                            if (searchQuery && jobs.length === 0) return null;
+
+                            return (
+                                <div key={status} className="hidden lg:block h-full">
+                                    <StatusColumn
+                                        status={status}
+                                        trabajos={jobs}
+                                        clientes={clientes}
+                                        onUpdateStatus={onUpdateStatus}
+                                        tallerInfo={tallerInfo}
+                                        onDataRefresh={onDataRefresh}
+                                        searchQuery={searchQuery}
+                                        forceExpanded={false}
+                                    />
+                                </div>
+                            );
+                        })}
+                    </>
                 )}
                 {/* Spacer for bottom nav on mobile */}
                 {tallerInfo.mobileNavStyle === 'bottom_nav' && <div className="h-16 md:hidden flex-shrink-0" />}

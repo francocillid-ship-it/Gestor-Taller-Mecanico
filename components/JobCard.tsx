@@ -27,7 +27,8 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
     
     // Status Menu State
     const [isStatusMenuOpen, setIsStatusMenuOpen] = useState(false);
-    const [menuCoords, setMenuCoords] = useState<{ top?: number; bottom?: number; left: number } | null>(null);
+    // Added 'width' to coordinates state
+    const [menuCoords, setMenuCoords] = useState<{ top?: number; bottom?: number; left: number; width: number } | null>(null);
     const buttonRef = useRef<HTMLButtonElement>(null);
     
     const cardRef = useRef<HTMLDivElement>(null);
@@ -89,12 +90,14 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
                 if (spaceBelow < menuHeight) {
                     setMenuCoords({
                         bottom: window.innerHeight - rect.top + 4,
-                        left: rect.left
+                        left: rect.left,
+                        width: rect.width // Capture button width
                     });
                 } else {
                     setMenuCoords({
                         top: rect.bottom + 4,
-                        left: rect.left
+                        left: rect.left,
+                        width: rect.width // Capture button width
                     });
                 }
                 setIsStatusMenuOpen(true);
@@ -321,11 +324,12 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
                     
                     {/* Menu */}
                     <div 
-                        className="fixed w-40 bg-white dark:bg-gray-700 rounded-md shadow-lg border dark:border-gray-600 overflow-hidden"
+                        className="fixed bg-white dark:bg-gray-700 rounded-md shadow-lg border dark:border-gray-600 overflow-hidden"
                         style={{ 
                             top: menuCoords.top, 
                             bottom: menuCoords.bottom, 
-                            left: menuCoords.left, 
+                            left: menuCoords.left,
+                            width: menuCoords.width, // Match button width
                             pointerEvents: 'auto'
                         }}
                     >
