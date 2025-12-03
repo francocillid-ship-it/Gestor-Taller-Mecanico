@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../supabaseClient';
 import type { Cliente, Trabajo, Gasto, JobStatus, TallerInfo } from '../types';
@@ -45,8 +44,13 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
 
-    const fetchData = useCallback(async () => {
-        setLoading(true);
+    // Modified fetchData to allow silent updates (without triggering full screen loading state)
+    const fetchData = useCallback(async (showLoader = true) => {
+        // SOLUCIÓN CRÍTICA: Solo mostramos el loader si es la primera carga o se solicita explícitamente.
+        // Si showLoader es false (refresco silencioso), NO tocamos el estado setLoading(true).
+        if (showLoader) {
+            setLoading(true);
+        }
         try {
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) return;
@@ -135,12 +139,16 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
         } catch (error) {
             console.error("Error fetching data:", error);
         } finally {
-            setLoading(false);
+            // Solo desactivamos el loader si se había activado (ya sea por showLoader o porque estaba activo)
+            // Para asegurar que si era silent refresh, no haga nada raro, pero si era initial load, lo quite.
+            if (showLoader) {
+                setLoading(false);
+            }
         }
     }, []);
 
     useEffect(() => {
-        fetchData();
+        fetchData(true); // Initial load with spinner
     }, [fetchData]);
 
     useEffect(() => {
@@ -148,6 +156,10 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
         setIsMobileMenuOpen(false);
         setSearchQuery(''); // Reset search when changing views
     }, [view]);
+    
+    // Silent refresh handler to pass down to children.
+    // Explicitly passes 'false' to ensure UI doesn't flicker/reset.
+    const handleSilentRefresh = () => fetchData(false);
 
     const handleUpdateStatus = async (trabajoId: string, newStatus: JobStatus) => {
         try {
@@ -208,15 +220,15 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
     const renderContent = () => {
         switch (view) {
             case 'dashboard':
-                return <Dashboard clientes={clientes} trabajos={trabajos} gastos={gastos} onDataRefresh={fetchData} searchQuery={searchQuery} />;
+                return <Dashboard clientes={clientes} trabajos={trabajos} gastos={gastos} onDataRefresh={handleSilentRefresh} searchQuery={searchQuery} />;
             case 'trabajos':
-                return <Trabajos trabajos={trabajos} clientes={clientes} onUpdateStatus={handleUpdateStatus} onDataRefresh={fetchData} tallerInfo={tallerInfo} searchQuery={searchQuery} />;
+                return <Trabajos trabajos={trabajos} clientes={clientes} onUpdateStatus={handleUpdateStatus} onDataRefresh={handleSilentRefresh} tallerInfo={tallerInfo} searchQuery={searchQuery} />;
             case 'clientes':
-                return <Clientes clientes={clientes} trabajos={trabajos} onDataRefresh={fetchData} searchQuery={searchQuery} />;
+                return <Clientes clientes={clientes} trabajos={trabajos} onDataRefresh={handleSilentRefresh} searchQuery={searchQuery} />;
             case 'ajustes':
                 return <Ajustes tallerInfo={tallerInfo} onUpdateTallerInfo={handleUpdateTallerInfo} onLogout={onLogout} searchQuery={searchQuery} />;
             default:
-                return <Dashboard clientes={clientes} trabajos={trabajos} gastos={gastos} onDataRefresh={fetchData} searchQuery={searchQuery} />;
+                return <Dashboard clientes={clientes} trabajos={trabajos} gastos={gastos} onDataRefresh={handleSilentRefresh} searchQuery={searchQuery} />;
         }
     };
 

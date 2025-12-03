@@ -8,7 +8,7 @@ import CameraRecognitionModal from './CameraRecognitionModal';
 
 interface CrearClienteModalProps {
     onClose: () => void;
-    onSuccess: (newClientId?: string) => void;
+    onSuccess: (newClientId?: string, hasVehicles?: boolean) => void;
     clienteToEdit?: Cliente | null;
 }
 
@@ -132,10 +132,14 @@ const CrearClienteModal: React.FC<CrearClienteModalProps> = ({ onClose, onSucces
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        e.stopPropagation(); // Stop bubbling to prevent parent form submission
+        
         setIsSubmitting(true);
         setError('');
         try {
             let successId: string | undefined = undefined;
+            // Determine if we are adding at least one vehicle (for polling logic later)
+            const hasVehiclesToAdd = isEditMode ? vehicles.length > 0 : true; // In create mode we always add the initial vehicle
 
             if (isEditMode) {
                 if (clienteToEdit && clienteToEdit.email !== email && email.trim() !== '') {
@@ -235,12 +239,15 @@ const CrearClienteModal: React.FC<CrearClienteModalProps> = ({ onClose, onSucces
                 
                 if (vehicleInsertError) throw new Error(`Cliente creado, pero falló al agregar el vehículo: ${vehicleInsertError.message}`);
             }
-            onSuccess(successId);
+
+            // ARTIFICIAL DELAY: Increased to 800ms to allow DB propagation
+            await new Promise(resolve => setTimeout(resolve, 800));
+            onSuccess(successId, hasVehiclesToAdd);
+
         } catch (err: any) {
             setError(err.message || `Error al ${isEditMode ? 'actualizar' : 'crear'} el cliente.`);
-        } finally {
-            setIsSubmitting(false);
-        }
+            setIsSubmitting(false); 
+        } 
     };
 
     const handleDataRecognized = (data: VehiculoData) => {
