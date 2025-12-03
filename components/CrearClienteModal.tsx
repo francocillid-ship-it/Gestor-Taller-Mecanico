@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { supabase } from '../supabaseClient';
 import { XMarkIcon, TrashIcon, ClipboardDocumentCheckIcon, ChevronDownIcon, PlusIcon, CameraIcon } from '@heroicons/react/24/solid';
 import type { Cliente, Vehiculo, TallerInfo } from '../types';
@@ -50,6 +51,14 @@ const CrearClienteModal: React.FC<CrearClienteModalProps> = ({ onClose, onSucces
             setVehicles(clienteToEdit.vehiculos.map(v => ({...v, año: v.año ? String(v.año) : ''})) || []);
         }
     }, [clienteToEdit]);
+
+    // Bloquear el scroll del body cuando el modal está abierto
+    useEffect(() => {
+        document.body.style.overflow = 'hidden';
+        return () => {
+            document.body.style.overflow = 'unset';
+        };
+    }, []);
 
     const handleSelectContact = async () => {
         try {
@@ -361,9 +370,9 @@ const CrearClienteModal: React.FC<CrearClienteModalProps> = ({ onClose, onSucces
         </div>
     );
 
-    return (
+    return createPortal(
         <>
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-[50] p-4 overscroll-contain">
                 <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
                     <div className="flex justify-between items-center mb-4">
                         <h2 className="text-xl font-bold text-taller-dark dark:text-taller-light">{isEditMode ? 'Editar Cliente' : 'Crear Nuevo Cliente'}</h2>
@@ -414,7 +423,8 @@ const CrearClienteModal: React.FC<CrearClienteModalProps> = ({ onClose, onSucces
             </div>
             {isCameraModalOpen && <CameraRecognitionModal onClose={() => { setIsCameraModalOpen(false); setScanningVehicleIndex(null); }} onDataRecognized={handleDataRecognized} />}
             <style>{`.input-class { background-color: white; border: 1px solid #d1d5db; border-radius: 0.375rem; box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05); padding: 0.5rem 0.75rem; font-size: 0.875rem; line-height: 1.25rem; color: #0f172a; } .dark .input-class { background-color: #374151; border-color: #4b5563; color: #f1f5f9; } .input-class:focus { outline: 2px solid transparent; outline-offset: 2px; box-shadow: var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow, 0 0 #0000); border-color: #1e40af; --tw-ring-color: #1e40af; }`}</style>
-        </>
+        </>,
+        document.body
     );
 };
 
