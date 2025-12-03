@@ -1,10 +1,11 @@
 
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import type { Cliente, Trabajo, Vehiculo } from '../types';
-import { ChevronDownIcon, PhoneIcon, EnvelopeIcon, UserPlusIcon, PencilIcon, Cog6ToothIcon, PlusIcon, PaperAirplaneIcon, ShareIcon } from '@heroicons/react/24/solid';
+import { ChevronDownIcon, PhoneIcon, EnvelopeIcon, UserPlusIcon, PencilIcon, Cog6ToothIcon, PlusIcon, PaperAirplaneIcon, CurrencyDollarIcon } from '@heroicons/react/24/solid';
 import CrearClienteModal from './CrearClienteModal';
 import MaintenanceConfigModal from './MaintenanceConfigModal';
 import AddVehicleModal from './AddVehicleModal';
+import CrearTrabajoModal from './CrearTrabajoModal';
 import { supabase } from '../supabaseClient';
 
 interface ClientesProps {
@@ -20,10 +21,11 @@ interface ClientCardProps {
     onEdit: (cliente: Cliente) => void;
     onConfigVehicle: (vehiculo: Vehiculo) => void;
     onAddVehicle: (clienteId: string) => void;
+    onCreateJob: (clienteId: string) => void;
     forceExpand?: boolean;
 }
 
-const ClientCard: React.FC<ClientCardProps> = ({ cliente, trabajos, onEdit, onConfigVehicle, onAddVehicle, forceExpand }) => {
+const ClientCard: React.FC<ClientCardProps> = ({ cliente, trabajos, onEdit, onConfigVehicle, onAddVehicle, onCreateJob, forceExpand }) => {
     const [isExpanded, setIsExpanded] = useState(false);
     const [sendingAccess, setSendingAccess] = useState(false);
     const clientTrabajos = trabajos.filter(t => t.clienteId === cliente.id);
@@ -203,10 +205,19 @@ const ClientCard: React.FC<ClientCardProps> = ({ cliente, trabajos, onEdit, onCo
                                 )
                             }) : <p className="text-sm text-taller-gray dark:text-gray-400">No hay trabajos registrados.</p>}
                         </div>
-                        <div className="mt-4 flex justify-end gap-3">
+                        
+                        {/* Botones de Acción Equilibrados */}
+                        <div className="mt-6 flex gap-3 w-full">
                             <button
-                                onClick={() => onEdit(cliente)}
-                                className="flex items-center gap-2 px-3 py-1.5 text-sm font-semibold text-taller-secondary bg-blue-50 border border-taller-secondary/50 rounded-lg shadow-sm hover:bg-blue-100 dark:text-blue-300 dark:bg-blue-900/30 dark:border-blue-500/50 dark:hover:bg-blue-900/50"
+                                onClick={(e) => { e.stopPropagation(); onCreateJob(cliente.id); }}
+                                className="flex-1 flex items-center justify-center gap-2 px-3 py-2 text-sm font-semibold text-white bg-taller-primary rounded-lg shadow-sm hover:bg-taller-secondary transition-colors"
+                            >
+                                <CurrencyDollarIcon className="h-4 w-4"/>
+                                Crear Presupuesto
+                            </button>
+                            <button
+                                onClick={(e) => { e.stopPropagation(); onEdit(cliente); }}
+                                className="flex-1 flex items-center justify-center gap-2 px-3 py-2 text-sm font-semibold text-taller-secondary bg-blue-50 border border-taller-secondary/50 rounded-lg shadow-sm hover:bg-blue-100 dark:text-blue-300 dark:bg-blue-900/30 dark:border-blue-500/50 dark:hover:bg-blue-900/50 transition-colors"
                             >
                                 <PencilIcon className="h-4 w-4"/>
                                 Editar Datos
@@ -224,6 +235,7 @@ const Clientes: React.FC<ClientesProps> = ({ clientes, trabajos, onDataRefresh, 
     const [clienteToEdit, setClienteToEdit] = useState<Cliente | null>(null);
     const [vehicleToConfig, setVehicleToConfig] = useState<Vehiculo | null>(null);
     const [clientToAddVehicle, setClientToAddVehicle] = useState<string | null>(null);
+    const [clientForNewJob, setClientForNewJob] = useState<string | null>(null);
 
     const handleEditClick = (cliente: Cliente) => {
         setClienteToEdit(cliente);
@@ -235,18 +247,27 @@ const Clientes: React.FC<ClientesProps> = ({ clientes, trabajos, onDataRefresh, 
     };
 
     const filteredClientes = useMemo(() => {
+        let result = clientes;
         const lowercasedQuery = searchQuery.toLowerCase();
-        if (!lowercasedQuery) return clientes;
+        
+        if (lowercasedQuery) {
+            result = clientes.filter(cliente => {
+                const fullName = `${cliente.nombre} ${cliente.apellido || ''}`.toLowerCase();
+                const nameMatch = fullName.includes(lowercasedQuery);
+                const vehicleMatch = cliente.vehiculos.some(v => 
+                    v.marca.toLowerCase().includes(lowercasedQuery) ||
+                    v.modelo.toLowerCase().includes(lowercasedQuery) ||
+                    v.matricula.toLowerCase().includes(lowercasedQuery)
+                );
+                return nameMatch || vehicleMatch;
+            });
+        }
 
-        return clientes.filter(cliente => {
-            const fullName = `${cliente.nombre} ${cliente.apellido || ''}`.toLowerCase();
-            const nameMatch = fullName.includes(lowercasedQuery);
-            const vehicleMatch = cliente.vehiculos.some(v => 
-                v.marca.toLowerCase().includes(lowercasedQuery) ||
-                v.modelo.toLowerCase().includes(lowercasedQuery) ||
-                v.matricula.toLowerCase().includes(lowercasedQuery)
-            );
-            return nameMatch || vehicleMatch;
+        // Ordenamiento alfabético por nombre
+        return result.sort((a, b) => {
+            const nameA = `${a.nombre} ${a.apellido || ''}`.toLowerCase();
+            const nameB = `${b.nombre} ${b.apellido || ''}`.toLowerCase();
+            return nameA.localeCompare(nameB);
         });
     }, [searchQuery, clientes]);
 
@@ -274,6 +295,7 @@ const Clientes: React.FC<ClientesProps> = ({ clientes, trabajos, onDataRefresh, 
                             onEdit={handleEditClick} 
                             onConfigVehicle={setVehicleToConfig}
                             onAddVehicle={setClientToAddVehicle}
+                            onCreateJob={setClientForNewJob}
                             forceExpand={searchQuery.length > 0} 
                         />
                     ))
@@ -315,6 +337,19 @@ const Clientes: React.FC<ClientesProps> = ({ clientes, trabajos, onDataRefresh, 
                         setClientToAddVehicle(null);
                         onDataRefresh();
                     }}
+                />
+            )}
+
+            {clientForNewJob && (
+                <CrearTrabajoModal
+                    clientes={clientes}
+                    initialClientId={clientForNewJob}
+                    onClose={() => setClientForNewJob(null)}
+                    onSuccess={() => {
+                        setClientForNewJob(null);
+                        onDataRefresh();
+                    }}
+                    onDataRefresh={onDataRefresh}
                 />
             )}
         </div>
