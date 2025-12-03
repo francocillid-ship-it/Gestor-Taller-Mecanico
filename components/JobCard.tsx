@@ -205,91 +205,95 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
                     </div>
                     <p className="text-sm mt-2">{trabajo.descripcion}</p>
                 </div>
-                {isExpanded && (
-                    <div className="p-3 border-t dark:border-gray-700">
-                        <h4 className="font-semibold text-xs mb-2">Detalles:</h4>
-                        <ul className="text-xs space-y-1 text-taller-dark dark:text-gray-300 mb-3">
-                            {realParts.map((parte, i) => (
-                                parte.isCategory ? (
-                                    <li key={i} className="font-semibold text-taller-dark dark:text-taller-light pt-2 first:pt-0">
-                                        {parte.nombre}
-                                    </li>
-                                ) : (
-                                    <li key={i} className={`flex justify-between pl-2 ${parte.isService ? 'text-blue-700 dark:text-blue-300 font-medium' : ''}`}>
-                                        <span className="flex items-center gap-1">
-                                            {parte.isService && <WrenchScrewdriverIcon className="h-3 w-3" />}
-                                            {parte.cantidad}x {parte.nombre}
-                                        </span>
-                                        <span>{formatCurrency(parte.cantidad * parte.precioUnitario)}</span>
-                                    </li>
-                                )
-                            ))}
-                            
-                            {!hasServices && trabajo.costoManoDeObra ? (
-                                <li className="flex justify-between pt-2 border-t dark:border-gray-600 mt-2">
-                                    <span>Mano de Obra</span>
-                                    <span>{formatCurrency(trabajo.costoManoDeObra)}</span>
-                                </li>
-                            ) : null}
-
-                            <li className="flex justify-between font-bold border-t dark:border-gray-600 pt-1 mt-2">
-                                <span>Total Estimado</span>
-                                <span>{formatCurrency(trabajo.costoEstimado)}</span>
-                            </li>
-                             {(trabajo.status === JobStatusEnum.EnProceso || trabajo.status === JobStatusEnum.Finalizado) && (
-                                <>
-                                    <li className="flex justify-between text-green-600 dark:text-green-500">
-                                        <span>Total Pagado</span>
-                                        <span>{formatCurrency(totalPagado)}</span>
-                                    </li>
-                                    <li className="flex justify-between font-bold text-red-600 dark:text-red-500">
-                                        <span>Saldo Pendiente</span>
-                                        <span>{formatCurrency(saldoPendiente)}</span>
-                                    </li>
-                                </>
-                            )}
-                        </ul>
-                         {(trabajo.status === JobStatusEnum.EnProceso || trabajo.status === JobStatusEnum.Finalizado) && pagos.length > 0 && (
-                            <div className="mt-3 pt-3 border-t dark:border-gray-700">
-                                <h5 className="font-semibold text-xs mb-2">Historial de Pagos:</h5>
-                                <ul className="text-xs space-y-1.5 text-taller-dark dark:text-gray-300">
-                                    {pagos.map((pago, index) => (
-                                        <li key={index} className="flex justify-between items-center p-2 bg-taller-light dark:bg-gray-700/50 rounded-md">
-                                            <span className="text-taller-gray dark:text-gray-400">Pago del {new Date(pago.fecha!).toLocaleDateString('es-ES')}</span>
-                                            <span className="font-semibold text-green-600 dark:text-green-500">{formatCurrency(pago.precioUnitario)}</span>
+                
+                <div className={`grid transition-[grid-template-rows] duration-300 ease-in-out ${isExpanded ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>
+                    <div className="overflow-hidden">
+                        <div className="p-3 border-t dark:border-gray-700">
+                            <h4 className="font-semibold text-xs mb-2">Detalles:</h4>
+                            <ul className="text-xs space-y-1 text-taller-dark dark:text-gray-300 mb-3">
+                                {realParts.map((parte, i) => (
+                                    parte.isCategory ? (
+                                        <li key={i} className="font-semibold text-taller-dark dark:text-taller-light pt-2 first:pt-0">
+                                            {parte.nombre}
                                         </li>
-                                    ))}
-                                </ul>
-                            </div>
-                         )}
+                                    ) : (
+                                        <li key={i} className={`flex justify-between pl-2 ${parte.isService ? 'text-blue-700 dark:text-blue-300 font-medium' : ''}`}>
+                                            <span className="flex items-center gap-1">
+                                                {parte.isService && <WrenchScrewdriverIcon className="h-3 w-3" />}
+                                                {parte.cantidad}x {parte.nombre}
+                                            </span>
+                                            <span>{formatCurrency(parte.cantidad * parte.precioUnitario)}</span>
+                                        </li>
+                                    )
+                                ))}
+                                
+                                {!hasServices && trabajo.costoManoDeObra ? (
+                                    <li className="flex justify-between pt-2 border-t dark:border-gray-600 mt-2">
+                                        <span>Mano de Obra</span>
+                                        <span>{formatCurrency(trabajo.costoManoDeObra)}</span>
+                                    </li>
+                                ) : null}
 
-                         {(trabajo.status === JobStatusEnum.EnProceso || trabajo.status === JobStatusEnum.Finalizado) && (
-                             <div className="text-xs space-y-2 mt-4">
-                               {isAddingPayment ? (
-                                    <div className="flex gap-2">
-                                        <input
-                                            type="text"
-                                            inputMode="decimal"
-                                            placeholder="$ 0,00"
-                                            value={paymentAmount}
-                                            onChange={handlePaymentAmountChange}
-                                            className="w-full px-2 py-1 border dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-taller-dark dark:text-white"
-                                        />
-                                        <button onClick={handleAddPayment} className="px-3 py-1 bg-green-500 text-white font-semibold rounded hover:bg-green-600">OK</button>
-                                        <button onClick={() => setIsAddingPayment(false)} className="px-3 py-1 bg-gray-200 dark:bg-gray-600 rounded hover:bg-gray-300 dark:hover:bg-gray-500">X</button>
-                                    </div>
-                                ) : (
-                                    <button
-                                        onClick={() => setIsAddingPayment(true)}
-                                        className="flex items-center gap-1 font-semibold text-green-600 dark:text-green-500 hover:underline"
-                                    >
-                                        <CurrencyDollarIcon className="h-4 w-4" /> Registrar Pago
-                                    </button>
+                                <li className="flex justify-between font-bold border-t dark:border-gray-600 pt-1 mt-2">
+                                    <span>Total Estimado</span>
+                                    <span>{formatCurrency(trabajo.costoEstimado)}</span>
+                                </li>
+                                {(trabajo.status === JobStatusEnum.EnProceso || trabajo.status === JobStatusEnum.Finalizado) && (
+                                    <>
+                                        <li className="flex justify-between text-green-600 dark:text-green-500">
+                                            <span>Total Pagado</span>
+                                            <span>{formatCurrency(totalPagado)}</span>
+                                        </li>
+                                        <li className="flex justify-between font-bold text-red-600 dark:text-red-500">
+                                            <span>Saldo Pendiente</span>
+                                            <span>{formatCurrency(saldoPendiente)}</span>
+                                        </li>
+                                    </>
                                 )}
-                            </div>
-                        )}
+                            </ul>
+                            {(trabajo.status === JobStatusEnum.EnProceso || trabajo.status === JobStatusEnum.Finalizado) && pagos.length > 0 && (
+                                <div className="mt-3 pt-3 border-t dark:border-gray-700">
+                                    <h5 className="font-semibold text-xs mb-2">Historial de Pagos:</h5>
+                                    <ul className="text-xs space-y-1.5 text-taller-dark dark:text-gray-300">
+                                        {pagos.map((pago, index) => (
+                                            <li key={index} className="flex justify-between items-center p-2 bg-taller-light dark:bg-gray-700/50 rounded-md">
+                                                <span className="text-taller-gray dark:text-gray-400">Pago del {new Date(pago.fecha!).toLocaleDateString('es-ES')}</span>
+                                                <span className="font-semibold text-green-600 dark:text-green-500">{formatCurrency(pago.precioUnitario)}</span>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            )}
+
+                            {(trabajo.status === JobStatusEnum.EnProceso || trabajo.status === JobStatusEnum.Finalizado) && (
+                                <div className="text-xs space-y-2 mt-4">
+                                {isAddingPayment ? (
+                                        <div className="flex gap-2">
+                                            <input
+                                                type="text"
+                                                inputMode="decimal"
+                                                placeholder="$ 0,00"
+                                                value={paymentAmount}
+                                                onChange={handlePaymentAmountChange}
+                                                className="w-full px-2 py-1 border dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-taller-dark dark:text-white"
+                                            />
+                                            <button onClick={handleAddPayment} className="px-3 py-1 bg-green-500 text-white font-semibold rounded hover:bg-green-600">OK</button>
+                                            <button onClick={() => setIsAddingPayment(false)} className="px-3 py-1 bg-gray-200 dark:bg-gray-600 rounded hover:bg-gray-300 dark:hover:bg-gray-500">X</button>
+                                        </div>
+                                    ) : (
+                                        <button
+                                            onClick={() => setIsAddingPayment(true)}
+                                            className="flex items-center gap-1 font-semibold text-green-600 dark:text-green-500 hover:underline"
+                                        >
+                                            <CurrencyDollarIcon className="h-4 w-4" /> Registrar Pago
+                                        </button>
+                                    )}
+                                </div>
+                            )}
+                        </div>
                     </div>
-                )}
+                </div>
+
                  <div className="bg-gray-50 dark:bg-gray-700/50 px-3 py-2 flex items-center justify-between">
                     <div className="relative">
                         <button
