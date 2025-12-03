@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../supabaseClient';
 import type { Cliente, Trabajo, Gasto, JobStatus, TallerInfo } from '../types';
@@ -236,7 +235,9 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
     const sidebarClasses = `fixed inset-y-0 left-0 z-30 w-64 bg-white dark:bg-gray-800 transform transition-transform duration-300 ease-in-out shadow-lg md:translate-x-0 md:static md:inset-0 ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`;
 
     return (
-        <div className="flex h-screen bg-taller-light dark:bg-taller-dark text-taller-dark dark:text-taller-light overflow-hidden transition-colors duration-300">
+        // Usamos h-[100dvh] para que la app ocupe siempre el 100% del viewport dinámico en móviles
+        // y overflow-hidden para evitar que el contenedor principal haga scroll.
+        <div className="flex h-[100dvh] bg-taller-light dark:bg-taller-dark text-taller-dark dark:text-taller-light overflow-hidden transition-colors duration-300">
             {/* Sidebar Navigation */}
             <aside className={sidebarClasses}>
                 <div className="h-full flex flex-col">
@@ -290,7 +291,8 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
                     onSearchChange={setSearchQuery}
                 />
                 
-                <main className="flex-1 overflow-y-auto p-4 md:p-6 scroll-smooth">
+                {/* El scroll ocurre SOLO aquí adentro */}
+                <main className="flex-1 overflow-y-auto p-4 md:p-6 scroll-smooth overscroll-contain">
                     {loading ? (
                         <div className="flex h-full items-center justify-center">
                             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-taller-primary"></div>
@@ -302,7 +304,7 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
 
                 {/* Bottom Navigation for Mobile (optional via settings) */}
                 {tallerInfo.mobileNavStyle === 'bottom_nav' && (
-                    <div className="md:hidden bg-white dark:bg-gray-800 border-t dark:border-gray-700 pb-5">
+                    <div className="md:hidden bg-white dark:bg-gray-800 border-t dark:border-gray-700 pb-5 flex-shrink-0">
                          <nav className="flex justify-around items-center h-16">
                             {navItems.map((item) => (
                                 <button

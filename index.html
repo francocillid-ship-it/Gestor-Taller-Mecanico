@@ -9,17 +9,26 @@
     <meta name="theme-color" content="#334155">
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-      /* Definición de variables CSS para el tema dinámico.
-         Los valores son RGB separados por espacio para que Tailwind pueda aplicar opacidad.
-      */
+      /* Definición de variables CSS para el tema dinámico. */
       :root {
-        /* Default Theme: Slate (Sobrio profesional) */
         --color-taller-primary: 51 65 85;    /* Slate 700 */
         --color-taller-secondary: 71 85 105; /* Slate 600 */
         --color-taller-accent: 217 119 6;    /* Amber 600 */
         --color-taller-light: 248 250 252;   /* Slate 50 */
         --color-taller-dark: 15 23 42;       /* Slate 900 */
         --color-taller-gray: 100 116 139;    /* Slate 500 */
+      }
+
+      /* FIX OVERSCROLL: Bloquear el rebote en móviles y fijar altura */
+      html, body, #root {
+        height: 100%;
+        width: 100%;
+        margin: 0;
+        padding: 0;
+        overflow: hidden; /* Evita el scroll en el body */
+        overscroll-behavior: none; /* Deshabilita el efecto rebote (rubber-banding) */
+        -webkit-overflow-scrolling: touch;
+        position: fixed; /* Asegura que no se mueva el viewport en iOS */
       }
     </style>
     <script>
@@ -28,7 +37,6 @@
         theme: {
           extend: {
             colors: {
-              // Usamos rgb(var(...) / <alpha-value>) para soportar clases como bg-opacity-50
               'taller-primary': 'rgb(var(--color-taller-primary) / <alpha-value>)',
               'taller-secondary': 'rgb(var(--color-taller-secondary) / <alpha-value>)',
               'taller-accent': 'rgb(var(--color-taller-accent) / <alpha-value>)',
@@ -56,7 +64,6 @@
 }
 </script>
 <script>
-    // Aplica el tema oscuro si es necesario
     if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
         document.documentElement.classList.add('dark');
     } else {

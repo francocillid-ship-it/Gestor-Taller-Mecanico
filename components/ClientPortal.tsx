@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo, useEffect } from 'react';
 import type { Cliente, Trabajo, TallerInfo } from '../types';
 import { 
@@ -113,8 +112,9 @@ const ClientPortal: React.FC<ClientPortalProps> = ({ client, trabajos, onLogout,
     return (
         <>
             <style>{getFontStyles()}</style>
-            <div className="portal-wrapper min-h-screen bg-taller-light dark:bg-taller-dark text-taller-dark dark:text-taller-light transition-all duration-200">
-                <header className="bg-white dark:bg-gray-800 shadow-md sticky top-0 z-20">
+            {/* Contenedor principal fijo: h-[100dvh] y overflow-hidden para evitar rebote en body */}
+            <div className="portal-wrapper h-[100dvh] w-full bg-taller-light dark:bg-taller-dark text-taller-dark dark:text-taller-light transition-all duration-200 flex flex-col overflow-hidden">
+                <header className="bg-white dark:bg-gray-800 shadow-md flex-shrink-0 z-20">
                     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
                         <div className="flex items-center gap-3 overflow-hidden">
                             {tallerInfo?.logoUrl ? (
@@ -141,58 +141,61 @@ const ClientPortal: React.FC<ClientPortalProps> = ({ client, trabajos, onLogout,
                     </div>
                 </header>
                 
-                <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                    <div className="mb-8">
-                        <h2 className="text-3xl font-bold text-taller-dark dark:text-taller-light">Hola, {client.nombre}</h2>
-                        <p className="text-taller-gray dark:text-gray-400 mt-1 text-base">Aquí puede ver el estado de sus trabajos y vehículos.</p>
-                    </div>
-
-                    <section className="mb-10">
-                        <h3 className="text-xl font-bold text-taller-dark dark:text-taller-light mb-4">Sus Vehículos</h3>
-                        <div className="space-y-4">
-                            {client.vehiculos.map(vehiculo => {
-                                const vehiculoTrabajos = trabajos.filter(t => t.vehiculoId === vehiculo.id);
-                                return (
-                                    <VehicleInfoCard 
-                                        key={vehiculo.id}
-                                        vehiculo={vehiculo}
-                                        trabajos={vehiculoTrabajos}
-                                        onViewHistory={() => openHistorialModal(vehiculoTrabajos, `Historial de ${vehiculo.marca} ${vehiculo.modelo}`)}
-                                        tallerInfo={tallerInfo}
-                                        cliente={client}
-                                    />
-                                );
-                            })}
+                {/* Contenido scrolleable internamente */}
+                <main className="flex-1 overflow-y-auto overscroll-contain">
+                    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                        <div className="mb-8">
+                            <h2 className="text-3xl font-bold text-taller-dark dark:text-taller-light">Hola, {client.nombre}</h2>
+                            <p className="text-taller-gray dark:text-gray-400 mt-1 text-base">Aquí puede ver el estado de sus trabajos y vehículos.</p>
                         </div>
-                    </section>
-                    
-                    <section>
-                        <h3 className="text-xl font-bold text-taller-dark dark:text-taller-light mb-4 flex items-center gap-2">
-                            <ClockIcon className="h-6 w-6 text-taller-primary" />
-                            Actividad Reciente
-                        </h3>
-                         {trabajosRecientes.length > 0 ? (
-                             <div className="space-y-3">
-                                {trabajosRecientes.map(trabajo => {
-                                    const vehiculo = client.vehiculos.find(v => v.id === trabajo.vehiculoId);
-                                    return <TrabajoListItem key={trabajo.id} trabajo={trabajo} vehiculo={vehiculo} cliente={client} tallerInfo={tallerInfo} />;
+
+                        <section className="mb-10">
+                            <h3 className="text-xl font-bold text-taller-dark dark:text-taller-light mb-4">Sus Vehículos</h3>
+                            <div className="space-y-4">
+                                {client.vehiculos.map(vehiculo => {
+                                    const vehiculoTrabajos = trabajos.filter(t => t.vehiculoId === vehiculo.id);
+                                    return (
+                                        <VehicleInfoCard 
+                                            key={vehiculo.id}
+                                            vehiculo={vehiculo}
+                                            trabajos={vehiculoTrabajos}
+                                            onViewHistory={() => openHistorialModal(vehiculoTrabajos, `Historial de ${vehiculo.marca} ${vehiculo.modelo}`)}
+                                            tallerInfo={tallerInfo}
+                                            cliente={client}
+                                        />
+                                    );
                                 })}
-                                 <div className="pt-4 flex justify-center">
-                                    <button 
-                                        onClick={() => openHistorialModal(trabajos, 'Historial Completo de Trabajos')}
-                                        className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-taller-primary rounded-lg shadow-md hover:bg-taller-secondary"
-                                    >
-                                        <BookOpenIcon className="h-5 w-5" />
-                                        Ver Historial Completo
-                                    </button>
+                            </div>
+                        </section>
+                        
+                        <section>
+                            <h3 className="text-xl font-bold text-taller-dark dark:text-taller-light mb-4 flex items-center gap-2">
+                                <ClockIcon className="h-6 w-6 text-taller-primary" />
+                                Actividad Reciente
+                            </h3>
+                             {trabajosRecientes.length > 0 ? (
+                                 <div className="space-y-3">
+                                    {trabajosRecientes.map(trabajo => {
+                                        const vehiculo = client.vehiculos.find(v => v.id === trabajo.vehiculoId);
+                                        return <TrabajoListItem key={trabajo.id} trabajo={trabajo} vehiculo={vehiculo} cliente={client} tallerInfo={tallerInfo} />;
+                                    })}
+                                     <div className="pt-4 flex justify-center">
+                                        <button 
+                                            onClick={() => openHistorialModal(trabajos, 'Historial Completo de Trabajos')}
+                                            className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-taller-primary rounded-lg shadow-md hover:bg-taller-secondary"
+                                        >
+                                            <BookOpenIcon className="h-5 w-5" />
+                                            Ver Historial Completo
+                                        </button>
+                                    </div>
                                 </div>
-                            </div>
-                         ) : (
-                             <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-8 text-center">
-                                <p className="text-taller-gray dark:text-gray-400">No tiene trabajos registrados en este momento.</p>
-                            </div>
-                         )}
-                    </section>
+                             ) : (
+                                 <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-8 text-center">
+                                    <p className="text-taller-gray dark:text-gray-400">No tiene trabajos registrados en este momento.</p>
+                                </div>
+                             )}
+                        </section>
+                    </div>
                 </main>
             </div>
             
