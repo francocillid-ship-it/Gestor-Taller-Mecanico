@@ -17,7 +17,7 @@ interface TallerDashboardProps {
 type View = 'dashboard' | 'trabajos' | 'clientes' | 'ajustes';
 
 const navItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: ChartPieIcon },
+    { id: 'dashboard', label: 'Resumen', icon: ChartPieIcon },
     { id: 'trabajos', label: 'Trabajos', icon: WrenchScrewdriverIcon },
     { id: 'clientes', label: 'Clientes', icon: UsersIcon },
     { id: 'ajustes', label: 'Ajustes', icon: Cog6ToothIcon },
