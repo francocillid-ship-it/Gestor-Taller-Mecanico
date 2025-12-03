@@ -1,5 +1,5 @@
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import { MagnifyingGlassIcon, Bars3Icon, XMarkIcon } from '@heroicons/react/24/outline';
 
 interface HeaderProps {
@@ -15,14 +15,17 @@ const Header: React.FC<HeaderProps> = ({ tallerName, logoUrl, onMenuClick, showM
     const [isSearchExpanded, setIsSearchExpanded] = useState(false);
     const mobileInputRef = useRef<HTMLInputElement>(null);
 
-    useEffect(() => {
-        if (isSearchExpanded && mobileInputRef.current) {
-            // Pequeño timeout para asegurar que la animación ha comenzado y el elemento es visible
-            setTimeout(() => {
-                mobileInputRef.current?.focus();
-            }, 100);
-        }
-    }, [isSearchExpanded]);
+    const handleOpenSearch = () => {
+        setIsSearchExpanded(true);
+        // Mover el focus aquí directamente dentro del evento de click.
+        // El setTimeout pequeño permite que React actualice el DOM (quitando pointer-events-none)
+        // pero se mantiene dentro del contexto de interacción del usuario para que el teclado móvil se abra.
+        setTimeout(() => {
+            if (mobileInputRef.current) {
+                mobileInputRef.current.focus();
+            }
+        }, 50);
+    };
 
     const handleCloseSearch = () => {
         setIsSearchExpanded(false);
@@ -60,7 +63,7 @@ const Header: React.FC<HeaderProps> = ({ tallerName, logoUrl, onMenuClick, showM
                 {/* 1. Mobile Search Trigger Button */}
                 {/* Se mantiene en el flujo (invisible cuando está expandido) para no romper el layout */}
                 <button 
-                    onClick={() => setIsSearchExpanded(true)}
+                    onClick={handleOpenSearch}
                     className={`md:hidden p-2 text-gray-500 hover:text-taller-primary rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-opacity duration-200 ${isSearchExpanded ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
                     aria-label="Buscar"
                 >
