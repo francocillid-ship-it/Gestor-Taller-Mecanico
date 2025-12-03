@@ -1,5 +1,6 @@
 
 import React, { useMemo, useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import type { Trabajo, Cliente, TallerInfo } from '../types';
 import { JobStatus } from '../types';
 import JobCard from './JobCard';
@@ -502,7 +503,7 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
                 </div>
             </div>
 
-            {isJobModalOpen && (
+            {isJobModalOpen && createPortal(
                 <CrearTrabajoModal
                     clientes={clientes}
                     onClose={() => setIsJobModalOpen(false)}
@@ -512,7 +513,8 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
                     }}
                     onDataRefresh={onDataRefresh}
                     initialClientId={initialClientIdForModal}
-                />
+                />,
+                document.body
             )}
         </div>
     );

@@ -187,7 +187,6 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
 
              // Update in Database Table
              // Note: Ensure the DB table has font_size column. If not, supabase will ignore it or return error depending on config.
-             // We'll treat it as implicit for now, assuming user will add column if needed, or Supabase JSONB flexibility.
              const { error: dbError } = await supabase.from('taller_info').upsert({
                  taller_id: user.id,
                  nombre: newInfo.nombre,
@@ -218,8 +217,10 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
              if (newInfo.appTheme) applyAppTheme(newInfo.appTheme);
              if (newInfo.fontSize) applyFontSize(newInfo.fontSize);
 
-        } catch (error) {
+        } catch (error: any) {
             console.error("Error updating taller info:", error);
+            alert(`Error al guardar configuración: ${error.message || 'Error desconocido'}. Verifique si la columna 'font_size' existe en la base de datos.`);
+            throw error;
         }
     };
 

@@ -145,10 +145,16 @@ const Ajustes: React.FC<AjustesProps> = ({ tallerInfo, onUpdateTallerInfo, onLog
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsSubmitting(true);
-        await onUpdateTallerInfo(formData);
-        setIsSubmitting(false);
-        setIsSaved(true);
-        setTimeout(() => setIsSaved(false), 3000); 
+        try {
+            await onUpdateTallerInfo(formData);
+            setIsSaved(true);
+            setTimeout(() => setIsSaved(false), 3000); 
+        } catch (error) {
+            // Error is handled in onUpdateTallerInfo, just reset states here
+            setIsSaved(false);
+        } finally {
+            setIsSubmitting(false);
+        }
     };
     
     const ThemeButton = ({ value, currentTheme, onClick, icon: Icon, label }: { value: Theme, currentTheme: Theme, onClick: (theme: Theme) => void, icon: React.ElementType, label: string }) => (
