@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo, useEffect } from 'react';
 import type { Cliente, Trabajo, TallerInfo } from '../types';
 import { 
@@ -215,7 +216,7 @@ const ClientPortal: React.FC<ClientPortalProps> = ({ client, trabajos, onLogout,
             {/* Settings Modal */}
             {isSettingsOpen && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4">
-                    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto">
+                    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md max-h-[80dvh] overflow-y-auto">
                          <div className="flex justify-between items-center p-4 border-b dark:border-gray-700 sticky top-0 bg-white dark:bg-gray-800 z-10">
                             <h2 className="text-lg font-bold text-taller-dark dark:text-taller-light flex items-center gap-2">
                                 <Cog6ToothIcon className="h-5 w-5 text-taller-primary" />

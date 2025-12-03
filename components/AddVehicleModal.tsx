@@ -61,8 +61,8 @@ const AddVehicleModal: React.FC<AddVehicleModalProps> = ({ onClose, onSuccess, c
 
     return (
         <>
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
-                <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-lg">
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4">
+                <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-lg max-h-[80dvh] overflow-y-auto">
                     <div className="flex justify-between items-center mb-4">
                         <h2 className="text-xl font-bold text-taller-dark dark:text-taller-light">Agregar Vehículo</h2>
                         <button onClick={onClose} className="text-taller-gray dark:text-gray-400 hover:text-taller-dark dark:hover:text-white"><XMarkIcon className="h-6 w-6" /></button>
