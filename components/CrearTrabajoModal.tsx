@@ -3,7 +3,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../supabaseClient';
 import type { Cliente, Parte, Trabajo } from '../types';
 import { JobStatus } from '../types';
-import { XMarkIcon, TrashIcon, UserPlusIcon, WrenchScrewdriverIcon, TagIcon, ArchiveBoxIcon } from '@heroicons/react/24/solid';
+import { XMarkIcon, TrashIcon, UserPlusIcon, WrenchScrewdriverIcon, TagIcon, ArchiveBoxIcon, Bars3Icon } from '@heroicons/react/24/solid';
 import CrearClienteModal from './CrearClienteModal';
 import { ALL_MAINTENANCE_OPTS } from '../constants';
 
@@ -17,6 +17,7 @@ interface CrearTrabajoModalProps {
 }
 
 type ParteState = {
+    _id: string; // Unique local ID for drag and drop keys
     nombre: string;
     cantidad: number | ''; // Changed to allow empty string for input handling
     precioUnitario: string; // Storing the formatted string
@@ -40,6 +41,7 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
     const [error, setError] = useState('');
     const [isClientModalOpen, setIsClientModalOpen] = useState(false);
     const [confirmingDelete, setConfirmingDelete] = useState(false);
+    const [draggedItemIndex, setDraggedItemIndex] = useState<number | null>(null);
     
     // Almacenamiento local temporal para el cliente recién creado
     const [localNewClient, setLocalNewClient] = useState<Cliente | null>(null);
@@ -79,6 +81,9 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
         textarea.style.height = `${textarea.scrollHeight}px`;
     };
 
+    // Helper to generate IDs
+    const generateId = () => Math.random().toString(36).substr(2, 9);
+
     // Initialization Effect
     useEffect(() => {
         if (trabajoToEdit) {
@@ -94,12 +99,14 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
             
             let processedPartes = initialPartes.map(p => ({
                 ...p,
+                _id: generateId(),
                 precioUnitario: formatNumberToCurrency(p.precioUnitario),
                 maintenanceType: p.maintenanceType || ''
             }));
 
             if (!hasServices && legacyLabor > 0) {
                 processedPartes.push({
+                    _id: generateId(),
                     nombre: 'Mano de Obra (General)',
                     cantidad: 1,
                     precioUnitario: formatNumberToCurrency(legacyLabor),
@@ -236,21 +243,79 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
     };
 
     const addParte = () => {
-        setPartes([...partes, { nombre: '', cantidad: 1, precioUnitario: '', isService: false, maintenanceType: '' }]);
+        setPartes([...partes, { _id: generateId(), nombre: '', cantidad: 1, precioUnitario: '', isService: false, maintenanceType: '' }]);
     };
     
     const addService = () => {
-        setPartes([...partes, { nombre: '', cantidad: 1, precioUnitario: '', isService: true, maintenanceType: '' }]);
+        setPartes([...partes, { _id: generateId(), nombre: '', cantidad: 1, precioUnitario: '', isService: true, maintenanceType: '' }]);
     };
     
     const addCategory = () => {
-        setPartes([...partes, { nombre: '', cantidad: 0, precioUnitario: '', isCategory: true }]);
+        setPartes([...partes, { _id: generateId(), nombre: '', cantidad: 0, precioUnitario: '', isCategory: true }]);
     };
 
 
     const removeParte = (index: number) => {
         const newPartes = partes.filter((_, i) => i !== index);
         setPartes(newPartes);
+    };
+
+    // HTML5 Drag and Drop Handlers (Desktop)
+    const handleDragStart = (index: number) => {
+        setDraggedItemIndex(index);
+    };
+
+    const handleDragEnter = (index: number) => {
+        if (draggedItemIndex === null || draggedItemIndex === index) return;
+        
+        const newPartes = [...partes];
+        const item = newPartes[draggedItemIndex];
+        
+        // Remove item from old position
+        newPartes.splice(draggedItemIndex, 1);
+        // Insert item at new position
+        newPartes.splice(index, 0, item);
+        
+        setPartes(newPartes);
+        setDraggedItemIndex(index);
+    };
+
+    const handleDragEnd = () => {
+        setDraggedItemIndex(null);
+    };
+
+    // Custom Touch Handlers (Mobile)
+    const handleTouchStart = (index: number) => {
+        setDraggedItemIndex(index);
+    };
+
+    const handleTouchMove = (e: React.TouchEvent) => {
+        if (draggedItemIndex === null) return;
+        
+        // Prevent scrolling while dragging
+        e.preventDefault();
+        
+        const touch = e.touches[0];
+        const target = document.elementFromPoint(touch.clientX, touch.clientY);
+        
+        if (!target) return;
+        
+        const row = target.closest('[data-index]');
+        if (row) {
+            const newIndex = parseInt(row.getAttribute('data-index') || '-1', 10);
+            if (newIndex !== -1 && newIndex !== draggedItemIndex) {
+                 const newPartes = [...partes];
+                 const item = newPartes[draggedItemIndex];
+                 newPartes.splice(draggedItemIndex, 1);
+                 newPartes.splice(newIndex, 0, item);
+                 setPartes(newPartes);
+                 setDraggedItemIndex(newIndex);
+            }
+        }
+    };
+
+    const handleTouchEnd = () => {
+        setDraggedItemIndex(null);
     };
     
     const handleRemovePago = (indexToRemove: number) => {
@@ -409,16 +474,45 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
                         <div>
                             <h3 className="text-md font-semibold text-taller-dark dark:text-taller-light mb-2">Items y Servicios</h3>
                             {partes.map((parte, index) => (
-                                <div key={index} className="flex items-center gap-2 mb-2">
+                                <div 
+                                    key={parte._id} // Using unique ID as key is critical for dragging
+                                    data-index={index}
+                                    className={`flex items-center gap-2 mb-2 transition-opacity duration-200 ${draggedItemIndex === index ? 'opacity-50 border-dashed border-2 border-taller-primary p-2 rounded-md' : ''}`}
+                                    draggable={true}
+                                    onDragStart={() => handleDragStart(index)}
+                                    onDragEnter={() => handleDragEnter(index)}
+                                    onDragEnd={handleDragEnd}
+                                    onDragOver={(e) => e.preventDefault()}
+                                >
                                     {parte.isCategory ? (
                                         <>
+                                            <div 
+                                                className="cursor-move p-2 text-gray-400 hover:text-taller-primary touch-none select-none"
+                                                onContextMenu={(e) => e.preventDefault()}
+                                                onTouchStart={() => handleTouchStart(index)}
+                                                onTouchMove={handleTouchMove}
+                                                onTouchEnd={handleTouchEnd}
+                                            >
+                                                <Bars3Icon className="h-5 w-5"/>
+                                            </div>
                                             <div className="p-2 bg-taller-accent/10 rounded-full"><TagIcon className="h-5 w-5 text-taller-accent"/></div>
                                             <input type="text" placeholder="Nombre de la categoría" value={parte.nombre} onChange={e => handleParteChange(index, 'nombre', e.target.value)} className="block w-full px-3 py-2 bg-blue-50 dark:bg-gray-700/50 border border-blue-200 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-taller-primary focus:border-taller-primary sm:text-sm font-semibold" />
-                                            <button type="button" onClick={() => removeParte(index)} className="p-2 text-red-500 hover:bg-red-100 dark:hover:bg-red-900/50 rounded-full flex-shrink-0"><TrashIcon className="h-5 w-5"/></button>
+                                            <div className="flex gap-1 flex-shrink-0">
+                                                <button type="button" onClick={() => removeParte(index)} className="p-2 text-red-500 hover:bg-red-100 dark:hover:bg-red-900/50 rounded-full"><TrashIcon className="h-5 w-5"/></button>
+                                            </div>
                                         </>
                                     ) : (
-                                        <div className={`grid grid-cols-6 sm:grid-cols-[auto_1fr_130px_70px_100px_auto] items-center gap-2 w-full p-2 rounded-md ${parte.isService ? 'bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800' : 'bg-gray-50 dark:bg-gray-700/30'}`}>
-                                            <div className="col-span-6 sm:col-span-1 flex justify-center sm:justify-start">
+                                        <div className={`grid grid-cols-6 sm:grid-cols-[auto_auto_1fr_130px_70px_100px_auto] items-center gap-2 w-full p-2 rounded-md ${parte.isService ? 'bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800' : 'bg-gray-50 dark:bg-gray-700/30'}`}>
+                                            <div 
+                                                className="col-span-1 sm:col-span-1 cursor-move text-gray-400 hover:text-taller-primary touch-none flex justify-center select-none"
+                                                onContextMenu={(e) => e.preventDefault()}
+                                                onTouchStart={() => handleTouchStart(index)}
+                                                onTouchMove={handleTouchMove}
+                                                onTouchEnd={handleTouchEnd}
+                                            >
+                                                <Bars3Icon className="h-5 w-5"/>
+                                            </div>
+                                            <div className="col-span-5 sm:col-span-1 flex justify-center sm:justify-start">
                                                 {parte.isService ? (
                                                     <div title="Servicio (Mano de Obra)" className="p-1.5 bg-blue-100 dark:bg-blue-900 rounded text-blue-600 dark:text-blue-300">
                                                         <WrenchScrewdriverIcon className="h-4 w-4"/>
@@ -442,7 +536,7 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
                                             <select
                                                 value={parte.maintenanceType || ''}
                                                 onChange={e => handleParteChange(index, 'maintenanceType', e.target.value)}
-                                                className="col-span-3 sm:col-span-1 block w-full px-2 py-2 text-xs bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-taller-primary focus:border-taller-primary text-gray-600 dark:text-gray-300"
+                                                className="col-span-2 sm:col-span-1 block w-full px-2 py-2 text-xs bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-taller-primary focus:border-taller-primary text-gray-600 dark:text-gray-300"
                                             >
                                                 <option value="">Etiqueta (Opcional)</option>
                                                 {ALL_MAINTENANCE_OPTS.map(opt => (
@@ -471,7 +565,10 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
                                                 className="col-span-1 sm:col-span-1 block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-taller-primary focus:border-taller-primary sm:text-sm no-spinner" 
                                             />
                                             <input type="text" inputMode="decimal" placeholder="$ 0,00" value={parte.precioUnitario} onChange={e => handleParteChange(index, 'precioUnitario', formatCurrency(e.target.value))} className="col-span-2 sm:col-span-1 block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-taller-primary focus:border-taller-primary sm:text-sm" />
-                                            <button type="button" onClick={() => removeParte(index)} className="col-span-1 sm:col-span-1 p-2 text-red-500 hover:bg-red-100 dark:hover:bg-red-900/50 rounded-full justify-self-center sm:justify-self-auto"><TrashIcon className="h-5 w-5"/></button>
+                                            
+                                            <div className="col-span-1 sm:col-span-1 flex items-center justify-end gap-1">
+                                                <button type="button" onClick={() => removeParte(index)} className="p-2 text-red-500 hover:bg-red-100 dark:hover:bg-red-900/50 rounded-full"><TrashIcon className="h-5 w-5"/></button>
+                                            </div>
                                         </div>
                                     )}
                                 </div>
