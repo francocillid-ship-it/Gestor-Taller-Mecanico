@@ -84,42 +84,67 @@ const Dashboard: React.FC<DashboardProps> = ({ clientes, trabajos, gastos, onDat
         startDate.setHours(0, 0, 0, 0);
         endDate.setHours(23, 59, 59, 999);
 
+        // 1. Calcular Gastos del Periodo
         const filteredGastos = gastos.filter(g => {
             const gastoDate = new Date(g.fecha);
             return gastoDate >= startDate && gastoDate <= endDate;
         });
-
-        const allPagos = trabajos.flatMap(t => 
-            t.partes.filter(p => p.nombre === '__PAGO_REGISTRADO__' && p.fecha)
-        );
-
-        const filteredPagos = allPagos.filter(p => {
-            const pagoDate = new Date(p.fecha!);
-            return pagoDate >= startDate && pagoDate <= endDate;
-        });
-        
-        const ingresosTotales = filteredPagos.reduce((sum, p) => sum + p.precioUnitario, 0);
-
-        const gananciaNeta = trabajos.reduce((totalGanancia, trabajo) => {
-            const tienePagoEnPeriodo = trabajo.partes.some(parte => 
-                parte.nombre === '__PAGO_REGISTRADO__' &&
-                parte.fecha &&
-                new Date(parte.fecha) >= startDate &&
-                new Date(parte.fecha) <= endDate
-            );
-
-            if (tienePagoEnPeriodo) {
-                return totalGanancia + (trabajo.costoManoDeObra || 0);
-            }
-            return totalGanancia;
-        }, 0);
-        
         const totalGastos = filteredGastos.reduce((sum, g) => sum + g.monto, 0);
 
-        const balance = gananciaNeta - totalGastos;
+        // 2. Calcular Ingresos y Ganancia Real (Prioridad Repuestos)
+        let ingresosTotales = 0;
+        let gananciaManoDeObraReal = 0; 
+
+        trabajos.forEach(trabajo => {
+            const costoTotal = trabajo.costoEstimado || 0;
+            const costoManoDeObra = trabajo.costoManoDeObra || 0;
+            const costoRepuestos = Math.max(0, costoTotal - costoManoDeObra);
+
+            // Obtenemos TODOS los pagos de este trabajo, ordenados cronológicamente
+            // Necesitamos el contexto histórico para saber si el costo de repuestos ya se cubrió
+            const todosLosPagos = trabajo.partes
+                .filter(p => p.nombre === '__PAGO_REGISTRADO__')
+                .sort((a, b) => new Date(a.fecha || 0).getTime() - new Date(b.fecha || 0).getTime());
+
+            let acumuladoPagosJob = 0;
+
+            todosLosPagos.forEach(pago => {
+                const montoPago = pago.precioUnitario;
+                const fechaPago = pago.fecha ? new Date(pago.fecha) : new Date(0);
+                
+                // Determinar si este pago cae en el periodo seleccionado
+                const esDelPeriodo = fechaPago >= startDate && fechaPago <= endDate;
+
+                // LÓGICA DE GANANCIA:
+                // 1. Calculamos cuánto se había cubierto antes de este pago
+                const coberturaPrevia = acumuladoPagosJob;
+                // 2. Calculamos cuánto se cubre después de este pago
+                const coberturaActual = acumuladoPagosJob + montoPago;
+
+                // 3. La ganancia (mano de obra) es todo aquello que supere el costo de repuestos
+                const gananciaAcumuladaPrevia = Math.max(0, coberturaPrevia - costoRepuestos);
+                const gananciaAcumuladaActual = Math.max(0, coberturaActual - costoRepuestos);
+
+                // 4. La ganancia específica de ESTE pago es la diferencia
+                const gananciaDeEstePago = gananciaAcumuladaActual - gananciaAcumuladaPrevia;
+
+                if (esDelPeriodo) {
+                    ingresosTotales += montoPago;
+                    gananciaManoDeObraReal += gananciaDeEstePago;
+                }
+
+                // Avanzamos el acumulador para la siguiente iteración
+                acumuladoPagosJob += montoPago;
+            });
+        });
+
+        // Ganancia Neta = (Mano de Obra Cobrada en el periodo) - (Gastos Fijos del periodo)
+        const gananciaNeta = gananciaManoDeObraReal - totalGastos;
+
+        // Balance (Flujo de Caja) = (Dinero Entrante) - (Dinero Saliente en Gastos)
+        const balance = ingresosTotales - totalGastos;
 
         const trabajosActivos = trabajos.filter(t => t.status !== JobStatus.Finalizado).length;
-
         const totalClientes = clientes.length;
 
         return {
@@ -275,9 +300,9 @@ const Dashboard: React.FC<DashboardProps> = ({ clientes, trabajos, gastos, onDat
             {/* Updated Grid: 2 columns on mobile (gap reduced), 3 on desktop */}
             <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6">
                 <StatCard title="Ingresos Totales" value={stats.ingresosTotales} icon={<CurrencyDollarIcon />} color="bg-blue-500" />
-                <StatCard title="Ganancia Neta" value={stats.gananciasNetas} icon={<ChartPieIcon />} color="bg-green-500" />
-                <StatCard title="Gastos" value={stats.gastos} icon={<BuildingLibraryIcon />} color="bg-red-500" />
-                <StatCard title="Balance" value={stats.balance} icon={<ScaleIcon />} color="bg-indigo-500" />
+                <StatCard title="Ganancia Neta (Real)" value={stats.gananciasNetas} icon={<ChartPieIcon />} color="bg-green-500" />
+                <StatCard title="Gastos Fijos" value={stats.gastos} icon={<BuildingLibraryIcon />} color="bg-red-500" />
+                <StatCard title="Balance (Caja)" value={stats.balance} icon={<ScaleIcon />} color="bg-indigo-500" />
                 <StatCard title="Trabajos Activos" value={stats.trabajosActivos} icon={<WrenchScrewdriverIcon />} color="bg-yellow-500" />
                 <StatCard title="Total Clientes" value={stats.totalClientes} icon={<UsersIcon />} color="bg-purple-500" />
             </div>

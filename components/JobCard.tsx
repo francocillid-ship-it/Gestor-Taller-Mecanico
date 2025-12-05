@@ -235,7 +235,7 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
                                 ) : null}
 
                                 <li className="flex justify-between font-bold border-t dark:border-gray-600 pt-1 mt-2">
-                                    <span>Total Estimado</span>
+                                    <span>{trabajo.status === JobStatusEnum.Presupuesto ? 'Total Estimado' : 'Total'}</span>
                                     <span>{formatCurrency(trabajo.costoEstimado)}</span>
                                 </li>
                                 {(trabajo.status === JobStatusEnum.EnProceso || trabajo.status === JobStatusEnum.Finalizado) && (

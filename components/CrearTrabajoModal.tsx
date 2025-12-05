@@ -512,7 +512,7 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
 
                         <div className="flex justify-end items-center pt-4 border-t dark:border-gray-700">
                             <div className="bg-taller-light dark:bg-gray-700/50 p-4 rounded-lg text-right w-full sm:w-auto">
-                                <p className="text-sm text-taller-gray dark:text-gray-400 font-medium">Costo Total Estimado</p>
+                                <p className="text-sm text-taller-gray dark:text-gray-400 font-medium">{status === JobStatus.Presupuesto ? 'Costo Total Estimado' : 'Costo Total'}</p>
                                 <p className="text-2xl font-bold text-taller-primary dark:text-blue-400">{new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(costoEstimado)}</p>
                             </div>
                         </div>

@@ -175,7 +175,7 @@ const TrabajoListItem: React.FC<TrabajoListItemProps> = ({ trabajo, vehiculo, cl
 
                         <div className="mt-3 pt-3 border-t dark:border-gray-700 space-y-1 text-xs">
                             <div className="flex justify-between font-bold text-taller-dark dark:text-taller-light">
-                                <span>Total Estimado</span>
+                                <span>{trabajo.status === 'Presupuesto' ? 'Total Estimado' : 'Total'}</span>
                                 <span>{formatCurrency(trabajo.costoEstimado)}</span>
                             </div>
                             <div className="flex justify-between text-green-600 dark:text-green-500">
