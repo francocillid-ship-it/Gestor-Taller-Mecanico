@@ -41,7 +41,8 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
         logoUrl: undefined,
         headerColor: '#334155',
         appTheme: 'slate',
-        fontSize: 'normal'
+        fontSize: 'normal',
+        googleCalendarEmail: ''
     });
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [loading, setLoading] = useState(true);
@@ -77,6 +78,7 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
                     headerColor: tallerInfoData.header_color || '#334155',
                     appTheme: tallerInfoData.app_theme || 'slate',
                     fontSize: tallerInfoData.font_size || 'normal',
+                    googleCalendarEmail: tallerInfoData.google_calendar_email || ''
                 };
                 setTallerInfo(loadedInfo);
                 
@@ -119,9 +121,9 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
                     status: t.status,
                     fechaEntrada: t.fecha_entrada,
                     fechaSalida: t.fecha_salida,
-                    fechaProgramada: t.fecha_programada, // Map new field
+                    fechaProgramada: t.fecha_programada,
                     kilometraje: t.kilometraje,
-                    notaAdicional: t.nota_adicional // Ensure mapped
+                    notaAdicional: t.nota_adicional
                 }));
                 setTrabajos(mappedTrabajos as Trabajo[]);
             }
@@ -203,6 +205,7 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
                  header_color: newInfo.headerColor,
                  app_theme: newInfo.appTheme,
                  font_size: newInfo.fontSize,
+                 google_calendar_email: newInfo.googleCalendarEmail,
                  updated_at: new Date().toISOString()
              });
 

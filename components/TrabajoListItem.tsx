@@ -1,7 +1,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import type { Trabajo, Vehiculo, Cliente, TallerInfo } from '../types';
-import { CurrencyDollarIcon, CalendarDaysIcon, ChevronDownIcon, PrinterIcon, WrenchScrewdriverIcon, MapPinIcon } from '@heroicons/react/24/solid';
+import { CurrencyDollarIcon, CalendarDaysIcon, ChevronDownIcon, PrinterIcon, WrenchScrewdriverIcon, MapPinIcon, ArrowPathIcon } from '@heroicons/react/24/solid';
 import { generateClientPDF } from './pdfGenerator';
 
 interface TrabajoListItemProps {
@@ -194,7 +194,7 @@ const TrabajoListItem: React.FC<TrabajoListItemProps> = ({ trabajo, vehiculo, cl
                                 disabled={!tallerInfo || isGeneratingPdf} 
                                 className="flex items-center gap-2 px-3 py-1.5 text-sm font-semibold text-white bg-taller-secondary rounded-lg shadow-sm hover:bg-taller-primary disabled:opacity-50 disabled:cursor-not-allowed"
                             >
-                                <PrinterIcon className="h-4 w-4"/>
+                                {isGeneratingPdf ? <ArrowPathIcon className="h-4 w-4 animate-spin"/> : <PrinterIcon className="h-4 w-4"/>}
                                 {isGeneratingPdf ? 'Generando...' : 'Descargar PDF'}
                             </button>
                         </div>

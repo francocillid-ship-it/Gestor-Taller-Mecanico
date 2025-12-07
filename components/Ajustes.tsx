@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import type { TallerInfo } from '../types';
 import { supabase } from '../supabaseClient';
-import { BuildingOffice2Icon, PhotoIcon, ArrowUpOnSquareIcon, PaintBrushIcon, DevicePhoneMobileIcon, SunIcon, MoonIcon, ComputerDesktopIcon, DocumentTextIcon, SparklesIcon, CheckCircleIcon, ExclamationTriangleIcon, KeyIcon, ArrowTopRightOnSquareIcon, SwatchIcon, ArrowRightOnRectangleIcon, MagnifyingGlassPlusIcon } from '@heroicons/react/24/solid';
+import { BuildingOffice2Icon, PhotoIcon, ArrowUpOnSquareIcon, PaintBrushIcon, DevicePhoneMobileIcon, SunIcon, MoonIcon, ComputerDesktopIcon, DocumentTextIcon, SparklesIcon, CheckCircleIcon, ExclamationTriangleIcon, KeyIcon, ArrowTopRightOnSquareIcon, SwatchIcon, ArrowRightOnRectangleIcon, MagnifyingGlassPlusIcon, CalendarDaysIcon } from '@heroicons/react/24/solid';
 import ChangePasswordModal from './ChangePasswordModal';
 import { APP_THEMES, applyAppTheme, applyFontSize } from '../constants';
 
@@ -278,7 +278,7 @@ const Ajustes: React.FC<AjustesProps> = ({ tallerInfo, onUpdateTallerInfo, onLog
                 
                 <form onSubmit={handleSubmit} className="space-y-8">
                     
-                    {shouldShow(['datos', 'nombre', 'telefono', 'direccion', 'cuit', 'logo']) && (
+                    {shouldShow(['datos', 'nombre', 'telefono', 'direccion', 'cuit', 'logo', 'calendar', 'google']) && (
                         <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md">
                             <h3 className="text-lg font-bold mb-6 flex items-center"><BuildingOffice2Icon className="h-6 w-6 mr-2 text-taller-primary"/>Datos del Taller</h3>
                             <div className="space-y-4">
@@ -329,7 +329,7 @@ const Ajustes: React.FC<AjustesProps> = ({ tallerInfo, onUpdateTallerInfo, onLog
                                             <label htmlFor="direccion" className="block text-sm font-medium text-taller-gray dark:text-gray-400">Dirección</label>
                                             <input type="text" id="direccion" name="direccion" value={formData.direccion} onChange={handleChange} className="mt-1 block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-taller-primary focus:border-taller-primary sm:text-sm" required/>
                                         </div>
-                                        <div className="sm:col-span-2">
+                                        <div>
                                             <label htmlFor="cuit" className="block text-sm font-medium text-taller-gray dark:text-gray-400">CUIT</label>
                                             <input type="text" id="cuit" name="cuit" value={formData.cuit} onChange={handleChange} className="mt-1 block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-taller-primary focus:border-taller-primary sm:text-sm" required/>
                                             <div className="flex items-center mt-3">
@@ -348,6 +348,19 @@ const Ajustes: React.FC<AjustesProps> = ({ tallerInfo, onUpdateTallerInfo, onLog
                                                     Mostrar CUIT en presupuestos y recibos PDF
                                                 </label>
                                             </div>
+                                        </div>
+                                        <div>
+                                            <label htmlFor="googleCalendarEmail" className="block text-sm font-medium text-taller-gray dark:text-gray-400">Email para Google Calendar</label>
+                                            <input 
+                                                type="email" 
+                                                id="googleCalendarEmail" 
+                                                name="googleCalendarEmail" 
+                                                value={formData.googleCalendarEmail || ''} 
+                                                onChange={handleChange} 
+                                                placeholder="tu-email@gmail.com"
+                                                className="mt-1 block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-taller-primary focus:border-taller-primary sm:text-sm" 
+                                            />
+                                            <p className="text-[10px] text-gray-500 mt-1">Usado para la sincronización rápida de agenda.</p>
                                         </div>
                                     </div>
                                 </div>

@@ -89,5 +89,6 @@ export interface TallerInfo {
     showCuitOnPdf?: boolean;
     headerColor?: string;
     appTheme?: string;
-    fontSize?: 'small' | 'normal' | 'large'; // Nuevo campo
+    fontSize?: 'small' | 'normal' | 'large';
+    googleCalendarEmail?: string; // Nuevo campo para integración
 }

@@ -3,7 +3,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import type { Trabajo, Cliente, Vehiculo, JobStatus, Parte, TallerInfo } from '../types';
 import { JobStatus as JobStatusEnum } from '../types';
-import { ChevronDownIcon, ChevronUpIcon, PencilIcon, PrinterIcon, CurrencyDollarIcon, WrenchScrewdriverIcon, EllipsisVerticalIcon, ArrowPathIcon, CalendarIcon, ClockIcon, DocumentTextIcon, CheckIcon, ExclamationCircleIcon } from '@heroicons/react/24/solid';
+import { ChevronDownIcon, ChevronUpIcon, PencilIcon, PrinterIcon, CurrencyDollarIcon, WrenchScrewdriverIcon, EllipsisVerticalIcon, ArrowPathIcon, CalendarIcon, ClockIcon, DocumentTextIcon, CheckIcon, ExclamationCircleIcon, CalendarDaysIcon } from '@heroicons/react/24/solid';
 import CrearTrabajoModal from './CrearTrabajoModal';
 import { supabase } from '../supabaseClient';
 import { generateClientPDF } from './pdfGenerator';
@@ -243,6 +243,25 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
             setIsSavingSchedule(false);
         }
     };
+    
+    const handleAddToGoogleCalendar = () => {
+        if (!trabajo.fechaProgramada || !vehiculo || !cliente) return;
+        
+        const startDate = new Date(trabajo.fechaProgramada);
+        // Default duration 1 hour if not specified, otherwise just use start time
+        const endDate = new Date(startDate.getTime() + 60 * 60 * 1000); 
+
+        const formatDate = (date: Date) => {
+            return date.toISOString().replace(/-|:|\.\d\d\d/g, "");
+        };
+
+        const title = encodeURIComponent(`Taller: ${vehiculo.marca} ${vehiculo.modelo} - ${cliente.nombre}`);
+        const details = encodeURIComponent(`Trabajo: ${trabajo.descripcion}\nCliente: ${cliente.nombre} ${cliente.apellido || ''}\nVehículo: ${vehiculo.matricula}\nNota: ${trabajo.notaAdicional || ''}`);
+        
+        const calendarUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&details=${details}&dates=${formatDate(startDate)}/${formatDate(endDate)}`;
+        
+        window.open(calendarUrl, '_blank');
+    };
 
     const formatCurrency = (val: number | undefined) => {
         if (val === undefined || isNaN(val)) return '$ 0,00';
@@ -344,10 +363,22 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
                             {/* --- SECCIÓN DE AGENDA (Solo en Programado) --- */}
                             {isProgramado && (
                                 <div className={`mb-4 p-3 rounded-lg border dark:border-gray-600 ${needsScheduling ? 'bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-800' : 'bg-gray-50 dark:bg-gray-700/30'}`}>
-                                    <h4 className={`font-semibold text-xs mb-2 flex items-center gap-1 ${needsScheduling ? 'text-red-700 dark:text-red-300' : 'text-taller-dark dark:text-taller-light'}`}>
-                                        <CalendarIcon className="h-3.5 w-3.5"/> 
-                                        {needsScheduling ? '⚠️ Asignar Fecha del Turno' : 'Agenda del Turno'}
-                                    </h4>
+                                    <div className="flex justify-between items-center mb-2">
+                                        <h4 className={`font-semibold text-xs flex items-center gap-1 ${needsScheduling ? 'text-red-700 dark:text-red-300' : 'text-taller-dark dark:text-taller-light'}`}>
+                                            <CalendarIcon className="h-3.5 w-3.5"/> 
+                                            {needsScheduling ? '⚠️ Asignar Fecha del Turno' : 'Agenda del Turno'}
+                                        </h4>
+                                        {/* Google Calendar Button */}
+                                        {!needsScheduling && trabajo.fechaProgramada && (
+                                            <button 
+                                                onClick={handleAddToGoogleCalendar}
+                                                className="text-[10px] font-medium text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1 bg-white dark:bg-gray-800 px-2 py-0.5 rounded border border-blue-200 dark:border-blue-900 shadow-sm"
+                                            >
+                                                <CalendarDaysIcon className="h-3 w-3" />
+                                                Agendar en Google
+                                            </button>
+                                        )}
+                                    </div>
                                     <div className="flex flex-wrap gap-2 mb-2">
                                         <div className="flex-1 min-w-[130px]">
                                             <label className="block text-[10px] text-gray-500 dark:text-gray-400 mb-0.5">Fecha</label>
@@ -489,7 +520,7 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
                     </div>
                     <div className="flex items-center space-x-2">
                          <button onClick={handleGeneratePDF} disabled={isGeneratingPdf} className="p-1.5 text-taller-gray dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 disabled:opacity-50" title="Imprimir Presupuesto">
-                            <PrinterIcon className="h-4 w-4" />
+                            {isGeneratingPdf ? <ArrowPathIcon className="h-4 w-4 animate-spin"/> : <PrinterIcon className="h-4 w-4" />}
                         </button>
                         <button onClick={() => setIsJobModalOpen(true)} className="p-1.5 text-taller-gray dark:text-gray-400 hover:text-taller-secondary dark:hover:text-white" title="Editar Trabajo">
                             <PencilIcon className="h-4 w-4" />
