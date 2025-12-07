@@ -56,6 +56,148 @@ interface TransactionItem {
     subtext?: string;
 }
 
+// --- Filter Controls Component ---
+const FilterControls = ({ activePeriod, setPeriodFn }: { activePeriod: Period, setPeriodFn: (p: Period) => void }) => (
+    <div className="flex flex-wrap items-center gap-2 bg-white dark:bg-gray-800 p-2 rounded-lg shadow-sm border border-gray-100 dark:border-gray-700">
+        {[
+            { label: 'Este mes', value: 'this_month' },
+            { label: 'Últimos 7 días', value: 'last_7_days' },
+            { label: 'Últimos 15 días', value: 'last_15_days' },
+            { label: 'Mes pasado', value: 'last_month' }
+        ].map(p => (
+            <button
+                key={p.value}
+                onClick={() => setPeriodFn(p.value as Period)}
+                className={`px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md transition-colors flex-grow sm:flex-grow-0 ${activePeriod === p.value ? 'bg-taller-primary text-white shadow' : 'text-taller-gray dark:text-gray-300 hover:bg-taller-light dark:hover:bg-gray-700'}`}
+            >
+                {p.label}
+            </button>
+        ))}
+    </div>
+);
+
+// --- Financial Detail Overlay Component (Extracted to maintain state) ---
+interface FinancialDetailOverlayProps {
+    detailView: DetailType;
+    onClose: () => void;
+    period: Period;
+    setPeriod: (p: Period) => void;
+    data: { transactions: TransactionItem[], total: number };
+    gananciasNetasDisplay: string;
+}
+
+const FinancialDetailOverlay: React.FC<FinancialDetailOverlayProps> = ({ detailView, onClose, period, setPeriod, data, gananciasNetasDisplay }) => {
+    const [isFilterVisible, setIsFilterVisible] = useState(true);
+    const lastScrollTop = useRef(0);
+    const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+    const handleScroll = () => {
+        if (!scrollContainerRef.current) return;
+        
+        const currentScroll = scrollContainerRef.current.scrollTop;
+        const diff = currentScroll - lastScrollTop.current;
+
+        // Ignore bounce/overscroll at the top or very small movements
+        if (currentScroll < 0 || Math.abs(diff) < 10) return;
+
+        if (diff > 0 && currentScroll > 50 && isFilterVisible) {
+            // Scrolling Down & passed threshold
+            setIsFilterVisible(false);
+        } else if (diff < 0 && !isFilterVisible) {
+            // Scrolling Up
+            setIsFilterVisible(true);
+        }
+        
+        lastScrollTop.current = currentScroll;
+    };
+
+    if (!detailView) return null;
+
+    const titleMap = {
+        'ingresos': 'Historial de Ingresos',
+        'gastos': 'Historial de Gastos',
+        'balance': 'Balance (Flujo de Caja)',
+        'ganancias': 'Detalle de Movimientos (Ganancia)'
+    };
+
+    const isProfitView = detailView === 'ganancias';
+    const displayTotal = isProfitView ? gananciasNetasDisplay : new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(data.total);
+
+    return (
+        <div className="fixed inset-0 z-[60] bg-taller-light dark:bg-taller-dark flex flex-col animate-in slide-in-from-bottom-5 duration-300">
+            {/* Header with Safe Area Padding */}
+            <div className="bg-white dark:bg-gray-800 shadow-sm flex-shrink-0 pt-[env(safe-area-inset-top)] border-b dark:border-gray-700 z-20">
+                <div className="flex items-center justify-between p-4">
+                    <button 
+                        onClick={onClose}
+                        className="p-2 -ml-2 text-taller-gray dark:text-gray-400 hover:text-taller-dark dark:hover:text-white rounded-full hover:bg-gray-100 dark:hover:bg-gray-700"
+                    >
+                        <ArrowLeftIcon className="h-6 w-6" />
+                    </button>
+                    <h2 className="text-lg font-bold text-taller-dark dark:text-taller-light">{titleMap[detailView]}</h2>
+                    <div className="w-10"></div> {/* Spacer for alignment */}
+                </div>
+            </div>
+
+            {/* Filter Section - Collapsible on Scroll */}
+            <div className={`bg-taller-light dark:bg-taller-dark z-10 flex-shrink-0 transition-all duration-300 ease-in-out overflow-hidden ${isFilterVisible ? 'max-h-[80px] opacity-100' : 'max-h-0 opacity-0'}`}>
+                <div className="p-4 pb-2">
+                    <FilterControls activePeriod={period} setPeriodFn={setPeriod} />
+                </div>
+            </div>
+
+            {/* Scrollable Content */}
+            <div 
+                ref={scrollContainerRef}
+                onScroll={handleScroll}
+                className="flex-1 overflow-y-auto px-4 pb-4 pt-2 space-y-4"
+            >
+                {/* Big Summary Card */}
+                <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm text-center mt-2">
+                    <p className="text-sm text-taller-gray dark:text-gray-400 uppercase tracking-wide">Total {period.replace(/_/g, ' ')}</p>
+                    <p className={`text-4xl font-bold mt-2 ${data.total >= 0 ? 'text-taller-dark dark:text-taller-light' : 'text-red-600'}`}>
+                        {displayTotal}
+                    </p>
+                    {isProfitView && (
+                       <p className="text-xs text-taller-gray dark:text-gray-500 mt-2">
+                           * Cálculo basado en Mano de Obra cobrada - Gastos Fijos.
+                       </p>
+                    )}
+                </div>
+
+                {/* Transaction List */}
+                <div className="space-y-3 pb-24"> {/* Extra padding bottom for safe scroll */}
+                     {data.transactions.length > 0 ? (
+                        data.transactions.map((t) => (
+                            <div key={t.id} className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm flex items-center justify-between border-l-4 border-transparent hover:border-l-4 transition-all" style={{ borderLeftColor: t.type === 'income' ? '#22c55e' : '#ef4444' }}>
+                                <div className="flex items-center gap-3">
+                                    <div className={`p-2 rounded-full ${t.type === 'income' ? 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400' : 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400'}`}>
+                                        {t.type === 'income' ? <ArrowTrendingUpIcon className="h-5 w-5" /> : <ArrowTrendingDownIcon className="h-5 w-5" />}
+                                    </div>
+                                    <div>
+                                        <p className="font-bold text-taller-dark dark:text-taller-light text-sm">{t.description}</p>
+                                        <p className="text-xs text-taller-gray dark:text-gray-400">{t.subtext}</p>
+                                        <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">{t.date.toLocaleDateString('es-ES')} {t.date.toLocaleTimeString([], { hour: '2-digit', minute:'2-digit' })}</p>
+                                    </div>
+                                </div>
+                                <p className={`font-bold ${t.type === 'income' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                                    {t.type === 'income' ? '+' : '-'} {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(t.amount)}
+                                </p>
+                            </div>
+                        ))
+                     ) : (
+                         <div className="text-center py-10 text-taller-gray dark:text-gray-400">
+                             <ScaleIcon className="h-12 w-12 mx-auto mb-2 opacity-20" />
+                             <p>No hay movimientos en este periodo.</p>
+                         </div>
+                     )}
+                </div>
+            </div>
+        </div>
+    );
+};
+
+
 const Dashboard: React.FC<DashboardProps> = ({ clientes, trabajos, gastos, onDataRefresh, searchQuery, onNavigate }) => {
     const [isAddGastoModalOpen, setIsAddGastoModalOpen] = useState(false);
     const [gastoToEdit, setGastoToEdit] = useState<Gasto | null>(null);
@@ -324,25 +466,6 @@ const Dashboard: React.FC<DashboardProps> = ({ clientes, trabajos, gastos, onDat
 
     }, [detailView, trabajos, gastos, clientes, period]);
 
-    const FilterControls = ({ activePeriod, setPeriodFn }: { activePeriod: Period, setPeriodFn: (p: Period) => void }) => (
-        <div className="flex flex-wrap items-center gap-2 bg-white dark:bg-gray-800 p-2 rounded-lg shadow-sm">
-            {[
-                { label: 'Este mes', value: 'this_month' },
-                { label: 'Últimos 7 días', value: 'last_7_days' },
-                { label: 'Últimos 15 días', value: 'last_15_days' },
-                { label: 'Mes pasado', value: 'last_month' }
-            ].map(p => (
-                <button
-                    key={p.value}
-                    onClick={() => setPeriodFn(p.value as Period)}
-                    className={`px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md transition-colors flex-grow sm:flex-grow-0 ${activePeriod === p.value ? 'bg-taller-primary text-white shadow' : 'text-taller-gray dark:text-gray-300 hover:bg-taller-light dark:hover:bg-gray-700'}`}
-                >
-                    {p.label}
-                </button>
-            ))}
-        </div>
-    );
-
     const renderGastoRow = (gasto: Gasto) => (
         <div key={gasto.id} className="flex flex-col sm:flex-row sm:justify-between sm:items-center p-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 rounded-lg gap-2 border-b dark:border-gray-700 last:border-0 sm:border-0">
             <div className="w-full sm:w-auto">
@@ -376,87 +499,6 @@ const Dashboard: React.FC<DashboardProps> = ({ clientes, trabajos, gastos, onDat
             </div>
         </div>
     );
-
-    // -- Sub-Component for Financial Detail Overlay --
-    const FinancialDetailView = () => {
-        if (!detailView) return null;
-        
-        const titleMap = {
-            'ingresos': 'Historial de Ingresos',
-            'gastos': 'Historial de Gastos',
-            'balance': 'Balance (Flujo de Caja)',
-            'ganancias': 'Detalle de Movimientos (Ganancia)'
-        };
-
-        const isProfitView = detailView === 'ganancias';
-        const displayTotal = isProfitView ? stats.gananciasNetas : new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(financialDetailData.total);
-        
-        return (
-            <div className="fixed inset-0 z-50 bg-taller-light dark:bg-taller-dark flex flex-col animate-in slide-in-from-bottom-5 duration-300">
-                {/* Header */}
-                <div className="bg-white dark:bg-gray-800 shadow-sm p-4 flex items-center justify-between flex-shrink-0">
-                    <button 
-                        onClick={() => setDetailView(null)}
-                        className="p-2 -ml-2 text-taller-gray dark:text-gray-400 hover:text-taller-dark dark:hover:text-white rounded-full hover:bg-gray-100 dark:hover:bg-gray-700"
-                    >
-                        <ArrowLeftIcon className="h-6 w-6" />
-                    </button>
-                    <h2 className="text-lg font-bold text-taller-dark dark:text-taller-light">{titleMap[detailView]}</h2>
-                    <div className="w-10"></div> {/* Spacer for alignment */}
-                </div>
-
-                {/* Content */}
-                <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                    
-                    {/* Filter */}
-                    <div className="sticky top-0 z-10 -mx-4 px-4 pb-2 bg-taller-light dark:bg-taller-dark/95 backdrop-blur-sm">
-                        <FilterControls activePeriod={period} setPeriodFn={setPeriod} />
-                    </div>
-
-                    {/* Big Summary Card */}
-                    <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm text-center">
-                        <p className="text-sm text-taller-gray dark:text-gray-400 uppercase tracking-wide">Total {period.replace(/_/g, ' ')}</p>
-                        <p className={`text-4xl font-bold mt-2 ${financialDetailData.total >= 0 ? 'text-taller-dark dark:text-taller-light' : 'text-red-600'}`}>
-                            {displayTotal}
-                        </p>
-                        {isProfitView && (
-                           <p className="text-xs text-taller-gray dark:text-gray-500 mt-2">
-                               * Cálculo basado en Mano de Obra cobrada - Gastos Fijos.
-                           </p>
-                        )}
-                    </div>
-
-                    {/* Transaction List */}
-                    <div className="space-y-3 pb-10">
-                         {financialDetailData.transactions.length > 0 ? (
-                            financialDetailData.transactions.map((t) => (
-                                <div key={t.id} className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm flex items-center justify-between border-l-4 border-transparent hover:border-l-4 transition-all" style={{ borderLeftColor: t.type === 'income' ? '#22c55e' : '#ef4444' }}>
-                                    <div className="flex items-center gap-3">
-                                        <div className={`p-2 rounded-full ${t.type === 'income' ? 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400' : 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400'}`}>
-                                            {t.type === 'income' ? <ArrowTrendingUpIcon className="h-5 w-5" /> : <ArrowTrendingDownIcon className="h-5 w-5" />}
-                                        </div>
-                                        <div>
-                                            <p className="font-bold text-taller-dark dark:text-taller-light text-sm">{t.description}</p>
-                                            <p className="text-xs text-taller-gray dark:text-gray-400">{t.subtext}</p>
-                                            <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">{t.date.toLocaleDateString('es-ES')} {t.date.toLocaleTimeString([], { hour: '2-digit', minute:'2-digit' })}</p>
-                                        </div>
-                                    </div>
-                                    <p className={`font-bold ${t.type === 'income' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                                        {t.type === 'income' ? '+' : '-'} {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(t.amount)}
-                                    </p>
-                                </div>
-                            ))
-                         ) : (
-                             <div className="text-center py-10 text-taller-gray dark:text-gray-400">
-                                 <ScaleIcon className="h-12 w-12 mx-auto mb-2 opacity-20" />
-                                 <p>No hay movimientos en este periodo.</p>
-                             </div>
-                         )}
-                    </div>
-                </div>
-            </div>
-        );
-    };
 
     return (
         <div className="space-y-6 sm:space-y-8 pb-16">
@@ -564,7 +606,16 @@ const Dashboard: React.FC<DashboardProps> = ({ clientes, trabajos, gastos, onDat
             {gastoToEdit && <EditGastoModal gasto={gastoToEdit} onClose={() => setGastoToEdit(null)} onUpdateGasto={handleUpdateGasto} />}
             
             {/* Render Financial Detail Overlay if active */}
-            <FinancialDetailView />
+            {detailView && (
+                <FinancialDetailOverlay
+                    detailView={detailView}
+                    onClose={() => setDetailView(null)}
+                    period={period}
+                    setPeriod={setPeriod}
+                    data={financialDetailData}
+                    gananciasNetasDisplay={stats.gananciasNetas}
+                />
+            )}
         </div>
     );
 };

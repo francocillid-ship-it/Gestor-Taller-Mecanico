@@ -82,10 +82,9 @@ const ClientCard: React.FC<ClientCardProps> = ({ cliente, trabajos, onEdit, onCo
              // Construct magic link with credentials
              shareUrl = `${window.location.origin}/?type=invite&email=${encodeURIComponent(cliente.email)}&password=${encodeURIComponent(tempPass)}`;
         } else {
-             // Fallback to standard login link if no temp pass available
-             // This can happen if the client was created long ago. 
-             // In that case, we should really just use the email recovery.
-             // But for now, we share the base URL.
+             // Si no hay password temporal (cliente antiguo), enviamos al login normal.
+             // No enviamos email de reset automático para evitar spam, el admin puede indicar "Olvidé mi contraseña" si es necesario.
+             shareUrl = window.location.origin;
         }
 
         const confirmSend = window.confirm(`¿Compartir acceso con ${cliente.nombre}?`);
@@ -93,18 +92,10 @@ const ClientCard: React.FC<ClientCardProps> = ({ cliente, trabajos, onEdit, onCo
 
         setSendingAccess(true);
         try {
-            // We ALSO trigger the standard reset password email as a backup/secure method
-            const { error } = await supabase.auth.resetPasswordForEmail(cliente.email, {
-                redirectTo: window.location.origin + '?type=recovery',
-            });
+            // NOTA: Se ha eliminado el envío automático de email (resetPasswordForEmail) 
+            // para evitar disparar correos de Supabase al crear/compartir perfil.
 
-            if (error) {
-                 console.error("Warning: email send failed", error);
-                 // We continue to share the link if we have one, otherwise alert error
-                 if (!tempPass) throw error;
-            }
-
-            const shareText = `Hola ${cliente.nombre}, aquí tienes el enlace para acceder a tu historial de trabajos en el taller:\n\n${shareUrl}\n\nIngresa automáticamente con este link. Por seguridad, se te pedirá cambiar tu contraseña al entrar.`;
+            const shareText = `Hola ${cliente.nombre}, aquí tienes el enlace para acceder a tu historial de trabajos en el taller:\n\n${shareUrl}\n\n${tempPass ? 'Ingresa automáticamente con este link. Por seguridad, se te pedirá cambiar tu contraseña al entrar.' : 'Ingresa con tu email y contraseña.'}`;
 
             if (navigator.share) {
                 try {
