@@ -57,9 +57,11 @@ interface TransactionItem {
     subtext?: string;
 }
 
-// --- Filter Controls Component ---
+// --- Filter Controls Component (Horizontal Scroll) ---
 const FilterControls = ({ activePeriod, setPeriodFn }: { activePeriod: Period, setPeriodFn: (p: Period) => void }) => (
-    <div className="flex flex-wrap items-center gap-2 bg-white dark:bg-gray-800 p-2 rounded-lg shadow-sm border border-gray-100 dark:border-gray-700">
+    // Se usa -mx-4 y px-4 para que el scroll llegue hasta los bordes de la pantalla pero el contenido tenga padding
+    <div className="flex items-center gap-2 overflow-x-auto flex-nowrap pb-2 -mx-4 px-4 sm:mx-0 sm:px-0 scrollbar-hide">
+        <style>{`.scrollbar-hide::-webkit-scrollbar { display: none; } .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }`}</style>
         {[
             { label: 'Este mes', value: 'this_month' },
             { label: 'Últimos 7 días', value: 'last_7_days' },
@@ -69,7 +71,11 @@ const FilterControls = ({ activePeriod, setPeriodFn }: { activePeriod: Period, s
             <button
                 key={p.value}
                 onClick={() => setPeriodFn(p.value as Period)}
-                className={`px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md transition-colors flex-grow sm:flex-grow-0 ${activePeriod === p.value ? 'bg-taller-primary text-white shadow' : 'text-taller-gray dark:text-gray-300 hover:bg-taller-light dark:hover:bg-gray-700'}`}
+                className={`flex-shrink-0 px-4 py-2 text-xs sm:text-sm font-medium rounded-full transition-all border whitespace-nowrap ${
+                    activePeriod === p.value 
+                    ? 'bg-taller-primary text-white border-taller-primary shadow-md' 
+                    : 'bg-white dark:bg-gray-800 text-taller-gray dark:text-gray-300 border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700'
+                }`}
             >
                 {p.label}
             </button>
@@ -95,21 +101,32 @@ const FinancialDetailOverlay: React.FC<FinancialDetailOverlayProps> = ({ detailV
     const handleScroll = () => {
         if (!scrollContainerRef.current) return;
         
-        const currentScroll = scrollContainerRef.current.scrollTop;
-        const diff = currentScroll - lastScrollTop.current;
+        const { scrollTop, scrollHeight, clientHeight } = scrollContainerRef.current;
+        const diff = scrollTop - lastScrollTop.current;
 
-        // Ignore bounce/overscroll at the top or very small movements
-        if (currentScroll < 0 || Math.abs(diff) < 10) return;
+        // 1. Ignore bounce/overscroll at the top (negative scrollTop)
+        if (scrollTop < 0) return;
 
-        if (diff > 0 && currentScroll > 50 && isFilterVisible) {
-            // Scrolling Down & passed threshold
+        // 2. Ignore bounce/overscroll at the bottom (scrollTop + clientHeight > scrollHeight)
+        // Also ignore standard scrolling if we are very close to the bottom to prevent flickering
+        // when the user hits the end of the list.
+        if (scrollTop + clientHeight > scrollHeight - 50) {
+            lastScrollTop.current = scrollTop;
+            return;
+        }
+
+        // Ignore very small movements to avoid jitter
+        if (Math.abs(diff) < 10) return;
+
+        if (diff > 0 && scrollTop > 50 && isFilterVisible) {
+            // Scrolling Down & passed threshold -> Hide Filter
             setIsFilterVisible(false);
         } else if (diff < 0 && !isFilterVisible) {
-            // Scrolling Up
+            // Scrolling Up -> Show Filter
             setIsFilterVisible(true);
         }
         
-        lastScrollTop.current = currentScroll;
+        lastScrollTop.current = scrollTop;
     };
 
     if (!detailView) return null;
@@ -128,7 +145,7 @@ const FinancialDetailOverlay: React.FC<FinancialDetailOverlayProps> = ({ detailV
     return createPortal(
         <div className="fixed inset-0 z-[70] bg-taller-light dark:bg-taller-dark flex flex-col animate-in slide-in-from-bottom-5 duration-300">
             {/* Header with Safe Area Padding */}
-            <div className="bg-white dark:bg-gray-800 shadow-sm flex-shrink-0 pt-[env(safe-area-inset-top)] border-b dark:border-gray-700 z-20 relative">
+            <div className="bg-white dark:bg-gray-800 shadow-sm flex-shrink-0 pt-[env(safe-area-inset-top)] border-b dark:border-gray-700 z-20 relative transition-transform duration-300">
                 <div className="flex items-center justify-between p-4">
                     <button 
                         onClick={onClose}
@@ -142,7 +159,7 @@ const FinancialDetailOverlay: React.FC<FinancialDetailOverlayProps> = ({ detailV
             </div>
 
             {/* Filter Section - Collapsible on Scroll */}
-            <div className={`bg-taller-light dark:bg-taller-dark z-10 flex-shrink-0 transition-all duration-300 ease-in-out overflow-hidden ${isFilterVisible ? 'max-h-[80px] opacity-100' : 'max-h-0 opacity-0'}`}>
+            <div className={`bg-taller-light dark:bg-taller-dark z-10 flex-shrink-0 transition-all duration-300 ease-in-out overflow-hidden ${isFilterVisible ? 'max-h-[80px] opacity-100 translate-y-0' : 'max-h-0 opacity-0 -translate-y-4'}`}>
                 <div className="p-4 pb-2">
                     <FilterControls activePeriod={period} setPeriodFn={setPeriod} />
                 </div>
@@ -155,7 +172,7 @@ const FinancialDetailOverlay: React.FC<FinancialDetailOverlayProps> = ({ detailV
                 className="flex-1 overflow-y-auto px-4 pb-4 pt-2 space-y-4 overscroll-contain"
             >
                 {/* Big Summary Card */}
-                <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm text-center mt-2">
+                <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm text-center mt-2 border dark:border-gray-700">
                     <p className="text-sm text-taller-gray dark:text-gray-400 uppercase tracking-wide">Total {period.replace(/_/g, ' ')}</p>
                     <p className={`text-4xl font-bold mt-2 ${data.total >= 0 ? 'text-taller-dark dark:text-taller-light' : 'text-red-600'}`}>
                         {displayTotal}
@@ -507,7 +524,30 @@ const Dashboard: React.FC<DashboardProps> = ({ clientes, trabajos, gastos, onDat
         <div className="space-y-6 sm:space-y-8 pb-16">
             <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
                 <h2 className="text-2xl font-bold text-taller-dark dark:text-taller-light">Resumen</h2>
-                <FilterControls activePeriod={period} setPeriodFn={setPeriod} />
+                <div className="w-full md:w-auto">
+                    {/* Reuse the scrollable filter here too, but centered/tight for desktop */}
+                    <div className="flex items-center gap-2 overflow-x-auto flex-nowrap pb-2 scrollbar-hide">
+                         <style>{`.scrollbar-hide::-webkit-scrollbar { display: none; } .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }`}</style>
+                        {[
+                            { label: 'Este mes', value: 'this_month' },
+                            { label: 'Últimos 7 días', value: 'last_7_days' },
+                            { label: 'Últimos 15 días', value: 'last_15_days' },
+                            { label: 'Mes pasado', value: 'last_month' }
+                        ].map(p => (
+                            <button
+                                key={p.value}
+                                onClick={() => setPeriod(p.value as Period)}
+                                className={`flex-shrink-0 px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md transition-colors whitespace-nowrap ${
+                                    period === p.value 
+                                    ? 'bg-taller-primary text-white shadow' 
+                                    : 'text-taller-gray dark:text-gray-300 hover:bg-taller-light dark:hover:bg-gray-700 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700'
+                                }`}
+                            >
+                                {p.label}
+                            </button>
+                        ))}
+                    </div>
+                </div>
             </div>
             
             {/* Updated Grid: 2 columns on mobile (gap reduced), 3 on desktop */}
