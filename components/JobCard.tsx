@@ -44,10 +44,10 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
     // Un trabajo "necesita agenda" si está en Programado pero NO tiene fecha programada asignada
     const needsScheduling = isProgramado && !trabajo.fechaProgramada;
     
-    // Determine effective view mode
-    // If not in compact mode, expanded logic is just accordion.
-    // If in compact mode, expanded logic means "expand to full card", else "mini card"
-    const isMiniView = compactMode && !isExpanded;
+    // Determine effective view mode derived properties
+    // In compact mode, expanded logic means "expand to full card", else "mini card"
+    const isCompactMode = compactMode === true;
+    const isCollapsedInCompact = isCompactMode && !isExpanded;
 
     useEffect(() => {
         // Initialize fields based on existing data
@@ -264,80 +264,98 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
         displayTime = dateObj.toLocaleTimeString('es-ES', {hour: '2-digit', minute:'2-digit', hour12: false});
     }
 
-    // --- MINI VIEW (Condensed Grid Item) ---
-    if (isMiniView) {
-        return (
-            <div 
-                onClick={() => setIsExpanded(true)}
-                className="col-span-1 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-2 cursor-pointer hover:shadow-md transition-all active:scale-[0.98] flex flex-col justify-between min-h-[80px]"
-            >
-                <div>
-                    <p className="font-bold text-xs text-taller-dark dark:text-taller-light truncate">{clientFullName}</p>
-                    <p className="text-[10px] text-taller-gray dark:text-gray-400 truncate mt-0.5">
-                        {vehiculo ? `${vehiculo.modelo}` : 'S/D'}
-                    </p>
-                </div>
-                {trabajo.fechaProgramada && (
-                    <div className="flex items-center gap-1 mt-2 text-[10px] font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 px-1.5 py-0.5 rounded w-fit">
-                        <CalendarIcon className="h-3 w-3" />
-                        <span>{displayDate} {displayTime}</span>
-                    </div>
-                )}
-            </div>
-        );
-    }
-
-    // --- FULL VIEW (Expanded) ---
-    // If compactMode is active, this expanded view MUST be col-span-2 to take full width of the grid row
-    const containerClasses = compactMode 
-        ? "col-span-2 bg-white dark:bg-gray-800 rounded-lg shadow-lg border-l-4 border-taller-secondary ring-2 ring-taller-primary/20 animate-in fade-in zoom-in-95 duration-200"
-        : `bg-white dark:bg-gray-800 rounded-lg shadow-md border-l-4 transition-all duration-300 scroll-mt-4 
-           ${isExpanded ? 'mb-4 ring-2 ring-taller-primary/20 dark:ring-taller-primary/40' : ''}
-           ${needsScheduling ? 'border-red-500 ring-2 ring-red-100 dark:ring-red-900/20' : 'border-taller-secondary/50 dark:border-taller-secondary'}`;
+    // --- CONTAINER CLASSES ---
+    // This logic handles the unified container style.
+    // Transition properties enable the smooth animation for height, shadow, and border changes.
+    // Note: Grid column span changes (col-span-1 -> col-span-2) are instantaneous layout changes, 
+    // but the internal content will transition smoothly.
+    const containerClasses = `
+        relative
+        bg-white dark:bg-gray-800
+        rounded-lg
+        transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]
+        ${isCompactMode 
+            ? (isExpanded 
+                ? 'col-span-2 shadow-lg ring-2 ring-taller-primary/20 z-10' 
+                : 'col-span-1 shadow-sm hover:shadow-md cursor-pointer active:scale-[0.98] border border-gray-200 dark:border-gray-700 min-h-[80px]') 
+            : `shadow-md border-l-4 ${needsScheduling ? 'border-red-500 ring-2 ring-red-100 dark:ring-red-900/20' : 'border-taller-secondary/50 dark:border-taller-secondary'}`
+        }
+        ${!isCompactMode && isExpanded ? 'mb-4 ring-2 ring-taller-primary/20 dark:ring-taller-primary/40' : ''}
+    `;
 
     return (
         <>
-            <div ref={cardRef} className={containerClasses}>
-                <div className="p-3">
-                    <div className="flex justify-between items-start">
-                        <div>
+            <div 
+                ref={cardRef} 
+                className={containerClasses}
+                onClick={isCollapsedInCompact ? () => setIsExpanded(true) : undefined}
+            >
+                <div className={`p-3 ${isCollapsedInCompact ? 'flex flex-col justify-between h-full' : ''}`}>
+                    <div 
+                        className={`flex justify-between items-start ${!isCollapsedInCompact ? 'cursor-pointer select-none' : ''}`}
+                        onClick={(e) => {
+                            // If NOT in collapsed-compact mode, this header handles the toggle.
+                            // If IS in collapsed-compact mode, parent handles it.
+                            if (!isCollapsedInCompact) {
+                                e.stopPropagation();
+                                setIsExpanded(!isExpanded);
+                            }
+                        }}
+                    >
+                        <div className="flex-1 min-w-0">
+                            {/* Client Name */}
                             <div className="flex items-center gap-2">
-                                <p className="font-bold text-sm text-taller-dark dark:text-taller-light">{clientFullName}</p>
-                                {needsScheduling && (
+                                <p className={`font-bold text-taller-dark dark:text-taller-light truncate transition-all duration-300 ${isCollapsedInCompact ? 'text-xs' : 'text-sm'}`}>
+                                    {clientFullName}
+                                </p>
+                                {/* Warning for non-compact view or expanded view */}
+                                {!isCollapsedInCompact && needsScheduling && (
                                     <span className="flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300 animate-pulse">
                                         <ExclamationCircleIcon className="h-3 w-3" /> Falta Agendar
                                     </span>
                                 )}
                             </div>
-                            <p className="text-xs text-taller-gray dark:text-gray-400">
-                                {vehiculo ? `${vehiculo.marca} ${vehiculo.modelo} (${vehiculo.matricula})` : 'Vehículo no encontrado'}
+                            
+                            {/* Vehicle Info */}
+                            <p className={`text-taller-gray dark:text-gray-400 truncate transition-all duration-300 ${isCollapsedInCompact ? 'text-[10px] mt-0.5' : 'text-xs'}`}>
+                                {vehiculo ? (isCollapsedInCompact ? vehiculo.modelo : `${vehiculo.marca} ${vehiculo.modelo} (${vehiculo.matricula})`) : 'Vehículo no encontrado'}
                             </p>
-                            {isProgramado && trabajo.fechaProgramada && (
-                                <p className="text-xs text-taller-primary font-medium mt-1 flex items-center gap-1">
+
+                            {/* Full View Date Display (Hidden in collapsed compact mode) */}
+                            {!isCollapsedInCompact && isProgramado && trabajo.fechaProgramada && (
+                                <p className="text-xs text-taller-primary font-medium mt-1 flex items-center gap-1 animate-in fade-in duration-300">
                                     <ClockIcon className="h-3 w-3" />
                                     {displayDate} - {displayTime}
                                 </p>
                             )}
                         </div>
-                         <button 
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                setIsExpanded(!isExpanded);
-                            }} 
-                            className="p-1 text-taller-gray dark:text-gray-400 hover:text-taller-dark dark:hover:text-white"
-                        >
-                            {isExpanded ? <ChevronUpIcon className="h-5 w-5" /> : <ChevronDownIcon className="h-5 w-5" />}
-                        </button>
+
+                        {/* Expand Chevron - Only show if NOT in collapsed compact mode (where whole card is click trigger) */}
+                        {!isCollapsedInCompact && (
+                            <div className="p-1 text-taller-gray dark:text-gray-400 hover:text-taller-dark dark:hover:text-white">
+                                {isExpanded ? <ChevronUpIcon className="h-5 w-5" /> : <ChevronDownIcon className="h-5 w-5" />}
+                            </div>
+                        )}
                     </div>
-                    <p className="text-sm mt-2">{trabajo.descripcion}</p>
+
+                    {/* Description - Hidden in collapsed compact mode */}
+                    <div className={`grid transition-[grid-template-rows] duration-300 ease-in-out ${!isCollapsedInCompact ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>
+                        <div className="overflow-hidden">
+                            <p className="text-sm mt-2">{trabajo.descripcion}</p>
+                        </div>
+                    </div>
+
+                    {/* Mini View Date Badge - Only visible in collapsed compact mode */}
+                    {isCollapsedInCompact && trabajo.fechaProgramada && (
+                        <div className="mt-2 flex items-center gap-1 text-[10px] font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 px-1.5 py-0.5 rounded w-fit animate-in fade-in slide-in-from-bottom-2 duration-300">
+                            <CalendarIcon className="h-3 w-3" />
+                            <span>{displayDate} {displayTime}</span>
+                        </div>
+                    )}
                 </div>
                 
-                {/* 
-                   In CompactMode, expanded means "Show Full Card" logic immediately. 
-                   In StandardMode, expanded triggers the accordion animation.
-                   We reuse logic but ensure visibility.
-                */}
-                <div className={`grid transition-[grid-template-rows] duration-300 ease-in-out ${(isExpanded || compactMode) ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>
+                {/* EXPANDABLE BODY */}
+                <div className={`grid transition-[grid-template-rows] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] ${(!isCompactMode && isExpanded) || (isCompactMode && isExpanded) ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>
                     <div className="overflow-hidden">
                         <div className="p-3 border-t dark:border-gray-700">
                             
@@ -350,23 +368,23 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
                                             {needsScheduling ? '⚠️ Asignar Fecha del Turno' : 'Agenda del Turno'}
                                         </h4>
                                     </div>
-                                    <div className="grid grid-cols-2 gap-2 mb-2">
-                                        <div className="min-w-0">
+                                    <div className="flex flex-wrap gap-2 mb-2">
+                                        <div className="flex-1 min-w-[130px]">
                                             <label className="block text-[10px] text-gray-500 dark:text-gray-400 mb-0.5 truncate">Fecha</label>
                                             <input 
                                                 type="date" 
                                                 value={scheduleDate} 
                                                 onChange={(e) => setScheduleDate(e.target.value)}
-                                                className="w-full text-xs px-2 py-1.5 rounded border dark:border-gray-600 bg-white dark:bg-gray-700 focus:ring-1 focus:ring-taller-primary focus:outline-none"
+                                                className="w-full text-xs px-2 py-1.5 rounded border dark:border-gray-600 bg-white dark:bg-gray-700 focus:ring-1 focus:ring-taller-primary focus:outline-none appearance-none"
                                             />
                                         </div>
-                                        <div className="min-w-0">
+                                        <div className="flex-1 min-w-[90px]">
                                             <label className="block text-[10px] text-gray-500 dark:text-gray-400 mb-0.5 truncate">Hora (Opcional)</label>
                                             <input 
                                                 type="time" 
                                                 value={scheduleTime} 
                                                 onChange={(e) => setScheduleTime(e.target.value)}
-                                                className="w-full text-xs px-2 py-1.5 rounded border dark:border-gray-600 bg-white dark:bg-gray-700 focus:ring-1 focus:ring-taller-primary focus:outline-none"
+                                                className="w-full text-xs px-2 py-1.5 rounded border dark:border-gray-600 bg-white dark:bg-gray-700 focus:ring-1 focus:ring-taller-primary focus:outline-none appearance-none"
                                             />
                                         </div>
                                     </div>
@@ -475,29 +493,30 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
                                 </div>
                             )}
                         </div>
+                        
+                        {/* Footer Action Bar */}
+                        <div className="bg-gray-50 dark:bg-gray-700/50 px-3 py-2 flex items-center justify-between rounded-b-lg">
+                            <div className="relative">
+                                <button
+                                    ref={buttonRef}
+                                    onClick={toggleStatusMenu}
+                                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-taller-primary rounded-md shadow-sm hover:bg-taller-secondary transition-colors"
+                                >
+                                    <span>Cambiar Estado</span>
+                                    <ChevronDownIcon className="h-3 w-3" />
+                                </button>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                                <button onClick={handleGeneratePDF} disabled={isGeneratingPdf} className="p-1.5 text-taller-gray dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 disabled:opacity-50" title="Imprimir Presupuesto">
+                                    {isGeneratingPdf ? <ArrowPathIcon className="h-4 w-4 animate-spin"/> : <PrinterIcon className="h-4 w-4" />}
+                                </button>
+                                <button onClick={() => setIsJobModalOpen(true)} className="p-1.5 text-taller-gray dark:text-gray-400 hover:text-taller-secondary dark:hover:text-white" title="Editar Trabajo">
+                                    <PencilIcon className="h-4 w-4" />
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
-
-                 <div className="bg-gray-50 dark:bg-gray-700/50 px-3 py-2 flex items-center justify-between rounded-b-lg">
-                    <div className="relative">
-                        <button
-                            ref={buttonRef}
-                            onClick={toggleStatusMenu}
-                            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-taller-primary rounded-md shadow-sm hover:bg-taller-secondary transition-colors"
-                        >
-                            <span>Cambiar Estado</span>
-                            <ChevronDownIcon className="h-3 w-3" />
-                        </button>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                         <button onClick={handleGeneratePDF} disabled={isGeneratingPdf} className="p-1.5 text-taller-gray dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 disabled:opacity-50" title="Imprimir Presupuesto">
-                            {isGeneratingPdf ? <ArrowPathIcon className="h-4 w-4 animate-spin"/> : <PrinterIcon className="h-4 w-4" />}
-                        </button>
-                        <button onClick={() => setIsJobModalOpen(true)} className="p-1.5 text-taller-gray dark:text-gray-400 hover:text-taller-secondary dark:hover:text-white" title="Editar Trabajo">
-                            <PencilIcon className="h-4 w-4" />
-                        </button>
-                    </div>
-                 </div>
             </div>
             
             {/* Floating Status Menu Portal */}
