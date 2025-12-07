@@ -4,10 +4,11 @@ import { supabase } from '../supabaseClient';
 import { XMarkIcon, CameraIcon } from '@heroicons/react/24/solid';
 import { isGeminiAvailable, VehiculoData } from '../gemini';
 import CameraRecognitionModal from './CameraRecognitionModal';
+import type { Vehiculo } from '../types';
 
 interface AddVehicleModalProps {
     onClose: () => void;
-    onSuccess: () => void;
+    onSuccess: (newVehicle?: Vehiculo) => void;
     clienteId: string;
 }
 
@@ -37,13 +38,16 @@ const AddVehicleModal: React.FC<AddVehicleModalProps> = ({ onClose, onSuccess, c
         }
 
         try {
-            const { error: vehiculoError } = await supabase
+            // We use .select().single() to return the created object immediately
+            const { data, error: vehiculoError } = await supabase
                 .from('vehiculos')
-                .insert({ cliente_id: clienteId, marca, modelo, año: yearNumber, matricula });
+                .insert({ cliente_id: clienteId, marca, modelo, año: yearNumber, matricula })
+                .select()
+                .single();
 
             if (vehiculoError) throw vehiculoError;
 
-            onSuccess();
+            onSuccess(data as Vehiculo);
         } catch (err: any) {
             setError(err.message || 'Error al agregar el vehículo.');
         } finally {

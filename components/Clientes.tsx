@@ -347,7 +347,21 @@ const Clientes: React.FC<ClientesProps> = ({ clientes, trabajos, onDataRefresh, 
                 <AddVehicleModal
                     clienteId={clientToAddVehicle}
                     onClose={() => setClientToAddVehicle(null)}
-                    onSuccess={() => {
+                    onSuccess={(newVehicle) => {
+                        // Optimistic Update Implementation
+                        if (newVehicle && onClientUpdate && clientToAddVehicle) {
+                            const clientToUpdate = clientes.find(c => c.id === clientToAddVehicle);
+                            if (clientToUpdate) {
+                                const updatedClient = {
+                                    ...clientToUpdate,
+                                    vehiculos: [...clientToUpdate.vehiculos, newVehicle]
+                                };
+                                onClientUpdate(updatedClient);
+                                setClientToAddVehicle(null);
+                                return;
+                            }
+                        }
+                        // Fallback to full refresh
                         setClientToAddVehicle(null);
                         onDataRefresh();
                     }}

@@ -81,7 +81,9 @@ const App: React.FC = () => {
 
     useEffect(() => {
         const processSession = async () => {
-            setLoading(true);
+            // REMOVED: setLoading(true) here to prevent unmounting components during session refreshes.
+            // Loading is initialized to true, so it handles the first load. 
+            // Subsequent updates will run in the background without resetting the UI state.
             
             if (authAction !== 'APP') {
                 setUser(session?.user ?? null);
