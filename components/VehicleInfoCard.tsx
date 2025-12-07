@@ -142,7 +142,7 @@ const MaintenanceCategoryRow: React.FC<{ group: CategoryGroup }> = ({ group }) =
     if (allDisabled) return null;
 
     return (
-        <div className="border dark:border-gray-600 rounded-lg overflow-hidden bg-white dark:bg-gray-800 mb-3 shadow-sm">
+        <div className="border dark:border-gray-600 rounded-lg overflow-hidden bg-white dark:bg-gray-800 shadow-sm w-full">
             <button 
                 onClick={() => setIsOpen(!isOpen)}
                 className="w-full flex items-center justify-between p-4 bg-gray-50 hover:bg-gray-100 dark:bg-gray-700/50 dark:hover:bg-gray-700 transition-colors z-10 relative"
@@ -456,7 +456,7 @@ const VehicleInfoCard: React.FC<VehicleInfoCardProps> = ({ vehiculo, trabajos, o
                                 Estado de Mantenimiento
                             </h5>
                             
-                            <div className="space-y-2">
+                            <div className="flex flex-col gap-3">
                                 {maintenanceGroups.map(group => (
                                     <MaintenanceCategoryRow key={group.id} group={group} />
                                 ))}
