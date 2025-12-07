@@ -76,7 +76,8 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
     }, [trabajo]);
 
     useEffect(() => {
-        if (isExpanded && cardRef.current && !compactMode) {
+        // Apply scroll logic to both normal and compact mode when expanded
+        if (isExpanded && cardRef.current) {
             // Esperar a que termine la animación de CSS (300ms)
             const timer = setTimeout(() => {
                 const element = cardRef.current;

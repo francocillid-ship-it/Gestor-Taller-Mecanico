@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../supabaseClient';
 import type { Cliente, Trabajo, Gasto, JobStatus, TallerInfo } from '../types';
 import Dashboard from './Dashboard';
@@ -16,6 +16,9 @@ interface TallerDashboardProps {
 
 type View = 'dashboard' | 'trabajos' | 'clientes' | 'ajustes';
 
+// Definimos el orden para saber hacia qué lado animar
+const VIEW_ORDER: View[] = ['dashboard', 'trabajos', 'clientes', 'ajustes'];
+
 const navItems = [
     { id: 'dashboard', label: 'Resumen', icon: ChartPieIcon },
     { id: 'trabajos', label: 'Trabajos', icon: WrenchScrewdriverIcon },
@@ -24,7 +27,7 @@ const navItems = [
 ] as const;
 
 const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
-    // Default always to 'dashboard' on mount, ignoring localStorage
+    // Default always to 'dashboard' on mount
     const [view, setView] = useState<View>('dashboard');
     const [clientes, setClientes] = useState<Cliente[]>([]);
     const [trabajos, setTrabajos] = useState<Trabajo[]>([]);
@@ -47,6 +50,12 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
     const [targetJobStatus, setTargetJobStatus] = useState<JobStatus | undefined>(undefined);
+    
+    // Refs for scrolling to top on view change
+    const dashboardRef = useRef<HTMLDivElement>(null);
+    const trabajosRef = useRef<HTMLDivElement>(null);
+    const clientesRef = useRef<HTMLDivElement>(null);
+    const ajustesRef = useRef<HTMLDivElement>(null);
 
     const fetchData = useCallback(async (showLoader = true) => {
         if (showLoader) {
@@ -152,6 +161,17 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
     useEffect(() => {
         setIsMobileMenuOpen(false);
         setSearchQuery('');
+        
+        // Reset scroll position of the active view container
+        const activeRef = 
+            view === 'dashboard' ? dashboardRef :
+            view === 'trabajos' ? trabajosRef :
+            view === 'clientes' ? clientesRef :
+            ajustesRef;
+            
+        if (activeRef.current) {
+            activeRef.current.scrollTop = 0;
+        }
     }, [view]);
     
     const handleSilentRefresh = () => fetchData(false);
@@ -230,22 +250,11 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
         }
     };
 
-    const renderContent = () => {
-        switch (view) {
-            case 'dashboard':
-                return <Dashboard clientes={clientes} trabajos={trabajos} gastos={gastos} onDataRefresh={handleSilentRefresh} searchQuery={searchQuery} onNavigate={handleNavigate} />;
-            case 'trabajos':
-                return <Trabajos trabajos={trabajos} clientes={clientes} onUpdateStatus={handleUpdateStatus} onDataRefresh={handleSilentRefresh} tallerInfo={tallerInfo} searchQuery={searchQuery} initialTab={targetJobStatus} />;
-            case 'clientes':
-                return <Clientes clientes={clientes} trabajos={trabajos} onDataRefresh={handleSilentRefresh} searchQuery={searchQuery} onClientUpdate={handleClientUpdate} />;
-            case 'ajustes':
-                return <Ajustes tallerInfo={tallerInfo} onUpdateTallerInfo={handleUpdateTallerInfo} onLogout={onLogout} searchQuery={searchQuery} />;
-            default:
-                return <Dashboard clientes={clientes} trabajos={trabajos} gastos={gastos} onDataRefresh={handleSilentRefresh} searchQuery={searchQuery} onNavigate={handleNavigate} />;
-        }
-    };
-
     const sidebarClasses = `fixed inset-y-0 left-0 z-30 w-64 bg-white dark:bg-gray-800 transform transition-transform duration-300 ease-in-out shadow-lg md:translate-x-0 md:static md:inset-0 ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`;
+    
+    // Calculate translate percentage based on active view index
+    const activeIndex = VIEW_ORDER.indexOf(view);
+    const translateValue = `-${activeIndex * 100}%`;
 
     return (
         <div className="flex h-[100dvh] bg-taller-light dark:bg-taller-dark text-taller-dark dark:text-taller-light overflow-hidden transition-colors duration-300">
@@ -292,7 +301,7 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
                 />
             )}
 
-            <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+            <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
                 <Header 
                     tallerName={tallerInfo.nombre} 
                     logoUrl={tallerInfo.logoUrl}
@@ -302,18 +311,51 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
                     onSearchChange={setSearchQuery}
                 />
                 
-                <main className="flex-1 overflow-y-auto p-4 md:p-6 scroll-smooth overscroll-contain">
+                {/* Main Content Area - Ahora es un contenedor con overflow hidden que contiene el slider */}
+                <main className="flex-1 overflow-hidden relative w-full">
                     {loading ? (
                         <div className="flex h-full items-center justify-center">
                             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-taller-primary"></div>
                         </div>
                     ) : (
-                        renderContent()
+                        // Slider Container
+                        <div 
+                            className="flex h-full w-full transition-transform duration-300 ease-out will-change-transform"
+                            style={{ transform: `translateX(${translateValue})` }}
+                        >
+                            {/* View 1: Dashboard */}
+                            <div ref={dashboardRef} className="w-full h-full flex-shrink-0 overflow-y-auto p-4 md:p-6 scroll-smooth overscroll-contain">
+                                <div className="max-w-7xl mx-auto min-h-full">
+                                    <Dashboard clientes={clientes} trabajos={trabajos} gastos={gastos} onDataRefresh={handleSilentRefresh} searchQuery={searchQuery} onNavigate={handleNavigate} />
+                                </div>
+                            </div>
+
+                            {/* View 2: Trabajos */}
+                            <div ref={trabajosRef} className="w-full h-full flex-shrink-0 overflow-y-auto p-4 md:p-6 scroll-smooth overscroll-contain">
+                                <div className="max-w-7xl mx-auto h-full">
+                                    <Trabajos trabajos={trabajos} clientes={clientes} onUpdateStatus={handleUpdateStatus} onDataRefresh={handleSilentRefresh} tallerInfo={tallerInfo} searchQuery={searchQuery} initialTab={targetJobStatus} />
+                                </div>
+                            </div>
+
+                            {/* View 3: Clientes */}
+                            <div ref={clientesRef} className="w-full h-full flex-shrink-0 overflow-y-auto p-4 md:p-6 scroll-smooth overscroll-contain">
+                                <div className="max-w-7xl mx-auto min-h-full">
+                                    <Clientes clientes={clientes} trabajos={trabajos} onDataRefresh={handleSilentRefresh} searchQuery={searchQuery} onClientUpdate={handleClientUpdate} />
+                                </div>
+                            </div>
+
+                            {/* View 4: Ajustes */}
+                            <div ref={ajustesRef} className="w-full h-full flex-shrink-0 overflow-y-auto p-4 md:p-6 scroll-smooth overscroll-contain">
+                                <div className="max-w-7xl mx-auto min-h-full">
+                                    <Ajustes tallerInfo={tallerInfo} onUpdateTallerInfo={handleUpdateTallerInfo} onLogout={onLogout} searchQuery={searchQuery} />
+                                </div>
+                            </div>
+                        </div>
                     )}
                 </main>
 
                 {tallerInfo.mobileNavStyle === 'bottom_nav' && (
-                    <div className="md:hidden bg-white dark:bg-gray-800 border-t dark:border-gray-700 pb-5 flex-shrink-0">
+                    <div className="md:hidden bg-white dark:bg-gray-800 border-t dark:border-gray-700 pb-5 flex-shrink-0 z-20">
                          <nav className="flex justify-around items-center h-16">
                             {navItems.map((item) => (
                                 <button
@@ -322,12 +364,16 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
                                         setView(item.id as View);
                                         if (item.id === 'trabajos') setTargetJobStatus(undefined);
                                     }}
-                                    className={`flex flex-col items-center justify-center w-full h-full ${
+                                    className={`relative flex flex-col items-center justify-center w-full h-full transition-colors duration-200 ${
                                         view === item.id ? 'text-taller-primary' : 'text-taller-gray dark:text-gray-400'
                                     }`}
                                 >
                                     <item.icon className="h-6 w-6" />
-                                    <span className="text-[10px] mt-1">{item.label}</span>
+                                    <span className="text-[10px] mt-1 font-medium">{item.label}</span>
+                                    {/* Indicador activo opcional */}
+                                    {view === item.id && (
+                                        <span className="absolute top-0 w-8 h-1 bg-taller-primary rounded-b-lg"></span>
+                                    )}
                                 </button>
                             ))}
                         </nav>
