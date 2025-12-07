@@ -3,7 +3,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import type { Trabajo, Cliente, Vehiculo, JobStatus, Parte, TallerInfo } from '../types';
 import { JobStatus as JobStatusEnum } from '../types';
-import { ChevronDownIcon, ChevronUpIcon, PencilIcon, PrinterIcon, CurrencyDollarIcon, WrenchScrewdriverIcon, EllipsisVerticalIcon, ArrowPathIcon, CalendarIcon, ClockIcon, DocumentTextIcon, CheckIcon, ExclamationCircleIcon, CalendarDaysIcon } from '@heroicons/react/24/solid';
+import { ChevronDownIcon, ChevronUpIcon, PencilIcon, PrinterIcon, CurrencyDollarIcon, WrenchScrewdriverIcon, ArrowPathIcon, CalendarIcon, ClockIcon, CheckIcon, ExclamationCircleIcon } from '@heroicons/react/24/solid';
 import CrearTrabajoModal from './CrearTrabajoModal';
 import { supabase } from '../supabaseClient';
 import { generateClientPDF } from './pdfGenerator';
@@ -244,25 +244,6 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
         }
     };
     
-    const handleAddToGoogleCalendar = () => {
-        if (!trabajo.fechaProgramada || !vehiculo || !cliente) return;
-        
-        const startDate = new Date(trabajo.fechaProgramada);
-        // Default duration 1 hour if not specified, otherwise just use start time
-        const endDate = new Date(startDate.getTime() + 60 * 60 * 1000); 
-
-        const formatDate = (date: Date) => {
-            return date.toISOString().replace(/-|:|\.\d\d\d/g, "");
-        };
-
-        const title = encodeURIComponent(`Taller: ${vehiculo.marca} ${vehiculo.modelo} - ${cliente.nombre}`);
-        const details = encodeURIComponent(`Trabajo: ${trabajo.descripcion}\nCliente: ${cliente.nombre} ${cliente.apellido || ''}\nVehículo: ${vehiculo.matricula}\nNota: ${trabajo.notaAdicional || ''}`);
-        
-        const calendarUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&details=${details}&dates=${formatDate(startDate)}/${formatDate(endDate)}`;
-        
-        window.open(calendarUrl, '_blank');
-    };
-
     const formatCurrency = (val: number | undefined) => {
         if (val === undefined || isNaN(val)) return '$ 0,00';
         return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(val);
@@ -368,20 +349,10 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
                                             <CalendarIcon className="h-3.5 w-3.5"/> 
                                             {needsScheduling ? '⚠️ Asignar Fecha del Turno' : 'Agenda del Turno'}
                                         </h4>
-                                        {/* Google Calendar Button */}
-                                        {!needsScheduling && trabajo.fechaProgramada && (
-                                            <button 
-                                                onClick={handleAddToGoogleCalendar}
-                                                className="text-[10px] font-medium text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1 bg-white dark:bg-gray-800 px-2 py-0.5 rounded border border-blue-200 dark:border-blue-900 shadow-sm"
-                                            >
-                                                <CalendarDaysIcon className="h-3 w-3" />
-                                                Agendar en Google
-                                            </button>
-                                        )}
                                     </div>
-                                    <div className="flex flex-wrap gap-2 mb-2">
-                                        <div className="flex-1 min-w-[130px]">
-                                            <label className="block text-[10px] text-gray-500 dark:text-gray-400 mb-0.5">Fecha</label>
+                                    <div className="grid grid-cols-2 gap-2 mb-2">
+                                        <div className="min-w-0">
+                                            <label className="block text-[10px] text-gray-500 dark:text-gray-400 mb-0.5 truncate">Fecha</label>
                                             <input 
                                                 type="date" 
                                                 value={scheduleDate} 
@@ -389,8 +360,8 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
                                                 className="w-full text-xs px-2 py-1.5 rounded border dark:border-gray-600 bg-white dark:bg-gray-700 focus:ring-1 focus:ring-taller-primary focus:outline-none"
                                             />
                                         </div>
-                                        <div className="flex-1 min-w-[110px]">
-                                            <label className="block text-[10px] text-gray-500 dark:text-gray-400 mb-0.5">Hora (Opcional)</label>
+                                        <div className="min-w-0">
+                                            <label className="block text-[10px] text-gray-500 dark:text-gray-400 mb-0.5 truncate">Hora (Opcional)</label>
                                             <input 
                                                 type="time" 
                                                 value={scheduleTime} 

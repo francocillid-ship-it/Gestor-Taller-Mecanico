@@ -497,7 +497,7 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
     };
 
     return (
-        <div className="h-full flex flex-col relative">
+        <div className="flex flex-col relative lg:h-full min-h-full">
             <style>{`
                 .custom-scrollbar::-webkit-scrollbar { width: 5px; }
                 .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
@@ -531,7 +531,7 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
             ) : (
                 <>
                     {/* Mobile View: Render only ACTIVE tab */}
-                    <div className="lg:hidden flex-1 overflow-y-auto">
+                    <div className="lg:hidden w-full">
                         <StatusColumn
                             key={activeMobileTab}
                             status={activeMobileTab}

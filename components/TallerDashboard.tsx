@@ -41,8 +41,7 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
         logoUrl: undefined,
         headerColor: '#334155',
         appTheme: 'slate',
-        fontSize: 'normal',
-        googleCalendarEmail: ''
+        fontSize: 'normal'
     });
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [loading, setLoading] = useState(true);
@@ -77,8 +76,7 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
                     showCuitOnPdf: tallerInfoData.show_cuit_on_pdf !== false,
                     headerColor: tallerInfoData.header_color || '#334155',
                     appTheme: tallerInfoData.app_theme || 'slate',
-                    fontSize: tallerInfoData.font_size || 'normal',
-                    googleCalendarEmail: tallerInfoData.google_calendar_email || ''
+                    fontSize: tallerInfoData.font_size || 'normal'
                 };
                 setTallerInfo(loadedInfo);
                 
@@ -205,7 +203,6 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
                  header_color: newInfo.headerColor,
                  app_theme: newInfo.appTheme,
                  font_size: newInfo.fontSize,
-                 google_calendar_email: newInfo.googleCalendarEmail,
                  updated_at: new Date().toISOString()
              });
 

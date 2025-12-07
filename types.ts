@@ -90,5 +90,4 @@ export interface TallerInfo {
     headerColor?: string;
     appTheme?: string;
     fontSize?: 'small' | 'normal' | 'large';
-    googleCalendarEmail?: string; // Nuevo campo para integración
 }
