@@ -1,4 +1,3 @@
-
 import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import type { Trabajo, Cliente, TallerInfo } from '../types';
@@ -14,6 +13,7 @@ interface TrabajosProps {
     onDataRefresh: () => void;
     tallerInfo: TallerInfo;
     searchQuery: string;
+    initialTab?: JobStatus;
 }
 
 const statusOrder = [JobStatus.Presupuesto, JobStatus.Programado, JobStatus.EnProceso, JobStatus.Finalizado];
@@ -212,10 +212,21 @@ const StatusColumn: React.FC<{
 };
 
 
-const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus, onDataRefresh, tallerInfo, searchQuery }) => {
+const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus, onDataRefresh, tallerInfo, searchQuery, initialTab }) => {
     const [isJobModalOpen, setIsJobModalOpen] = useState(false);
     const [initialClientIdForModal, setInitialClientIdForModal] = useState<string | undefined>(undefined);
-    const [activeMobileTab, setActiveMobileTab] = useState<JobStatus>(JobStatus.Presupuesto); 
+    const [activeMobileTab, setActiveMobileTab] = useState<JobStatus>(initialTab || JobStatus.Presupuesto); 
+
+    useEffect(() => {
+        if (initialTab) {
+            setActiveMobileTab(initialTab);
+            // On desktop, scroll the corresponding column into view
+            const columnElement = document.getElementById(`status-column-${initialTab}`);
+            if (columnElement) {
+                columnElement.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+            }
+        }
+    }, [initialTab]);
 
     useEffect(() => {
         const pendingClientId = localStorage.getItem('pending_job_client_id');
@@ -327,7 +338,7 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
                         {statusOrder.map(status => {
                             const jobs = trabajosByStatus[status] || [];
                             return (
-                                <div key={status} className="flex-1 min-w-[300px] h-full flex flex-col">
+                                <div key={status} id={`status-column-${status}`} className="flex-1 min-w-[300px] h-full flex flex-col">
                                     <StatusColumn
                                         status={status}
                                         trabajos={jobs}

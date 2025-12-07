@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../supabaseClient';
 import type { Cliente, Trabajo, Gasto, JobStatus, TallerInfo } from '../types';
@@ -46,6 +45,7 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
+    const [targetJobStatus, setTargetJobStatus] = useState<JobStatus | undefined>(undefined);
 
     const fetchData = useCallback(async (showLoader = true) => {
         if (showLoader) {
@@ -220,8 +220,11 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
         }
     };
 
-    const handleNavigate = (newView: View) => {
+    const handleNavigate = (newView: View, status?: JobStatus) => {
         setView(newView);
+        if (status) {
+            setTargetJobStatus(status);
+        }
     };
 
     const renderContent = () => {
@@ -229,7 +232,7 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
             case 'dashboard':
                 return <Dashboard clientes={clientes} trabajos={trabajos} gastos={gastos} onDataRefresh={handleSilentRefresh} searchQuery={searchQuery} onNavigate={handleNavigate} />;
             case 'trabajos':
-                return <Trabajos trabajos={trabajos} clientes={clientes} onUpdateStatus={handleUpdateStatus} onDataRefresh={handleSilentRefresh} tallerInfo={tallerInfo} searchQuery={searchQuery} />;
+                return <Trabajos trabajos={trabajos} clientes={clientes} onUpdateStatus={handleUpdateStatus} onDataRefresh={handleSilentRefresh} tallerInfo={tallerInfo} searchQuery={searchQuery} initialTab={targetJobStatus} />;
             case 'clientes':
                 return <Clientes clientes={clientes} trabajos={trabajos} onDataRefresh={handleSilentRefresh} searchQuery={searchQuery} onClientUpdate={handleClientUpdate} />;
             case 'ajustes':
@@ -256,7 +259,10 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
                         {navItems.map((item) => (
                             <button
                                 key={item.id}
-                                onClick={() => setView(item.id as View)}
+                                onClick={() => {
+                                    setView(item.id as View);
+                                    if (item.id === 'trabajos') setTargetJobStatus(undefined);
+                                }}
                                 className={`w-full flex items-center px-4 py-3 rounded-lg transition-colors ${
                                     view === item.id
                                         ? 'bg-taller-primary text-white shadow-md'
@@ -309,7 +315,10 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
                             {navItems.map((item) => (
                                 <button
                                     key={item.id}
-                                    onClick={() => setView(item.id as View)}
+                                    onClick={() => {
+                                        setView(item.id as View);
+                                        if (item.id === 'trabajos') setTargetJobStatus(undefined);
+                                    }}
                                     className={`flex flex-col items-center justify-center w-full h-full ${
                                         view === item.id ? 'text-taller-primary' : 'text-taller-gray dark:text-gray-400'
                                     }`}

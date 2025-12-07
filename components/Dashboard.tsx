@@ -1,4 +1,3 @@
-
 import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import type { Cliente, Trabajo, Gasto } from '../types';
@@ -14,7 +13,7 @@ interface DashboardProps {
     gastos: Gasto[];
     onDataRefresh: () => void;
     searchQuery: string;
-    onNavigate: (view: 'dashboard' | 'trabajos' | 'clientes' | 'ajustes') => void;
+    onNavigate: (view: 'dashboard' | 'trabajos' | 'clientes' | 'ajustes', jobStatus?: JobStatus) => void;
 }
 
 interface StatCardProps {
@@ -99,26 +98,30 @@ const FinancialDetailOverlay: React.FC<FinancialDetailOverlayProps> = ({ detailV
         if (!scrollContainerRef.current) return;
         
         const { scrollTop, scrollHeight, clientHeight } = scrollContainerRef.current;
-        const diff = scrollTop - lastScrollTop.current;
 
-        // Ignore negative scroll (bounce)
-        if (scrollTop < 0) return;
-        
-        // Ignore scroll near bottom to avoid flickering on rubber-banding
-        if (scrollTop + clientHeight > scrollHeight - 50) {
-            lastScrollTop.current = scrollTop;
+        // OVERSCROLL PROTECTION
+        // Evitamos ejecutar lógica si el scroll está fuera de los límites (iOS/Mac bounce)
+        // Esto previene el flickering causado por cambios de layout durante el rebote elástico.
+        if (scrollTop <= 0 || scrollTop + clientHeight >= scrollHeight) {
             return;
         }
 
+        const diff = scrollTop - lastScrollTop.current;
+        lastScrollTop.current = scrollTop;
+
+        // Ignorar micro-movimientos
         if (Math.abs(diff) < 10) return;
 
-        if (diff > 0 && scrollTop > 50 && isFilterVisible) {
+        // BOTTOM BUFFER
+        // Si estamos cerca del final, evitamos mostrar el filtro al subir un poco para no interferir con el rebote del fondo.
+        const isNearBottom = scrollTop + clientHeight > scrollHeight - 100;
+        if (isNearBottom) return;
+
+        if (diff > 0 && scrollTop > 60 && isFilterVisible) {
             setIsFilterVisible(false);
         } else if (diff < 0 && !isFilterVisible) {
             setIsFilterVisible(true);
         }
-        
-        lastScrollTop.current = scrollTop;
     };
 
     if (!detailView) return null;
@@ -540,7 +543,7 @@ const Dashboard: React.FC<DashboardProps> = ({ clientes, trabajos, gastos, onDat
                     value={stats.trabajosActivos} 
                     icon={<WrenchScrewdriverIcon />} 
                     color="bg-yellow-500" 
-                    onClick={() => onNavigate('trabajos')}
+                    onClick={() => onNavigate('trabajos', JobStatus.EnProceso)}
                 />
                 <StatCard 
                     title="Total Clientes" 
