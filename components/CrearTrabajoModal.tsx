@@ -740,7 +740,12 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
                     -moz-appearance: textfield;
                 }
                 .safe-area-bottom {
-                    padding-bottom: env(safe-area-inset-bottom, 20px);
+                    padding-bottom: calc(env(safe-area-inset-bottom) + 32px);
+                }
+                @media (min-width: 640px) {
+                    .safe-area-bottom {
+                        padding-bottom: 1rem;
+                    }
                 }
             `}</style>
         </>,
