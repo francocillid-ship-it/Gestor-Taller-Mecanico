@@ -29,8 +29,7 @@ const getDateCategory = (dateString: string): TimeCategory => {
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const jobDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
     
-    // Calculate start of current week (Monday)
-    const day = today.getDay() || 7; // Get current day number, converting Sun (0) to 7
+    const day = today.getDay() || 7; 
     if(day !== 1) today.setHours(-24 * (day - 1));
     const startOfCurrentWeek = today;
 
@@ -42,7 +41,7 @@ const getDateCategory = (dateString: string): TimeCategory => {
 
     if (jobDate >= startOfCurrentWeek) return 'Esta semana';
     if (jobDate >= startOfPreviousWeek) return 'Semana pasada';
-    if (jobDate >= startOfPreviousMonth) return 'Mes pasado';
+    if (jobDate >= startOfCurrentMonth) return 'Mes pasado';
     return 'Anteriores';
 };
 
@@ -110,20 +109,9 @@ const StatusColumn: React.FC<{
     tallerInfo: TallerInfo;
     onDataRefresh: () => void;
     searchQuery: string;
-    forceExpanded?: boolean; // Prop to force expansion (Mobile Tab Mode)
-}> = ({ status, trabajos, clientes, onUpdateStatus, tallerInfo, onDataRefresh, searchQuery, forceExpanded }) => {
-    // Default to expanded on desktop (unless searching with no results)
-    const [isExpanded, setIsExpanded] = useState(true);
-
-    // Effect to handle auto-expansion based on search results
-    useEffect(() => {
-        if (!forceExpanded) {
-            if (searchQuery.trim().length > 0) {
-                setIsExpanded(trabajos.length > 0);
-            }
-        }
-    }, [searchQuery, trabajos.length, forceExpanded]);
-
+    isMobileMode?: boolean; 
+}> = ({ status, trabajos, clientes, onUpdateStatus, tallerInfo, onDataRefresh, searchQuery, isMobileMode }) => {
+    
     const getStatusColor = (status: JobStatus) => {
         switch (status) {
             case JobStatus.Presupuesto: return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-300';
@@ -153,109 +141,71 @@ const StatusColumn: React.FC<{
         return groups;
     }, [trabajos, status]);
 
-    // On Desktop (!forceExpanded), we render a full height column
-    // On Mobile (forceExpanded), we render just the content list
-    
-    if (forceExpanded) {
-        // Mobile View Content
+    const renderContent = () => {
+        if (trabajos.length === 0) {
+            return (
+                <div className={`flex flex-col items-center justify-center text-center opacity-60 ${isMobileMode ? 'py-12' : 'h-32'}`}>
+                     {isMobileMode && <MagnifyingGlassIcon className="h-6 w-6 text-gray-400 mb-3" />}
+                    <p className="text-xs text-taller-gray dark:text-gray-400">
+                        {searchQuery ? "No hay coincidencias." : (isMobileMode ? `No hay trabajos en ${status}` : 'Sin trabajos')}
+                    </p>
+                </div>
+            );
+        }
+
+        if (status === JobStatus.Finalizado && groupedJobs) {
+            return (
+                <>
+                    <JobGroup category="Esta semana" trabajos={groupedJobs['Esta semana']} defaultExpanded={true} clientes={clientes} onUpdateStatus={onUpdateStatus} tallerInfo={tallerInfo} onDataRefresh={onDataRefresh} />
+                    <JobGroup category="Semana pasada" trabajos={groupedJobs['Semana pasada']} defaultExpanded={false} clientes={clientes} onUpdateStatus={onUpdateStatus} tallerInfo={tallerInfo} onDataRefresh={onDataRefresh} />
+                    <JobGroup category="Mes pasado" trabajos={groupedJobs['Mes pasado']} defaultExpanded={false} clientes={clientes} onUpdateStatus={onUpdateStatus} tallerInfo={tallerInfo} onDataRefresh={onDataRefresh} />
+                    <JobGroup category="Anteriores" trabajos={groupedJobs['Anteriores']} defaultExpanded={false} clientes={clientes} onUpdateStatus={onUpdateStatus} tallerInfo={tallerInfo} onDataRefresh={onDataRefresh} />
+                </>
+            );
+        }
+
+        return (
+            <div className="space-y-3">
+                {trabajos.map(trabajo => {
+                    const cliente = clientes.find(c => c.id === trabajo.clienteId);
+                    const vehiculo = cliente?.vehiculos.find(v => v.id === trabajo.vehiculoId);
+                    return (
+                        <JobCard
+                            key={trabajo.id}
+                            trabajo={trabajo}
+                            cliente={cliente}
+                            vehiculo={vehiculo}
+                            onUpdateStatus={onUpdateStatus}
+                            tallerInfo={tallerInfo}
+                            clientes={clientes}
+                            onDataRefresh={onDataRefresh}
+                        />
+                    );
+                })}
+            </div>
+        );
+    };
+
+    if (isMobileMode) {
         return (
             <div className="pt-2 pb-24 px-1">
-                {trabajos.length > 0 ? (
-                    status === JobStatus.Finalizado && groupedJobs ? (
-                        <>
-                            <JobGroup category="Esta semana" trabajos={groupedJobs['Esta semana']} defaultExpanded={true} clientes={clientes} onUpdateStatus={onUpdateStatus} tallerInfo={tallerInfo} onDataRefresh={onDataRefresh} />
-                            <JobGroup category="Semana pasada" trabajos={groupedJobs['Semana pasada']} defaultExpanded={false} clientes={clientes} onUpdateStatus={onUpdateStatus} tallerInfo={tallerInfo} onDataRefresh={onDataRefresh} />
-                            <JobGroup category="Mes pasado" trabajos={groupedJobs['Mes pasado']} defaultExpanded={false} clientes={clientes} onUpdateStatus={onUpdateStatus} tallerInfo={tallerInfo} onDataRefresh={onDataRefresh} />
-                            <JobGroup category="Anteriores" trabajos={groupedJobs['Anteriores']} defaultExpanded={false} clientes={clientes} onUpdateStatus={onUpdateStatus} tallerInfo={tallerInfo} onDataRefresh={onDataRefresh} />
-                        </>
-                    ) : (
-                        <div className="space-y-4 pb-2">
-                            {trabajos.map(trabajo => {
-                                const cliente = clientes.find(c => c.id === trabajo.clienteId);
-                                const vehiculo = cliente?.vehiculos.find(v => v.id === trabajo.vehiculoId);
-                                return (
-                                    <JobCard
-                                        key={trabajo.id}
-                                        trabajo={trabajo}
-                                        cliente={cliente}
-                                        vehiculo={vehiculo}
-                                        onUpdateStatus={onUpdateStatus}
-                                        tallerInfo={tallerInfo}
-                                        clientes={clientes}
-                                        onDataRefresh={onDataRefresh}
-                                    />
-                                );
-                            })}
-                        </div>
-                    )
-                ) : (
-                    <div className="py-12 text-center">
-                        <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-gray-100 dark:bg-gray-800 mb-3">
-                            <MagnifyingGlassIcon className="h-6 w-6 text-gray-400" />
-                        </div>
-                        <p className="text-sm text-taller-gray dark:text-gray-400">
-                            {searchQuery ? "No hay coincidencias." : `No hay trabajos en ${status}.`}
-                        </p>
-                    </div>
-                )}
+                {renderContent()}
             </div>
         );
     }
 
-    // Desktop Board Column
     return (
-        <div className={`flex flex-col h-full bg-gray-100 dark:bg-gray-800 rounded-xl overflow-hidden shadow-sm border dark:border-gray-700 transition-all duration-300 ${!isExpanded ? 'opacity-60 grayscale' : ''}`}>
-            {/* Header */}
-            <div 
-                className={`flex justify-between items-center p-3 border-b dark:border-gray-700 cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors`}
-                onClick={() => setIsExpanded(!isExpanded)}
-            >
+        <div className="flex flex-col h-full bg-gray-100 dark:bg-gray-800 rounded-xl overflow-hidden shadow-sm border dark:border-gray-700">
+            <div className="flex justify-between items-center p-3 border-b dark:border-gray-700 bg-gray-200/50 dark:bg-gray-700/50">
                  <div className="flex items-center gap-2">
                     <h3 className="font-bold text-sm text-taller-dark dark:text-taller-light uppercase tracking-wide">{status}</h3>
                     <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${getStatusColor(status)}`}>
                         {trabajos.length}
                     </span>
                  </div>
-                 <div className={`transform transition-transform duration-300 ${isExpanded ? 'rotate-0' : '-rotate-90'}`}>
-                    <ChevronDownIcon className="h-4 w-4 text-taller-gray dark:text-gray-400" />
-                 </div>
             </div>
-
-            {/* Content List - Always takes available height */}
-            <div className={`flex-1 overflow-y-auto custom-scrollbar p-2 transition-all duration-300 ${isExpanded ? 'opacity-100' : 'opacity-0 hidden'}`}>
-                {trabajos.length > 0 ? (
-                    status === JobStatus.Finalizado && groupedJobs ? (
-                        <>
-                            <JobGroup category="Esta semana" trabajos={groupedJobs['Esta semana']} defaultExpanded={true} clientes={clientes} onUpdateStatus={onUpdateStatus} tallerInfo={tallerInfo} onDataRefresh={onDataRefresh} />
-                            <JobGroup category="Semana pasada" trabajos={groupedJobs['Semana pasada']} defaultExpanded={false} clientes={clientes} onUpdateStatus={onUpdateStatus} tallerInfo={tallerInfo} onDataRefresh={onDataRefresh} />
-                            <JobGroup category="Mes pasado" trabajos={groupedJobs['Mes pasado']} defaultExpanded={false} clientes={clientes} onUpdateStatus={onUpdateStatus} tallerInfo={tallerInfo} onDataRefresh={onDataRefresh} />
-                            <JobGroup category="Anteriores" trabajos={groupedJobs['Anteriores']} defaultExpanded={false} clientes={clientes} onUpdateStatus={onUpdateStatus} tallerInfo={tallerInfo} onDataRefresh={onDataRefresh} />
-                        </>
-                    ) : (
-                        <div className="space-y-3">
-                            {trabajos.map(trabajo => {
-                                const cliente = clientes.find(c => c.id === trabajo.clienteId);
-                                const vehiculo = cliente?.vehiculos.find(v => v.id === trabajo.vehiculoId);
-                                return (
-                                    <JobCard
-                                        key={trabajo.id}
-                                        trabajo={trabajo}
-                                        cliente={cliente}
-                                        vehiculo={vehiculo}
-                                        onUpdateStatus={onUpdateStatus}
-                                        tallerInfo={tallerInfo}
-                                        clientes={clientes}
-                                        onDataRefresh={onDataRefresh}
-                                    />
-                                );
-                            })}
-                        </div>
-                    )
-                ) : (
-                    <div className="h-32 flex flex-col items-center justify-center text-center opacity-60">
-                        <p className="text-xs text-taller-gray dark:text-gray-400">Sin trabajos</p>
-                    </div>
-                )}
+            <div className="flex-1 overflow-y-auto custom-scrollbar p-2">
+                {renderContent()}
             </div>
         </div>
     );
@@ -326,23 +276,11 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
     return (
         <div className="h-full flex flex-col relative">
             <style>{`
-                /* Custom Scrollbar Styles */
-                .custom-scrollbar::-webkit-scrollbar {
-                    width: 5px;
-                }
-                .custom-scrollbar::-webkit-scrollbar-track {
-                    background: transparent;
-                }
-                .custom-scrollbar::-webkit-scrollbar-thumb {
-                    background-color: rgba(156, 163, 175, 0.4);
-                    border-radius: 20px;
-                }
-                .dark .custom-scrollbar::-webkit-scrollbar-thumb {
-                    background-color: rgba(75, 85, 99, 0.4);
-                }
-                .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-                    background-color: rgba(156, 163, 175, 0.7);
-                }
+                .custom-scrollbar::-webkit-scrollbar { width: 5px; }
+                .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+                .custom-scrollbar::-webkit-scrollbar-thumb { background-color: rgba(156, 163, 175, 0.4); border-radius: 20px; }
+                .dark .custom-scrollbar::-webkit-scrollbar-thumb { background-color: rgba(75, 85, 99, 0.4); }
+                .custom-scrollbar::-webkit-scrollbar-thumb:hover { background-color: rgba(156, 163, 175, 0.7); }
             `}</style>
             
             <div className="flex flex-col gap-4 sm:flex-row sm:justify-between sm:items-center mb-4 lg:mb-4 flex-shrink-0">
@@ -361,7 +299,6 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
                 </div>
             </div>
 
-            {/* Main Content Area */}
             {searchQuery && !hasResults ? (
                 <div className="flex-1 flex flex-col items-center justify-center text-taller-gray dark:text-gray-400">
                     <MagnifyingGlassIcon className="h-16 w-16 mb-4 opacity-50"/>
@@ -381,12 +318,11 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
                             tallerInfo={tallerInfo}
                             onDataRefresh={onDataRefresh}
                             searchQuery={searchQuery}
-                            forceExpanded={true}
+                            isMobileMode={true}
                         />
                     </div>
 
-                    {/* Desktop View: Board Layout */}
-                    {/* Updated container for full height responsive grid behavior */}
+                    {/* Desktop View: Kanban Board */}
                     <div className="hidden lg:flex flex-row gap-4 h-[calc(100vh-160px)] overflow-x-auto pb-2 items-stretch">
                         {statusOrder.map(status => {
                             const jobs = trabajosByStatus[status] || [];
@@ -400,7 +336,7 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
                                         tallerInfo={tallerInfo}
                                         onDataRefresh={onDataRefresh}
                                         searchQuery={searchQuery}
-                                        forceExpanded={false}
+                                        isMobileMode={false}
                                     />
                                 </div>
                             );

@@ -24,7 +24,8 @@ const navItems = [
 ] as const;
 
 const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
-    const [view, setView] = useState<View>(() => (localStorage.getItem('taller_view') as View) || 'dashboard');
+    // Default always to 'dashboard' on mount, ignoring localStorage
+    const [view, setView] = useState<View>('dashboard');
     const [clientes, setClientes] = useState<Cliente[]>([]);
     const [trabajos, setTrabajos] = useState<Trabajo[]>([]);
     const [gastos, setGastos] = useState<Gasto[]>([]);
@@ -34,11 +35,11 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
         direccion: '',
         cuit: '',
         pdfTemplate: 'classic',
-        mobileNavStyle: 'bottom_nav', // Default changed to bottom_nav
+        mobileNavStyle: 'bottom_nav',
         showLogoOnPdf: false,
         showCuitOnPdf: true,
         logoUrl: undefined,
-        headerColor: '#334155', // Default Slate 700
+        headerColor: '#334155',
         appTheme: 'slate',
         fontSize: 'normal'
     });
@@ -46,10 +47,7 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
 
-    // Modified fetchData to allow silent updates (without triggering full screen loading state)
     const fetchData = useCallback(async (showLoader = true) => {
-        // SOLUCIÓN CRÍTICA: Solo mostramos el loader si es la primera carga o se solicita explícitamente.
-        // Si showLoader es false (refresco silencioso), NO tocamos el estado setLoading(true).
         if (showLoader) {
             setLoading(true);
         }
@@ -57,7 +55,7 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) return;
 
-            // Fetch Taller Info from dedicated table
+            // Fetch Taller Info
             const { data: tallerInfoData, error: tallerInfoError } = await supabase
                 .from('taller_info')
                 .select('*')
@@ -65,7 +63,6 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
                 .maybeSingle();
 
             if (!tallerInfoError && tallerInfoData) {
-                // Map snake_case database columns to camelCase TallerInfo type
                 const loadedInfo: TallerInfo = {
                     nombre: tallerInfoData.nombre || '',
                     telefono: tallerInfoData.telefono || '',
@@ -73,21 +70,19 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
                     cuit: tallerInfoData.cuit || '',
                     logoUrl: tallerInfoData.logo_url,
                     pdfTemplate: tallerInfoData.pdf_template || 'classic',
-                    mobileNavStyle: tallerInfoData.mobile_nav_style || 'bottom_nav', // Default fallback to bottom_nav
-                    showLogoOnPdf: tallerInfoData.show_logo_on_pdf === true, // Ensure boolean
-                    showCuitOnPdf: tallerInfoData.show_cuit_on_pdf !== false, // Default to true if null/undefined
+                    mobileNavStyle: tallerInfoData.mobile_nav_style || 'bottom_nav',
+                    showLogoOnPdf: tallerInfoData.show_logo_on_pdf === true,
+                    showCuitOnPdf: tallerInfoData.show_cuit_on_pdf !== false,
                     headerColor: tallerInfoData.header_color || '#334155',
                     appTheme: tallerInfoData.app_theme || 'slate',
-                    fontSize: tallerInfoData.font_size || 'normal', // Map font_size from DB (assuming snake_case in DB logic below)
+                    fontSize: tallerInfoData.font_size || 'normal',
                 };
                 setTallerInfo(loadedInfo);
                 
-                // Apply visual settings immediately
                 if (loadedInfo.appTheme) applyAppTheme(loadedInfo.appTheme);
                 if (loadedInfo.fontSize) applyFontSize(loadedInfo.fontSize);
 
             } else if (!tallerInfoData) {
-                // Fallback to metadata if table is empty (migration scenario)
                 if (user.user_metadata?.taller_info) {
                     setTallerInfo(prev => ({ ...prev, ...user.user_metadata.taller_info }));
                 }
@@ -141,8 +136,6 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
         } catch (error) {
             console.error("Error fetching data:", error);
         } finally {
-            // Solo desactivamos el loader si se había activado (ya sea por showLoader o porque estaba activo)
-            // Para asegurar que si era silent refresh, no haga nada raro, pero si era initial load, lo quite.
             if (showLoader) {
                 setLoading(false);
             }
@@ -150,18 +143,26 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
     }, []);
 
     useEffect(() => {
-        fetchData(true); // Initial load with spinner
+        fetchData(true);
     }, [fetchData]);
 
     useEffect(() => {
-        localStorage.setItem('taller_view', view);
         setIsMobileMenuOpen(false);
-        setSearchQuery(''); // Reset search when changing views
+        setSearchQuery('');
     }, [view]);
     
-    // Silent refresh handler to pass down to children.
-    // Explicitly passes 'false' to ensure UI doesn't flicker/reset.
     const handleSilentRefresh = () => fetchData(false);
+
+    // Optimistic Client Update
+    const handleClientUpdate = (newClient: Cliente) => {
+        setClientes(prev => {
+            const exists = prev.find(c => c.id === newClient.id);
+            if (exists) {
+                return prev.map(c => c.id === newClient.id ? newClient : c);
+            }
+            return [...prev, newClient];
+        });
+    };
 
     const handleUpdateStatus = async (trabajoId: string, newStatus: JobStatus) => {
         try {
@@ -185,8 +186,6 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
              const { data: { user } } = await supabase.auth.getUser();
              if (!user) return;
 
-             // Update in Database Table
-             // Note: Ensure the DB table has font_size column. If not, supabase will ignore it or return error depending on config.
              const { error: dbError } = await supabase.from('taller_info').upsert({
                  taller_id: user.id,
                  nombre: newInfo.nombre,
@@ -200,26 +199,23 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
                  show_cuit_on_pdf: newInfo.showCuitOnPdf,
                  header_color: newInfo.headerColor,
                  app_theme: newInfo.appTheme,
-                 font_size: newInfo.fontSize, // New Field
+                 font_size: newInfo.fontSize,
                  updated_at: new Date().toISOString()
              });
 
              if (dbError) throw dbError;
 
-             // Keep metadata in sync just in case, but app relies on DB now
              await supabase.auth.updateUser({
                  data: { taller_info: newInfo }
              });
 
              setTallerInfo(newInfo);
-             
-             // Ensure visuals are applied
              if (newInfo.appTheme) applyAppTheme(newInfo.appTheme);
              if (newInfo.fontSize) applyFontSize(newInfo.fontSize);
 
         } catch (error: any) {
             console.error("Error updating taller info:", error);
-            alert(`Error al guardar configuración: ${error.message || 'Error desconocido'}. Verifique si la columna 'font_size' existe en la base de datos.`);
+            alert(`Error al guardar configuración: ${error.message || 'Error desconocido'}.`);
             throw error;
         }
     };
@@ -235,7 +231,7 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
             case 'trabajos':
                 return <Trabajos trabajos={trabajos} clientes={clientes} onUpdateStatus={handleUpdateStatus} onDataRefresh={handleSilentRefresh} tallerInfo={tallerInfo} searchQuery={searchQuery} />;
             case 'clientes':
-                return <Clientes clientes={clientes} trabajos={trabajos} onDataRefresh={handleSilentRefresh} searchQuery={searchQuery} />;
+                return <Clientes clientes={clientes} trabajos={trabajos} onDataRefresh={handleSilentRefresh} searchQuery={searchQuery} onClientUpdate={handleClientUpdate} />;
             case 'ajustes':
                 return <Ajustes tallerInfo={tallerInfo} onUpdateTallerInfo={handleUpdateTallerInfo} onLogout={onLogout} searchQuery={searchQuery} />;
             default:
@@ -246,10 +242,7 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
     const sidebarClasses = `fixed inset-y-0 left-0 z-30 w-64 bg-white dark:bg-gray-800 transform transition-transform duration-300 ease-in-out shadow-lg md:translate-x-0 md:static md:inset-0 ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`;
 
     return (
-        // Usamos h-[100dvh] para que la app ocupe siempre el 100% del viewport dinámico en móviles
-        // y overflow-hidden para evitar que el contenedor principal haga scroll.
         <div className="flex h-[100dvh] bg-taller-light dark:bg-taller-dark text-taller-dark dark:text-taller-light overflow-hidden transition-colors duration-300">
-            {/* Sidebar Navigation */}
             <aside className={sidebarClasses}>
                 <div className="h-full flex flex-col">
                     <div className="h-20 flex items-center justify-center border-b dark:border-gray-700">
@@ -283,7 +276,6 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
                 </div>
             </aside>
 
-            {/* Overlay for mobile sidebar */}
             {isMobileMenuOpen && (
                 <div 
                     className="fixed inset-0 bg-black bg-opacity-50 z-20 md:hidden"
@@ -291,7 +283,6 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
                 />
             )}
 
-            {/* Main Content */}
             <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
                 <Header 
                     tallerName={tallerInfo.nombre} 
@@ -302,7 +293,6 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
                     onSearchChange={setSearchQuery}
                 />
                 
-                {/* El scroll ocurre SOLO aquí adentro */}
                 <main className="flex-1 overflow-y-auto p-4 md:p-6 scroll-smooth overscroll-contain">
                     {loading ? (
                         <div className="flex h-full items-center justify-center">
@@ -313,7 +303,6 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
                     )}
                 </main>
 
-                {/* Bottom Navigation for Mobile (optional via settings) */}
                 {tallerInfo.mobileNavStyle === 'bottom_nav' && (
                     <div className="md:hidden bg-white dark:bg-gray-800 border-t dark:border-gray-700 pb-5 flex-shrink-0">
                          <nav className="flex justify-around items-center h-16">

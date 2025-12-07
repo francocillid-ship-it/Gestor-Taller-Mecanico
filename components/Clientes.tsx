@@ -13,6 +13,7 @@ interface ClientesProps {
     trabajos: Trabajo[];
     onDataRefresh: () => void;
     searchQuery: string;
+    onClientUpdate?: (client: Cliente) => void;
 }
 
 interface ClientCardProps {
@@ -31,7 +32,6 @@ const ClientCard: React.FC<ClientCardProps> = ({ cliente, trabajos, onEdit, onCo
     const clientTrabajos = trabajos.filter(t => t.clienteId === cliente.id);
     const cardRef = useRef<HTMLDivElement>(null);
     
-    // Auto-expand if search is active (forceExpand)
     useEffect(() => {
         if (forceExpand) {
             setIsExpanded(true);
@@ -40,7 +40,6 @@ const ClientCard: React.FC<ClientCardProps> = ({ cliente, trabajos, onEdit, onCo
         }
     }, [forceExpand]);
 
-    // Auto-scroll logic
     useEffect(() => {
         if (isExpanded && cardRef.current) {
             const timer = setTimeout(() => {
@@ -54,7 +53,6 @@ const ClientCard: React.FC<ClientCardProps> = ({ cliente, trabajos, onEdit, onCo
                 const isTopHidden = rect.top < headerOffset;
                 const isBottomHidden = rect.bottom > windowHeight;
 
-                // Solo hacemos scroll si es necesario (si está oculto arriba o abajo)
                 if (isTopHidden || isBottomHidden) {
                     element.scrollIntoView({
                         behavior: 'smooth',
@@ -74,15 +72,12 @@ const ClientCard: React.FC<ClientCardProps> = ({ cliente, trabajos, onEdit, onCo
             return;
         }
         
-        // Retrieve temp password if available from session (just created) or stored
         const tempPass = localStorage.getItem(`temp_pass_${cliente.id}`);
 
         let shareUrl = window.location.origin;
         if (tempPass) {
-             // Construct magic link with credentials
              shareUrl = `${window.location.origin}/?type=invite&email=${encodeURIComponent(cliente.email)}&password=${encodeURIComponent(tempPass)}`;
         } else {
-             // Si no hay password temporal (cliente antiguo), enviamos al login normal.
              shareUrl = window.location.origin;
         }
 
@@ -91,26 +86,21 @@ const ClientCard: React.FC<ClientCardProps> = ({ cliente, trabajos, onEdit, onCo
 
         setSendingAccess(true);
         try {
-            // Se define un mensaje de instrucción CLARO y se separa del enlace para evitar duplicidad.
-            
             const messageHeader = tempPass
                 ? `Hola ${cliente.nombre}, accede a tu historial de trabajos en el taller. Tu sistema generó un acceso automático, por seguridad se te pedirá cambiar la contraseña al entrar.`
                 : `Hola ${cliente.nombre}, accede a tu historial de trabajos en el taller ingresando con tu email y contraseña.`;
 
             if (navigator.share) {
                 try {
-                    // Si el navegador soporta compartir nativo, enviamos el texto y la URL en campos separados
-                    // para que el sistema operativo maneje la presentación (evitando duplicar el link en el texto).
                     await navigator.share({
                         title: 'Acceso al Portal Taller',
                         text: messageHeader, 
                         url: shareUrl
                     });
                 } catch (shareError) {
-                    // Fallback si el usuario cancela o hay error en share API, copiamos al portapapeles.
                     if ((shareError as any).name !== 'AbortError') {
                          const combinedMessage = `${messageHeader}\n\n${shareUrl}`;
-                         alert("Enlace copiado al portapapeles (Compartir no soportado).");
+                         alert("Enlace copiado al portapapeles.");
                          await navigator.clipboard.writeText(combinedMessage);
                     }
                 }
@@ -120,7 +110,6 @@ const ClientCard: React.FC<ClientCardProps> = ({ cliente, trabajos, onEdit, onCo
                  alert("Enlace de acceso copiado al portapapeles. Puedes pegarlo en WhatsApp.");
             }
             
-            // Clean up temp pass after sharing once (security practice)
             if (tempPass) {
                 localStorage.removeItem(`temp_pass_${cliente.id}`);
             }
@@ -227,7 +216,6 @@ const ClientCard: React.FC<ClientCardProps> = ({ cliente, trabajos, onEdit, onCo
                             }) : <p className="text-sm text-taller-gray dark:text-gray-400">No hay trabajos registrados.</p>}
                         </div>
                         
-                        {/* Botones de Acción Equilibrados */}
                         <div className="mt-6 flex gap-3 w-full">
                             <button
                                 onClick={(e) => { e.stopPropagation(); onCreateJob(cliente.id); }}
@@ -251,7 +239,7 @@ const ClientCard: React.FC<ClientCardProps> = ({ cliente, trabajos, onEdit, onCo
     );
 };
 
-const Clientes: React.FC<ClientesProps> = ({ clientes, trabajos, onDataRefresh, searchQuery }) => {
+const Clientes: React.FC<ClientesProps> = ({ clientes, trabajos, onDataRefresh, searchQuery, onClientUpdate }) => {
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [clienteToEdit, setClienteToEdit] = useState<Cliente | null>(null);
     const [vehicleToConfig, setVehicleToConfig] = useState<Vehiculo | null>(null);
@@ -265,6 +253,15 @@ const Clientes: React.FC<ClientesProps> = ({ clientes, trabajos, onDataRefresh, 
     const handleCloseModal = () => {
         setIsCreateModalOpen(false);
         setClienteToEdit(null);
+    };
+
+    const handleClientSuccess = (newClient?: Cliente) => {
+        handleCloseModal();
+        if (newClient && onClientUpdate) {
+            onClientUpdate(newClient);
+        } else {
+            onDataRefresh();
+        }
     };
 
     const filteredClientes = useMemo(() => {
@@ -284,7 +281,6 @@ const Clientes: React.FC<ClientesProps> = ({ clientes, trabajos, onDataRefresh, 
             });
         }
 
-        // Ordenamiento alfabético por nombre
         return result.sort((a, b) => {
             const nameA = `${a.nombre} ${a.apellido || ''}`.toLowerCase();
             const nameB = `${b.nombre} ${b.apellido || ''}`.toLowerCase();
@@ -332,10 +328,7 @@ const Clientes: React.FC<ClientesProps> = ({ clientes, trabajos, onDataRefresh, 
                  <CrearClienteModal
                     clienteToEdit={clienteToEdit}
                     onClose={handleCloseModal}
-                    onSuccess={() => {
-                        handleCloseModal();
-                        onDataRefresh();
-                    }}
+                    onSuccess={handleClientSuccess}
                 />
             )}
 

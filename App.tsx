@@ -27,33 +27,25 @@ const App: React.FC = () => {
 
     useEffect(() => {
         const processInitialParams = async () => {
-            // Analizar parámetros del hash y query de la URL para determinar la acción inicial.
-            // NOTA CRÍTICA: No debemos limpiar el hash (window.history.replaceState) aquí inmediatamente.
-            // Supabase necesita leer el access_token y type del hash para establecer la sesión.
             const hashParams = new URLSearchParams(window.location.hash.substring(1));
             const searchParams = new URLSearchParams(window.location.search);
             
-            // Verificamos el 'type' tanto en el query string como en el hash
             const type = searchParams.get('type') || hashParams.get('type');
 
             if (type === 'recovery') {
                 setAuthAction('PASSWORD_RECOVERY');
             } else if (type === 'invite') {
-                 // Logic for "Magic Link" with credentials in URL
                  const email = searchParams.get('email');
                  const password = searchParams.get('password');
                  
                  if (email && password) {
-                     // Try to auto-login
                      const { data, error } = await supabase.auth.signInWithPassword({
                          email,
                          password
                      });
                      
                      if (!error && data.session) {
-                         // Successful login via magic link -> Force change password
                          setAuthAction('SET_INITIAL_PASSWORD');
-                         // Clear URL to hide credentials
                          window.history.replaceState(null, '', window.location.pathname);
                      }
                  } else {
@@ -69,7 +61,6 @@ const App: React.FC = () => {
         const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
             setSession(session);
 
-            // Supabase emite este evento específicamente cuando se entra por link de recuperación
             if (_event === 'PASSWORD_RECOVERY') {
                 setAuthAction('PASSWORD_RECOVERY');
             }
@@ -79,7 +70,6 @@ const App: React.FC = () => {
                 setRole(null);
                 setUser(null);
                 setClientData(null);
-                // Reset to default theme on logout
                 applyAppTheme('slate'); 
             }
         });
@@ -94,7 +84,6 @@ const App: React.FC = () => {
             setLoading(true);
             
             if (authAction !== 'APP') {
-                // Durante recuperación, necesitamos la sesión activa para poder cambiar el password (updateUser)
                 setUser(session?.user ?? null);
                 setRole(null);
                 setClientData(null);
@@ -133,8 +122,6 @@ const App: React.FC = () => {
                     if (clientProfile) {
                         setClientData(clientProfile as any);
                         
-                        // FETCH UPDATED TALLER INFO FROM DB
-                        // Instead of relying on stale metadata
                         const { data: tallerInfoData, error: tallerInfoError } = await supabase
                             .from('taller_info')
                             .select('*')
@@ -149,21 +136,19 @@ const App: React.FC = () => {
                                 cuit: tallerInfoData.cuit || '',
                                 logoUrl: tallerInfoData.logo_url,
                                 pdfTemplate: tallerInfoData.pdf_template || 'classic',
-                                mobileNavStyle: tallerInfoData.mobile_nav_style || 'bottom_nav', // Default to bottom_nav
+                                mobileNavStyle: tallerInfoData.mobile_nav_style || 'bottom_nav',
                                 showLogoOnPdf: tallerInfoData.show_logo_on_pdf === true,
-                                showCuitOnPdf: tallerInfoData.show_cuit_on_pdf !== false, // Default to true if null/undefined
+                                showCuitOnPdf: tallerInfoData.show_cuit_on_pdf !== false,
                                 headerColor: tallerInfoData.header_color || '#334155',
                                 appTheme: tallerInfoData.app_theme || 'slate'
                             };
                             setTallerInfoForClient(info);
                             
-                            // Apply the workshop's theme for the client view
                             if (info.appTheme) {
                                 applyAppTheme(info.appTheme);
                             }
 
                         } else {
-                            // Fallback to metadata if DB entry missing
                             const tallerInfo = currentUser.user_metadata?.taller_info_ref || null;
                             const tallerName = tallerInfo?.nombre || currentUser.user_metadata?.taller_nombre_ref || 'Mi Taller';
                             const fallbackInfo = { ...tallerInfo, nombre: tallerName };
@@ -214,10 +199,7 @@ const App: React.FC = () => {
     };
     
     const handleAuthSuccess = () => {
-        // Limpiamos la URL una vez que el proceso ha sido exitoso
         window.history.replaceState(null, '', window.location.pathname);
-        // NO cerramos sesión aquí. Al cambiar authAction a 'APP', el useEffect detectará la sesión activa y cargará el portal.
-        // supabase.auth.signOut(); 
         setAuthAction('APP');
     };
 

@@ -9,7 +9,7 @@ import CameraRecognitionModal from './CameraRecognitionModal';
 
 interface CrearClienteModalProps {
     onClose: () => void;
-    onSuccess: (newClientId?: string, hasVehicles?: boolean) => void;
+    onSuccess: (newClient?: Cliente) => void; 
     onClientCreated?: (newClientId: string) => void;
     clienteToEdit?: Cliente | null;
 }
@@ -52,7 +52,6 @@ const CrearClienteModal: React.FC<CrearClienteModalProps> = ({ onClose, onSucces
         }
     }, [clienteToEdit]);
 
-    // Bloquear el scroll del body cuando el modal está abierto
     useEffect(() => {
         document.body.style.overflow = 'hidden';
         return () => {
@@ -87,23 +86,16 @@ const CrearClienteModal: React.FC<CrearClienteModalProps> = ({ onClose, onSucces
     const handleDeleteClient = async () => {
         if (!clienteToEdit) return;
         setIsDeleting(true);
-        setError(''); // Clear previous errors
+        setError(''); 
         try {
-            // Step 1: Delete all associated data from public tables.
             await supabase.from('trabajos').delete().eq('cliente_id', clienteToEdit.id);
             await supabase.from('vehiculos').delete().eq('cliente_id', clienteToEdit.id);
             await supabase.from('clientes').delete().eq('id', clienteToEdit.id);
-
-            // Step 2: Delete the user from the authentication system.
             const { error: rpcError } = await supabase.rpc('delete_auth_user', { user_id: clienteToEdit.id });
 
-            if (rpcError) {
-                if (rpcError.code === '42883') {
-                    throw new Error("La función de base de datos 'delete_auth_user' no existe. Los datos del cliente fueron eliminados, pero su cuenta de acceso no.");
-                }
+            if (rpcError && rpcError.code !== '42883') {
                 throw rpcError;
             }
-
             onSuccess();
         } catch (err: any) {
             setError(err.message || 'Error al eliminar el cliente.');
@@ -117,7 +109,6 @@ const CrearClienteModal: React.FC<CrearClienteModalProps> = ({ onClose, onSucces
         if (field === 'marca' || field === 'modelo' || field === 'matricula' || field === 'numero_chasis' || field === 'numero_motor') {
             processedValue = value.toUpperCase();
         }
-
         const updatedVehicles = [...vehicles];
         updatedVehicles[index] = { ...updatedVehicles[index], [field]: processedValue };
         setVehicles(updatedVehicles);
@@ -142,14 +133,12 @@ const CrearClienteModal: React.FC<CrearClienteModalProps> = ({ onClose, onSucces
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        e.stopPropagation(); // Stop bubbling to prevent parent form submission
+        e.stopPropagation(); 
         
         setIsSubmitting(true);
         setError('');
         try {
-            let successId: string | undefined = undefined;
-            // Determine if we are adding at least one vehicle (for polling logic later)
-            const hasVehiclesToAdd = isEditMode ? vehicles.length > 0 : true; // In create mode we always add the initial vehicle
+            let resultClient: Cliente | undefined = undefined;
 
             if (isEditMode) {
                 if (clienteToEdit && clienteToEdit.email !== email && email.trim() !== '') {
@@ -157,39 +146,29 @@ const CrearClienteModal: React.FC<CrearClienteModalProps> = ({ onClose, onSucces
                         user_id: clienteToEdit.id,
                         new_email: email
                     });
-
-                    if (rpcError && rpcError.code !== '42883') {
-                         throw new Error(`Error al actualizar el email de acceso: ${rpcError.message}`);
-                    }
+                    if (rpcError && rpcError.code !== '42883') throw new Error(`Error al actualizar email: ${rpcError.message}`);
                 }
 
                 await supabase.from('clientes').update({ nombre, apellido, email, telefono }).eq('id', clienteToEdit!.id);
                 if (deletedVehicleIds.length > 0) await supabase.from('vehiculos').delete().in('id', deletedVehicleIds);
+                
                 for (const vehicle of vehicles) {
                     let yearNumber: number | null = null;
                     if (vehicle.año && vehicle.año.trim() !== '') {
                         yearNumber = parseInt(vehicle.año);
-                        if (isNaN(yearNumber) || yearNumber <= 1900 || yearNumber > new Date().getFullYear() + 2) throw new Error(`Año inválido para ${vehicle.marca} ${vehicle.modelo}.`);
+                        if (isNaN(yearNumber)) throw new Error(`Año inválido para ${vehicle.marca} ${vehicle.modelo}.`);
                     }
-                    
                     const vehicleData = { marca: vehicle.marca, modelo: vehicle.modelo, año: yearNumber, matricula: vehicle.matricula, numero_chasis: vehicle.numero_chasis, numero_motor: vehicle.numero_motor, cliente_id: clienteToEdit!.id };
                     if (vehicle.id) {
-                        const { data: updatedData, error: updateError } = await supabase
-                            .from('vehiculos')
-                            .update(vehicleData)
-                            .eq('id', vehicle.id)
-                            .select();
-
-                        if (updateError) throw updateError;
+                        await supabase.from('vehiculos').update(vehicleData).eq('id', vehicle.id);
                     } else {
                         await supabase.from('vehiculos').insert(vehicleData);
                     }
                 }
-                successId = clienteToEdit!.id;
                 
-                // ARTIFICIAL DELAY for Edit Mode
-                await new Promise(resolve => setTimeout(resolve, 800));
-                onSuccess(successId, hasVehiclesToAdd);
+                // Fetch updated
+                const { data } = await supabase.from('clientes').select('*, vehiculos(*)').eq('id', clienteToEdit!.id).single();
+                if(data) resultClient = data as Cliente;
 
             } else {
                 let yearNumber: number | null = null;
@@ -201,23 +180,16 @@ const CrearClienteModal: React.FC<CrearClienteModalProps> = ({ onClose, onSucces
                 }
 
                 const { data: { session: currentTallerSession } } = await supabase.auth.getSession();
-                if (!currentTallerSession || !currentTallerSession.user) {
-                    throw new Error("Sesión de taller no encontrada. Por favor, inicie sesión de nuevo.");
-                }
+                if (!currentTallerSession || !currentTallerSession.user) throw new Error("Sesión de taller no encontrada.");
                 const tallerUser = currentTallerSession.user;
 
-                // Generamos una contraseña temporal segura para que el taller pueda compartir el link de acceso.
-                // IMPORTANTE: Ponemos los caracteres especiales (!Aa1) EN EL MEDIO para que la URL
-                // no termine en signo de admiración, lo cual rompe el link en WhatsApp.
-                const tempPassword = Math.random().toString(36).slice(-8) + '!Aa1' + Math.random().toString(36).slice(-4);
+                // Password with special chars IN THE MIDDLE
+                const tempPassword = Math.random().toString(36).slice(-4) + '!Aa1' + Math.random().toString(36).slice(-4);
                 
                 const userEmail = email.trim();
                 const shouldCreatePortalAccess = userEmail !== '';
                 const signUpEmail = shouldCreatePortalAccess ? userEmail : `${crypto.randomUUID()}@taller-placeholder.com`;
 
-                // HACK: Supabase client-side signup logs out the current user.
-                // We save the session, signup, then restore the session immediately.
-                
                 const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
                     email: signUpEmail,
                     password: tempPassword,
@@ -226,13 +198,11 @@ const CrearClienteModal: React.FC<CrearClienteModalProps> = ({ onClose, onSucces
                             role: 'cliente',
                             taller_nombre_ref: (tallerUser.user_metadata?.taller_info as TallerInfo)?.nombre || 'Mi Taller',
                             taller_info_ref: tallerUser.user_metadata?.taller_info,
-                            // Store the temp password in metadata temporarily so the workshop can see it if needed (optional security tradeoff)
-                            // or better, we just use it to generate the magic link once.
                         },
                     }
                 });
                 
-                // RESTORE WORKSHOP SESSION IMMEDIATELY
+                // Restore session
                 const { error: sessionError } = await supabase.auth.setSession({
                     access_token: currentTallerSession.access_token,
                     refresh_token: currentTallerSession.refresh_token,
@@ -243,35 +213,32 @@ const CrearClienteModal: React.FC<CrearClienteModalProps> = ({ onClose, onSucces
                 
                 const newUserId = signUpData.user.id;
                 
-                // If we created a real email user, we store the temp password in localStorage temporarily
-                // so Clientes.tsx can generate the "Magic Link" button immediately after creation.
                 if (shouldCreatePortalAccess) {
                     localStorage.setItem(`temp_pass_${newUserId}`, tempPassword);
                 }
 
                 if (sessionError) throw new Error("Error al restaurar sesión.");
                 
-                // CRITICAL: Notify parent component about the new ID *before* any potential reload
-                if (onClientCreated) {
-                    onClientCreated(newUserId);
-                }
-
-                successId = newUserId;
+                if (onClientCreated) onClientCreated(newUserId);
 
                 const { error: clientInsertError } = await supabase
                     .from('clientes')
                     .insert({ id: newUserId, taller_id: tallerUser.id, nombre, apellido, email: userEmail, telefono });
 
-                if (clientInsertError) throw new Error(`Usuario creado, pero falló la creación del perfil: ${clientInsertError.message}`);
+                if (clientInsertError) throw new Error(`Error en perfil: ${clientInsertError.message}`);
                 
                 const { error: vehicleInsertError } = await supabase
                     .from('vehiculos')
                     .insert({ cliente_id: newUserId, marca, modelo, año: yearNumber, matricula, numero_chasis, numero_motor });
                 
-                if (vehicleInsertError) throw new Error(`Cliente creado, pero falló al agregar el vehículo: ${vehicleInsertError.message}`);
+                if (vehicleInsertError) throw new Error(`Error en vehículo: ${vehicleInsertError.message}`);
                 
-                onSuccess(successId, true);
+                // Fetch full new client
+                const { data } = await supabase.from('clientes').select('*, vehiculos(*)').eq('id', newUserId).single();
+                if (data) resultClient = data as Cliente;
             }
+            
+            onSuccess(resultClient);
 
         } catch (err: any) {
             console.error("Error submit client", err);
