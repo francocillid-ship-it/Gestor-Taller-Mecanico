@@ -412,7 +412,7 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
                 </div>
             )}
 
-            {isJobModalOpen && createPortal(
+            {isJobModalOpen && (
                 <CrearTrabajoModal
                     clientes={clientes}
                     onClose={() => setIsJobModalOpen(false)}
@@ -422,8 +422,7 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
                     }}
                     onDataRefresh={onDataRefresh}
                     initialClientId={initialClientIdForModal}
-                />,
-                document.body
+                />
             )}
         </div>
     );

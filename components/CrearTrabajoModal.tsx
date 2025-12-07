@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { supabase } from '../supabaseClient';
 import type { Cliente, Parte, Trabajo } from '../types';
 import { JobStatus } from '../types';
@@ -413,15 +414,23 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
         }
     };
 
-    return (
-        <>
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4">
-                <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-3xl max-h-[80dvh] overflow-y-auto">
-                    <div className="flex justify-between items-center mb-4">
-                        <h2 className="text-xl font-bold text-taller-dark dark:text-taller-light">{isEditMode ? 'Editar Trabajo' : 'Crear Nuevo Presupuesto'}</h2>
-                        <button onClick={onClose} className="text-taller-gray dark:text-gray-400 hover:text-taller-dark dark:hover:text-white"><XMarkIcon className="h-6 w-6" /></button>
-                    </div>
-                    <form onSubmit={handleSubmit} className="space-y-4 text-taller-dark dark:text-taller-light">
+    const modalContent = (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex justify-center items-end sm:items-center z-[100] sm:p-4">
+            <div className="bg-white dark:bg-gray-800 w-full h-[100dvh] sm:h-auto sm:max-h-[90vh] sm:max-w-3xl sm:rounded-xl shadow-2xl flex flex-col overflow-hidden">
+                
+                {/* Header - Fixed */}
+                <div className="flex justify-between items-center p-4 border-b dark:border-gray-700 bg-white dark:bg-gray-800 flex-shrink-0">
+                    <h2 className="text-lg sm:text-xl font-bold text-taller-dark dark:text-taller-light truncate pr-4">
+                        {isEditMode ? 'Editar Trabajo' : 'Crear Nuevo Presupuesto'}
+                    </h2>
+                    <button onClick={onClose} className="p-2 -mr-2 text-taller-gray dark:text-gray-400 hover:text-taller-dark dark:hover:text-white rounded-full hover:bg-gray-100 dark:hover:bg-gray-700">
+                        <XMarkIcon className="h-6 w-6" />
+                    </button>
+                </div>
+                
+                {/* Scrollable Content */}
+                <div className="flex-1 overflow-y-auto p-4 space-y-5 overscroll-contain">
+                    <form id="job-form" onSubmit={handleSubmit} className="space-y-5 text-taller-dark dark:text-taller-light pb-24 sm:pb-0">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
                                 <div className="flex justify-between items-center mb-1">
@@ -430,14 +439,14 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
                                         <UserPlusIcon className="h-4 w-4"/> Nuevo Cliente
                                     </button>
                                 </div>
-                                <select id="cliente" value={selectedClienteId} onChange={e => setSelectedClienteId(e.target.value)} className="block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-taller-primary focus:border-taller-primary sm:text-sm" required>
+                                <select id="cliente" value={selectedClienteId} onChange={e => setSelectedClienteId(e.target.value)} className="block w-full px-3 py-2.5 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-taller-primary focus:border-transparent sm:text-sm" required>
                                     <option value="">Seleccione un cliente</option>
                                     {mergedClientes.map(c => <option key={c.id} value={c.id}>{`${c.nombre} ${c.apellido || ''}`.trim()}</option>)}
                                 </select>
                             </div>
                             <div>
                                 <label htmlFor="vehiculo" className="block text-sm font-medium text-taller-gray dark:text-gray-400 mb-1">Vehículo</label>
-                                <select id="vehiculo" value={selectedVehiculoId} onChange={e => setSelectedVehiculoId(e.target.value)} disabled={!selectedClienteId} className="block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-taller-primary focus:border-taller-primary sm:text-sm disabled:bg-gray-200 dark:disabled:bg-gray-700/50" required>
+                                <select id="vehiculo" value={selectedVehiculoId} onChange={e => setSelectedVehiculoId(e.target.value)} disabled={!selectedClienteId} className="block w-full px-3 py-2.5 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-taller-primary focus:border-transparent sm:text-sm disabled:bg-gray-100 dark:disabled:bg-gray-700/50 disabled:text-gray-400" required>
                                     <option value="">Seleccione un vehículo</option>
                                     {selectedClientVehiculos.map(v => <option key={v.id} value={v.id}>{`${v.marca} ${v.modelo} (${v.matricula})`}</option>)}
                                 </select>
@@ -446,143 +455,169 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
 
                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                              <div className="md:col-span-2">
-                                <label htmlFor="descripcion" className="block text-sm font-medium text-taller-gray dark:text-gray-400">Descripción del Problema/Trabajo (Opcional)</label>
-                                <textarea id="descripcion" value={descripcion} onChange={e => setDescripcion(e.target.value)} rows={2} className="mt-1 block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-taller-primary focus:border-taller-primary sm:text-sm" />
+                                <label htmlFor="descripcion" className="block text-sm font-medium text-taller-gray dark:text-gray-400 mb-1">Descripción (Opcional)</label>
+                                <textarea id="descripcion" value={descripcion} onChange={e => setDescripcion(e.target.value)} rows={2} className="block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-taller-primary focus:border-transparent sm:text-sm" />
                             </div>
                              <div>
-                                <label htmlFor="kilometraje" className="block text-sm font-medium text-taller-gray dark:text-gray-400">Kilometraje (Opcional)</label>
+                                <label htmlFor="kilometraje" className="block text-sm font-medium text-taller-gray dark:text-gray-400 mb-1">Kilometraje</label>
                                 <input 
                                     type="number" 
                                     id="kilometraje" 
                                     value={kilometraje} 
                                     onChange={e => setKilometraje(e.target.value)} 
                                     placeholder="Ej. 150000"
-                                    className="mt-1 block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-taller-primary focus:border-taller-primary sm:text-sm" 
+                                    className="block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-taller-primary focus:border-transparent sm:text-sm" 
                                 />
                             </div>
                         </div>
 
                         {isEditMode && (
                             <div>
-                                <label htmlFor="status" className="block text-sm font-medium text-taller-gray dark:text-gray-400">Estado del Trabajo</label>
-                                <select id="status" value={status} onChange={e => setStatus(e.target.value as JobStatus)} className="mt-1 block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-taller-primary focus:border-taller-primary sm:text-sm">
+                                <label htmlFor="status" className="block text-sm font-medium text-taller-gray dark:text-gray-400 mb-1">Estado</label>
+                                <select id="status" value={status} onChange={e => setStatus(e.target.value as JobStatus)} className="block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-taller-primary focus:border-transparent sm:text-sm">
                                     {Object.values(JobStatus).map(s => <option key={s} value={s}>{s}</option>)}
                                 </select>
                             </div>
                         )}
 
                         <div>
-                            <h3 className="text-md font-semibold text-taller-dark dark:text-taller-light mb-2">Items y Servicios</h3>
-                            {partes.map((parte, index) => (
-                                <div 
-                                    key={parte._id} // Using unique ID as key is critical for dragging
-                                    data-index={index}
-                                    className={`flex items-center gap-2 mb-2 transition-opacity duration-200 ${draggedItemIndex === index ? 'opacity-50 border-dashed border-2 border-taller-primary p-2 rounded-md' : ''}`}
-                                    draggable={true}
-                                    onDragStart={() => handleDragStart(index)}
-                                    onDragEnter={() => handleDragEnter(index)}
-                                    onDragEnd={handleDragEnd}
-                                    onDragOver={(e) => e.preventDefault()}
-                                >
-                                    {parte.isCategory ? (
-                                        <>
-                                            <div 
-                                                className="cursor-move p-2 text-gray-400 hover:text-taller-primary touch-none select-none"
-                                                onContextMenu={(e) => e.preventDefault()}
-                                                onTouchStart={() => handleTouchStart(index)}
-                                                onTouchMove={handleTouchMove}
-                                                onTouchEnd={handleTouchEnd}
-                                            >
-                                                <Bars3Icon className="h-5 w-5"/>
+                            <div className="flex items-center justify-between mb-2">
+                                <h3 className="text-md font-semibold text-taller-dark dark:text-taller-light">Items y Servicios</h3>
+                            </div>
+                            
+                            <div className="space-y-3">
+                                {partes.map((parte, index) => (
+                                    <div 
+                                        key={parte._id}
+                                        data-index={index}
+                                        className={`flex flex-col sm:flex-row items-stretch sm:items-center gap-2 p-2 rounded-lg border dark:border-gray-700 transition-colors ${draggedItemIndex === index ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-300' : 'bg-gray-50 dark:bg-gray-700/30'}`}
+                                        draggable={true}
+                                        onDragStart={() => handleDragStart(index)}
+                                        onDragEnter={() => handleDragEnter(index)}
+                                        onDragEnd={handleDragEnd}
+                                        onDragOver={(e) => e.preventDefault()}
+                                    >
+                                        {parte.isCategory ? (
+                                            <div className="flex items-center gap-2 w-full">
+                                                 <div 
+                                                    className="cursor-move p-1 text-gray-400 hover:text-taller-primary touch-none"
+                                                    onTouchStart={() => handleTouchStart(index)}
+                                                    onTouchMove={handleTouchMove}
+                                                    onTouchEnd={handleTouchEnd}
+                                                >
+                                                    <Bars3Icon className="h-5 w-5"/>
+                                                </div>
+                                                <TagIcon className="h-5 w-5 text-taller-accent flex-shrink-0"/>
+                                                <input 
+                                                    type="text" 
+                                                    placeholder="Nombre de la categoría" 
+                                                    value={parte.nombre} 
+                                                    onChange={e => handleParteChange(index, 'nombre', e.target.value)} 
+                                                    className="flex-grow min-w-0 px-3 py-2 bg-transparent border-b border-transparent focus:border-taller-primary focus:outline-none font-semibold text-taller-dark dark:text-taller-light" 
+                                                />
+                                                <button type="button" onClick={() => removeParte(index)} className="p-2 text-red-500 hover:bg-red-100 dark:hover:bg-red-900/50 rounded-full">
+                                                    <TrashIcon className="h-5 w-5"/>
+                                                </button>
                                             </div>
-                                            <div className="p-2 bg-taller-accent/10 rounded-full"><TagIcon className="h-5 w-5 text-taller-accent"/></div>
-                                            <input type="text" placeholder="Nombre de la categoría" value={parte.nombre} onChange={e => handleParteChange(index, 'nombre', e.target.value)} className="block w-full px-3 py-2 bg-blue-50 dark:bg-gray-700/50 border border-blue-200 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-taller-primary focus:border-taller-primary sm:text-sm font-semibold" />
-                                            <div className="flex gap-1 flex-shrink-0">
-                                                <button type="button" onClick={() => removeParte(index)} className="p-2 text-red-500 hover:bg-red-100 dark:hover:bg-red-900/50 rounded-full"><TrashIcon className="h-5 w-5"/></button>
-                                            </div>
-                                        </>
-                                    ) : (
-                                        <div className={`grid grid-cols-6 sm:grid-cols-[auto_auto_1fr_130px_70px_100px_auto] items-center gap-2 w-full p-2 rounded-md ${parte.isService ? 'bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800' : 'bg-gray-50 dark:bg-gray-700/30'}`}>
-                                            <div 
-                                                className="col-span-1 sm:col-span-1 cursor-move text-gray-400 hover:text-taller-primary touch-none flex justify-center select-none"
-                                                onContextMenu={(e) => e.preventDefault()}
-                                                onTouchStart={() => handleTouchStart(index)}
-                                                onTouchMove={handleTouchMove}
-                                                onTouchEnd={handleTouchEnd}
-                                            >
-                                                <Bars3Icon className="h-5 w-5"/>
-                                            </div>
-                                            <div className="col-span-5 sm:col-span-1 flex justify-center sm:justify-start">
-                                                {parte.isService ? (
-                                                    <div title="Servicio (Mano de Obra)" className="p-1.5 bg-blue-100 dark:bg-blue-900 rounded text-blue-600 dark:text-blue-300">
-                                                        <WrenchScrewdriverIcon className="h-4 w-4"/>
+                                        ) : (
+                                            <>
+                                                {/* Mobile Row Layout: Header with Drag, Icon, Name, Delete */}
+                                                <div className="flex items-center gap-2 sm:hidden w-full">
+                                                     <div 
+                                                        className="cursor-move p-1 text-gray-400 touch-none"
+                                                        onTouchStart={() => handleTouchStart(index)}
+                                                        onTouchMove={handleTouchMove}
+                                                        onTouchEnd={handleTouchEnd}
+                                                    >
+                                                        <Bars3Icon className="h-5 w-5"/>
                                                     </div>
-                                                ) : (
-                                                    <div title="Ítem (Repuesto)" className="p-1.5 bg-gray-200 dark:bg-gray-600 rounded text-gray-600 dark:text-gray-300">
-                                                        <ArchiveBoxIcon className="h-4 w-4"/>
+                                                    <div className={`p-1.5 rounded-md flex-shrink-0 ${parte.isService ? 'bg-blue-100 text-blue-600' : 'bg-gray-200 text-gray-600'}`}>
+                                                        {parte.isService ? <WrenchScrewdriverIcon className="h-4 w-4"/> : <ArchiveBoxIcon className="h-4 w-4"/>}
                                                     </div>
-                                                )}
-                                            </div>
-                                            
-                                            <textarea
-                                                rows={1}
-                                                placeholder={parte.isService ? "Descripción del servicio" : "Nombre del repuesto"}
-                                                value={parte.nombre}
-                                                onChange={e => handleParteChange(index, 'nombre', e.target.value)}
-                                                onInput={handleTextareaResize}
-                                                className="col-span-6 sm:col-span-1 block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-taller-primary focus:border-taller-primary sm:text-sm resize-none overflow-hidden"
-                                            />
+                                                    <input 
+                                                        type="text" 
+                                                        placeholder={parte.isService ? "Servicio" : "Repuesto"}
+                                                        value={parte.nombre}
+                                                        onChange={e => handleParteChange(index, 'nombre', e.target.value)}
+                                                        className="flex-grow min-w-0 px-2 py-1 bg-transparent focus:outline-none text-sm font-medium"
+                                                    />
+                                                    <button type="button" onClick={() => removeParte(index)} className="p-1 text-red-500">
+                                                        <TrashIcon className="h-5 w-5"/>
+                                                    </button>
+                                                </div>
+                                                
+                                                {/* Mobile Row Layout: Controls (Qty, Price, Type) */}
+                                                <div className="flex items-center gap-2 w-full sm:hidden pl-8">
+                                                     <input 
+                                                        type="number" 
+                                                        placeholder="#" 
+                                                        value={parte.cantidad} 
+                                                        onChange={e => {
+                                                            const val = e.target.value;
+                                                            handleParteChange(index, 'cantidad', val === '' ? '' : parseInt(val, 10));
+                                                        }}
+                                                        className="w-12 px-2 py-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-center text-sm"
+                                                    />
+                                                     <input 
+                                                        type="text" 
+                                                        inputMode="decimal" 
+                                                        placeholder="$ 0" 
+                                                        value={parte.precioUnitario} 
+                                                        onChange={e => handleParteChange(index, 'precioUnitario', formatCurrency(e.target.value))} 
+                                                        className="flex-1 min-w-0 px-2 py-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-sm text-right" 
+                                                    />
+                                                </div>
 
-                                            <select
-                                                value={parte.maintenanceType || ''}
-                                                onChange={e => handleParteChange(index, 'maintenanceType', e.target.value)}
-                                                className="col-span-2 sm:col-span-1 block w-full px-2 py-2 text-xs bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-taller-primary focus:border-taller-primary text-gray-600 dark:text-gray-300"
-                                            >
-                                                <option value="">Etiqueta (Opcional)</option>
-                                                {ALL_MAINTENANCE_OPTS.map(opt => (
-                                                    <option key={opt.key} value={opt.key}>{opt.label}</option>
-                                                ))}
-                                            </select>
+                                                {/* Desktop Layout (Grid) */}
+                                                <div className="hidden sm:grid sm:grid-cols-[auto_auto_1fr_130px_70px_100px_auto] items-center gap-2 w-full">
+                                                    <div className="cursor-move text-gray-400 hover:text-taller-primary" onDragStart={() => handleDragStart(index)}><Bars3Icon className="h-5 w-5"/></div>
+                                                    <div title={parte.isService ? "Servicio" : "Repuesto"} className={`p-1.5 rounded ${parte.isService ? 'bg-blue-100 text-blue-600' : 'bg-gray-200 text-gray-600'}`}>
+                                                        {parte.isService ? <WrenchScrewdriverIcon className="h-4 w-4"/> : <ArchiveBoxIcon className="h-4 w-4"/>}
+                                                    </div>
+                                                    <input 
+                                                        type="text" 
+                                                        value={parte.nombre} 
+                                                        onChange={e => handleParteChange(index, 'nombre', e.target.value)} 
+                                                        className="w-full px-2 py-1 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded text-sm focus:outline-none focus:ring-1 focus:ring-taller-primary"
+                                                    />
+                                                    <select
+                                                        value={parte.maintenanceType || ''}
+                                                        onChange={e => handleParteChange(index, 'maintenanceType', e.target.value)}
+                                                        className="w-full px-2 py-1 text-xs bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded focus:outline-none focus:ring-1 focus:ring-taller-primary"
+                                                    >
+                                                        <option value="">Etiqueta (Opcional)</option>
+                                                        {ALL_MAINTENANCE_OPTS.map(opt => <option key={opt.key} value={opt.key}>{opt.label}</option>)}
+                                                    </select>
+                                                    <input 
+                                                        type="number" 
+                                                        value={parte.cantidad} 
+                                                        onChange={e => handleParteChange(index, 'cantidad', e.target.value === '' ? '' : parseInt(e.target.value, 10))} 
+                                                        className="w-full px-2 py-1 text-center bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded text-sm focus:outline-none focus:ring-1 focus:ring-taller-primary" 
+                                                    />
+                                                    <input 
+                                                        type="text" 
+                                                        value={parte.precioUnitario} 
+                                                        onChange={e => handleParteChange(index, 'precioUnitario', formatCurrency(e.target.value))} 
+                                                        className="w-full px-2 py-1 text-right bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded text-sm focus:outline-none focus:ring-1 focus:ring-taller-primary" 
+                                                    />
+                                                    <button type="button" onClick={() => removeParte(index)} className="p-1.5 text-red-500 hover:bg-red-100 rounded-full"><TrashIcon className="h-4 w-4"/></button>
+                                                </div>
+                                            </>
+                                        )}
+                                    </div>
+                                ))}
 
-                                            <input 
-                                                type="number" 
-                                                placeholder="Cant." 
-                                                value={parte.cantidad} 
-                                                onFocus={(e) => {
-                                                    if (parte.cantidad === 1) {
-                                                        handleParteChange(index, 'cantidad', '');
-                                                    }
-                                                }}
-                                                onBlur={() => {
-                                                    if (parte.cantidad === '' || parte.cantidad === 0) {
-                                                        handleParteChange(index, 'cantidad', 1);
-                                                    }
-                                                }}
-                                                onChange={e => {
-                                                    const val = e.target.value;
-                                                    handleParteChange(index, 'cantidad', val === '' ? '' : parseInt(val, 10));
-                                                }} 
-                                                className="col-span-1 sm:col-span-1 block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-taller-primary focus:border-taller-primary sm:text-sm no-spinner" 
-                                            />
-                                            <input type="text" inputMode="decimal" placeholder="$ 0,00" value={parte.precioUnitario} onChange={e => handleParteChange(index, 'precioUnitario', formatCurrency(e.target.value))} className="col-span-2 sm:col-span-1 block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-taller-primary focus:border-taller-primary sm:text-sm" />
-                                            
-                                            <div className="col-span-1 sm:col-span-1 flex items-center justify-end gap-1">
-                                                <button type="button" onClick={() => removeParte(index)} className="p-2 text-red-500 hover:bg-red-100 dark:hover:bg-red-900/50 rounded-full"><TrashIcon className="h-5 w-5"/></button>
-                                            </div>
-                                        </div>
-                                    )}
+                                <div className="flex flex-wrap items-center gap-2 mt-4 justify-center sm:justify-start">
+                                    <button type="button" onClick={addParte} className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 shadow-sm transition-all active:scale-95">
+                                        <ArchiveBoxIcon className="h-4 w-4 text-gray-500"/> Item
+                                    </button>
+                                    <button type="button" onClick={addService} className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/50 shadow-sm transition-all active:scale-95">
+                                        <WrenchScrewdriverIcon className="h-4 w-4"/> Servicio
+                                    </button>
+                                    <button type="button" onClick={addCategory} className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-orange-700 dark:text-orange-300 bg-orange-50 dark:bg-orange-900/30 border border-orange-200 dark:border-orange-800 rounded-lg hover:bg-orange-100 dark:hover:bg-orange-900/50 shadow-sm transition-all active:scale-95">
+                                        <TagIcon className="h-4 w-4"/> Categoría
+                                    </button>
                                 </div>
-                            ))}
-                           <div className="flex flex-wrap items-center gap-3 mt-4 p-3 bg-gray-50 dark:bg-gray-800 border border-dashed dark:border-gray-600 rounded-lg justify-center sm:justify-start">
-                                <button type="button" onClick={addParte} className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-600 font-medium shadow-sm transition-colors">
-                                    <ArchiveBoxIcon className="h-4 w-4 text-gray-500"/> Agregar Ítem
-                                </button>
-                                <button type="button" onClick={addService} className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-md hover:bg-blue-100 dark:hover:bg-blue-900/50 font-medium shadow-sm transition-colors">
-                                    <WrenchScrewdriverIcon className="h-4 w-4"/> Agregar Servicio
-                                </button>
-                                <button type="button" onClick={addCategory} className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-orange-700 dark:text-orange-300 bg-orange-50 dark:bg-orange-900/30 border border-orange-200 dark:border-orange-800 rounded-md hover:bg-orange-100 dark:hover:bg-orange-900/50 font-medium shadow-sm transition-colors">
-                                    <TagIcon className="h-4 w-4"/> Agregar Categoría
-                                </button>
                             </div>
                         </div>
 
@@ -608,63 +643,86 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
                         )}
 
                         <div className="flex justify-end items-center pt-4 border-t dark:border-gray-700">
-                            <div className="bg-taller-light dark:bg-gray-700/50 p-4 rounded-lg text-right w-full sm:w-auto">
-                                <p className="text-sm text-taller-gray dark:text-gray-400 font-medium">{status === JobStatus.Presupuesto ? 'Costo Total Estimado' : 'Costo Total'}</p>
-                                <p className="text-2xl font-bold text-taller-primary dark:text-blue-400">{new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(costoEstimado)}</p>
+                            <div className="bg-gray-50 dark:bg-gray-700/30 p-4 rounded-xl text-right w-full sm:w-auto">
+                                <p className="text-xs uppercase font-bold text-taller-gray dark:text-gray-400">{status === JobStatus.Presupuesto ? 'Total Estimado' : 'Total a Cobrar'}</p>
+                                <p className="text-3xl font-bold text-taller-primary dark:text-blue-400 mt-1">{new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(costoEstimado)}</p>
                             </div>
                         </div>
                         
-                        {error && <p className="text-sm text-red-600 text-center">{error}</p>}
-
-                        <div className="pt-4 flex flex-col-reverse sm:flex-row items-center gap-4 w-full">
-                            {isEditMode ? (
-                                <div className="w-full sm:flex-1">
-                                    {!confirmingDelete ? (
-                                        <button
-                                            type="button"
-                                            onClick={() => setConfirmingDelete(true)}
-                                            className="w-full flex items-center justify-center gap-2 py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 disabled:opacity-50"
-                                        >
-                                            <TrashIcon className="h-5 w-5"/>
-                                            Eliminar Trabajo
-                                        </button>
-                                    ) : (
-                                        <div className="flex items-center justify-center gap-3">
-                                            <p className="text-sm font-medium text-red-700 animate-pulse">¿Confirmar?</p>
-                                            <button
-                                                type="button"
-                                                onClick={handleDeleteJob}
-                                                disabled={isDeleting}
-                                                className="py-1 px-3 text-sm font-bold text-white bg-red-600 rounded-md hover:bg-red-700"
-                                            >
-                                                {isDeleting ? '...' : 'Sí'}
-                                            </button>
-                                            <button
-                                                type="button"
-                                                onClick={() => setConfirmingDelete(false)}
-                                                disabled={isDeleting}
-                                                className="py-1 px-3 text-sm font-medium text-gray-700 bg-gray-200 dark:bg-gray-600 dark:text-gray-200 dark:hover:bg-gray-500 rounded-md"
-                                            >
-                                                No
-                                            </button>
-                                        </div>
-                                    )}
-                                </div>
-                            ) : <div className="hidden sm:block sm:flex-1"></div>}
-                            <div className="w-full sm:flex-1">
-                                <button type="button" onClick={onClose} className="w-full justify-center py-2 px-4 border border-gray-300 dark:border-gray-500 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
-                                    Cancelar
-                                </button>
-                            </div>
-                             <div className="w-full sm:flex-1">
-                                <button type="submit" disabled={isSubmitting || isDeleting} className="w-full justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-taller-primary hover:bg-taller-secondary disabled:opacity-50">
-                                    {isSubmitting ? 'Guardando...' : (isEditMode ? 'Guardar Cambios' : 'Crear Presupuesto')}
-                                </button>
-                            </div>
-                        </div>
+                        {error && <p className="text-sm text-red-600 text-center font-medium bg-red-50 dark:bg-red-900/20 p-2 rounded-lg">{error}</p>}
                     </form>
                 </div>
+
+                {/* Footer - Fixed on Mobile, Part of Card on Desktop */}
+                <div className="border-t dark:border-gray-700 p-4 bg-white dark:bg-gray-800 flex flex-col sm:flex-row gap-3 shrink-0 z-10 safe-area-bottom">
+                     {isEditMode ? (
+                        <div className="w-full sm:flex-1 order-2 sm:order-1">
+                            {!confirmingDelete ? (
+                                <button
+                                    type="button"
+                                    onClick={() => setConfirmingDelete(true)}
+                                    className="w-full flex items-center justify-center gap-2 py-3 px-4 border border-red-200 dark:border-red-900/50 rounded-xl text-sm font-bold text-red-600 bg-red-50 hover:bg-red-100 dark:bg-red-900/20 dark:hover:bg-red-900/40 disabled:opacity-50 transition-colors"
+                                >
+                                    <TrashIcon className="h-5 w-5"/>
+                                    Eliminar
+                                </button>
+                            ) : (
+                                <div className="flex items-center justify-between gap-2 w-full p-1 bg-red-50 dark:bg-red-900/20 rounded-xl border border-red-100 dark:border-red-900/50">
+                                    <span className="text-xs font-bold text-red-600 pl-3">¿Seguro?</span>
+                                    <div className="flex gap-2">
+                                         <button
+                                            type="button"
+                                            onClick={handleDeleteJob}
+                                            disabled={isDeleting}
+                                            className="py-2 px-4 text-sm font-bold text-white bg-red-600 rounded-lg hover:bg-red-700 shadow-sm"
+                                        >
+                                            {isDeleting ? '...' : 'Sí, Eliminar'}
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setConfirmingDelete(false)}
+                                            disabled={isDeleting}
+                                            className="py-2 px-4 text-sm font-medium text-gray-700 bg-white dark:bg-gray-700 dark:text-gray-200 rounded-lg border border-gray-200 dark:border-gray-600"
+                                        >
+                                            Cancelar
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    ) : <div className="hidden sm:block sm:flex-1 order-1"></div>}
+                    
+                    <div className="flex gap-3 w-full sm:w-auto sm:flex-[2] order-1 sm:order-2">
+                        <button 
+                            type="button" 
+                            onClick={onClose} 
+                            className="flex-1 justify-center py-3 px-4 border border-gray-300 dark:border-gray-600 rounded-xl text-sm font-bold text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
+                        >
+                            Cancelar
+                        </button>
+                        <button 
+                            // Trigger form submit via ref or ID since button is outside form on mobile layout logic often
+                            onClick={(e) => {
+                                const form = document.getElementById('job-form') as HTMLFormElement;
+                                if(form) {
+                                    if(form.requestSubmit) form.requestSubmit();
+                                    else form.submit();
+                                }
+                            }}
+                            disabled={isSubmitting || isDeleting} 
+                            className="flex-[2] justify-center py-3 px-6 border border-transparent rounded-xl shadow-lg shadow-taller-primary/30 text-sm font-bold text-white bg-taller-primary hover:bg-taller-secondary disabled:opacity-50 disabled:shadow-none transition-all active:scale-95"
+                        >
+                            {isSubmitting ? 'Guardando...' : (isEditMode ? 'Guardar Cambios' : 'Crear')}
+                        </button>
+                    </div>
+                </div>
             </div>
+        </div>
+    );
+
+    return createPortal(
+        <>
+            {modalContent}
             {isClientModalOpen && (
                 <CrearClienteModal
                     onClose={() => setIsClientModalOpen(false)}
@@ -681,8 +739,12 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
                 .no-spinner {
                     -moz-appearance: textfield;
                 }
+                .safe-area-bottom {
+                    padding-bottom: env(safe-area-inset-bottom, 20px);
+                }
             `}</style>
-        </>
+        </>,
+        document.body
     );
 };
 
