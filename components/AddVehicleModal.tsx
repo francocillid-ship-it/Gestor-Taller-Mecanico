@@ -1,5 +1,6 @@
 
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { supabase } from '../supabaseClient';
 import { XMarkIcon, CameraIcon } from '@heroicons/react/24/solid';
 import { isGeminiAvailable, VehiculoData } from '../gemini';
@@ -63,15 +64,28 @@ const AddVehicleModal: React.FC<AddVehicleModalProps> = ({ onClose, onSuccess, c
         setIsCameraModalOpen(false);
     };
 
-    return (
-        <>
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4">
-                <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-lg max-h-[80dvh] overflow-y-auto">
-                    <div className="flex justify-between items-center mb-4">
-                        <h2 className="text-xl font-bold text-taller-dark dark:text-taller-light">Agregar Vehículo</h2>
-                        <button onClick={onClose} className="text-taller-gray dark:text-gray-400 hover:text-taller-dark dark:hover:text-white"><XMarkIcon className="h-6 w-6" /></button>
-                    </div>
-                    <form onSubmit={handleSubmit} className="space-y-4">
+    const submitForm = () => {
+        const form = document.getElementById('vehicle-form') as HTMLFormElement;
+        if(form) {
+            if(form.requestSubmit) form.requestSubmit();
+            else form.submit();
+        }
+    };
+
+    const modalContent = (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex justify-center items-end sm:items-center z-[100] sm:p-4">
+            <div className="bg-white dark:bg-gray-800 w-full h-[100dvh] sm:h-auto sm:max-h-[90vh] sm:max-w-lg sm:rounded-xl shadow-2xl flex flex-col overflow-hidden">
+                {/* Header */}
+                <div className="flex justify-between items-center p-4 border-b dark:border-gray-700 bg-white dark:bg-gray-800 flex-shrink-0">
+                    <h2 className="text-xl font-bold text-taller-dark dark:text-taller-light">Agregar Vehículo</h2>
+                    <button onClick={onClose} className="p-2 -mr-2 text-taller-gray dark:text-gray-400 hover:text-taller-dark dark:hover:text-white rounded-full hover:bg-gray-100 dark:hover:bg-gray-700">
+                        <XMarkIcon className="h-6 w-6" />
+                    </button>
+                </div>
+                
+                {/* Body */}
+                <div className="flex-1 overflow-y-auto p-4 space-y-4 overscroll-contain">
+                     <form id="vehicle-form" onSubmit={handleSubmit} className="space-y-4 pb-24 sm:pb-0">
                         <div className="flex flex-col gap-2 sm:flex-row sm:justify-between sm:items-center border-b dark:border-gray-600 pb-2 pt-2">
                              <h3 className="text-md font-semibold text-taller-dark dark:text-taller-light">Datos del Vehículo</h3>
                              {geminiEnabled && (
@@ -99,24 +113,43 @@ const AddVehicleModal: React.FC<AddVehicleModalProps> = ({ onClose, onSuccess, c
                             </div>
                         </div>
                         {error && <p className="text-sm text-red-600">{error}</p>}
-                        <div className="pt-4 flex justify-end space-x-3">
-                            <button type="button" onClick={onClose} className="py-2 px-4 border border-gray-300 dark:border-gray-500 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
-                                Cancelar
-                            </button>
-                            <button type="submit" disabled={isSubmitting} className="py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-taller-primary hover:bg-taller-secondary disabled:opacity-50">
-                                {isSubmitting ? 'Guardando...' : 'Guardar Vehículo'}
-                            </button>
-                        </div>
-                    </form>
+                     </form>
+                </div>
+                
+                {/* Footer */}
+                <div className="border-t dark:border-gray-700 p-4 bg-white dark:bg-gray-800 flex gap-3 shrink-0 z-10 safe-area-bottom">
+                    <button type="button" onClick={onClose} className="flex-1 justify-center py-3 px-4 border border-gray-300 dark:border-gray-500 rounded-xl text-sm font-bold text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors">
+                        Cancelar
+                    </button>
+                    <button type="button" onClick={submitForm} disabled={isSubmitting} className="flex-[2] justify-center py-3 px-6 border border-transparent rounded-xl shadow-lg shadow-taller-primary/30 text-sm font-bold text-white bg-taller-primary hover:bg-taller-secondary disabled:opacity-50 disabled:shadow-none transition-all active:scale-95">
+                        {isSubmitting ? 'Guardando...' : 'Guardar Vehículo'}
+                    </button>
                 </div>
             </div>
+        </div>
+    );
+
+    return createPortal(
+        <>
+            {modalContent}
             {isCameraModalOpen && (
                 <CameraRecognitionModal
                     onClose={() => setIsCameraModalOpen(false)}
                     onDataRecognized={handleDataRecognized}
                 />
             )}
-        </>
+             <style>{`
+                .safe-area-bottom {
+                    padding-bottom: calc(env(safe-area-inset-bottom) + 32px);
+                }
+                @media (min-width: 640px) {
+                    .safe-area-bottom {
+                        padding-bottom: 1rem;
+                    }
+                }
+            `}</style>
+        </>,
+        document.body
     );
 };
 

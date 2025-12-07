@@ -167,7 +167,6 @@ const CrearClienteModal: React.FC<CrearClienteModalProps> = ({ onClose, onSucces
                     }
                 }
                 
-                // Fetch updated
                 const { data } = await supabase.from('clientes').select('*, vehiculos(*)').eq('id', clienteToEdit!.id).single();
                 if(data) resultClient = data as Cliente;
 
@@ -184,20 +183,15 @@ const CrearClienteModal: React.FC<CrearClienteModalProps> = ({ onClose, onSucces
                 if (!currentTallerSession || !currentTallerSession.user) throw new Error("Sesión de taller no encontrada.");
                 const tallerUser = currentTallerSession.user;
 
-                // Password with special chars IN THE MIDDLE to prevent WhatsApp link breakage
-                // e.g. "abcd!Aa1efgh"
                 const tempPassword = Math.random().toString(36).slice(-4) + '!Aa1' + Math.random().toString(36).slice(-4);
                 
                 const userEmail = email.trim();
                 const shouldCreatePortalAccess = userEmail !== '';
                 const signUpEmail = shouldCreatePortalAccess ? userEmail : `${crypto.randomUUID()}@taller-placeholder.com`;
 
-                // --- ISOLATED SUPABASE CLIENT ---
-                // We create a temporary client instance to sign up the NEW user.
-                // This prevents the current admin session from being invalidated/switched.
                 const tempSupabase = createClient(supabaseUrl, supabaseKey, {
                     auth: {
-                        persistSession: false, // Do not persist this session to localStorage
+                        persistSession: false,
                         autoRefreshToken: false,
                         detectSessionInUrl: false
                     }
@@ -226,7 +220,6 @@ const CrearClienteModal: React.FC<CrearClienteModalProps> = ({ onClose, onSucces
 
                 if (onClientCreated) onClientCreated(newUserId);
 
-                // Insert profile data using the ADMIN session (global supabase)
                 const { error: clientInsertError } = await supabase
                     .from('clientes')
                     .insert({ id: newUserId, taller_id: tallerUser.id, nombre, apellido, email: userEmail, telefono });
@@ -239,8 +232,6 @@ const CrearClienteModal: React.FC<CrearClienteModalProps> = ({ onClose, onSucces
                 
                 if (vehicleInsertError) throw new Error(`Error en vehículo: ${vehicleInsertError.message}`);
                 
-                // Fetch full new client to return to Dashboard for optimistic update
-                // We use .select().single() to get data immediately from the write master if possible
                 const { data } = await supabase
                     .from('clientes')
                     .select('*, vehiculos(*)')
@@ -289,6 +280,14 @@ const CrearClienteModal: React.FC<CrearClienteModalProps> = ({ onClose, onSucces
     const openCameraForIndex = (index: number | null) => {
         setScanningVehicleIndex(index);
         setIsCameraModalOpen(true);
+    };
+
+    const submitForm = () => {
+        const form = document.getElementById('client-form') as HTMLFormElement;
+        if(form) {
+            if(form.requestSubmit) form.requestSubmit();
+            else form.submit();
+        }
     };
     
     const renderCreateForm = () => (
@@ -354,15 +353,20 @@ const CrearClienteModal: React.FC<CrearClienteModalProps> = ({ onClose, onSucces
         </div>
     );
 
-    return createPortal(
-        <>
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-[50] p-4 overscroll-contain">
-                <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-2xl max-h-[80dvh] overflow-y-auto">
-                    <div className="flex justify-between items-center mb-4">
-                        <h2 className="text-xl font-bold text-taller-dark dark:text-taller-light">{isEditMode ? 'Editar Cliente' : 'Crear Nuevo Cliente'}</h2>
-                        <button onClick={onClose} className="text-taller-gray dark:text-gray-400 hover:text-taller-dark dark:hover:text-white"><XMarkIcon className="h-6 w-6" /></button>
-                    </div>
-                    <form onSubmit={handleSubmit} className="space-y-4">
+    const modalContent = (
+         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex justify-center items-end sm:items-center z-[100] sm:p-4">
+             <div className="bg-white dark:bg-gray-800 w-full h-[100dvh] sm:h-auto sm:max-h-[90vh] sm:max-w-2xl sm:rounded-xl shadow-2xl flex flex-col overflow-hidden">
+                {/* Header */}
+                <div className="flex justify-between items-center p-4 border-b dark:border-gray-700 bg-white dark:bg-gray-800 flex-shrink-0">
+                    <h2 className="text-xl font-bold text-taller-dark dark:text-taller-light">{isEditMode ? 'Editar Cliente' : 'Crear Nuevo Cliente'}</h2>
+                    <button onClick={onClose} className="p-2 -mr-2 text-taller-gray dark:text-gray-400 hover:text-taller-dark dark:hover:text-white rounded-full hover:bg-gray-100 dark:hover:bg-gray-700">
+                        <XMarkIcon className="h-6 w-6" />
+                    </button>
+                </div>
+
+                {/* Body */}
+                <div className="flex-1 overflow-y-auto p-4 space-y-4 overscroll-contain">
+                     <form id="client-form" onSubmit={handleSubmit} className="space-y-4 pb-24 sm:pb-0">
                         <div className="flex justify-between items-center border-b dark:border-gray-600 pb-2">
                             <h3 className="text-md font-semibold text-taller-dark dark:text-taller-light">Datos del Cliente</h3>
                             {contactApiAvailable && !isEditMode && (<button type="button" onClick={handleSelectContact} className="flex items-center gap-2 px-3 py-1 text-sm font-semibold text-taller-secondary bg-blue-50 border border-taller-secondary/50 rounded-lg shadow-sm hover:bg-blue-100 dark:text-blue-300 dark:bg-blue-900/30 dark:border-blue-500/50 dark:hover:bg-blue-900/50"><ClipboardDocumentCheckIcon className="h-4 w-4" /> Contacto</button>)}
@@ -377,36 +381,57 @@ const CrearClienteModal: React.FC<CrearClienteModalProps> = ({ onClose, onSucces
                         {isEditMode ? renderEditForm() : renderCreateForm()}
                         
                         {error && <p className="text-sm text-red-600 mt-2">{error}</p>}
-                        <div className="pt-4 flex flex-col-reverse sm:flex-row items-center gap-4 w-full">
-                           {isEditMode ? (
-                                <div className="w-full sm:flex-1">
-                                    {!confirmingDelete ? (
-                                        <button type="button" onClick={() => setConfirmingDelete(true)} className="w-full justify-center flex items-center gap-2 py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 disabled:opacity-50">
-                                            <TrashIcon className="h-5 w-5"/> Eliminar
-                                        </button>
-                                    ) : (
-                                        <div className="flex items-center justify-center gap-3">
-                                            <p className="text-sm font-medium text-red-700 animate-pulse">¿Confirmar?</p>
-                                            <button type="button" onClick={handleDeleteClient} disabled={isDeleting} className="py-1 px-3 text-sm font-bold text-white bg-red-600 rounded-md hover:bg-red-700">{isDeleting ? '...' : 'Sí'}</button>
-                                            <button type="button" onClick={() => setConfirmingDelete(false)} disabled={isDeleting} className="py-1 px-3 text-sm font-medium text-gray-700 bg-gray-200 dark:bg-gray-600 dark:text-gray-200 dark:hover:bg-gray-500 rounded-md">No</button>
-                                        </div>
-                                    )}
-                                </div>
-                           ) : <div className="hidden sm:block sm:flex-1"></div>}
-                           <div className="w-full sm:flex-1">
-                                <button type="button" onClick={onClose} className="w-full justify-center py-2 px-4 border border-gray-300 dark:border-gray-500 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">Cancelar</button>
-                           </div>
-                           <div className="w-full sm:flex-1">
-                                <button type="submit" disabled={isSubmitting || isDeleting} className="w-full justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-taller-primary hover:bg-taller-secondary disabled:opacity-50">
-                                    {isSubmitting ? 'Guardando...' : (isEditMode ? 'Guardar' : 'Crear Cliente')}
-                                </button>
-                           </div>
-                        </div>
-                    </form>
+                     </form>
                 </div>
-            </div>
+                
+                {/* Footer */}
+                <div className="border-t dark:border-gray-700 p-4 bg-white dark:bg-gray-800 flex flex-col sm:flex-row gap-3 shrink-0 z-10 safe-area-bottom">
+                     {isEditMode ? (
+                        <div className="w-full sm:flex-1 order-2 sm:order-1">
+                            {!confirmingDelete ? (
+                                <button type="button" onClick={() => setConfirmingDelete(true)} className="w-full justify-center flex items-center gap-2 py-3 px-4 border border-red-200 dark:border-red-900/50 rounded-xl text-sm font-bold text-red-600 bg-red-50 hover:bg-red-100 dark:bg-red-900/20 dark:hover:bg-red-900/40 disabled:opacity-50 transition-colors">
+                                    <TrashIcon className="h-5 w-5"/> Eliminar
+                                </button>
+                            ) : (
+                                <div className="flex items-center justify-between gap-2 w-full p-1 bg-red-50 dark:bg-red-900/20 rounded-xl border border-red-100 dark:border-red-900/50">
+                                    <p className="text-xs font-bold text-red-600 pl-3">¿Confirmar?</p>
+                                    <div className="flex gap-2">
+                                        <button type="button" onClick={handleDeleteClient} disabled={isDeleting} className="py-2 px-3 text-sm font-bold text-white bg-red-600 rounded-lg hover:bg-red-700 shadow-sm">{isDeleting ? '...' : 'Sí'}</button>
+                                        <button type="button" onClick={() => setConfirmingDelete(false)} disabled={isDeleting} className="py-2 px-3 text-sm font-medium text-gray-700 bg-white dark:bg-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-600 rounded-lg">No</button>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                   ) : <div className="hidden sm:block sm:flex-1 order-1"></div>}
+                   
+                   <div className="flex gap-3 w-full sm:w-auto sm:flex-[2] order-1 sm:order-2">
+                        <button type="button" onClick={onClose} className="flex-1 justify-center py-3 px-4 border border-gray-300 dark:border-gray-600 rounded-xl text-sm font-bold text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors">Cancelar</button>
+                        <button type="button" onClick={submitForm} disabled={isSubmitting || isDeleting} className="flex-[2] justify-center py-3 px-6 border border-transparent rounded-xl shadow-lg shadow-taller-primary/30 text-sm font-bold text-white bg-taller-primary hover:bg-taller-secondary disabled:opacity-50 disabled:shadow-none transition-all active:scale-95">
+                            {isSubmitting ? 'Guardando...' : (isEditMode ? 'Guardar Cambios' : 'Crear Cliente')}
+                        </button>
+                   </div>
+                </div>
+             </div>
+         </div>
+    );
+
+    return createPortal(
+        <>
+            {modalContent}
             {isCameraModalOpen && <CameraRecognitionModal onClose={() => { setIsCameraModalOpen(false); setScanningVehicleIndex(null); }} onDataRecognized={handleDataRecognized} />}
-            <style>{`.input-class { background-color: white; border: 1px solid #d1d5db; border-radius: 0.375rem; box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05); padding: 0.5rem 0.75rem; font-size: 0.875rem; line-height: 1.25rem; color: #0f172a; } .dark .input-class { background-color: #374151; border-color: #4b5563; color: #f1f5f9; } .input-class:focus { outline: 2px solid transparent; outline-offset: 2px; box-shadow: var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow, 0 0 #0000); border-color: #1e40af; --tw-ring-color: #1e40af; }`}</style>
+            <style>{`
+                .input-class { background-color: white; border: 1px solid #d1d5db; border-radius: 0.375rem; box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05); padding: 0.5rem 0.75rem; font-size: 0.875rem; line-height: 1.25rem; color: #0f172a; } 
+                .dark .input-class { background-color: #374151; border-color: #4b5563; color: #f1f5f9; } 
+                .input-class:focus { outline: 2px solid transparent; outline-offset: 2px; box-shadow: var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow, 0 0 #0000); border-color: #1e40af; --tw-ring-color: #1e40af; }
+                .safe-area-bottom {
+                    padding-bottom: calc(env(safe-area-inset-bottom) + 32px);
+                }
+                @media (min-width: 640px) {
+                    .safe-area-bottom {
+                        padding-bottom: 1rem;
+                    }
+                }
+            `}</style>
         </>,
         document.body
     );
