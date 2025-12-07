@@ -83,7 +83,6 @@ const ClientCard: React.FC<ClientCardProps> = ({ cliente, trabajos, onEdit, onCo
              shareUrl = `${window.location.origin}/?type=invite&email=${encodeURIComponent(cliente.email)}&password=${encodeURIComponent(tempPass)}`;
         } else {
              // Si no hay password temporal (cliente antiguo), enviamos al login normal.
-             // No enviamos email de reset automático para evitar spam, el admin puede indicar "Olvidé mi contraseña" si es necesario.
              shareUrl = window.location.origin;
         }
 
@@ -92,27 +91,32 @@ const ClientCard: React.FC<ClientCardProps> = ({ cliente, trabajos, onEdit, onCo
 
         setSendingAccess(true);
         try {
-            // NOTA: Se ha eliminado el envío automático de email (resetPasswordForEmail) 
-            // para evitar disparar correos de Supabase al crear/compartir perfil.
-
-            const shareText = `Hola ${cliente.nombre}, aquí tienes el enlace para acceder a tu historial de trabajos en el taller:\n\n${shareUrl}\n\n${tempPass ? 'Ingresa automáticamente con este link. Por seguridad, se te pedirá cambiar tu contraseña al entrar.' : 'Ingresa con tu email y contraseña.'}`;
+            // Se define un mensaje de instrucción CLARO y se separa del enlace para evitar duplicidad.
+            
+            const messageHeader = tempPass
+                ? `Hola ${cliente.nombre}, accede a tu historial de trabajos en el taller. Tu sistema generó un acceso automático, por seguridad se te pedirá cambiar la contraseña al entrar.`
+                : `Hola ${cliente.nombre}, accede a tu historial de trabajos en el taller ingresando con tu email y contraseña.`;
 
             if (navigator.share) {
                 try {
+                    // Si el navegador soporta compartir nativo, enviamos el texto y la URL en campos separados
+                    // para que el sistema operativo maneje la presentación (evitando duplicar el link en el texto).
                     await navigator.share({
                         title: 'Acceso al Portal Taller',
-                        text: shareText,
+                        text: messageHeader, 
                         url: shareUrl
                     });
                 } catch (shareError) {
-                    // Ignore abort error
+                    // Fallback si el usuario cancela o hay error en share API, copiamos al portapapeles.
                     if ((shareError as any).name !== 'AbortError') {
+                         const combinedMessage = `${messageHeader}\n\n${shareUrl}`;
                          alert("Enlace copiado al portapapeles (Compartir no soportado).");
-                         await navigator.clipboard.writeText(shareText);
+                         await navigator.clipboard.writeText(combinedMessage);
                     }
                 }
             } else {
-                 await navigator.clipboard.writeText(shareText);
+                 const combinedMessage = `${messageHeader}\n\n${shareUrl}`;
+                 await navigator.clipboard.writeText(combinedMessage);
                  alert("Enlace de acceso copiado al portapapeles. Puedes pegarlo en WhatsApp.");
             }
             

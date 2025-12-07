@@ -206,8 +206,10 @@ const CrearClienteModal: React.FC<CrearClienteModalProps> = ({ onClose, onSucces
                 }
                 const tallerUser = currentTallerSession.user;
 
-                // Generamos una contraseña temporal segura para que el taller pueda compartir el link de acceso
-                const tempPassword = Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-8) + 'Aa1!';
+                // Generamos una contraseña temporal segura para que el taller pueda compartir el link de acceso.
+                // IMPORTANTE: Ponemos los caracteres especiales (!Aa1) EN EL MEDIO para que la URL
+                // no termine en signo de admiración, lo cual rompe el link en WhatsApp.
+                const tempPassword = Math.random().toString(36).slice(-8) + '!Aa1' + Math.random().toString(36).slice(-4);
                 
                 const userEmail = email.trim();
                 const shouldCreatePortalAccess = userEmail !== '';

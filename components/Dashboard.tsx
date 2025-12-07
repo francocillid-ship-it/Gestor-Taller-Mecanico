@@ -1,5 +1,6 @@
 
 import React, { useMemo, useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import type { Cliente, Trabajo, Gasto } from '../types';
 import { JobStatus } from '../types';
 import { CurrencyDollarIcon, UsersIcon, WrenchScrewdriverIcon, PlusIcon, PencilIcon, TrashIcon, ChartPieIcon, BuildingLibraryIcon, ScaleIcon, ChevronDownIcon, CalendarIcon, ArrowLeftIcon, ArrowTrendingUpIcon, ArrowTrendingDownIcon } from '@heroicons/react/24/solid';
@@ -123,10 +124,11 @@ const FinancialDetailOverlay: React.FC<FinancialDetailOverlayProps> = ({ detailV
     const isProfitView = detailView === 'ganancias';
     const displayTotal = isProfitView ? gananciasNetasDisplay : new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(data.total);
 
-    return (
-        <div className="fixed inset-0 z-[60] bg-taller-light dark:bg-taller-dark flex flex-col animate-in slide-in-from-bottom-5 duration-300">
+    // Use Portal to break out of any stacking context and ensure full screen coverage over headers/navs
+    return createPortal(
+        <div className="fixed inset-0 z-[70] bg-taller-light dark:bg-taller-dark flex flex-col animate-in slide-in-from-bottom-5 duration-300">
             {/* Header with Safe Area Padding */}
-            <div className="bg-white dark:bg-gray-800 shadow-sm flex-shrink-0 pt-[env(safe-area-inset-top)] border-b dark:border-gray-700 z-20">
+            <div className="bg-white dark:bg-gray-800 shadow-sm flex-shrink-0 pt-[env(safe-area-inset-top)] border-b dark:border-gray-700 z-20 relative">
                 <div className="flex items-center justify-between p-4">
                     <button 
                         onClick={onClose}
@@ -150,7 +152,7 @@ const FinancialDetailOverlay: React.FC<FinancialDetailOverlayProps> = ({ detailV
             <div 
                 ref={scrollContainerRef}
                 onScroll={handleScroll}
-                className="flex-1 overflow-y-auto px-4 pb-4 pt-2 space-y-4"
+                className="flex-1 overflow-y-auto px-4 pb-4 pt-2 space-y-4 overscroll-contain"
             >
                 {/* Big Summary Card */}
                 <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm text-center mt-2">
@@ -193,7 +195,8 @@ const FinancialDetailOverlay: React.FC<FinancialDetailOverlayProps> = ({ detailV
                      )}
                 </div>
             </div>
-        </div>
+        </div>,
+        document.body
     );
 };
 
