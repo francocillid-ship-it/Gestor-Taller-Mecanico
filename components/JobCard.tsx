@@ -348,23 +348,23 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
                                         <CalendarIcon className="h-3.5 w-3.5"/> 
                                         {needsScheduling ? '⚠️ Asignar Fecha del Turno' : 'Agenda del Turno'}
                                     </h4>
-                                    <div className="grid grid-cols-2 gap-2 mb-2">
-                                        <div>
+                                    <div className="flex flex-wrap gap-2 mb-2">
+                                        <div className="flex-1 min-w-[130px]">
                                             <label className="block text-[10px] text-gray-500 dark:text-gray-400 mb-0.5">Fecha</label>
                                             <input 
                                                 type="date" 
                                                 value={scheduleDate} 
                                                 onChange={(e) => setScheduleDate(e.target.value)}
-                                                className="w-full text-xs px-2 py-1.5 rounded border dark:border-gray-600 bg-white dark:bg-gray-700"
+                                                className="w-full text-xs px-2 py-1.5 rounded border dark:border-gray-600 bg-white dark:bg-gray-700 focus:ring-1 focus:ring-taller-primary focus:outline-none"
                                             />
                                         </div>
-                                        <div>
+                                        <div className="flex-1 min-w-[110px]">
                                             <label className="block text-[10px] text-gray-500 dark:text-gray-400 mb-0.5">Hora (Opcional)</label>
                                             <input 
                                                 type="time" 
                                                 value={scheduleTime} 
                                                 onChange={(e) => setScheduleTime(e.target.value)}
-                                                className="w-full text-xs px-2 py-1.5 rounded border dark:border-gray-600 bg-white dark:bg-gray-700"
+                                                className="w-full text-xs px-2 py-1.5 rounded border dark:border-gray-600 bg-white dark:bg-gray-700 focus:ring-1 focus:ring-taller-primary focus:outline-none"
                                             />
                                         </div>
                                     </div>
