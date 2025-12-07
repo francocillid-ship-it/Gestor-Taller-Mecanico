@@ -1,10 +1,11 @@
+
 import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import type { Trabajo, Cliente, TallerInfo } from '../types';
 import { JobStatus } from '../types';
 import JobCard from './JobCard';
 import CrearTrabajoModal from './CrearTrabajoModal';
-import { PlusIcon, ChevronDownIcon, MagnifyingGlassIcon, CalendarIcon, CurrencyDollarIcon, WrenchScrewdriverIcon, ClockIcon } from '@heroicons/react/24/solid';
+import { PlusIcon, ChevronDownIcon, MagnifyingGlassIcon, CalendarIcon, CurrencyDollarIcon, WrenchScrewdriverIcon, ClockIcon, ListBulletIcon, ChevronLeftIcon, ChevronRightIcon, ExclamationCircleIcon } from '@heroicons/react/24/solid';
 
 interface TrabajosProps {
     trabajos: Trabajo[];
@@ -44,6 +45,106 @@ const getDateCategory = (dateString: string): TimeCategory => {
     if (jobDate >= startOfCurrentMonth) return 'Mes pasado';
     return 'Anteriores';
 };
+
+// --- CALENDAR WIDGET COMPONENT ---
+
+const CalendarWidget: React.FC<{
+    trabajos: Trabajo[];
+    onSelectDate: (date: Date | null) => void;
+    selectedDate: Date | null;
+}> = ({ trabajos, onSelectDate, selectedDate }) => {
+    const [currentMonth, setCurrentMonth] = useState(new Date());
+
+    const daysInMonth = (date: Date) => new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+    const firstDayOfMonth = (date: Date) => new Date(date.getFullYear(), date.getMonth(), 1).getDay();
+
+    const prevMonth = () => {
+        setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1));
+        onSelectDate(null);
+    };
+
+    const nextMonth = () => {
+        setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1));
+        onSelectDate(null);
+    };
+
+    const isSameDay = (d1: Date, d2: Date) => {
+        return d1.getFullYear() === d2.getFullYear() &&
+               d1.getMonth() === d2.getMonth() &&
+               d1.getDate() === d2.getDate();
+    };
+
+    const renderCalendarDays = () => {
+        const totalDays = daysInMonth(currentMonth);
+        const startDay = firstDayOfMonth(currentMonth); // 0 = Sunday
+        const days = [];
+
+        // Empty slots for previous month
+        for (let i = 0; i < startDay; i++) {
+            days.push(<div key={`empty-${i}`} className="h-8 sm:h-10"></div>);
+        }
+
+        // Days of current month
+        for (let d = 1; d <= totalDays; d++) {
+            const date = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), d);
+            const isToday = isSameDay(date, new Date());
+            const isSelected = selectedDate && isSameDay(date, selectedDate);
+            
+            // Find jobs for this day - USAMOS fechaProgramada
+            const dayJobs = trabajos.filter(t => t.fechaProgramada && isSameDay(new Date(t.fechaProgramada), date));
+            const hasJobs = dayJobs.length > 0;
+
+            days.push(
+                <button
+                    key={d}
+                    onClick={() => onSelectDate(isSelected ? null : date)}
+                    className={`h-8 sm:h-10 flex flex-col items-center justify-center rounded-lg relative transition-colors ${
+                        isSelected 
+                            ? 'bg-taller-primary text-white font-bold' 
+                            : isToday 
+                                ? 'bg-blue-100 text-taller-primary dark:bg-blue-900/30 dark:text-blue-300 font-bold'
+                                : 'hover:bg-gray-100 dark:hover:bg-gray-700 text-taller-dark dark:text-gray-300'
+                    }`}
+                >
+                    <span className="text-xs sm:text-sm">{d}</span>
+                    {hasJobs && !isSelected && (
+                         <div className="flex gap-0.5 mt-0.5">
+                             {dayJobs.slice(0, 3).map((_, idx) => (
+                                 <span key={idx} className="w-1 h-1 rounded-full bg-taller-accent"></span>
+                             ))}
+                         </div>
+                    )}
+                </button>
+            );
+        }
+        return days;
+    };
+
+    return (
+        <div className="bg-white dark:bg-gray-800 rounded-lg p-2 mb-2 border dark:border-gray-700 shadow-sm">
+            <div className="flex justify-between items-center mb-2 px-2">
+                <button onClick={prevMonth} className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full">
+                    <ChevronLeftIcon className="h-4 w-4 text-gray-600 dark:text-gray-400"/>
+                </button>
+                <span className="text-sm font-bold text-taller-dark dark:text-taller-light capitalize">
+                    {currentMonth.toLocaleString('es-ES', { month: 'long', year: 'numeric' })}
+                </span>
+                <button onClick={nextMonth} className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full">
+                    <ChevronRightIcon className="h-4 w-4 text-gray-600 dark:text-gray-400"/>
+                </button>
+            </div>
+            <div className="grid grid-cols-7 gap-1 text-center mb-1">
+                {['D', 'L', 'M', 'M', 'J', 'V', 'S'].map(day => (
+                    <span key={day} className="text-[10px] font-bold text-gray-400">{day}</span>
+                ))}
+            </div>
+            <div className="grid grid-cols-7 gap-1">
+                {renderCalendarDays()}
+            </div>
+        </div>
+    );
+};
+
 
 const JobGroup: React.FC<{ 
     category: TimeCategory; 
@@ -111,7 +212,8 @@ const StatusColumn: React.FC<{
     searchQuery: string;
     isMobileMode?: boolean; 
 }> = ({ status, trabajos, clientes, onUpdateStatus, tallerInfo, onDataRefresh, searchQuery, isMobileMode }) => {
-    
+    const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+
     const getStatusColor = (status: JobStatus) => {
         switch (status) {
             case JobStatus.Presupuesto: return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-300';
@@ -141,7 +243,115 @@ const StatusColumn: React.FC<{
         return groups;
     }, [trabajos, status]);
 
+    // Separate jobs for Programado status: Scheduled vs Unscheduled
+    const { scheduledJobs, unscheduledJobs } = useMemo(() => {
+        if (status !== JobStatus.Programado) return { scheduledJobs: [], unscheduledJobs: [] };
+        
+        const result = trabajos.reduce((acc, t) => {
+            if (t.fechaProgramada) {
+                acc.scheduledJobs.push(t);
+            } else {
+                acc.unscheduledJobs.push(t);
+            }
+            return acc;
+        }, { scheduledJobs: [] as Trabajo[], unscheduledJobs: [] as Trabajo[] });
+
+        // Ordenar los trabajos programados por fecha (más próximos primero)
+        result.scheduledJobs.sort((a, b) => {
+            return new Date(a.fechaProgramada!).getTime() - new Date(b.fechaProgramada!).getTime();
+        });
+
+        return result;
+    }, [trabajos, status]);
+
+    const filteredCalendarJobs = useMemo(() => {
+        if (!selectedDate) return scheduledJobs;
+        return scheduledJobs.filter(t => {
+            // Must have fechaProgramada to be in calendar
+            if (!t.fechaProgramada) return false;
+            const tDate = new Date(t.fechaProgramada);
+            return tDate.getFullYear() === selectedDate.getFullYear() &&
+                   tDate.getMonth() === selectedDate.getMonth() &&
+                   tDate.getDate() === selectedDate.getDate();
+        });
+    }, [scheduledJobs, selectedDate]);
+
     const renderContent = () => {
+        // --- LOGIC FOR PROGRAMADO STATUS ---
+        if (status === JobStatus.Programado) {
+             return (
+                 <div className="flex flex-col gap-3">
+                     {/* 1. Calendar Widget */}
+                     <div className="bg-gray-100 dark:bg-gray-800">
+                        <CalendarWidget 
+                            trabajos={scheduledJobs} 
+                            onSelectDate={setSelectedDate} 
+                            selectedDate={selectedDate}
+                        />
+                     </div>
+
+                     {/* 2. Unscheduled Jobs Section (Need Attention) */}
+                     {unscheduledJobs.length > 0 && (
+                        <div className="bg-red-50 dark:bg-red-900/10 p-2 rounded-lg border border-red-100 dark:border-red-900/30">
+                            <h4 className="text-xs font-bold text-red-700 dark:text-red-400 mb-2 flex items-center gap-1.5 uppercase tracking-wide">
+                                <ExclamationCircleIcon className="h-4 w-4" /> Pendientes de Agendar ({unscheduledJobs.length})
+                            </h4>
+                            <div className="space-y-3">
+                                {unscheduledJobs.map(trabajo => {
+                                    const cliente = clientes.find(c => c.id === trabajo.clienteId);
+                                    const vehiculo = cliente?.vehiculos.find(v => v.id === trabajo.vehiculoId);
+                                    return (
+                                        <JobCard
+                                            key={trabajo.id}
+                                            trabajo={trabajo}
+                                            cliente={cliente}
+                                            vehiculo={vehiculo}
+                                            onUpdateStatus={onUpdateStatus}
+                                            tallerInfo={tallerInfo}
+                                            clientes={clientes}
+                                            onDataRefresh={onDataRefresh}
+                                        />
+                                    );
+                                })}
+                            </div>
+                        </div>
+                     )}
+                     
+                     {/* 3. Scheduled Jobs List - Grid View (2 cols) */}
+                     <div className="text-xs font-semibold text-taller-gray dark:text-gray-400 mb-1 border-b dark:border-gray-700 pb-2">
+                         {selectedDate ? `Trabajos para el ${selectedDate.toLocaleDateString()} (${filteredCalendarJobs.length})` : `Próximos Trabajos (${filteredCalendarJobs.length})`}
+                     </div>
+
+                     {filteredCalendarJobs.length > 0 ? (
+                        <div className="grid grid-cols-2 gap-2 pb-2">
+                            {filteredCalendarJobs.map(trabajo => {
+                                const cliente = clientes.find(c => c.id === trabajo.clienteId);
+                                const vehiculo = cliente?.vehiculos.find(v => v.id === trabajo.vehiculoId);
+                                return (
+                                    <JobCard
+                                        key={trabajo.id}
+                                        trabajo={trabajo}
+                                        cliente={cliente}
+                                        vehiculo={vehiculo}
+                                        onUpdateStatus={onUpdateStatus}
+                                        tallerInfo={tallerInfo}
+                                        clientes={clientes}
+                                        onDataRefresh={onDataRefresh}
+                                        compactMode={true} // Enable compact grid mode
+                                    />
+                                );
+                            })}
+                        </div>
+                     ) : (
+                        <p className="text-center text-xs text-gray-400 py-4">
+                            {selectedDate ? 'Sin trabajos programados este día.' : 'Sin trabajos programados próximos.'}
+                        </p>
+                     )}
+                 </div>
+             );
+        }
+
+        // --- EMPTY STATE GENERIC ---
         if (trabajos.length === 0) {
             return (
                 <div className={`flex flex-col items-center justify-center text-center opacity-60 ${isMobileMode ? 'py-12' : 'h-32'}`}>
@@ -153,6 +363,7 @@ const StatusColumn: React.FC<{
             );
         }
 
+        // --- FINALIZADO GROUPING ---
         if (status === JobStatus.Finalizado && groupedJobs) {
             return (
                 <>
@@ -164,6 +375,7 @@ const StatusColumn: React.FC<{
             );
         }
 
+        // --- DEFAULT LIST (PRESUPUESTO / EN PROCESO) ---
         return (
             <div className="space-y-3">
                 {trabajos.map(trabajo => {
@@ -188,7 +400,7 @@ const StatusColumn: React.FC<{
 
     if (isMobileMode) {
         return (
-            <div className="pt-2 pb-24 px-1">
+            <div className="pt-2 pb-24 px-1 flex flex-col min-h-full">
                 {renderContent()}
             </div>
         );

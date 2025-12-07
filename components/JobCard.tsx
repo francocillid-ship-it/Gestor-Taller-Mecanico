@@ -3,7 +3,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import type { Trabajo, Cliente, Vehiculo, JobStatus, Parte, TallerInfo } from '../types';
 import { JobStatus as JobStatusEnum } from '../types';
-import { ChevronDownIcon, ChevronUpIcon, PencilIcon, PrinterIcon, CurrencyDollarIcon, WrenchScrewdriverIcon, EllipsisVerticalIcon, ArrowPathIcon } from '@heroicons/react/24/solid';
+import { ChevronDownIcon, ChevronUpIcon, PencilIcon, PrinterIcon, CurrencyDollarIcon, WrenchScrewdriverIcon, EllipsisVerticalIcon, ArrowPathIcon, CalendarIcon, ClockIcon, DocumentTextIcon, CheckIcon, ExclamationCircleIcon } from '@heroicons/react/24/solid';
 import CrearTrabajoModal from './CrearTrabajoModal';
 import { supabase } from '../supabaseClient';
 import { generateClientPDF } from './pdfGenerator';
@@ -16,9 +16,10 @@ interface JobCardProps {
     tallerInfo: TallerInfo;
     clientes: Cliente[];
     onDataRefresh: () => void;
+    compactMode?: boolean;
 }
 
-const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateStatus, tallerInfo, clientes, onDataRefresh }) => {
+const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateStatus, tallerInfo, clientes, onDataRefresh, compactMode }) => {
     const [isExpanded, setIsExpanded] = useState(false);
     const [isJobModalOpen, setIsJobModalOpen] = useState(false);
     const [isAddingPayment, setIsAddingPayment] = useState(false);
@@ -31,10 +32,51 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
     const [menuCoords, setMenuCoords] = useState<{ top?: number; bottom?: number; left: number; width: number } | null>(null);
     const buttonRef = useRef<HTMLButtonElement>(null);
     
+    // Schedule Editing State
+    const [scheduleDate, setScheduleDate] = useState('');
+    const [scheduleTime, setScheduleTime] = useState('');
+    const [scheduleNote, setScheduleNote] = useState('');
+    const [isSavingSchedule, setIsSavingSchedule] = useState(false);
+    
     const cardRef = useRef<HTMLDivElement>(null);
 
+    const isProgramado = trabajo.status === JobStatusEnum.Programado;
+    // Un trabajo "necesita agenda" si está en Programado pero NO tiene fecha programada asignada
+    const needsScheduling = isProgramado && !trabajo.fechaProgramada;
+    
+    // Determine effective view mode
+    // If not in compact mode, expanded logic is just accordion.
+    // If in compact mode, expanded logic means "expand to full card", else "mini card"
+    const isMiniView = compactMode && !isExpanded;
+
     useEffect(() => {
-        if (isExpanded && cardRef.current) {
+        // Initialize fields based on existing data
+        if (trabajo) {
+            // Use fechaProgramada if available (for scheduling), otherwise don't default to anything for the inputs if it's pending
+            const targetDate = trabajo.fechaProgramada ? new Date(trabajo.fechaProgramada) : null;
+            
+            if (targetDate) {
+                // Format YYYY-MM-DD
+                const yyyy = targetDate.getFullYear();
+                const mm = String(targetDate.getMonth() + 1).padStart(2, '0');
+                const dd = String(targetDate.getDate()).padStart(2, '0');
+                setScheduleDate(`${yyyy}-${mm}-${dd}`);
+                
+                // Format HH:MM
+                const hh = String(targetDate.getHours()).padStart(2, '0');
+                const min = String(targetDate.getMinutes()).padStart(2, '0');
+                setScheduleTime(`${hh}:${min}`);
+            } else {
+                setScheduleDate('');
+                setScheduleTime('');
+            }
+
+            setScheduleNote(trabajo.notaAdicional || '');
+        }
+    }, [trabajo]);
+
+    useEffect(() => {
+        if (isExpanded && cardRef.current && !compactMode) {
             // Esperar a que termine la animación de CSS (300ms)
             const timer = setTimeout(() => {
                 const element = cardRef.current;
@@ -59,7 +101,7 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
             }, 350);
             return () => clearTimeout(timer);
         }
-    }, [isExpanded]);
+    }, [isExpanded, compactMode]);
 
     // Close menu on scroll or resize to prevent it from detaching visually
     useEffect(() => {
@@ -172,6 +214,36 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
         }
     };
 
+    const handleSaveSchedule = async () => {
+        setIsSavingSchedule(true);
+        try {
+            if (!scheduleDate) {
+                 alert("Debes seleccionar una fecha.");
+                 setIsSavingSchedule(false);
+                 return;
+            }
+            
+            // Combine Date and Time
+            const newDate = new Date(`${scheduleDate}T${scheduleTime || '00:00'}:00`);
+            
+            const { error } = await supabase
+                .from('trabajos')
+                .update({ 
+                    fecha_programada: newDate.toISOString(),
+                    nota_adicional: scheduleNote 
+                })
+                .eq('id', trabajo.id);
+
+            if (error) throw error;
+            onDataRefresh();
+        } catch (error) {
+            console.error("Error updating schedule:", error);
+            alert("Error al actualizar la agenda.");
+        } finally {
+            setIsSavingSchedule(false);
+        }
+    };
+
     const formatCurrency = (val: number | undefined) => {
         if (val === undefined || isNaN(val)) return '$ 0,00';
         return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(val);
@@ -182,34 +254,144 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
     const hasServices = realParts.some(p => p.isService);
 
     const clientFullName = cliente ? `${cliente.nombre} ${cliente.apellido || ''}`.trim() : 'Cliente no encontrado';
+    
+    // Display Logic for Time
+    let displayTime = '';
+    let displayDate = '';
+    if (trabajo.fechaProgramada) {
+        const dateObj = new Date(trabajo.fechaProgramada);
+        displayDate = dateObj.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit' });
+        displayTime = dateObj.toLocaleTimeString('es-ES', {hour: '2-digit', minute:'2-digit', hour12: false});
+    }
+
+    // --- MINI VIEW (Condensed Grid Item) ---
+    if (isMiniView) {
+        return (
+            <div 
+                onClick={() => setIsExpanded(true)}
+                className="col-span-1 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-2 cursor-pointer hover:shadow-md transition-all active:scale-[0.98] flex flex-col justify-between min-h-[80px]"
+            >
+                <div>
+                    <p className="font-bold text-xs text-taller-dark dark:text-taller-light truncate">{clientFullName}</p>
+                    <p className="text-[10px] text-taller-gray dark:text-gray-400 truncate mt-0.5">
+                        {vehiculo ? `${vehiculo.modelo}` : 'S/D'}
+                    </p>
+                </div>
+                {trabajo.fechaProgramada && (
+                    <div className="flex items-center gap-1 mt-2 text-[10px] font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 px-1.5 py-0.5 rounded w-fit">
+                        <CalendarIcon className="h-3 w-3" />
+                        <span>{displayDate} {displayTime}</span>
+                    </div>
+                )}
+            </div>
+        );
+    }
+
+    // --- FULL VIEW (Expanded) ---
+    // If compactMode is active, this expanded view MUST be col-span-2 to take full width of the grid row
+    const containerClasses = compactMode 
+        ? "col-span-2 bg-white dark:bg-gray-800 rounded-lg shadow-lg border-l-4 border-taller-secondary ring-2 ring-taller-primary/20 animate-in fade-in zoom-in-95 duration-200"
+        : `bg-white dark:bg-gray-800 rounded-lg shadow-md border-l-4 transition-all duration-300 scroll-mt-4 
+           ${isExpanded ? 'mb-4 ring-2 ring-taller-primary/20 dark:ring-taller-primary/40' : ''}
+           ${needsScheduling ? 'border-red-500 ring-2 ring-red-100 dark:ring-red-900/20' : 'border-taller-secondary/50 dark:border-taller-secondary'}`;
 
     return (
         <>
-            <div ref={cardRef} className={`bg-white dark:bg-gray-800 rounded-lg shadow-md border-l-4 border-taller-secondary/50 dark:border-taller-secondary transition-all duration-300 scroll-mt-4 ${isExpanded ? 'mb-4 ring-2 ring-taller-primary/20 dark:ring-taller-primary/40' : ''}`}>
+            <div ref={cardRef} className={containerClasses}>
                 <div className="p-3">
                     <div className="flex justify-between items-start">
                         <div>
-                            <p className="font-bold text-sm text-taller-dark dark:text-taller-light">{clientFullName}</p>
+                            <div className="flex items-center gap-2">
+                                <p className="font-bold text-sm text-taller-dark dark:text-taller-light">{clientFullName}</p>
+                                {needsScheduling && (
+                                    <span className="flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300 animate-pulse">
+                                        <ExclamationCircleIcon className="h-3 w-3" /> Falta Agendar
+                                    </span>
+                                )}
+                            </div>
                             <p className="text-xs text-taller-gray dark:text-gray-400">
                                 {vehiculo ? `${vehiculo.marca} ${vehiculo.modelo} (${vehiculo.matricula})` : 'Vehículo no encontrado'}
                             </p>
-                            {trabajo.kilometraje && (
-                                <p className="text-xs text-taller-gray dark:text-gray-400 mt-0.5 font-medium">
-                                    {trabajo.kilometraje} km
+                            {isProgramado && trabajo.fechaProgramada && (
+                                <p className="text-xs text-taller-primary font-medium mt-1 flex items-center gap-1">
+                                    <ClockIcon className="h-3 w-3" />
+                                    {displayDate} - {displayTime}
                                 </p>
                             )}
                         </div>
-                         <button onClick={() => setIsExpanded(!isExpanded)} className="p-1 text-taller-gray dark:text-gray-400 hover:text-taller-dark dark:hover:text-white">
+                         <button 
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                setIsExpanded(!isExpanded);
+                            }} 
+                            className="p-1 text-taller-gray dark:text-gray-400 hover:text-taller-dark dark:hover:text-white"
+                        >
                             {isExpanded ? <ChevronUpIcon className="h-5 w-5" /> : <ChevronDownIcon className="h-5 w-5" />}
                         </button>
                     </div>
                     <p className="text-sm mt-2">{trabajo.descripcion}</p>
                 </div>
                 
-                <div className={`grid transition-[grid-template-rows] duration-300 ease-in-out ${isExpanded ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>
+                {/* 
+                   In CompactMode, expanded means "Show Full Card" logic immediately. 
+                   In StandardMode, expanded triggers the accordion animation.
+                   We reuse logic but ensure visibility.
+                */}
+                <div className={`grid transition-[grid-template-rows] duration-300 ease-in-out ${(isExpanded || compactMode) ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>
                     <div className="overflow-hidden">
                         <div className="p-3 border-t dark:border-gray-700">
-                            <h4 className="font-semibold text-xs mb-2">Detalles:</h4>
+                            
+                            {/* --- SECCIÓN DE AGENDA (Solo en Programado) --- */}
+                            {isProgramado && (
+                                <div className={`mb-4 p-3 rounded-lg border dark:border-gray-600 ${needsScheduling ? 'bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-800' : 'bg-gray-50 dark:bg-gray-700/30'}`}>
+                                    <h4 className={`font-semibold text-xs mb-2 flex items-center gap-1 ${needsScheduling ? 'text-red-700 dark:text-red-300' : 'text-taller-dark dark:text-taller-light'}`}>
+                                        <CalendarIcon className="h-3.5 w-3.5"/> 
+                                        {needsScheduling ? '⚠️ Asignar Fecha del Turno' : 'Agenda del Turno'}
+                                    </h4>
+                                    <div className="grid grid-cols-2 gap-2 mb-2">
+                                        <div>
+                                            <label className="block text-[10px] text-gray-500 dark:text-gray-400 mb-0.5">Fecha</label>
+                                            <input 
+                                                type="date" 
+                                                value={scheduleDate} 
+                                                onChange={(e) => setScheduleDate(e.target.value)}
+                                                className="w-full text-xs px-2 py-1.5 rounded border dark:border-gray-600 bg-white dark:bg-gray-700"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-[10px] text-gray-500 dark:text-gray-400 mb-0.5">Hora (Opcional)</label>
+                                            <input 
+                                                type="time" 
+                                                value={scheduleTime} 
+                                                onChange={(e) => setScheduleTime(e.target.value)}
+                                                className="w-full text-xs px-2 py-1.5 rounded border dark:border-gray-600 bg-white dark:bg-gray-700"
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className="mb-2">
+                                        <label className="block text-[10px] text-gray-500 dark:text-gray-400 mb-0.5">Nota de Agenda (Opcional)</label>
+                                        <textarea
+                                            value={scheduleNote}
+                                            onChange={(e) => setScheduleNote(e.target.value)}
+                                            placeholder="Ej: Traer llave de tuerca, llamar antes..."
+                                            rows={2}
+                                            className="w-full text-xs px-2 py-1.5 rounded border dark:border-gray-600 bg-white dark:bg-gray-700"
+                                        />
+                                    </div>
+                                    <div className="flex justify-end">
+                                        <button 
+                                            onClick={handleSaveSchedule}
+                                            disabled={isSavingSchedule}
+                                            className={`flex items-center gap-1 px-3 py-1 text-xs font-semibold text-white rounded transition-colors disabled:opacity-50 ${needsScheduling ? 'bg-red-600 hover:bg-red-700' : 'bg-taller-primary hover:bg-taller-secondary'}`}
+                                        >
+                                            {isSavingSchedule ? <ArrowPathIcon className="h-3 w-3 animate-spin"/> : <CheckIcon className="h-3 w-3"/>}
+                                            {needsScheduling ? 'Confirmar Fecha' : 'Actualizar Agenda'}
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+
+                            <h4 className="font-semibold text-xs mb-2">Detalles Económicos:</h4>
                             <ul className="text-xs space-y-1 text-taller-dark dark:text-gray-300 mb-3">
                                 {realParts.map((parte, i) => (
                                     parte.isCategory ? (
@@ -294,7 +476,7 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
                     </div>
                 </div>
 
-                 <div className="bg-gray-50 dark:bg-gray-700/50 px-3 py-2 flex items-center justify-between">
+                 <div className="bg-gray-50 dark:bg-gray-700/50 px-3 py-2 flex items-center justify-between rounded-b-lg">
                     <div className="relative">
                         <button
                             ref={buttonRef}

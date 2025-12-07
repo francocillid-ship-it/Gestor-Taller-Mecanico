@@ -35,7 +35,9 @@ export interface Trabajo {
     status: JobStatus;
     fechaEntrada: string;
     fechaSalida?: string;
+    fechaProgramada?: string; // Nuevo campo para la fecha del turno
     kilometraje?: number;
+    notaAdicional?: string;
 }
 
 export interface MaintenanceItemConfig {
