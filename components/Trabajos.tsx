@@ -345,70 +345,72 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
                 </>
             )}
 
-            {/* Mobile Bottom Navigation */}
-            <div className={`lg:hidden fixed left-1/2 -translate-x-1/2 z-20 flex flex-col items-center pointer-events-none transition-all duration-300 w-full ${
-                tallerInfo.mobileNavStyle === 'bottom_nav' ? 'bottom-[96px]' : 'bottom-6'
-            }`}>
-                {activeMobileTab === JobStatus.Presupuesto && (
-                    <div className="w-full flex justify-center mb-4 pointer-events-auto px-4">
-                        <button
-                            onClick={() => {
-                                setInitialClientIdForModal(undefined);
-                                setIsJobModalOpen(true);
-                            }}
-                            className="flex items-center justify-center gap-2 px-6 py-2.5 text-xs font-bold text-white bg-taller-primary rounded-full shadow-lg shadow-taller-primary/40 hover:bg-taller-secondary hover:scale-105 transition-all transform active:scale-95"
-                        >
-                           <PlusIcon className="h-4 w-4"/>
-                            NUEVO PRESUPUESTO
-                        </button>
-                    </div>
-                )}
+            {/* Mobile Bottom Navigation - Hidden when modal is open */}
+            {!isJobModalOpen && (
+                <div className={`lg:hidden fixed left-1/2 -translate-x-1/2 z-20 flex flex-col items-center pointer-events-none transition-all duration-300 w-full ${
+                    tallerInfo.mobileNavStyle === 'bottom_nav' ? 'bottom-[96px]' : 'bottom-6'
+                }`}>
+                    {activeMobileTab === JobStatus.Presupuesto && (
+                        <div className="w-full flex justify-center mb-4 pointer-events-auto px-4">
+                            <button
+                                onClick={() => {
+                                    setInitialClientIdForModal(undefined);
+                                    setIsJobModalOpen(true);
+                                }}
+                                className="flex items-center justify-center gap-2 px-6 py-2.5 text-xs font-bold text-white bg-taller-primary rounded-full shadow-lg shadow-taller-primary/40 hover:bg-taller-secondary hover:scale-105 transition-all transform active:scale-95"
+                            >
+                            <PlusIcon className="h-4 w-4"/>
+                                NUEVO PRESUPUESTO
+                            </button>
+                        </div>
+                    )}
 
-                <div className="w-[95%] max-w-sm bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 pointer-events-auto overflow-hidden">
-                    <div className="grid grid-cols-4 h-14">
-                        {statusOrder.map(status => {
-                            const Icon = getMobileTabIcon(status);
-                            const isActive = activeMobileTab === status;
-                            const count = trabajosByStatus[status]?.length || 0;
-                            
-                            return (
-                                <button
-                                    key={status}
-                                    onClick={() => setActiveMobileTab(status)}
-                                    className={`relative flex flex-col items-center justify-center transition-colors duration-200 group ${
-                                        isActive 
-                                        ? 'bg-blue-50 dark:bg-gray-700/50' 
-                                        : 'hover:bg-gray-50 dark:hover:bg-gray-700/30'
-                                    }`}
-                                >
-                                    <Icon className={`h-5 w-5 mb-0.5 transition-colors ${
-                                        isActive 
-                                        ? 'text-taller-primary dark:text-white' 
-                                        : 'text-gray-400 dark:text-gray-500 group-hover:text-gray-600 dark:group-hover:text-gray-400'
-                                    }`} />
-                                    <span className={`text-[9px] font-bold leading-none tracking-tight transition-colors ${
-                                        isActive 
-                                        ? 'text-taller-primary dark:text-white' 
-                                        : 'text-gray-400 dark:text-gray-500'
-                                    }`}>
-                                        {getMobileTabLabel(status)}
-                                    </span>
-                                    
-                                    {count > 0 && (
-                                        <span className={`absolute top-1 right-2 flex h-3.5 w-3.5 items-center justify-center rounded-full text-[8px] font-bold shadow-sm ${
+                    <div className="w-[95%] max-w-sm bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 pointer-events-auto overflow-hidden">
+                        <div className="grid grid-cols-4 h-14">
+                            {statusOrder.map(status => {
+                                const Icon = getMobileTabIcon(status);
+                                const isActive = activeMobileTab === status;
+                                const count = trabajosByStatus[status]?.length || 0;
+                                
+                                return (
+                                    <button
+                                        key={status}
+                                        onClick={() => setActiveMobileTab(status)}
+                                        className={`relative flex flex-col items-center justify-center transition-colors duration-200 group ${
                                             isActive 
-                                            ? 'bg-taller-primary text-white dark:bg-white dark:text-taller-primary' 
-                                            : 'bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300'
+                                            ? 'bg-blue-50 dark:bg-gray-700/50' 
+                                            : 'hover:bg-gray-50 dark:hover:bg-gray-700/30'
+                                        }`}
+                                    >
+                                        <Icon className={`h-5 w-5 mb-0.5 transition-colors ${
+                                            isActive 
+                                            ? 'text-taller-primary dark:text-white' 
+                                            : 'text-gray-400 dark:text-gray-500 group-hover:text-gray-600 dark:group-hover:text-gray-400'
+                                        }`} />
+                                        <span className={`text-[9px] font-bold leading-none tracking-tight transition-colors ${
+                                            isActive 
+                                            ? 'text-taller-primary dark:text-white' 
+                                            : 'text-gray-400 dark:text-gray-500'
                                         }`}>
-                                            {count}
+                                            {getMobileTabLabel(status)}
                                         </span>
-                                    )}
-                                </button>
-                            );
-                        })}
+                                        
+                                        {count > 0 && (
+                                            <span className={`absolute top-1 right-2 flex h-3.5 w-3.5 items-center justify-center rounded-full text-[8px] font-bold shadow-sm ${
+                                                isActive 
+                                                ? 'bg-taller-primary text-white dark:bg-white dark:text-taller-primary' 
+                                                : 'bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300'
+                                            }`}>
+                                                {count}
+                                            </span>
+                                        )}
+                                    </button>
+                                );
+                            })}
+                        </div>
                     </div>
                 </div>
-            </div>
+            )}
 
             {isJobModalOpen && createPortal(
                 <CrearTrabajoModal

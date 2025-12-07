@@ -1,7 +1,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { supabase } from '../supabaseClient';
+import { supabase, supabaseUrl, supabaseKey } from '../supabaseClient';
+import { createClient } from '@supabase/supabase-js';
 import { XMarkIcon, TrashIcon, ClipboardDocumentCheckIcon, ChevronDownIcon, PlusIcon, CameraIcon } from '@heroicons/react/24/solid';
 import type { Cliente, Vehiculo, TallerInfo } from '../types';
 import { isGeminiAvailable, VehiculoData } from '../gemini';
@@ -183,14 +184,26 @@ const CrearClienteModal: React.FC<CrearClienteModalProps> = ({ onClose, onSucces
                 if (!currentTallerSession || !currentTallerSession.user) throw new Error("Sesión de taller no encontrada.");
                 const tallerUser = currentTallerSession.user;
 
-                // Password with special chars IN THE MIDDLE
+                // Password with special chars IN THE MIDDLE to prevent WhatsApp link breakage
+                // e.g. "abcd!Aa1efgh"
                 const tempPassword = Math.random().toString(36).slice(-4) + '!Aa1' + Math.random().toString(36).slice(-4);
                 
                 const userEmail = email.trim();
                 const shouldCreatePortalAccess = userEmail !== '';
                 const signUpEmail = shouldCreatePortalAccess ? userEmail : `${crypto.randomUUID()}@taller-placeholder.com`;
 
-                const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+                // --- ISOLATED SUPABASE CLIENT ---
+                // We create a temporary client instance to sign up the NEW user.
+                // This prevents the current admin session from being invalidated/switched.
+                const tempSupabase = createClient(supabaseUrl, supabaseKey, {
+                    auth: {
+                        persistSession: false, // Do not persist this session to localStorage
+                        autoRefreshToken: false,
+                        detectSessionInUrl: false
+                    }
+                });
+
+                const { data: signUpData, error: signUpError } = await tempSupabase.auth.signUp({
                     email: signUpEmail,
                     password: tempPassword,
                     options: {
@@ -202,12 +215,6 @@ const CrearClienteModal: React.FC<CrearClienteModalProps> = ({ onClose, onSucces
                     }
                 });
                 
-                // Restore session
-                const { error: sessionError } = await supabase.auth.setSession({
-                    access_token: currentTallerSession.access_token,
-                    refresh_token: currentTallerSession.refresh_token,
-                });
-                
                 if (signUpError) throw signUpError;
                 if (!signUpData.user) throw new Error('No se pudo crear la cuenta de usuario.');
                 
@@ -217,10 +224,9 @@ const CrearClienteModal: React.FC<CrearClienteModalProps> = ({ onClose, onSucces
                     localStorage.setItem(`temp_pass_${newUserId}`, tempPassword);
                 }
 
-                if (sessionError) throw new Error("Error al restaurar sesión.");
-                
                 if (onClientCreated) onClientCreated(newUserId);
 
+                // Insert profile data using the ADMIN session (global supabase)
                 const { error: clientInsertError } = await supabase
                     .from('clientes')
                     .insert({ id: newUserId, taller_id: tallerUser.id, nombre, apellido, email: userEmail, telefono });
@@ -233,8 +239,14 @@ const CrearClienteModal: React.FC<CrearClienteModalProps> = ({ onClose, onSucces
                 
                 if (vehicleInsertError) throw new Error(`Error en vehículo: ${vehicleInsertError.message}`);
                 
-                // Fetch full new client
-                const { data } = await supabase.from('clientes').select('*, vehiculos(*)').eq('id', newUserId).single();
+                // Fetch full new client to return to Dashboard for optimistic update
+                // We use .select().single() to get data immediately from the write master if possible
+                const { data } = await supabase
+                    .from('clientes')
+                    .select('*, vehiculos(*)')
+                    .eq('id', newUserId)
+                    .single();
+
                 if (data) resultClient = data as Cliente;
             }
             
@@ -293,7 +305,7 @@ const CrearClienteModal: React.FC<CrearClienteModalProps> = ({ onClose, onSucces
                 <div><label htmlFor="marca" className="block text-sm font-medium text-taller-gray dark:text-gray-400">Marca</label><input type="text" id="marca" value={marca} onChange={e => setMarca(e.target.value.toUpperCase())} className="mt-1 block w-full input-class" required /></div>
                 <div><label htmlFor="modelo" className="block text-sm font-medium text-taller-gray dark:text-gray-400">Modelo</label><input type="text" id="modelo" value={modelo} onChange={e => setModelo(e.target.value.toUpperCase())} className="mt-1 block w-full input-class" required /></div>
                 <div><label htmlFor="año" className="block text-sm font-medium text-taller-gray dark:text-gray-400">Año (Opcional)</label><input type="number" id="año" value={año} onChange={e => setAño(e.target.value)} className="mt-1 block w-full input-class" /></div>
-                <div><label htmlFor="matricula" className="block text-sm font-medium text-taller-gray dark:text-gray-400">Matrícula</label><input type="text" id="matricula" value={matricula} onChange={e => setMatricula(e.target.value.toUpperCase())} className="mt-1 block w-full input-class" required /></div>
+                <div><label htmlFor="matricula" className="block text-sm font-medium text-taller-gray dark:text-gray-400">Matrícula (Opcional)</label><input type="text" id="matricula" value={matricula} onChange={e => setMatricula(e.target.value.toUpperCase())} className="mt-1 block w-full input-class" /></div>
                 <div><label htmlFor="numero_chasis" className="block text-sm font-medium text-taller-gray dark:text-gray-400">Nº Chasis (opcional)</label><input type="text" id="numero_chasis" value={numero_chasis} onChange={e => setNumeroChasis(e.target.value.toUpperCase())} className="mt-1 block w-full input-class" /></div>
                 <div><label htmlFor="numero_motor" className="block text-sm font-medium text-taller-gray dark:text-gray-400">Nº Motor (opcional)</label><input type="text" id="numero_motor" value={numero_motor} onChange={e => setNumeroMotor(e.target.value.toUpperCase())} className="mt-1 block w-full input-class" /></div>
             </div>
@@ -322,7 +334,7 @@ const CrearClienteModal: React.FC<CrearClienteModalProps> = ({ onClose, onSucces
                                     <div><label className="block text-sm font-medium text-taller-gray dark:text-gray-400">Marca</label><input type="text" value={vehicle.marca} onChange={e => handleVehicleChange(index, 'marca', e.target.value)} className="mt-1 block w-full input-class" required /></div>
                                     <div><label className="block text-sm font-medium text-taller-gray dark:text-gray-400">Modelo</label><input type="text" value={vehicle.modelo} onChange={e => handleVehicleChange(index, 'modelo', e.target.value)} className="mt-1 block w-full input-class" required /></div>
                                     <div><label className="block text-sm font-medium text-taller-gray dark:text-gray-400">Año (Opcional)</label><input type="number" value={vehicle.año} onChange={e => handleVehicleChange(index, 'año', e.target.value)} className="mt-1 block w-full input-class" /></div>
-                                    <div><label className="block text-sm font-medium text-taller-gray dark:text-gray-400">Matrícula</label><input type="text" value={vehicle.matricula} onChange={e => handleVehicleChange(index, 'matricula', e.target.value)} className="mt-1 block w-full input-class" required /></div>
+                                    <div><label className="block text-sm font-medium text-taller-gray dark:text-gray-400">Matrícula (Opcional)</label><input type="text" value={vehicle.matricula} onChange={e => handleVehicleChange(index, 'matricula', e.target.value)} className="mt-1 block w-full input-class" /></div>
                                     <div><label className="block text-sm font-medium text-taller-gray dark:text-gray-400">Nº Chasis (opcional)</label><input type="text" value={vehicle.numero_chasis || ''} onChange={e => handleVehicleChange(index, 'numero_chasis', e.target.value)} className="mt-1 block w-full input-class" /></div>
                                     <div><label className="block text-sm font-medium text-taller-gray dark:text-gray-400">Nº Motor (opcional)</label><input type="text" value={vehicle.numero_motor || ''} onChange={e => handleVehicleChange(index, 'numero_motor', e.target.value)} className="mt-1 block w-full input-class" /></div>
                                 </div>

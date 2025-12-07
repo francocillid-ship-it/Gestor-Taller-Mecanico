@@ -456,6 +456,7 @@ const VehicleInfoCard: React.FC<VehicleInfoCardProps> = ({ vehiculo, trabajos, o
                                 Estado de Mantenimiento
                             </h5>
                             
+                            {/* HERE IS THE FIX: Using flex gap instead of space-y */}
                             <div className="flex flex-col gap-3">
                                 {maintenanceGroups.map(group => (
                                     <MaintenanceCategoryRow key={group.id} group={group} />
