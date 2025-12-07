@@ -26,20 +26,43 @@ const App: React.FC = () => {
 
 
     useEffect(() => {
-        // Analizar parámetros del hash y query de la URL para determinar la acción inicial.
-        // NOTA CRÍTICA: No debemos limpiar el hash (window.history.replaceState) aquí inmediatamente.
-        // Supabase necesita leer el access_token y type del hash para establecer la sesión.
-        const hashParams = new URLSearchParams(window.location.hash.substring(1));
-        const searchParams = new URLSearchParams(window.location.search);
-        
-        // Verificamos el 'type' tanto en el query string como en el hash
-        const type = searchParams.get('type') || hashParams.get('type');
+        const processInitialParams = async () => {
+            // Analizar parámetros del hash y query de la URL para determinar la acción inicial.
+            // NOTA CRÍTICA: No debemos limpiar el hash (window.history.replaceState) aquí inmediatamente.
+            // Supabase necesita leer el access_token y type del hash para establecer la sesión.
+            const hashParams = new URLSearchParams(window.location.hash.substring(1));
+            const searchParams = new URLSearchParams(window.location.search);
+            
+            // Verificamos el 'type' tanto en el query string como en el hash
+            const type = searchParams.get('type') || hashParams.get('type');
 
-        if (type === 'recovery') {
-            setAuthAction('PASSWORD_RECOVERY');
-        } else if (type === 'invite') {
-            setAuthAction('SET_INITIAL_PASSWORD');
-        }
+            if (type === 'recovery') {
+                setAuthAction('PASSWORD_RECOVERY');
+            } else if (type === 'invite') {
+                 // Logic for "Magic Link" with credentials in URL
+                 const email = searchParams.get('email');
+                 const password = searchParams.get('password');
+                 
+                 if (email && password) {
+                     // Try to auto-login
+                     const { data, error } = await supabase.auth.signInWithPassword({
+                         email,
+                         password
+                     });
+                     
+                     if (!error && data.session) {
+                         // Successful login via magic link -> Force change password
+                         setAuthAction('SET_INITIAL_PASSWORD');
+                         // Clear URL to hide credentials
+                         window.history.replaceState(null, '', window.location.pathname);
+                     }
+                 } else {
+                     setAuthAction('SET_INITIAL_PASSWORD');
+                 }
+            }
+        };
+        
+        processInitialParams();
     }, []);
 
     useEffect(() => {

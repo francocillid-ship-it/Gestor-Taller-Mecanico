@@ -224,10 +224,14 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
         }
     };
 
+    const handleNavigate = (newView: View) => {
+        setView(newView);
+    };
+
     const renderContent = () => {
         switch (view) {
             case 'dashboard':
-                return <Dashboard clientes={clientes} trabajos={trabajos} gastos={gastos} onDataRefresh={handleSilentRefresh} searchQuery={searchQuery} />;
+                return <Dashboard clientes={clientes} trabajos={trabajos} gastos={gastos} onDataRefresh={handleSilentRefresh} searchQuery={searchQuery} onNavigate={handleNavigate} />;
             case 'trabajos':
                 return <Trabajos trabajos={trabajos} clientes={clientes} onUpdateStatus={handleUpdateStatus} onDataRefresh={handleSilentRefresh} tallerInfo={tallerInfo} searchQuery={searchQuery} />;
             case 'clientes':
@@ -235,7 +239,7 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
             case 'ajustes':
                 return <Ajustes tallerInfo={tallerInfo} onUpdateTallerInfo={handleUpdateTallerInfo} onLogout={onLogout} searchQuery={searchQuery} />;
             default:
-                return <Dashboard clientes={clientes} trabajos={trabajos} gastos={gastos} onDataRefresh={handleSilentRefresh} searchQuery={searchQuery} />;
+                return <Dashboard clientes={clientes} trabajos={trabajos} gastos={gastos} onDataRefresh={handleSilentRefresh} searchQuery={searchQuery} onNavigate={handleNavigate} />;
         }
     };
 

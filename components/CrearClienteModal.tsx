@@ -206,12 +206,16 @@ const CrearClienteModal: React.FC<CrearClienteModalProps> = ({ onClose, onSucces
                 }
                 const tallerUser = currentTallerSession.user;
 
-                const tempPassword = Math.random().toString(36).slice(-12) + 'A1!';
+                // Generamos una contraseña temporal segura para que el taller pueda compartir el link de acceso
+                const tempPassword = Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-8) + 'Aa1!';
                 
                 const userEmail = email.trim();
                 const shouldCreatePortalAccess = userEmail !== '';
                 const signUpEmail = shouldCreatePortalAccess ? userEmail : `${crypto.randomUUID()}@taller-placeholder.com`;
 
+                // HACK: Supabase client-side signup logs out the current user.
+                // We save the session, signup, then restore the session immediately.
+                
                 const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
                     email: signUpEmail,
                     password: tempPassword,
@@ -220,8 +224,16 @@ const CrearClienteModal: React.FC<CrearClienteModalProps> = ({ onClose, onSucces
                             role: 'cliente',
                             taller_nombre_ref: (tallerUser.user_metadata?.taller_info as TallerInfo)?.nombre || 'Mi Taller',
                             taller_info_ref: tallerUser.user_metadata?.taller_info,
+                            // Store the temp password in metadata temporarily so the workshop can see it if needed (optional security tradeoff)
+                            // or better, we just use it to generate the magic link once.
                         },
                     }
+                });
+                
+                // RESTORE WORKSHOP SESSION IMMEDIATELY
+                const { error: sessionError } = await supabase.auth.setSession({
+                    access_token: currentTallerSession.access_token,
+                    refresh_token: currentTallerSession.refresh_token,
                 });
                 
                 if (signUpError) throw signUpError;
@@ -229,28 +241,19 @@ const CrearClienteModal: React.FC<CrearClienteModalProps> = ({ onClose, onSucces
                 
                 const newUserId = signUpData.user.id;
                 
-                // CRITICAL: Notify parent component about the new ID *before* restoring session
-                // Restoring session triggers page reload/unmount, so persistence must happen now.
+                // If we created a real email user, we store the temp password in localStorage temporarily
+                // so Clientes.tsx can generate the "Magic Link" button immediately after creation.
+                if (shouldCreatePortalAccess) {
+                    localStorage.setItem(`temp_pass_${newUserId}`, tempPassword);
+                }
+
+                if (sessionError) throw new Error("Error al restaurar sesión.");
+                
+                // CRITICAL: Notify parent component about the new ID *before* any potential reload
                 if (onClientCreated) {
                     onClientCreated(newUserId);
                 }
 
-                if (shouldCreatePortalAccess) {
-                    await supabase.auth.resetPasswordForEmail(userEmail, {
-                        redirectTo: window.location.origin,
-                    });
-                }
-
-                const { error: sessionError } = await supabase.auth.setSession({
-                    access_token: currentTallerSession.access_token,
-                    refresh_token: currentTallerSession.refresh_token,
-                });
-                if (sessionError) throw new Error("Error al restaurar sesión.");
-                
-                // NOTE: The code below might be interrupted by the page reload triggered by setSession
-                // However, Supabase calls are async and usually complete. 
-                // The critical part (saving ID) is handled above.
-                
                 successId = newUserId;
 
                 const { error: clientInsertError } = await supabase
@@ -265,11 +268,11 @@ const CrearClienteModal: React.FC<CrearClienteModalProps> = ({ onClose, onSucces
                 
                 if (vehicleInsertError) throw new Error(`Cliente creado, pero falló al agregar el vehículo: ${vehicleInsertError.message}`);
                 
-                // For CREATE mode with reload, we don't need to call onSuccess here as the page will reload
-                // and the parent component will handle the state from localStorage.
+                onSuccess(successId, true);
             }
 
         } catch (err: any) {
+            console.error("Error submit client", err);
             setError(err.message || `Error al ${isEditMode ? 'actualizar' : 'crear'} el cliente.`);
             setIsSubmitting(false); 
         } 
@@ -387,7 +390,7 @@ const CrearClienteModal: React.FC<CrearClienteModalProps> = ({ onClose, onSucces
                             <div><label htmlFor="nombre" className="block text-sm font-medium text-taller-gray dark:text-gray-400">Nombre</label><input type="text" id="nombre" value={nombre} onChange={e => setNombre(e.target.value)} className="mt-1 block w-full input-class" required /></div>
                             <div><label htmlFor="apellido" className="block text-sm font-medium text-taller-gray dark:text-gray-400">Apellido</label><input type="text" id="apellido" value={apellido} onChange={e => setApellido(e.target.value)} className="mt-1 block w-full input-class" /></div>
                             <div><label htmlFor="telefono" className="block text-sm font-medium text-taller-gray dark:text-gray-400">Teléfono (Opcional)</label><input type="tel" id="telefono" value={telefono} onChange={e => setTelefono(e.target.value)} className="mt-1 block w-full input-class" /></div>
-                            <div><label htmlFor="email" className="block text-sm font-medium text-taller-gray dark:text-gray-400">Email (opcional para portal)</label><input type="email" id="email" value={email} onChange={e => setEmail(e.target.value)} className="mt-1 block w-full input-class" /></div>
+                            <div><label htmlFor="email" className="block text-sm font-medium text-taller-gray dark:text-gray-400">Email (para acceso al portal)</label><input type="email" id="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="cliente@ejemplo.com" className="mt-1 block w-full input-class" /></div>
                         </div>
                         
                         {isEditMode ? renderEditForm() : renderCreateForm()}

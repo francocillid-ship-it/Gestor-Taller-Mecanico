@@ -2,7 +2,7 @@
 import React, { useMemo, useState, useEffect, useRef } from 'react';
 import type { Cliente, Trabajo, Gasto } from '../types';
 import { JobStatus } from '../types';
-import { CurrencyDollarIcon, UsersIcon, WrenchScrewdriverIcon, PlusIcon, PencilIcon, TrashIcon, ChartPieIcon, BuildingLibraryIcon, ScaleIcon, ChevronDownIcon, CalendarIcon } from '@heroicons/react/24/solid';
+import { CurrencyDollarIcon, UsersIcon, WrenchScrewdriverIcon, PlusIcon, PencilIcon, TrashIcon, ChartPieIcon, BuildingLibraryIcon, ScaleIcon, ChevronDownIcon, CalendarIcon, ArrowLeftIcon, ArrowTrendingUpIcon, ArrowTrendingDownIcon } from '@heroicons/react/24/solid';
 import AddGastoModal from './AddGastoModal';
 import EditGastoModal from './EditGastoModal';
 import { supabase } from '../supabaseClient';
@@ -13,6 +13,7 @@ interface DashboardProps {
     gastos: Gasto[];
     onDataRefresh: () => void;
     searchQuery: string;
+    onNavigate: (view: 'dashboard' | 'trabajos' | 'clientes' | 'ajustes') => void;
 }
 
 interface StatCardProps {
@@ -20,11 +21,15 @@ interface StatCardProps {
     value: string | number;
     icon: React.ReactNode;
     color: string;
+    onClick?: () => void;
 }
 
 // Tarjeta rediseñada para ser responsive: Vertical en móvil (2 col), Horizontal en escritorio
-const StatCard: React.FC<StatCardProps> = ({ title, value, icon, color }) => (
-    <div className="bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-xl shadow-md flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:space-x-4 h-full">
+const StatCard: React.FC<StatCardProps> = ({ title, value, icon, color, onClick }) => (
+    <div 
+        onClick={onClick}
+        className={`bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-xl shadow-md flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:space-x-4 h-full transition-all duration-200 ${onClick ? 'cursor-pointer hover:shadow-lg hover:scale-[1.01] active:scale-[0.98]' : ''}`}
+    >
         <div className={`p-2 sm:p-3 rounded-full ${color} shrink-0`}>
             {/* Clona el icono para asegurar tamaño responsivo consistente */}
             {React.isValidElement(icon) 
@@ -40,13 +45,26 @@ const StatCard: React.FC<StatCardProps> = ({ title, value, icon, color }) => (
 );
 
 type Period = 'this_month' | 'last_7_days' | 'last_15_days' | 'last_month';
+type DetailType = 'ingresos' | 'ganancias' | 'gastos' | 'balance' | null;
 
-const Dashboard: React.FC<DashboardProps> = ({ clientes, trabajos, gastos, onDataRefresh, searchQuery }) => {
+interface TransactionItem {
+    id: string;
+    date: Date;
+    description: string;
+    amount: number;
+    type: 'income' | 'expense';
+    subtext?: string;
+}
+
+const Dashboard: React.FC<DashboardProps> = ({ clientes, trabajos, gastos, onDataRefresh, searchQuery, onNavigate }) => {
     const [isAddGastoModalOpen, setIsAddGastoModalOpen] = useState(false);
     const [gastoToEdit, setGastoToEdit] = useState<Gasto | null>(null);
     const [period, setPeriod] = useState<Period>('this_month');
     const [confirmingDeleteGastoId, setConfirmingDeleteGastoId] = useState<string | null>(null);
     const [isLastMonthExpanded, setIsLastMonthExpanded] = useState(false);
+    
+    // State for the Detail Overlay
+    const [detailView, setDetailView] = useState<DetailType>(null);
     
     // Referencia para la sección de gastos
     const gastosSectionRef = useRef<HTMLDivElement>(null);
@@ -57,15 +75,14 @@ const Dashboard: React.FC<DashboardProps> = ({ clientes, trabajos, gastos, onDat
             gastosSectionRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
     }, [searchQuery]);
-
-    const stats = useMemo(() => {
-        const formatCurrency = (amount: number) => new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(amount);
-        
+    
+    // Función auxiliar para filtrar por fecha
+    const getPeriodDates = (selectedPeriod: Period) => {
         const now = new Date();
         let startDate = new Date();
         let endDate = new Date(now);
 
-        switch (period) {
+        switch (selectedPeriod) {
             case 'this_month':
                 startDate = new Date(now.getFullYear(), now.getMonth(), 1);
                 endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
@@ -83,6 +100,13 @@ const Dashboard: React.FC<DashboardProps> = ({ clientes, trabajos, gastos, onDat
         }
         startDate.setHours(0, 0, 0, 0);
         endDate.setHours(23, 59, 59, 999);
+        return { startDate, endDate };
+    };
+
+    const stats = useMemo(() => {
+        const formatCurrency = (amount: number) => new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(amount);
+        
+        const { startDate, endDate } = getPeriodDates(period);
 
         // 1. Calcular Gastos del Periodo
         const filteredGastos = gastos.filter(g => {
@@ -237,7 +261,70 @@ const Dashboard: React.FC<DashboardProps> = ({ clientes, trabajos, gastos, onDat
         return { thisMonth, lastMonth };
     }, [gastos, searchQuery]);
 
-    const FilterControls = () => (
+    // Financial History Data Preparation
+    const financialDetailData = useMemo(() => {
+        if (!detailView) return { transactions: [], total: 0 };
+
+        // Detail View has its own period filter if we wanted, but for UX consistency we use the same state 'period'
+        // or we could let the modal have its own state. 
+        // For simplicity, let's share the state 'period' but recalculate specifically for the list.
+        
+        const { startDate, endDate } = getPeriodDates(period);
+        const transactions: TransactionItem[] = [];
+
+        // 1. Collect Income
+        if (detailView === 'ingresos' || detailView === 'balance' || detailView === 'ganancias') {
+            trabajos.forEach(t => {
+                t.partes.forEach((p, idx) => {
+                    if (p.nombre === '__PAGO_REGISTRADO__') {
+                        const date = p.fecha ? new Date(p.fecha) : new Date(0);
+                        if (date >= startDate && date <= endDate) {
+                            const cliente = clientes.find(c => c.id === t.clienteId);
+                            const vehiculo = cliente?.vehiculos.find(v => v.id === t.vehiculoId);
+                            transactions.push({
+                                id: `${t.id}_pago_${idx}`,
+                                date: date,
+                                amount: p.precioUnitario,
+                                description: `Pago de ${cliente ? cliente.nombre : 'Cliente'}`,
+                                subtext: vehiculo ? `${vehiculo.marca} ${vehiculo.modelo}` : 'Vehículo no especif.',
+                                type: 'income'
+                            });
+                        }
+                    }
+                });
+            });
+        }
+
+        // 2. Collect Expenses
+        if (detailView === 'gastos' || detailView === 'balance' || detailView === 'ganancias') {
+             gastos.forEach(g => {
+                const date = new Date(g.fecha);
+                if (date >= startDate && date <= endDate) {
+                    transactions.push({
+                        id: g.id,
+                        date: date,
+                        amount: g.monto,
+                        description: g.descripcion,
+                        subtext: 'Gasto registrado',
+                        type: 'expense'
+                    });
+                }
+             });
+        }
+
+        // Sort descending
+        transactions.sort((a, b) => b.date.getTime() - a.date.getTime());
+
+        // Calculate Total
+        const total = transactions.reduce((sum, t) => {
+            return t.type === 'income' ? sum + t.amount : sum - t.amount;
+        }, 0);
+
+        return { transactions, total };
+
+    }, [detailView, trabajos, gastos, clientes, period]);
+
+    const FilterControls = ({ activePeriod, setPeriodFn }: { activePeriod: Period, setPeriodFn: (p: Period) => void }) => (
         <div className="flex flex-wrap items-center gap-2 bg-white dark:bg-gray-800 p-2 rounded-lg shadow-sm">
             {[
                 { label: 'Este mes', value: 'this_month' },
@@ -247,8 +334,8 @@ const Dashboard: React.FC<DashboardProps> = ({ clientes, trabajos, gastos, onDat
             ].map(p => (
                 <button
                     key={p.value}
-                    onClick={() => setPeriod(p.value as Period)}
-                    className={`px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md transition-colors flex-grow sm:flex-grow-0 ${period === p.value ? 'bg-taller-primary text-white shadow' : 'text-taller-gray dark:text-gray-300 hover:bg-taller-light dark:hover:bg-gray-700'}`}
+                    onClick={() => setPeriodFn(p.value as Period)}
+                    className={`px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md transition-colors flex-grow sm:flex-grow-0 ${activePeriod === p.value ? 'bg-taller-primary text-white shadow' : 'text-taller-gray dark:text-gray-300 hover:bg-taller-light dark:hover:bg-gray-700'}`}
                 >
                     {p.label}
                 </button>
@@ -290,21 +377,138 @@ const Dashboard: React.FC<DashboardProps> = ({ clientes, trabajos, gastos, onDat
         </div>
     );
 
+    // -- Sub-Component for Financial Detail Overlay --
+    const FinancialDetailView = () => {
+        if (!detailView) return null;
+        
+        const titleMap = {
+            'ingresos': 'Historial de Ingresos',
+            'gastos': 'Historial de Gastos',
+            'balance': 'Balance (Flujo de Caja)',
+            'ganancias': 'Detalle de Movimientos (Ganancia)'
+        };
+
+        const isProfitView = detailView === 'ganancias';
+        const displayTotal = isProfitView ? stats.gananciasNetas : new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(financialDetailData.total);
+        
+        return (
+            <div className="fixed inset-0 z-50 bg-taller-light dark:bg-taller-dark flex flex-col animate-in slide-in-from-bottom-5 duration-300">
+                {/* Header */}
+                <div className="bg-white dark:bg-gray-800 shadow-sm p-4 flex items-center justify-between flex-shrink-0">
+                    <button 
+                        onClick={() => setDetailView(null)}
+                        className="p-2 -ml-2 text-taller-gray dark:text-gray-400 hover:text-taller-dark dark:hover:text-white rounded-full hover:bg-gray-100 dark:hover:bg-gray-700"
+                    >
+                        <ArrowLeftIcon className="h-6 w-6" />
+                    </button>
+                    <h2 className="text-lg font-bold text-taller-dark dark:text-taller-light">{titleMap[detailView]}</h2>
+                    <div className="w-10"></div> {/* Spacer for alignment */}
+                </div>
+
+                {/* Content */}
+                <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                    
+                    {/* Filter */}
+                    <div className="sticky top-0 z-10 -mx-4 px-4 pb-2 bg-taller-light dark:bg-taller-dark/95 backdrop-blur-sm">
+                        <FilterControls activePeriod={period} setPeriodFn={setPeriod} />
+                    </div>
+
+                    {/* Big Summary Card */}
+                    <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm text-center">
+                        <p className="text-sm text-taller-gray dark:text-gray-400 uppercase tracking-wide">Total {period.replace(/_/g, ' ')}</p>
+                        <p className={`text-4xl font-bold mt-2 ${financialDetailData.total >= 0 ? 'text-taller-dark dark:text-taller-light' : 'text-red-600'}`}>
+                            {displayTotal}
+                        </p>
+                        {isProfitView && (
+                           <p className="text-xs text-taller-gray dark:text-gray-500 mt-2">
+                               * Cálculo basado en Mano de Obra cobrada - Gastos Fijos.
+                           </p>
+                        )}
+                    </div>
+
+                    {/* Transaction List */}
+                    <div className="space-y-3 pb-10">
+                         {financialDetailData.transactions.length > 0 ? (
+                            financialDetailData.transactions.map((t) => (
+                                <div key={t.id} className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm flex items-center justify-between border-l-4 border-transparent hover:border-l-4 transition-all" style={{ borderLeftColor: t.type === 'income' ? '#22c55e' : '#ef4444' }}>
+                                    <div className="flex items-center gap-3">
+                                        <div className={`p-2 rounded-full ${t.type === 'income' ? 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400' : 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400'}`}>
+                                            {t.type === 'income' ? <ArrowTrendingUpIcon className="h-5 w-5" /> : <ArrowTrendingDownIcon className="h-5 w-5" />}
+                                        </div>
+                                        <div>
+                                            <p className="font-bold text-taller-dark dark:text-taller-light text-sm">{t.description}</p>
+                                            <p className="text-xs text-taller-gray dark:text-gray-400">{t.subtext}</p>
+                                            <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">{t.date.toLocaleDateString('es-ES')} {t.date.toLocaleTimeString([], { hour: '2-digit', minute:'2-digit' })}</p>
+                                        </div>
+                                    </div>
+                                    <p className={`font-bold ${t.type === 'income' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                                        {t.type === 'income' ? '+' : '-'} {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(t.amount)}
+                                    </p>
+                                </div>
+                            ))
+                         ) : (
+                             <div className="text-center py-10 text-taller-gray dark:text-gray-400">
+                                 <ScaleIcon className="h-12 w-12 mx-auto mb-2 opacity-20" />
+                                 <p>No hay movimientos en este periodo.</p>
+                             </div>
+                         )}
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
     return (
         <div className="space-y-6 sm:space-y-8 pb-16">
             <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
                 <h2 className="text-2xl font-bold text-taller-dark dark:text-taller-light">Resumen</h2>
-                <FilterControls />
+                <FilterControls activePeriod={period} setPeriodFn={setPeriod} />
             </div>
             
             {/* Updated Grid: 2 columns on mobile (gap reduced), 3 on desktop */}
             <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6">
-                <StatCard title="Ingresos Totales" value={stats.ingresosTotales} icon={<CurrencyDollarIcon />} color="bg-blue-500" />
-                <StatCard title="Ganancia Neta (Real)" value={stats.gananciasNetas} icon={<ChartPieIcon />} color="bg-green-500" />
-                <StatCard title="Gastos Fijos" value={stats.gastos} icon={<BuildingLibraryIcon />} color="bg-red-500" />
-                <StatCard title="Balance (Caja)" value={stats.balance} icon={<ScaleIcon />} color="bg-indigo-500" />
-                <StatCard title="Trabajos Activos" value={stats.trabajosActivos} icon={<WrenchScrewdriverIcon />} color="bg-yellow-500" />
-                <StatCard title="Total Clientes" value={stats.totalClientes} icon={<UsersIcon />} color="bg-purple-500" />
+                <StatCard 
+                    title="Ingresos Totales" 
+                    value={stats.ingresosTotales} 
+                    icon={<CurrencyDollarIcon />} 
+                    color="bg-blue-500" 
+                    onClick={() => setDetailView('ingresos')}
+                />
+                <StatCard 
+                    title="Ganancia Neta (Real)" 
+                    value={stats.gananciasNetas} 
+                    icon={<ChartPieIcon />} 
+                    color="bg-green-500" 
+                    onClick={() => setDetailView('ganancias')}
+                />
+                <StatCard 
+                    title="Gastos Fijos" 
+                    value={stats.gastos} 
+                    icon={<BuildingLibraryIcon />} 
+                    color="bg-red-500" 
+                    onClick={() => setDetailView('gastos')}
+                />
+                <StatCard 
+                    title="Balance (Caja)" 
+                    value={stats.balance} 
+                    icon={<ScaleIcon />} 
+                    color="bg-indigo-500" 
+                    onClick={() => setDetailView('balance')}
+                />
+                <StatCard 
+                    title="Trabajos Activos" 
+                    value={stats.trabajosActivos} 
+                    icon={<WrenchScrewdriverIcon />} 
+                    color="bg-yellow-500" 
+                    onClick={() => onNavigate('trabajos')}
+                />
+                <StatCard 
+                    title="Total Clientes" 
+                    value={stats.totalClientes} 
+                    icon={<UsersIcon />} 
+                    color="bg-purple-500" 
+                    onClick={() => onNavigate('clientes')}
+                />
             </div>
 
             <div ref={gastosSectionRef} className="bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-xl shadow-md scroll-mt-24">
@@ -358,6 +562,9 @@ const Dashboard: React.FC<DashboardProps> = ({ clientes, trabajos, gastos, onDat
 
             {isAddGastoModalOpen && <AddGastoModal onClose={() => setIsAddGastoModalOpen(false)} onAddGasto={handleAddGasto} />}
             {gastoToEdit && <EditGastoModal gasto={gastoToEdit} onClose={() => setGastoToEdit(null)} onUpdateGasto={handleUpdateGasto} />}
+            
+            {/* Render Financial Detail Overlay if active */}
+            <FinancialDetailView />
         </div>
     );
 };

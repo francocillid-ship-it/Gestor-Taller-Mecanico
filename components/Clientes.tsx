@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import type { Cliente, Trabajo, Vehiculo } from '../types';
-import { ChevronDownIcon, PhoneIcon, EnvelopeIcon, UserPlusIcon, PencilIcon, Cog6ToothIcon, PlusIcon, PaperAirplaneIcon, CurrencyDollarIcon } from '@heroicons/react/24/solid';
+import { ChevronDownIcon, PhoneIcon, EnvelopeIcon, UserPlusIcon, PencilIcon, Cog6ToothIcon, PlusIcon, PaperAirplaneIcon, CurrencyDollarIcon, KeyIcon } from '@heroicons/react/24/solid';
 import CrearClienteModal from './CrearClienteModal';
 import MaintenanceConfigModal from './MaintenanceConfigModal';
 import AddVehicleModal from './AddVehicleModal';
@@ -73,20 +73,38 @@ const ClientCard: React.FC<ClientCardProps> = ({ cliente, trabajos, onEdit, onCo
             alert("El cliente no tiene email registrado.");
             return;
         }
+        
+        // Retrieve temp password if available from session (just created) or stored
+        const tempPass = localStorage.getItem(`temp_pass_${cliente.id}`);
 
-        const confirmSend = window.confirm(`¿Enviar instrucciones de acceso a ${cliente.email}? Esto permitirá al cliente restablecer su contraseña y entrar al portal.`);
+        let shareUrl = window.location.origin;
+        if (tempPass) {
+             // Construct magic link with credentials
+             shareUrl = `${window.location.origin}/?type=invite&email=${encodeURIComponent(cliente.email)}&password=${encodeURIComponent(tempPass)}`;
+        } else {
+             // Fallback to standard login link if no temp pass available
+             // This can happen if the client was created long ago. 
+             // In that case, we should really just use the email recovery.
+             // But for now, we share the base URL.
+        }
+
+        const confirmSend = window.confirm(`¿Compartir acceso con ${cliente.nombre}?`);
         if (!confirmSend) return;
 
         setSendingAccess(true);
         try {
+            // We ALSO trigger the standard reset password email as a backup/secure method
             const { error } = await supabase.auth.resetPasswordForEmail(cliente.email, {
                 redirectTo: window.location.origin + '?type=recovery',
             });
 
-            if (error) throw error;
+            if (error) {
+                 console.error("Warning: email send failed", error);
+                 // We continue to share the link if we have one, otherwise alert error
+                 if (!tempPass) throw error;
+            }
 
-            const shareText = `Hola ${cliente.nombre}, te envié un correo a ${cliente.email} para que puedas acceder a tu portal de cliente. Por favor revísalo y sigue el enlace para crear tu contraseña.`;
-            const shareUrl = window.location.origin;
+            const shareText = `Hola ${cliente.nombre}, aquí tienes el enlace para acceder a tu historial de trabajos en el taller:\n\n${shareUrl}\n\nIngresa automáticamente con este link. Por seguridad, se te pedirá cambiar tu contraseña al entrar.`;
 
             if (navigator.share) {
                 try {
@@ -97,16 +115,24 @@ const ClientCard: React.FC<ClientCardProps> = ({ cliente, trabajos, onEdit, onCo
                     });
                 } catch (shareError) {
                     // Ignore abort error
-                    alert("Correo enviado con éxito. Puedes avisarle al cliente por WhatsApp.");
+                    if ((shareError as any).name !== 'AbortError') {
+                         alert("Enlace copiado al portapapeles (Compartir no soportado).");
+                         await navigator.clipboard.writeText(shareText);
+                    }
                 }
             } else {
-                // Fallback: Copy text or just alert
-                 alert("¡Correo de acceso enviado con éxito! Dile al cliente que revise su bandeja de entrada (y spam).");
+                 await navigator.clipboard.writeText(shareText);
+                 alert("Enlace de acceso copiado al portapapeles. Puedes pegarlo en WhatsApp.");
+            }
+            
+            // Clean up temp pass after sharing once (security practice)
+            if (tempPass) {
+                localStorage.removeItem(`temp_pass_${cliente.id}`);
             }
 
         } catch (error: any) {
             console.error("Error sending access:", error);
-            alert("Error al enviar el correo: " + error.message);
+            alert("Error al procesar la solicitud: " + error.message);
         } finally {
             setSendingAccess(false);
         }
@@ -139,20 +165,20 @@ const ClientCard: React.FC<ClientCardProps> = ({ cliente, trabajos, onEdit, onCo
                                 <div className="space-y-2 text-sm text-taller-dark dark:text-gray-300">
                                     <p className="flex items-center"><PhoneIcon className="h-4 w-4 mr-2 text-taller-gray dark:text-gray-400"/> {cliente.telefono}</p>
                                     <div className="flex items-center justify-between group">
-                                        <p className="flex items-center"><EnvelopeIcon className="h-4 w-4 mr-2 text-taller-gray dark:text-gray-400"/> {cliente.email}</p>
+                                        <p className="flex items-center"><EnvelopeIcon className="h-4 w-4 mr-2 text-taller-gray dark:text-gray-400"/> {cliente.email || 'Sin email registrado'}</p>
                                         {cliente.email && (
                                             <button 
                                                 onClick={handleSendAccess}
                                                 disabled={sendingAccess}
-                                                className="ml-2 flex items-center gap-1 text-xs font-semibold text-taller-primary bg-blue-100 hover:bg-blue-200 dark:bg-blue-900/40 dark:hover:bg-blue-900/60 px-2 py-1 rounded transition-colors"
-                                                title="Enviar correo de recuperación y compartir aviso"
+                                                className="ml-2 flex items-center gap-1 text-xs font-bold text-white bg-green-500 hover:bg-green-600 px-3 py-1.5 rounded-full transition-all shadow-sm"
+                                                title="Enviar enlace de acceso automático"
                                             >
                                                 {sendingAccess ? (
-                                                    <span>Enviando...</span>
+                                                    <span>...</span>
                                                 ) : (
                                                     <>
-                                                        <PaperAirplaneIcon className="h-3 w-3" />
-                                                        Enviar Acceso
+                                                        <KeyIcon className="h-3.5 w-3.5" />
+                                                        Compartir Acceso
                                                     </>
                                                 )}
                                             </button>
