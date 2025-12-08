@@ -255,7 +255,7 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
     const translateValue = `-${activeIndex * 100}%`;
 
     return (
-        <div className="flex h-[100dvh] bg-taller-light dark:bg-taller-dark text-taller-dark dark:text-taller-light overflow-hidden transition-colors duration-300">
+        <div className="flex h-full bg-taller-light dark:bg-taller-dark text-taller-dark dark:text-taller-light overflow-hidden transition-colors duration-300">
             {/* Sidebar (Desktop Only) */}
             <aside className={sidebarClasses}>
                 <div className="h-full flex flex-col">

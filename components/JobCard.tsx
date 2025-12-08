@@ -376,7 +376,7 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
                                                 type="date" 
                                                 value={scheduleDate} 
                                                 onChange={(e) => setScheduleDate(e.target.value)}
-                                                className="w-full text-xs px-2 py-1.5 rounded border dark:border-gray-600 bg-white dark:bg-gray-700 focus:ring-1 focus:ring-taller-primary focus:outline-none appearance-none"
+                                                className="w-full h-8 text-xs px-2 py-1.5 rounded border dark:border-gray-600 bg-white dark:bg-gray-700 focus:ring-1 focus:ring-taller-primary focus:outline-none appearance-none"
                                             />
                                         </div>
                                         <div className="flex-1 min-w-[90px]">
@@ -385,7 +385,7 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
                                                 type="time" 
                                                 value={scheduleTime} 
                                                 onChange={(e) => setScheduleTime(e.target.value)}
-                                                className="w-full text-xs px-2 py-1.5 rounded border dark:border-gray-600 bg-white dark:bg-gray-700 focus:ring-1 focus:ring-taller-primary focus:outline-none appearance-none"
+                                                className="w-full h-8 text-xs px-2 py-1.5 rounded border dark:border-gray-600 bg-white dark:bg-gray-700 focus:ring-1 focus:ring-taller-primary focus:outline-none appearance-none"
                                             />
                                         </div>
                                     </div>

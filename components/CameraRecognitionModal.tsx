@@ -180,7 +180,7 @@ const CameraRecognitionModal: React.FC<CameraRecognitionModalProps> = ({ onClose
     const scaleY = videoRef.current ? videoRef.current.clientHeight / videoDimensions.height : 0;
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-75 flex justify-center items-center z-[60]">
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex justify-center items-center z-[110]">
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-4 w-full max-w-lg relative text-center">
                 <button onClick={onClose} className="absolute top-2 right-2 text-taller-gray dark:text-gray-400 hover:text-taller-dark dark:hover:text-white z-10 bg-white/50 dark:bg-black/50 rounded-full p-1">
                     <XMarkIcon className="h-6 w-6" />
