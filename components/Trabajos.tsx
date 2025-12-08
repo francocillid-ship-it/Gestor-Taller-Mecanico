@@ -444,15 +444,19 @@ const Trabajos: React.FC<TrabajosProps> = ({
     const [animateFloatingMenu, setAnimateFloatingMenu] = useState(false);
 
     useEffect(() => {
+        // Reset tab whenever the view becomes active (navigation)
+        if (isActive) {
+            setActiveMobileTab(initialTab || JobStatus.Presupuesto);
+        }
+        
         if (initialTab) {
-            setActiveMobileTab(initialTab);
             // On desktop, scroll the corresponding column into view
             const columnElement = document.getElementById(`status-column-${initialTab}`);
             if (columnElement) {
                 columnElement.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
             }
         }
-    }, [initialTab]);
+    }, [isActive, initialTab]);
 
     useEffect(() => {
         const pendingClientId = localStorage.getItem('pending_job_client_id');
@@ -470,16 +474,17 @@ const Trabajos: React.FC<TrabajosProps> = ({
 
         if (shouldShow) {
             setShowFloatingMenu(true);
-            // Small delay to allow mount before transition
-            requestAnimationFrame(() => {
+            // Usamos setTimeout (50ms) para asegurar que el navegador pinte el estado inicial
+            // (opacity-0) en móviles antes de iniciar la transición visible.
+            timer = setTimeout(() => {
                 setAnimateFloatingMenu(true);
-            });
+            }, 50);
         } else {
             setAnimateFloatingMenu(false);
-            // Wait for transition duration before unmounting
+            // Timeout reducido para fade out más rápido
             timer = setTimeout(() => {
                 setShowFloatingMenu(false);
-            }, 300); // Matches duration-300
+            }, 200); 
         }
 
         return () => clearTimeout(timer);
@@ -611,7 +616,7 @@ const Trabajos: React.FC<TrabajosProps> = ({
             {/* Floating Buttons (Mobile Only) - Using Portal to ensure fixed positioning works correctly on all devices */}
             {showFloatingMenu && createPortal(
                 <div 
-                    className={`lg:hidden fixed left-0 w-full flex flex-col items-center pointer-events-none z-[100] transition-all duration-300 ease-in-out transform ${animateFloatingMenu ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}
+                    className={`lg:hidden fixed left-0 w-full flex flex-col items-center pointer-events-none z-[100] transition-all ease-out transform ${animateFloatingMenu ? 'duration-500 opacity-100 translate-y-0' : 'duration-200 opacity-0 translate-y-12'}`}
                     style={{
                         bottom: 'calc(5.5rem + 5px)',
                     }}
