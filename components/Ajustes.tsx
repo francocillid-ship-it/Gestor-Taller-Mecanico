@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import type { TallerInfo } from '../types';
 import { supabase } from '../supabaseClient';
-import { BuildingOffice2Icon, PhotoIcon, ArrowUpOnSquareIcon, PaintBrushIcon, DevicePhoneMobileIcon, SunIcon, MoonIcon, ComputerDesktopIcon, DocumentTextIcon, SparklesIcon, CheckCircleIcon, ExclamationTriangleIcon, KeyIcon, ArrowTopRightOnSquareIcon, SwatchIcon, ArrowRightOnRectangleIcon, MagnifyingGlassPlusIcon } from '@heroicons/react/24/solid';
+import { BuildingOffice2Icon, PhotoIcon, ArrowUpOnSquareIcon, PaintBrushIcon, SunIcon, MoonIcon, ComputerDesktopIcon, DocumentTextIcon, SparklesIcon, CheckCircleIcon, ExclamationTriangleIcon, KeyIcon, ArrowTopRightOnSquareIcon, ArrowRightOnRectangleIcon, MagnifyingGlassPlusIcon } from '@heroicons/react/24/solid';
 import ChangePasswordModal from './ChangePasswordModal';
 import { APP_THEMES, applyAppTheme, applyFontSize } from '../constants';
 
@@ -108,11 +108,6 @@ const Ajustes: React.FC<AjustesProps> = ({ tallerInfo, onUpdateTallerInfo, onLog
 
     const handleColorChange = (color: string) => {
         setFormData(prev => ({ ...prev, headerColor: color }));
-        setIsSaved(false);
-    };
-
-    const handleNavStyleChange = (style: 'sidebar' | 'bottom_nav') => {
-        setFormData(prev => ({ ...prev, mobileNavStyle: style }));
         setIsSaved(false);
     };
 
@@ -557,31 +552,8 @@ const Ajustes: React.FC<AjustesProps> = ({ tallerInfo, onUpdateTallerInfo, onLog
                             )}
                         </div>
                     )}
-
-                    {shouldShow(['movil', 'celular', 'navegacion', 'barra']) && (
-                        <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md">
-                            <h3 className="text-lg font-bold mb-4 flex items-center"><DevicePhoneMobileIcon className="h-6 w-6 mr-2 text-taller-primary"/>Interfaz Móvil</h3>
-                            <div>
-                                <label className="block text-sm font-medium text-taller-gray dark:text-gray-400 mb-2">Estilo de Navegación</label>
-                                <div className="flex space-x-2 rounded-lg bg-taller-light dark:bg-gray-700/50 p-1">
-                                    <button
-                                        type="button"
-                                        onClick={() => handleNavStyleChange('sidebar')}
-                                        className={`w-full rounded-md py-2 text-sm font-medium transition-colors ${formData.mobileNavStyle === 'sidebar' ? 'bg-taller-primary text-white shadow' : 'text-taller-gray dark:text-gray-300 hover:bg-white dark:hover:bg-gray-600'}`}
-                                    >
-                                        Menú Lateral
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => handleNavStyleChange('bottom_nav')}
-                                        className={`w-full rounded-md py-2 text-sm font-medium transition-colors ${formData.mobileNavStyle === 'bottom_nav' ? 'bg-taller-primary text-white shadow' : 'text-taller-gray dark:text-gray-300 hover:bg-white dark:hover:bg-gray-600'}`}
-                                    >
-                                        Barra Inferior
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    )}
+                    
+                    {/* Se ha eliminado la sección de configuración de interfaz móvil (barra lateral vs inferior) */}
 
                     <div className="pt-4 flex items-center justify-end">
                         {isSaved && <span className="text-sm text-green-600 mr-4">¡Guardado con éxito!</span>}

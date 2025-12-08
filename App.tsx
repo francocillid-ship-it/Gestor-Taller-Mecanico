@@ -131,14 +131,13 @@ const App: React.FC = () => {
                             .maybeSingle();
 
                         if (!tallerInfoError && tallerInfoData) {
-                             const info = {
+                             const info: TallerInfo = {
                                 nombre: tallerInfoData.nombre || 'Taller Mecánico',
                                 telefono: tallerInfoData.telefono || '',
                                 direccion: tallerInfoData.direccion || '',
                                 cuit: tallerInfoData.cuit || '',
                                 logoUrl: tallerInfoData.logo_url,
                                 pdfTemplate: tallerInfoData.pdf_template || 'classic',
-                                mobileNavStyle: tallerInfoData.mobile_nav_style || 'bottom_nav',
                                 showLogoOnPdf: tallerInfoData.show_logo_on_pdf === true,
                                 showCuitOnPdf: tallerInfoData.show_cuit_on_pdf !== false,
                                 headerColor: tallerInfoData.header_color || '#334155',

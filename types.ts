@@ -84,7 +84,7 @@ export interface TallerInfo {
     cuit: string;
     logoUrl?: string;
     pdfTemplate: 'classic' | 'modern';
-    mobileNavStyle: 'sidebar' | 'bottom_nav';
+    // mobileNavStyle eliminado, ahora es siempre bottom_nav
     showLogoOnPdf: boolean;
     showCuitOnPdf?: boolean;
     headerColor?: string;

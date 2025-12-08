@@ -133,7 +133,9 @@ const Login: React.FC = () => {
             <form
                 onSubmit={(e) => {
                     e.preventDefault();
-                    handleAuthAction(view);
+                    if (view === 'login' || view === 'signup') {
+                        handleAuthAction(view);
+                    }
                 }}
                 className="space-y-4"
             >

@@ -399,8 +399,9 @@ const StatusColumn: React.FC<{
     };
 
     if (isMobileMode) {
+        // Increased bottom padding to ensure content isn't hidden behind floating buttons
         return (
-            <div className="pt-2 pb-24 px-1 flex flex-col min-h-full">
+            <div className="pt-2 pb-80 px-1 flex flex-col min-h-full">
                 {renderContent()}
             </div>
         );
@@ -497,7 +498,7 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
     };
 
     return (
-        <div className="flex flex-col relative lg:h-full min-h-full">
+        <div className="flex flex-col relative lg:h-full min-h-full w-full">
             <style>{`
                 .custom-scrollbar::-webkit-scrollbar { width: 5px; }
                 .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
@@ -570,9 +571,13 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
 
             {/* Mobile Bottom Navigation - Hidden when modal is open */}
             {!isJobModalOpen && (
-                <div className={`lg:hidden fixed left-1/2 -translate-x-1/2 z-20 flex flex-col items-center pointer-events-none transition-all duration-300 w-full ${
-                    tallerInfo.mobileNavStyle === 'bottom_nav' ? 'bottom-[96px]' : 'bottom-6'
-                }`}>
+                <div 
+                    className="lg:hidden sticky left-0 z-50 w-full flex flex-col items-center pointer-events-none mt-auto pb-4"
+                    style={{
+                        // Increased to 9rem (~144px) + safe area to ensure clearance over bottom nav and system bars
+                        bottom: 'calc(9rem + env(safe-area-inset-bottom))',
+                    }}
+                >
                     {activeMobileTab === JobStatus.Presupuesto && (
                         <div className="w-full flex justify-center mb-4 pointer-events-auto px-4">
                             <button

@@ -38,7 +38,6 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
         direccion: '',
         cuit: '',
         pdfTemplate: 'classic',
-        mobileNavStyle: 'bottom_nav',
         showLogoOnPdf: false,
         showCuitOnPdf: true,
         logoUrl: undefined,
@@ -46,7 +45,7 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
         appTheme: 'slate',
         fontSize: 'normal'
     });
-    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+    // Removed isMobileMenuOpen state as sidebar is now desktop only
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
     const [targetJobStatus, setTargetJobStatus] = useState<JobStatus | undefined>(undefined);
@@ -80,7 +79,6 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
                     cuit: tallerInfoData.cuit || '',
                     logoUrl: tallerInfoData.logo_url,
                     pdfTemplate: tallerInfoData.pdf_template || 'classic',
-                    mobileNavStyle: tallerInfoData.mobile_nav_style || 'bottom_nav',
                     showLogoOnPdf: tallerInfoData.show_logo_on_pdf === true,
                     showCuitOnPdf: tallerInfoData.show_cuit_on_pdf !== false,
                     headerColor: tallerInfoData.header_color || '#334155',
@@ -159,7 +157,6 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
     }, [fetchData]);
 
     useEffect(() => {
-        setIsMobileMenuOpen(false);
         setSearchQuery('');
         
         // Reset scroll position of the active view container
@@ -217,7 +214,7 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
                  cuit: newInfo.cuit,
                  logo_url: newInfo.logoUrl,
                  pdf_template: newInfo.pdfTemplate,
-                 mobile_nav_style: newInfo.mobileNavStyle,
+                 // Removed mobile_nav_style from DB update
                  show_logo_on_pdf: newInfo.showLogoOnPdf,
                  show_cuit_on_pdf: newInfo.showCuitOnPdf,
                  header_color: newInfo.headerColor,
@@ -250,7 +247,8 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
         }
     };
 
-    const sidebarClasses = `fixed inset-y-0 left-0 z-30 w-64 bg-white dark:bg-gray-800 transform transition-transform duration-300 ease-in-out shadow-lg md:translate-x-0 md:static md:inset-0 ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`;
+    // Sidebar now only renders on desktop (hidden on mobile)
+    const sidebarClasses = `hidden md:flex md:flex-col fixed inset-y-0 left-0 z-30 w-64 bg-white dark:bg-gray-800 shadow-lg md:static md:inset-0`;
     
     // Calculate translate percentage based on active view index
     const activeIndex = VIEW_ORDER.indexOf(view);
@@ -258,6 +256,7 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
 
     return (
         <div className="flex h-[100dvh] bg-taller-light dark:bg-taller-dark text-taller-dark dark:text-taller-light overflow-hidden transition-colors duration-300">
+            {/* Sidebar (Desktop Only) */}
             <aside className={sidebarClasses}>
                 <div className="h-full flex flex-col">
                     <div className="h-20 flex items-center justify-center border-b dark:border-gray-700">
@@ -294,19 +293,11 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
                 </div>
             </aside>
 
-            {isMobileMenuOpen && (
-                <div 
-                    className="fixed inset-0 bg-black bg-opacity-50 z-20 md:hidden"
-                    onClick={() => setIsMobileMenuOpen(false)}
-                />
-            )}
-
             <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
                 <Header 
                     tallerName={tallerInfo.nombre} 
                     logoUrl={tallerInfo.logoUrl}
-                    onMenuClick={() => setIsMobileMenuOpen(true)} 
-                    showMenuButton={tallerInfo.mobileNavStyle === 'sidebar'}
+                    showMenuButton={false} // Always false as sidebar is hidden on mobile
                     searchQuery={searchQuery}
                     onSearchChange={setSearchQuery}
                 />
@@ -354,31 +345,30 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
                     )}
                 </main>
 
-                {tallerInfo.mobileNavStyle === 'bottom_nav' && (
-                    <div className="md:hidden bg-white dark:bg-gray-800 border-t dark:border-gray-700 pb-5 flex-shrink-0 z-20">
-                         <nav className="flex justify-around items-center h-16">
-                            {navItems.map((item) => (
-                                <button
-                                    key={item.id}
-                                    onClick={() => {
-                                        setView(item.id as View);
-                                        if (item.id === 'trabajos') setTargetJobStatus(undefined);
-                                    }}
-                                    className={`relative flex flex-col items-center justify-center w-full h-full transition-colors duration-200 ${
-                                        view === item.id ? 'text-taller-primary' : 'text-taller-gray dark:text-gray-400'
-                                    }`}
-                                >
-                                    <item.icon className="h-6 w-6" />
-                                    <span className="text-[10px] mt-1 font-medium">{item.label}</span>
-                                    {/* Indicador activo opcional */}
-                                    {view === item.id && (
-                                        <span className="absolute top-0 w-8 h-1 bg-taller-primary rounded-b-lg"></span>
-                                    )}
-                                </button>
-                            ))}
-                        </nav>
-                    </div>
-                )}
+                {/* Bottom Navigation - Always visible on mobile */}
+                <div className="md:hidden bg-white dark:bg-gray-800 border-t dark:border-gray-700 pb-5 flex-shrink-0 z-20">
+                        <nav className="flex justify-around items-center h-16">
+                        {navItems.map((item) => (
+                            <button
+                                key={item.id}
+                                onClick={() => {
+                                    setView(item.id as View);
+                                    if (item.id === 'trabajos') setTargetJobStatus(undefined);
+                                }}
+                                className={`relative flex flex-col items-center justify-center w-full h-full transition-colors duration-200 ${
+                                    view === item.id ? 'text-taller-primary' : 'text-taller-gray dark:text-gray-400'
+                                }`}
+                            >
+                                <item.icon className="h-6 w-6" />
+                                <span className="text-[10px] mt-1 font-medium">{item.label}</span>
+                                {/* Indicador activo opcional */}
+                                {view === item.id && (
+                                    <span className="absolute top-0 w-8 h-1 bg-taller-primary rounded-b-lg"></span>
+                                )}
+                            </button>
+                        ))}
+                    </nav>
+                </div>
             </div>
         </div>
     );

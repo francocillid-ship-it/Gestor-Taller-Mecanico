@@ -112,7 +112,8 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
                     cantidad: 1,
                     precioUnitario: formatNumberToCurrency(legacyLabor),
                     isService: true,
-                    isCategory: false
+                    isCategory: false,
+                    maintenanceType: '' // Added missing property
                 });
             }
 
@@ -171,19 +172,12 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
         localStorage.setItem('pending_job_client_id', newClientId);
     };
 
-    const handleClientCreated = async (newClientId?: string, hasVehicles?: boolean) => {
+    const handleClientCreated = async (newClient?: Cliente) => {
         setIsClientModalOpen(false);
         // Standard flow for edit mode (no reload)
-        if (newClientId) {
-             const { data } = await supabase
-                .from('clientes')
-                .select('*, vehiculos(*)')
-                .eq('id', newClientId)
-                .single();
-            if (data) {
-                setLocalNewClient(data as Cliente);
-                setSelectedClienteId(data.id);
-            }
+        if (newClient) {
+            setLocalNewClient(newClient);
+            setSelectedClienteId(newClient.id);
             onDataRefresh();
         }
     };

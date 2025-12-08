@@ -1,3 +1,4 @@
+
 import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import type { Cliente, Trabajo, Gasto } from '../types';
@@ -31,7 +32,7 @@ const StatCard: React.FC<StatCardProps> = ({ title, value, icon, color, onClick 
     >
         <div className={`p-2 sm:p-3 rounded-full ${color} shrink-0`}>
             {React.isValidElement(icon) 
-                ? React.cloneElement(icon as React.ReactElement, { className: "h-5 w-5 sm:h-6 sm:w-6 text-white" }) 
+                ? React.cloneElement(icon as React.ReactElement<any>, { className: "h-5 w-5 sm:h-6 sm:w-6 text-white" }) 
                 : icon
             }
         </div>
