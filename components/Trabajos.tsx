@@ -578,7 +578,7 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
                     className="lg:hidden absolute left-0 w-full flex flex-col items-center pointer-events-none z-50"
                     style={{
                         // Add margin to float above the app's bottom navigation
-                        bottom: '2rem',
+                        bottom: '1rem',
                     }}
                 >
                     {activeMobileTab === JobStatus.Presupuesto && (
