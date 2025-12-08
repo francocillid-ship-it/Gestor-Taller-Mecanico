@@ -437,7 +437,11 @@ const Trabajos: React.FC<TrabajosProps> = ({
 }) => {
     const [isJobModalOpen, setIsJobModalOpen] = useState(false);
     const [initialClientIdForModal, setInitialClientIdForModal] = useState<string | undefined>(undefined);
-    const [activeMobileTab, setActiveMobileTab] = useState<JobStatus>(initialTab || JobStatus.Presupuesto); 
+    const [activeMobileTab, setActiveMobileTab] = useState<JobStatus>(initialTab || JobStatus.Presupuesto);
+    
+    // Animation States
+    const [showFloatingMenu, setShowFloatingMenu] = useState(false);
+    const [animateFloatingMenu, setAnimateFloatingMenu] = useState(false);
 
     useEffect(() => {
         if (initialTab) {
@@ -458,6 +462,28 @@ const Trabajos: React.FC<TrabajosProps> = ({
             localStorage.removeItem('pending_job_client_id');
         }
     }, []);
+
+    // Animation Logic
+    useEffect(() => {
+        const shouldShow = isActive && !isJobModalOpen;
+        let timer: ReturnType<typeof setTimeout>;
+
+        if (shouldShow) {
+            setShowFloatingMenu(true);
+            // Small delay to allow mount before transition
+            requestAnimationFrame(() => {
+                setAnimateFloatingMenu(true);
+            });
+        } else {
+            setAnimateFloatingMenu(false);
+            // Wait for transition duration before unmounting
+            timer = setTimeout(() => {
+                setShowFloatingMenu(false);
+            }, 300); // Matches duration-300
+        }
+
+        return () => clearTimeout(timer);
+    }, [isActive, isJobModalOpen]);
 
     const trabajosByStatus = useMemo(() => {
         let filteredTrabajos = trabajos;
@@ -583,9 +609,9 @@ const Trabajos: React.FC<TrabajosProps> = ({
             </div>
 
             {/* Floating Buttons (Mobile Only) - Using Portal to ensure fixed positioning works correctly on all devices */}
-            {!isJobModalOpen && isActive && createPortal(
+            {showFloatingMenu && createPortal(
                 <div 
-                    className="lg:hidden fixed left-0 w-full flex flex-col items-center pointer-events-none z-[100]"
+                    className={`lg:hidden fixed left-0 w-full flex flex-col items-center pointer-events-none z-[100] transition-all duration-300 ease-in-out transform ${animateFloatingMenu ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}
                     style={{
                         bottom: 'calc(5.5rem + 5px)',
                     }}
