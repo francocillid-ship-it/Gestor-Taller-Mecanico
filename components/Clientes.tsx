@@ -148,13 +148,16 @@ const ClientCard: React.FC<ClientCardProps> = ({ cliente, trabajos, onEdit, onCo
                                 <h4 className="font-semibold mb-2 text-taller-dark dark:text-taller-light">Información de Contacto</h4>
                                 <div className="space-y-2 text-sm text-taller-dark dark:text-gray-300">
                                     <p className="flex items-center"><PhoneIcon className="h-4 w-4 mr-2 text-taller-gray dark:text-gray-400"/> {cliente.telefono}</p>
-                                    <div className="flex items-center justify-between group">
-                                        <p className="flex items-center"><EnvelopeIcon className="h-4 w-4 mr-2 text-taller-gray dark:text-gray-400"/> {cliente.email || 'Sin email registrado'}</p>
+                                    <div className="flex flex-wrap items-center justify-between gap-2 group">
+                                        <p className="flex items-center break-all">
+                                            <EnvelopeIcon className="h-4 w-4 mr-2 text-taller-gray dark:text-gray-400 flex-shrink-0"/> 
+                                            {cliente.email || 'Sin email registrado'}
+                                        </p>
                                         {cliente.email && (
                                             <button 
                                                 onClick={handleSendAccess}
                                                 disabled={sendingAccess}
-                                                className="ml-2 flex items-center gap-1 text-xs font-bold text-white bg-green-500 hover:bg-green-600 px-3 py-1.5 rounded-full transition-all shadow-sm"
+                                                className="flex-shrink-0 flex items-center gap-1 text-xs font-bold text-white bg-green-500 hover:bg-green-600 px-3 py-1.5 rounded-full transition-all shadow-sm ml-auto sm:ml-0"
                                                 title="Enviar enlace de acceso automático"
                                             >
                                                 {sendingAccess ? (
