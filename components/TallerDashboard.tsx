@@ -322,7 +322,7 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
                             </div>
 
                             {/* View 2: Trabajos */}
-                            <div ref={trabajosRef} className="w-full h-full flex-shrink-0 overflow-y-auto p-4 md:p-6 scroll-smooth overscroll-contain">
+                            <div ref={trabajosRef} className="w-full h-full flex-shrink-0 overflow-hidden p-0 md:p-6 bg-taller-light dark:bg-taller-dark">
                                 <div className="max-w-7xl mx-auto h-full">
                                     <Trabajos trabajos={trabajos} clientes={clientes} onUpdateStatus={handleUpdateStatus} onDataRefresh={handleSilentRefresh} tallerInfo={tallerInfo} searchQuery={searchQuery} initialTab={targetJobStatus} />
                                 </div>

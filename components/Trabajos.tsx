@@ -399,9 +399,8 @@ const StatusColumn: React.FC<{
     };
 
     if (isMobileMode) {
-        // Increased bottom padding to ensure content isn't hidden behind floating buttons
         return (
-            <div className="pt-2 pb-80 px-1 flex flex-col min-h-full">
+            <div className="pt-2 px-1 flex flex-col min-h-full">
                 {renderContent()}
             </div>
         );
@@ -498,7 +497,7 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
     };
 
     return (
-        <div className="flex flex-col relative lg:h-full min-h-full w-full">
+        <div className="flex flex-col h-full w-full relative overflow-hidden">
             <style>{`
                 .custom-scrollbar::-webkit-scrollbar { width: 5px; }
                 .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
@@ -507,7 +506,8 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
                 .custom-scrollbar::-webkit-scrollbar-thumb:hover { background-color: rgba(156, 163, 175, 0.7); }
             `}</style>
             
-            <div className="flex flex-col gap-4 sm:flex-row sm:justify-between sm:items-center mb-4 lg:mb-4 flex-shrink-0">
+            {/* Header Section */}
+            <div className="flex flex-col gap-4 sm:flex-row sm:justify-between sm:items-center mb-4 lg:mb-4 flex-shrink-0 px-4 pt-4 md:px-0 md:pt-0">
                 <h2 className="text-2xl font-bold text-taller-dark dark:text-taller-light">Flujo de Trabajos</h2>
                 <div className="hidden lg:flex">
                     <button
@@ -523,59 +523,62 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
                 </div>
             </div>
 
-            {searchQuery && !hasResults ? (
-                <div className="flex-1 flex flex-col items-center justify-center text-taller-gray dark:text-gray-400">
-                    <MagnifyingGlassIcon className="h-16 w-16 mb-4 opacity-50"/>
-                    <p className="text-lg font-medium">No se encontraron resultados para "{searchQuery}"</p>
-                    <p className="text-sm mt-2 opacity-75">Intenta buscar por cliente, vehículo o descripción.</p>
-                </div>
-            ) : (
-                <>
-                    {/* Mobile View: Render only ACTIVE tab */}
-                    <div className="lg:hidden w-full">
-                        <StatusColumn
-                            key={activeMobileTab}
-                            status={activeMobileTab}
-                            trabajos={trabajosByStatus[activeMobileTab] || []}
-                            clientes={clientes}
-                            onUpdateStatus={onUpdateStatus}
-                            tallerInfo={tallerInfo}
-                            onDataRefresh={onDataRefresh}
-                            searchQuery={searchQuery}
-                            isMobileMode={true}
-                        />
+            {/* Scrollable Content Area */}
+            <div className="flex-1 overflow-y-auto overflow-x-hidden relative w-full" id="trabajos-scroll-container">
+                {searchQuery && !hasResults ? (
+                    <div className="flex-1 flex flex-col items-center justify-center text-taller-gray dark:text-gray-400 min-h-[50vh]">
+                        <MagnifyingGlassIcon className="h-16 w-16 mb-4 opacity-50"/>
+                        <p className="text-lg font-medium">No se encontraron resultados para "{searchQuery}"</p>
+                        <p className="text-sm mt-2 opacity-75">Intenta buscar por cliente, vehículo o descripción.</p>
                     </div>
+                ) : (
+                    <>
+                        {/* Mobile View: Render only ACTIVE tab */}
+                        <div className="lg:hidden w-full pb-36">
+                            <StatusColumn
+                                key={activeMobileTab}
+                                status={activeMobileTab}
+                                trabajos={trabajosByStatus[activeMobileTab] || []}
+                                clientes={clientes}
+                                onUpdateStatus={onUpdateStatus}
+                                tallerInfo={tallerInfo}
+                                onDataRefresh={onDataRefresh}
+                                searchQuery={searchQuery}
+                                isMobileMode={true}
+                            />
+                        </div>
 
-                    {/* Desktop View: Kanban Board */}
-                    <div className="hidden lg:flex flex-row gap-4 h-[calc(100vh-160px)] overflow-x-auto pb-2 items-stretch">
-                        {statusOrder.map(status => {
-                            const jobs = trabajosByStatus[status] || [];
-                            return (
-                                <div key={status} id={`status-column-${status}`} className="flex-1 min-w-[300px] h-full flex flex-col">
-                                    <StatusColumn
-                                        status={status}
-                                        trabajos={jobs}
-                                        clientes={clientes}
-                                        onUpdateStatus={onUpdateStatus}
-                                        tallerInfo={tallerInfo}
-                                        onDataRefresh={onDataRefresh}
-                                        searchQuery={searchQuery}
-                                        isMobileMode={false}
-                                    />
-                                </div>
-                            );
-                        })}
-                    </div>
-                </>
-            )}
+                        {/* Desktop View: Kanban Board */}
+                        <div className="hidden lg:flex flex-row gap-4 h-full overflow-x-auto pb-2 items-stretch">
+                            {statusOrder.map(status => {
+                                const jobs = trabajosByStatus[status] || [];
+                                return (
+                                    <div key={status} id={`status-column-${status}`} className="flex-1 min-w-[300px] h-full flex flex-col">
+                                        <StatusColumn
+                                            status={status}
+                                            trabajos={jobs}
+                                            clientes={clientes}
+                                            onUpdateStatus={onUpdateStatus}
+                                            tallerInfo={tallerInfo}
+                                            onDataRefresh={onDataRefresh}
+                                            searchQuery={searchQuery}
+                                            isMobileMode={false}
+                                        />
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </>
+                )}
+            </div>
 
-            {/* Mobile Bottom Navigation - Hidden when modal is open */}
+            {/* Floating Buttons (Mobile Only) - Absolute positioned to stick to bottom of THIS view */}
             {!isJobModalOpen && (
                 <div 
-                    className="lg:hidden sticky left-0 z-50 w-full flex flex-col items-center pointer-events-none mt-auto pb-4"
+                    className="lg:hidden absolute left-0 w-full flex flex-col items-center pointer-events-none z-50"
                     style={{
-                        // Increased to 9rem (~144px) + safe area to ensure clearance over bottom nav and system bars
-                        bottom: 'calc(9rem + env(safe-area-inset-bottom))',
+                        // Add margin to float above the app's bottom navigation
+                        bottom: 'calc(1.5rem + env(safe-area-inset-bottom))',
                     }}
                 >
                     {activeMobileTab === JobStatus.Presupuesto && (
