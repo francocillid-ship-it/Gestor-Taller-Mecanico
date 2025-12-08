@@ -303,7 +303,7 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
                 />
                 
                 {/* Main Content Area - Ahora es un contenedor con overflow hidden que contiene el slider */}
-                <main className="flex-1 overflow-hidden relative w-full">
+                <main className="flex-1 overflow-hidden relative w-full min-h-0">
                     {loading ? (
                         <div className="flex h-full items-center justify-center">
                             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-taller-primary"></div>
@@ -324,7 +324,16 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
                             {/* View 2: Trabajos */}
                             <div ref={trabajosRef} className="w-full h-full flex-shrink-0 overflow-hidden p-0 md:p-6 bg-taller-light dark:bg-taller-dark">
                                 <div className="max-w-7xl mx-auto h-full">
-                                    <Trabajos trabajos={trabajos} clientes={clientes} onUpdateStatus={handleUpdateStatus} onDataRefresh={handleSilentRefresh} tallerInfo={tallerInfo} searchQuery={searchQuery} initialTab={targetJobStatus} />
+                                    <Trabajos 
+                                        trabajos={trabajos} 
+                                        clientes={clientes} 
+                                        onUpdateStatus={handleUpdateStatus} 
+                                        onDataRefresh={handleSilentRefresh} 
+                                        tallerInfo={tallerInfo} 
+                                        searchQuery={searchQuery} 
+                                        initialTab={targetJobStatus} 
+                                        isActive={view === 'trabajos'}
+                                    />
                                 </div>
                             </div>
 

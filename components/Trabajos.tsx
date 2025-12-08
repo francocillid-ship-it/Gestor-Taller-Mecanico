@@ -15,6 +15,7 @@ interface TrabajosProps {
     tallerInfo: TallerInfo;
     searchQuery: string;
     initialTab?: JobStatus;
+    isActive?: boolean;
 }
 
 const statusOrder = [JobStatus.Presupuesto, JobStatus.Programado, JobStatus.EnProceso, JobStatus.Finalizado];
@@ -424,7 +425,16 @@ const StatusColumn: React.FC<{
 };
 
 
-const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus, onDataRefresh, tallerInfo, searchQuery, initialTab }) => {
+const Trabajos: React.FC<TrabajosProps> = ({ 
+    trabajos, 
+    clientes, 
+    onUpdateStatus, 
+    onDataRefresh, 
+    tallerInfo, 
+    searchQuery, 
+    initialTab, 
+    isActive = false 
+}) => {
     const [isJobModalOpen, setIsJobModalOpen] = useState(false);
     const [initialClientIdForModal, setInitialClientIdForModal] = useState<string | undefined>(undefined);
     const [activeMobileTab, setActiveMobileTab] = useState<JobStatus>(initialTab || JobStatus.Presupuesto); 
@@ -572,13 +582,12 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
                 )}
             </div>
 
-            {/* Floating Buttons (Mobile Only) - Absolute positioned to stick to bottom of THIS view */}
-            {!isJobModalOpen && (
+            {/* Floating Buttons (Mobile Only) - Using Portal to ensure fixed positioning works correctly on all devices */}
+            {!isJobModalOpen && isActive && createPortal(
                 <div 
-                    className="lg:hidden absolute left-0 w-full flex flex-col items-center pointer-events-none z-50"
+                    className="lg:hidden fixed left-0 w-full flex flex-col items-center pointer-events-none z-[100]"
                     style={{
-                        // Add margin to float above the app's bottom navigation
-                        bottom: '1rem',
+                        bottom: '5.5rem',
                     }}
                 >
                     {activeMobileTab === JobStatus.Presupuesto && (
@@ -600,7 +609,7 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
                         <div className="grid grid-cols-4 h-14">
                             {statusOrder.map(status => {
                                 const Icon = getMobileTabIcon(status);
-                                const isActive = activeMobileTab === status;
+                                const isActiveTab = activeMobileTab === status;
                                 const count = trabajosByStatus[status]?.length || 0;
                                 
                                 return (
@@ -608,18 +617,18 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
                                         key={status}
                                         onClick={() => setActiveMobileTab(status)}
                                         className={`relative flex flex-col items-center justify-center transition-colors duration-200 group ${
-                                            isActive 
+                                            isActiveTab 
                                             ? 'bg-blue-50 dark:bg-gray-700/50' 
                                             : 'hover:bg-gray-50 dark:hover:bg-gray-700/30'
                                         }`}
                                     >
                                         <Icon className={`h-5 w-5 mb-0.5 transition-colors ${
-                                            isActive 
+                                            isActiveTab 
                                             ? 'text-taller-primary dark:text-white' 
                                             : 'text-gray-400 dark:text-gray-500 group-hover:text-gray-600 dark:group-hover:text-gray-400'
                                         }`} />
                                         <span className={`text-[9px] font-bold leading-none tracking-tight transition-colors ${
-                                            isActive 
+                                            isActiveTab 
                                             ? 'text-taller-primary dark:text-white' 
                                             : 'text-gray-400 dark:text-gray-500'
                                         }`}>
@@ -628,7 +637,7 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
                                         
                                         {count > 0 && (
                                             <span className={`absolute top-1 right-2 flex h-3.5 w-3.5 items-center justify-center rounded-full text-[8px] font-bold shadow-sm ${
-                                                isActive 
+                                                isActiveTab 
                                                 ? 'bg-taller-primary text-white dark:bg-white dark:text-taller-primary' 
                                                 : 'bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300'
                                             }`}>
@@ -640,7 +649,8 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
                             })}
                         </div>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
 
             {isJobModalOpen && (
