@@ -587,7 +587,7 @@ const Trabajos: React.FC<TrabajosProps> = ({
                 <div 
                     className="lg:hidden fixed left-0 w-full flex flex-col items-center pointer-events-none z-[100]"
                     style={{
-                        bottom: '5.5rem',
+                        bottom: 'calc(5.5rem + 5px)',
                     }}
                 >
                     {activeMobileTab === JobStatus.Presupuesto && (
