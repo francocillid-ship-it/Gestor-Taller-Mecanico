@@ -11,6 +11,17 @@ interface MaintenanceConfigModalProps {
     onSuccess: () => void;
 }
 
+// Tipo local para permitir edición flexible (strings vacíos) en el formulario
+interface LocalMaintenanceItem {
+    months: number | string;
+    mileage: number | string;
+    enabled: boolean;
+}
+
+interface LocalMaintenanceConfig {
+    [key: string]: LocalMaintenanceItem;
+}
+
 // Configuración por defecto para inicializar el estado si no existe config previa
 const DEFAULT_CONFIG_MAP = [
     { category: 'Fluidos', key: 'oil', label: 'Aceite de Motor', defaultMonths: 12, defaultMileage: 10000 },
@@ -25,12 +36,13 @@ const DEFAULT_CONFIG_MAP = [
 ];
 
 const MaintenanceConfigModal: React.FC<MaintenanceConfigModalProps> = ({ vehiculo, onClose, onSuccess }) => {
-    const [config, setConfig] = useState<MaintenanceConfig>({});
+    // Usamos LocalMaintenanceConfig para permitir strings vacíos durante la edición
+    const [config, setConfig] = useState<LocalMaintenanceConfig>({});
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     useEffect(() => {
         // Cargar configuración existente o inicializar con valores por defecto
-        const initialConfig: MaintenanceConfig = {};
+        const initialConfig: LocalMaintenanceConfig = {};
         
         DEFAULT_CONFIG_MAP.forEach(item => {
             if (vehiculo.maintenance_config && vehiculo.maintenance_config[item.key]) {
@@ -47,12 +59,14 @@ const MaintenanceConfigModal: React.FC<MaintenanceConfigModalProps> = ({ vehicul
     }, [vehiculo]);
 
     const handleChange = (key: string, field: 'months' | 'mileage', value: string) => {
-        const numValue = parseInt(value) || 0;
+        // Permitimos string vacío para mejor UX al borrar
+        const newValue = value === '' ? '' : parseInt(value, 10);
+        
         setConfig(prev => ({
             ...prev,
             [key]: {
                 ...prev[key],
-                [field]: numValue
+                [field]: newValue // Si es NaN o '' se guarda tal cual para la UI
             }
         }));
     };
@@ -72,9 +86,21 @@ const MaintenanceConfigModal: React.FC<MaintenanceConfigModalProps> = ({ vehicul
         setIsSubmitting(true);
         
         try {
+            // Preparamos la configuración final asegurando que sean números para la DB
+            const finalConfig: MaintenanceConfig = {};
+            
+            Object.entries(config).forEach(([key, val]) => {
+                const item = val as LocalMaintenanceItem;
+                finalConfig[key] = {
+                    enabled: item.enabled,
+                    months: item.months === '' ? 0 : Number(item.months),
+                    mileage: item.mileage === '' ? 0 : Number(item.mileage)
+                };
+            });
+
             const { error } = await supabase
                 .from('vehiculos')
-                .update({ maintenance_config: config })
+                .update({ maintenance_config: finalConfig })
                 .eq('id', vehiculo.id);
 
             if (error) throw error;
@@ -144,7 +170,7 @@ const MaintenanceConfigModal: React.FC<MaintenanceConfigModalProps> = ({ vehicul
                                                             value={itemConfig.mileage}
                                                             onChange={(e) => handleChange(item.key, 'mileage', e.target.value)}
                                                             disabled={!itemConfig.enabled}
-                                                            className="block w-full px-2 py-1.5 text-sm bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded-md focus:outline-none focus:ring-1 focus:ring-taller-primary"
+                                                            className="block w-full px-2 py-1.5 text-sm bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded-md focus:outline-none focus:ring-1 focus:ring-taller-primary no-spinner"
                                                         />
                                                         <span className="absolute right-2 top-1.5 text-xs text-gray-500">km</span>
                                                     </div>
@@ -157,7 +183,7 @@ const MaintenanceConfigModal: React.FC<MaintenanceConfigModalProps> = ({ vehicul
                                                             value={itemConfig.months}
                                                             onChange={(e) => handleChange(item.key, 'months', e.target.value)}
                                                             disabled={!itemConfig.enabled}
-                                                            className="block w-full px-2 py-1.5 text-sm bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded-md focus:outline-none focus:ring-1 focus:ring-taller-primary"
+                                                            className="block w-full px-2 py-1.5 text-sm bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded-md focus:outline-none focus:ring-1 focus:ring-taller-primary no-spinner"
                                                         />
                                                         <span className="absolute right-2 top-1.5 text-xs text-gray-500">meses</span>
                                                     </div>
@@ -188,6 +214,14 @@ const MaintenanceConfigModal: React.FC<MaintenanceConfigModalProps> = ({ vehicul
         <>
             {modalContent}
              <style>{`
+                .no-spinner::-webkit-inner-spin-button,
+                .no-spinner::-webkit-outer-spin-button {
+                    -webkit-appearance: none;
+                    margin: 0;
+                }
+                .no-spinner {
+                    -moz-appearance: textfield;
+                }
                 .safe-area-bottom {
                     padding-bottom: calc(env(safe-area-inset-bottom) + 32px);
                 }

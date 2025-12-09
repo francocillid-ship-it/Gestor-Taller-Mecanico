@@ -16,6 +16,8 @@ export interface Parte {
     isCategory?: boolean;
     isService?: boolean;
     maintenanceType?: string; // Nuevo campo: "oil", "transmission_fluid", etc.
+    paymentType?: 'items' | 'labor'; // Nuevo campo: Tipo de pago (Repuestos o Mano de Obra)
+    clientPaidDirectly?: boolean; // Nuevo campo: Si el cliente pagó directamente el repuesto
 }
 
 export interface Pago {

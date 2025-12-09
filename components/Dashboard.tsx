@@ -1,3 +1,4 @@
+
 import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import type { Cliente, Trabajo, Gasto } from '../types';
@@ -145,7 +146,7 @@ const FinancialDetailOverlay: React.FC<FinancialDetailOverlayProps> = ({ detailV
         'ingresos': 'Historial de Ingresos',
         'gastos': 'Historial de Gastos',
         'balance': 'Balance (Flujo de Caja)',
-        'ganancias': 'Detalle de Movimientos'
+        'ganancias': 'Detalle de Ganancia Real'
     };
 
     const isProfitView = detailView === 'ganancias';
@@ -199,7 +200,7 @@ const FinancialDetailOverlay: React.FC<FinancialDetailOverlayProps> = ({ detailV
                         </p>
                         {isProfitView && (
                            <p className="text-xs text-taller-gray dark:text-gray-500 mt-2">
-                               * Cálculo: Mano de Obra (cobrada) - Gastos.
+                               * Cálculo: Mano de Obra (Pagos) - Gastos Fijos.
                            </p>
                         )}
                     </div>
@@ -225,9 +226,14 @@ const FinancialDetailOverlay: React.FC<FinancialDetailOverlayProps> = ({ detailV
                                             <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">{t.date.toLocaleDateString('es-ES')} {t.date.toLocaleTimeString([], { hour: '2-digit', minute:'2-digit' })}</p>
                                         </div>
                                     </div>
-                                    <p className={`font-bold ${t.type === 'income' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                                        {t.type === 'income' ? '+' : '-'} {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(t.amount)}
-                                    </p>
+                                    <div className="text-right">
+                                        <p className={`font-bold ${t.type === 'income' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                                            {t.type === 'income' ? '+' : '-'} {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(t.amount)}
+                                        </p>
+                                        {isProfitView && t.type === 'income' && (
+                                            <p className="text-[10px] text-gray-400 italic">Neto Mano de Obra</p>
+                                        )}
+                                    </div>
                                 </div>
                             ))
                          ) : (
@@ -304,34 +310,51 @@ const Dashboard: React.FC<DashboardProps> = ({ clientes, trabajos, gastos, onDat
         let gananciaManoDeObraReal = 0; 
 
         trabajos.forEach(trabajo => {
-            const costoTotal = trabajo.costoEstimado || 0;
-            const costoManoDeObra = trabajo.costoManoDeObra || 0;
-            const costoRepuestos = Math.max(0, costoTotal - costoManoDeObra);
+            // Calcular el costo de repuestos que asume el taller (NO pagados por el cliente)
+            const parts = trabajo.partes.filter(p => p.nombre !== '__PAGO_REGISTRADO__');
+            const costoRepuestosTaller = parts
+                .filter(p => !p.isService && !p.isCategory && !p.clientPaidDirectly)
+                .reduce((sum, p) => sum + (p.cantidad * p.precioUnitario), 0);
 
+            // Obtener todos los pagos registrados cronológicamente
             const todosLosPagos = trabajo.partes
                 .filter(p => p.nombre === '__PAGO_REGISTRADO__')
                 .sort((a, b) => new Date(a.fecha || 0).getTime() - new Date(b.fecha || 0).getTime());
 
-            let acumuladoPagosJob = 0;
+            let partsCostCoveredSoFar = 0;
 
             todosLosPagos.forEach(pago => {
-                const montoPago = pago.precioUnitario;
+                const monto = pago.precioUnitario;
                 const fechaPago = pago.fecha ? new Date(pago.fecha) : new Date(0);
-                
                 const esDelPeriodo = fechaPago >= startDate && fechaPago <= endDate;
+                const type = pago.paymentType; // 'items' | 'labor' | undefined
 
-                const coberturaPrevia = acumuladoPagosJob;
-                const coberturaActual = acumuladoPagosJob + montoPago;
+                if (type === 'labor') {
+                    // Si el pago es explícitamente "Mano de Obra", es 100% ganancia
+                    if (esDelPeriodo) {
+                        ingresosTotales += monto;
+                        gananciaManoDeObraReal += monto;
+                    }
+                    // No afecta la cobertura de repuestos
+                } else if (type === 'items') {
+                    // Si el pago es explícitamente "Repuestos", es 0% ganancia (cubre costo)
+                     if (esDelPeriodo) {
+                        ingresosTotales += monto;
+                    }
+                    partsCostCoveredSoFar += monto;
+                } else {
+                    // Si es pago General, aplicar lógica de cascada (primero cubre repuestos restantes)
+                    const remainingPartsCost = Math.max(0, costoRepuestosTaller - partsCostCoveredSoFar);
+                    const contributionToParts = Math.min(monto, remainingPartsCost);
+                    const contributionToLabor = monto - contributionToParts;
 
-                const gananciaAcumuladaPrevia = Math.max(0, coberturaPrevia - costoRepuestos);
-                const gananciaAcumuladaActual = Math.max(0, coberturaActual - costoRepuestos);
-                const gananciaDeEstePago = gananciaAcumuladaActual - gananciaAcumuladaPrevia;
+                    partsCostCoveredSoFar += contributionToParts;
 
-                if (esDelPeriodo) {
-                    ingresosTotales += montoPago;
-                    gananciaManoDeObraReal += gananciaDeEstePago;
+                    if (esDelPeriodo) {
+                        ingresosTotales += monto;
+                        gananciaManoDeObraReal += contributionToLabor;
+                    }
                 }
-                acumuladoPagosJob += montoPago;
             });
         });
 
@@ -434,21 +457,62 @@ const Dashboard: React.FC<DashboardProps> = ({ clientes, trabajos, gastos, onDat
 
         if (detailView === 'ingresos' || detailView === 'balance' || detailView === 'ganancias') {
             trabajos.forEach(t => {
-                t.partes.forEach((p, idx) => {
-                    if (p.nombre === '__PAGO_REGISTRADO__') {
-                        const date = p.fecha ? new Date(p.fecha) : new Date(0);
-                        if (date >= startDate && date <= endDate) {
-                            const cliente = clientes.find(c => c.id === t.clienteId);
-                            const vehiculo = cliente?.vehiculos.find(v => v.id === t.vehiculoId);
-                            transactions.push({
-                                id: `${t.id}_pago_${idx}`,
-                                date: date,
-                                amount: p.precioUnitario,
-                                description: `Pago de ${cliente ? cliente.nombre : 'Cliente'}`,
-                                subtext: vehiculo ? `${vehiculo.marca} ${vehiculo.modelo}` : 'Vehículo no especif.',
-                                type: 'income'
-                            });
+                // Cálculo de repuestos para desglose correcto en vista ganancias
+                const parts = t.partes.filter(p => p.nombre !== '__PAGO_REGISTRADO__');
+                const costoRepuestosTaller = parts
+                    .filter(p => !p.isService && !p.isCategory && !p.clientPaidDirectly)
+                    .reduce((sum, p) => sum + (p.cantidad * p.precioUnitario), 0);
+
+                const pagosOrdenados = t.partes
+                    .filter(p => p.nombre === '__PAGO_REGISTRADO__')
+                    .sort((a, b) => new Date(a.fecha || 0).getTime() - new Date(b.fecha || 0).getTime());
+                
+                let partsCostCoveredSoFar = 0;
+
+                pagosOrdenados.forEach((p, idx) => {
+                    const date = p.fecha ? new Date(p.fecha) : new Date(0);
+                    const amount = p.precioUnitario;
+                    const type = p.paymentType;
+                    
+                    let amountToReport = 0;
+                    let shouldReport = false;
+                    
+                    // Logic MUST match 'stats' useMemo
+                    if (type === 'labor') {
+                        amountToReport = amount; // 100% profit
+                        shouldReport = true;
+                    } else if (type === 'items') {
+                        amountToReport = 0; // 0% profit (all cost)
+                        partsCostCoveredSoFar += amount;
+                        shouldReport = detailView !== 'ganancias'; // Show in income, hide in profit view if 0
+                    } else {
+                        // General
+                        const remainingPartsCost = Math.max(0, costoRepuestosTaller - partsCostCoveredSoFar);
+                        const contributionToParts = Math.min(amount, remainingPartsCost);
+                        const contributionToLabor = amount - contributionToParts;
+
+                        partsCostCoveredSoFar += contributionToParts;
+                        
+                        if (detailView === 'ganancias') {
+                            amountToReport = contributionToLabor;
+                            shouldReport = amountToReport > 0;
+                        } else {
+                            amountToReport = amount;
+                            shouldReport = true;
                         }
+                    }
+
+                    if (shouldReport && date >= startDate && date <= endDate) {
+                        const cliente = clientes.find(c => c.id === t.clienteId);
+                        const vehiculo = cliente?.vehiculos.find(v => v.id === t.vehiculoId);
+                        transactions.push({
+                            id: `${t.id}_pago_${idx}`,
+                            date: date,
+                            amount: amountToReport,
+                            description: `Pago de ${cliente ? cliente.nombre : 'Cliente'}`,
+                            subtext: vehiculo ? `${vehiculo.marca} ${vehiculo.modelo}` : 'Vehículo no especif.',
+                            type: 'income'
+                        });
                     }
                 });
             });
@@ -552,7 +616,7 @@ const Dashboard: React.FC<DashboardProps> = ({ clientes, trabajos, gastos, onDat
                     onClick={() => setDetailView('ingresos')}
                 />
                 <StatCard 
-                    title="Ganancia Neta (Real)" 
+                    title="Ganancia" 
                     value={stats.gananciasNetas} 
                     icon={<ChartPieIcon />} 
                     color="bg-green-500" 

@@ -3,7 +3,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import type { Trabajo, Cliente, Vehiculo, JobStatus, Parte, TallerInfo } from '../types';
 import { JobStatus as JobStatusEnum } from '../types';
-import { ChevronDownIcon, ChevronUpIcon, PencilIcon, PrinterIcon, CurrencyDollarIcon, WrenchScrewdriverIcon, ArrowPathIcon, CalendarIcon, ClockIcon, CheckIcon, ExclamationCircleIcon } from '@heroicons/react/24/solid';
+import { ChevronDownIcon, ChevronUpIcon, PencilIcon, PrinterIcon, CurrencyDollarIcon, WrenchScrewdriverIcon, ArrowPathIcon, CalendarIcon, ClockIcon, CheckIcon, ExclamationCircleIcon, ArchiveBoxIcon, ShoppingBagIcon } from '@heroicons/react/24/solid';
 import CrearTrabajoModal from './CrearTrabajoModal';
 import { supabase } from '../supabaseClient';
 import { generateClientPDF } from './pdfGenerator';
@@ -24,6 +24,7 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
     const [isJobModalOpen, setIsJobModalOpen] = useState(false);
     const [isAddingPayment, setIsAddingPayment] = useState(false);
     const [paymentAmount, setPaymentAmount] = useState('');
+    const [paymentType, setPaymentType] = useState<'items' | 'labor'>('items');
     const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
     
     // Status Menu State
@@ -148,11 +149,39 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
         }
     };
 
-    const totalPagado = trabajo.partes
-        .filter(p => p.nombre === '__PAGO_REGISTRADO__')
+    const pagos = trabajo.partes.filter(p => p.nombre === '__PAGO_REGISTRADO__');
+    const realParts = trabajo.partes.filter(p => p.nombre !== '__PAGO_REGISTRADO__');
+
+    // Cálculos de costos desglosados
+    // Excluir items pagados directamente por el cliente del costo de repuestos
+    const costoRepuestos = realParts
+        .filter(p => !p.isService && !p.isCategory && !p.clientPaidDirectly)
+        .reduce((sum, p) => sum + (p.cantidad * p.precioUnitario), 0);
+
+    // Mano de obra: Si hay items de servicio, sumamos solo los NO pagados por cliente
+    const servicesSum = realParts
+        .filter(p => p.isService && !p.isCategory && !p.clientPaidDirectly)
+        .reduce((sum, p) => sum + (p.cantidad * p.precioUnitario), 0);
+
+    const costoManoDeObra = realParts.some(p => p.isService) ? servicesSum : (trabajo.costoManoDeObra || 0);
+
+    const totalA_Cobrar = costoRepuestos + costoManoDeObra;
+
+    // Cálculos de pagos desglosados
+    const pagadoItems = pagos
+        .filter(p => p.paymentType === 'items')
         .reduce((sum, p) => sum + p.precioUnitario, 0);
 
-    const saldoPendiente = trabajo.costoEstimado - totalPagado;
+    const pagadoLabor = pagos
+        .filter(p => p.paymentType === 'labor')
+        .reduce((sum, p) => sum + p.precioUnitario, 0);
+
+    const pagadoGeneral = pagos
+        .filter(p => !p.paymentType)
+        .reduce((sum, p) => sum + p.precioUnitario, 0);
+
+    const totalPagado = pagadoItems + pagadoLabor + pagadoGeneral;
+    const saldoPendiente = totalA_Cobrar - totalPagado;
 
     const handleGeneratePDF = async () => {
         if (!cliente || !vehiculo) return;
@@ -196,7 +225,8 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
             nombre: '__PAGO_REGISTRADO__',
             cantidad: 1,
             precioUnitario: amount,
-            fecha: new Date().toISOString()
+            fecha: new Date().toISOString(),
+            paymentType: paymentType // Guardamos la selección
         };
 
         const updatedPartes = [...trabajo.partes, newPayment];
@@ -211,6 +241,7 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
         } else {
             onDataRefresh();
             setPaymentAmount('');
+            setPaymentType('items'); // Reset to default
             setIsAddingPayment(false);
         }
     };
@@ -250,10 +281,7 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
         return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(val);
     };
     
-    const pagos = trabajo.partes.filter(p => p.nombre === '__PAGO_REGISTRADO__');
-    const realParts = trabajo.partes.filter(p => p.nombre !== '__PAGO_REGISTRADO__');
     const hasServices = realParts.some(p => p.isService);
-
     const clientFullName = cliente ? `${cliente.nombre} ${cliente.apellido || ''}`.trim() : 'Cliente no encontrado';
     
     // Display Logic for Time
@@ -266,10 +294,6 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
     }
 
     // --- CONTAINER CLASSES ---
-    // This logic handles the unified container style.
-    // Transition properties enable the smooth animation for height, shadow, and border changes.
-    // Note: Grid column span changes (col-span-1 -> col-span-2) are instantaneous layout changes, 
-    // but the internal content will transition smoothly.
     const containerClasses = `
         relative
         bg-white dark:bg-gray-800
@@ -414,21 +438,36 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
 
                             <h4 className="font-semibold text-xs mb-2">Detalles Económicos:</h4>
                             <ul className="text-xs space-y-1 text-taller-dark dark:text-gray-300 mb-3">
-                                {realParts.map((parte, i) => (
-                                    parte.isCategory ? (
-                                        <li key={i} className="font-semibold text-taller-dark dark:text-taller-light pt-2 first:pt-0">
-                                            {parte.nombre}
+                                {realParts.map((parte, i) => {
+                                    const isPaidByClient = parte.clientPaidDirectly;
+
+                                    return parte.isCategory ? (
+                                        <li key={i} className="flex justify-between items-center pt-2 first:pt-0">
+                                            <div className="flex items-center gap-2">
+                                                <span className={`font-semibold text-taller-dark dark:text-taller-light ${isPaidByClient ? 'line-through text-gray-400 dark:text-gray-500' : ''}`}>
+                                                    {parte.nombre}
+                                                </span>
+                                                {isPaidByClient && <ShoppingBagIcon className="h-3 w-3 text-purple-400" title="Categoría pagada por el cliente" />}
+                                            </div>
                                         </li>
                                     ) : (
-                                        <li key={i} className={`flex justify-between pl-2 ${parte.isService ? 'text-blue-700 dark:text-blue-300 font-medium' : ''}`}>
-                                            <span className="flex items-center gap-1">
+                                        <li key={i} className={`flex justify-between pl-2 ${parte.isService ? 'text-blue-700 dark:text-blue-300 font-medium' : ''} ${isPaidByClient ? 'opacity-60' : ''}`}>
+                                            <span className={`flex items-center gap-1 ${isPaidByClient ? 'line-through decoration-gray-400' : ''}`}>
                                                 {parte.isService && <WrenchScrewdriverIcon className="h-3 w-3" />}
                                                 {parte.cantidad}x {parte.nombre}
                                             </span>
-                                            <span>{formatCurrency(parte.cantidad * parte.precioUnitario)}</span>
+                                            <div className="flex items-center gap-2">
+                                                <span className={isPaidByClient ? 'line-through decoration-gray-400' : ''}>
+                                                    {formatCurrency(parte.cantidad * parte.precioUnitario)}
+                                                </span>
+                                                {/* Indicador visual si está pagado por el cliente, pero sin botón de acción */}
+                                                {!parte.isService && isPaidByClient && (
+                                                    <ShoppingBagIcon className="h-3.5 w-3.5 text-purple-400" title="Pagado por cliente (No computar)" />
+                                                )}
+                                            </div>
                                         </li>
-                                    )
-                                ))}
+                                    );
+                                })}
                                 
                                 {!hasServices && trabajo.costoManoDeObra ? (
                                     <li className="flex justify-between pt-2 border-t dark:border-gray-600 mt-2">
@@ -437,30 +476,69 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
                                     </li>
                                 ) : null}
 
-                                <li className="flex justify-between font-bold border-t dark:border-gray-600 pt-1 mt-2">
-                                    <span>{trabajo.status === JobStatusEnum.Presupuesto ? 'Total Estimado' : 'Total'}</span>
-                                    <span>{formatCurrency(trabajo.costoEstimado)}</span>
+                                <li className="flex justify-between text-gray-500 pt-2 border-t dark:border-gray-600 mt-2">
+                                    <span>Total Repuestos (Taller)</span>
+                                    <span>{formatCurrency(costoRepuestos)}</span>
                                 </li>
+                                <li className="flex justify-between text-gray-500">
+                                    <span>Total Mano de Obra</span>
+                                    <span>{formatCurrency(costoManoDeObra)}</span>
+                                </li>
+                                <li className="flex justify-between font-bold text-taller-dark dark:text-white border-t dark:border-gray-600 pt-1 mt-1">
+                                    <span>Total a Cobrar</span>
+                                    <span>{formatCurrency(totalA_Cobrar)}</span>
+                                </li>
+                                
                                 {(trabajo.status === JobStatusEnum.EnProceso || trabajo.status === JobStatusEnum.Finalizado) && (
                                     <>
-                                        <li className="flex justify-between text-green-600 dark:text-green-500">
-                                            <span>Total Pagado</span>
-                                            <span>{formatCurrency(totalPagado)}</span>
-                                        </li>
-                                        <li className="flex justify-between font-bold text-red-600 dark:text-red-500">
+                                        <div className="pt-2 mt-2 border-t dark:border-gray-600">
+                                            {pagadoItems > 0 && (
+                                                <li className="flex justify-between text-green-600/80 dark:text-green-500/80">
+                                                    <span>Pagado (Repuestos)</span>
+                                                    <span>{formatCurrency(pagadoItems)}</span>
+                                                </li>
+                                            )}
+                                            {pagadoLabor > 0 && (
+                                                <li className="flex justify-between text-green-600/80 dark:text-green-500/80">
+                                                    <span>Pagado (Mano Obra)</span>
+                                                    <span>{formatCurrency(pagadoLabor)}</span>
+                                                </li>
+                                            )}
+                                            {pagadoGeneral > 0 && (
+                                                <li className="flex justify-between text-green-600/80 dark:text-green-500/80">
+                                                    <span>Pagado (General)</span>
+                                                    <span>{formatCurrency(pagadoGeneral)}</span>
+                                                </li>
+                                            )}
+                                            
+                                            <li className="flex justify-between text-green-600 dark:text-green-500 font-semibold border-t dark:border-gray-700 border-dashed mt-1 pt-1">
+                                                <span>Total Pagado</span>
+                                                <span>{formatCurrency(totalPagado)}</span>
+                                            </li>
+                                        </div>
+                                        
+                                        <li className="flex justify-between font-bold text-red-600 dark:text-red-500 mt-1">
                                             <span>Saldo Pendiente</span>
                                             <span>{formatCurrency(saldoPendiente)}</span>
                                         </li>
                                     </>
                                 )}
                             </ul>
+
                             {(trabajo.status === JobStatusEnum.EnProceso || trabajo.status === JobStatusEnum.Finalizado) && pagos.length > 0 && (
                                 <div className="mt-3 pt-3 border-t dark:border-gray-700">
                                     <h5 className="font-semibold text-xs mb-2">Historial de Pagos:</h5>
                                     <ul className="text-xs space-y-1.5 text-taller-dark dark:text-gray-300">
                                         {pagos.map((pago, index) => (
                                             <li key={index} className="flex justify-between items-center p-2 bg-taller-light dark:bg-gray-700/50 rounded-md">
-                                                <span className="text-taller-gray dark:text-gray-400">Pago del {new Date(pago.fecha!).toLocaleDateString('es-ES')}</span>
+                                                <div className="flex flex-col">
+                                                    <span className="text-taller-gray dark:text-gray-400">
+                                                        Pago {new Date(pago.fecha!).toLocaleDateString('es-ES')}
+                                                    </span>
+                                                    <span className="text-[10px] text-gray-500 dark:text-gray-500 italic">
+                                                        {pago.paymentType === 'items' ? '(Repuestos)' : pago.paymentType === 'labor' ? '(Mano de Obra)' : '(General)'}
+                                                    </span>
+                                                </div>
                                                 <span className="font-semibold text-green-600 dark:text-green-500">{formatCurrency(pago.precioUnitario)}</span>
                                             </li>
                                         ))}
@@ -469,26 +547,46 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
                             )}
 
                             {(trabajo.status === JobStatusEnum.EnProceso || trabajo.status === JobStatusEnum.Finalizado) && (
-                                <div className="text-xs space-y-2 mt-4">
+                                <div className="text-xs space-y-2 mt-4 bg-gray-50 dark:bg-gray-700/30 p-2 rounded-lg">
                                 {isAddingPayment ? (
-                                        <div className="flex gap-2">
-                                            <input
-                                                type="text"
-                                                inputMode="decimal"
-                                                placeholder="$ 0,00"
-                                                value={paymentAmount}
-                                                onChange={handlePaymentAmountChange}
-                                                className="w-full px-2 py-1 border dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-taller-dark dark:text-white"
-                                            />
-                                            <button onClick={handleAddPayment} className="px-3 py-1 bg-green-500 text-white font-semibold rounded hover:bg-green-600">OK</button>
-                                            <button onClick={() => setIsAddingPayment(false)} className="px-3 py-1 bg-gray-200 dark:bg-gray-600 rounded hover:bg-gray-300 dark:hover:bg-gray-500">X</button>
+                                        <div className="flex flex-col gap-2">
+                                            <div className="flex gap-2">
+                                                <input
+                                                    type="text"
+                                                    inputMode="decimal"
+                                                    placeholder="$ 0,00"
+                                                    value={paymentAmount}
+                                                    onChange={handlePaymentAmountChange}
+                                                    className="w-full px-2 py-1.5 border dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-taller-dark dark:text-white"
+                                                />
+                                            </div>
+                                            <div className="flex gap-1 justify-between bg-white dark:bg-gray-800 p-1 rounded border dark:border-gray-600">
+                                                <button 
+                                                    onClick={() => setPaymentType('items')}
+                                                    className={`flex-1 py-1 px-1 text-[10px] sm:text-xs rounded transition-colors flex items-center justify-center gap-1 ${paymentType === 'items' ? 'bg-blue-100 text-blue-700 font-bold border border-blue-200' : 'text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
+                                                >
+                                                    <ArchiveBoxIcon className="h-3 w-3" />
+                                                    Repuestos
+                                                </button>
+                                                <button 
+                                                    onClick={() => setPaymentType('labor')}
+                                                    className={`flex-1 py-1 px-1 text-[10px] sm:text-xs rounded transition-colors flex items-center justify-center gap-1 ${paymentType === 'labor' ? 'bg-blue-100 text-blue-700 font-bold border border-blue-200' : 'text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
+                                                >
+                                                    <WrenchScrewdriverIcon className="h-3 w-3" />
+                                                    M. Obra
+                                                </button>
+                                            </div>
+                                            <div className="flex gap-2">
+                                                <button onClick={handleAddPayment} className="flex-1 px-3 py-1.5 bg-green-500 text-white font-semibold rounded hover:bg-green-600">Registrar</button>
+                                                <button onClick={() => setIsAddingPayment(false)} className="px-3 py-1.5 bg-gray-200 dark:bg-gray-600 rounded hover:bg-gray-300 dark:hover:bg-gray-500">Cancelar</button>
+                                            </div>
                                         </div>
                                     ) : (
                                         <button
                                             onClick={() => setIsAddingPayment(true)}
-                                            className="flex items-center gap-1 font-semibold text-green-600 dark:text-green-500 hover:underline"
+                                            className="w-full flex items-center justify-center gap-1 font-semibold text-green-600 dark:text-green-500 hover:bg-green-50 dark:hover:bg-green-900/20 py-1.5 rounded transition-colors"
                                         >
-                                            <CurrencyDollarIcon className="h-4 w-4" /> Registrar Pago
+                                            <CurrencyDollarIcon className="h-4 w-4" /> Registrar Nuevo Pago
                                         </button>
                                     )}
                                 </div>
@@ -536,7 +634,7 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
                         style={{ 
                             top: menuCoords.top, 
                             bottom: menuCoords.bottom, 
-                            left: menuCoords.left,
+                            left: menuCoords.left, 
                             width: menuCoords.width, // Match button width
                             pointerEvents: 'auto'
                         }}

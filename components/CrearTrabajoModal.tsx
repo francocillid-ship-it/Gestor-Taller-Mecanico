@@ -4,7 +4,7 @@ import { createPortal } from 'react-dom';
 import { supabase } from '../supabaseClient';
 import type { Cliente, Parte, Trabajo } from '../types';
 import { JobStatus } from '../types';
-import { XMarkIcon, TrashIcon, UserPlusIcon, WrenchScrewdriverIcon, TagIcon, ArchiveBoxIcon, Bars3Icon } from '@heroicons/react/24/solid';
+import { XMarkIcon, TrashIcon, UserPlusIcon, WrenchScrewdriverIcon, TagIcon, ArchiveBoxIcon, Bars3Icon, PencilIcon, CheckIcon, ShoppingBagIcon } from '@heroicons/react/24/solid';
 import CrearClienteModal from './CrearClienteModal';
 import { ALL_MAINTENANCE_OPTS } from '../constants';
 
@@ -25,6 +25,7 @@ type ParteState = {
     isCategory?: boolean;
     isService?: boolean;
     maintenanceType?: string;
+    clientPaidDirectly?: boolean;
 };
 
 
@@ -46,6 +47,11 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
     
     // Almacenamiento local temporal para el cliente recién creado
     const [localNewClient, setLocalNewClient] = useState<Cliente | null>(null);
+
+    // Estado para edición de pagos
+    const [editingPaymentIndex, setEditingPaymentIndex] = useState<number | null>(null);
+    const [editingPaymentAmount, setEditingPaymentAmount] = useState('');
+    const [editingPaymentType, setEditingPaymentType] = useState<'items' | 'labor' | undefined>(undefined);
 
     const isEditMode = Boolean(trabajoToEdit);
 
@@ -102,7 +108,8 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
                 ...p,
                 _id: generateId(),
                 precioUnitario: formatNumberToCurrency(p.precioUnitario),
-                maintenanceType: p.maintenanceType || ''
+                maintenanceType: p.maintenanceType || '',
+                clientPaidDirectly: p.clientPaidDirectly
             }));
 
             if (!hasServices && legacyLabor > 0) {
@@ -209,11 +216,18 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
     }, [selectedClienteId, mergedClientes]);
 
     const costoEstimado = useMemo(() => {
-        return partes.filter(p => !p.isCategory).reduce((sum, p) => sum + (Number(p.cantidad || 0) * parseCurrency(p.precioUnitario)), 0);
+        // Only include parts NOT paid directly by client for the total estimation to charge
+        // Wait, normally CostoEstimado IS the total value.
+        // But for "Total a Cobrar" display here, we might want to exclude client paid parts?
+        // The JobCard shows "Total a Cobrar" excluding client paid.
+        // Let's keep consistent.
+        return partes
+            .filter(p => !p.isCategory && !p.clientPaidDirectly)
+            .reduce((sum, p) => sum + (Number(p.cantidad || 0) * parseCurrency(p.precioUnitario)), 0);
     }, [partes]);
 
 
-    const handleParteChange = (index: number, field: keyof ParteState, value: string | number) => {
+    const handleParteChange = (index: number, field: keyof ParteState, value: string | number | boolean) => {
         const newPartes = [...partes];
         const currentParte = newPartes[index];
         
@@ -228,6 +242,15 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
                 );
                 if (matchedType) {
                     currentParte.maintenanceType = matchedType.key;
+                }
+            }
+        } else if (field === 'clientPaidDirectly') {
+            (currentParte as any)[field] = value;
+            // Handle category toggle logic
+            if (currentParte.isCategory) {
+                 for (let i = index + 1; i < newPartes.length; i++) {
+                    if (newPartes[i].isCategory) break; 
+                    newPartes[i].clientPaidDirectly = value as boolean;
                 }
             }
         } else {
@@ -313,8 +336,36 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
         setDraggedItemIndex(null);
     };
     
-    const handleRemovePago = (indexToRemove: number) => {
-        setPagos(currentPagos => currentPagos.filter((_, index) => index !== indexToRemove));
+    const startEditingPayment = (index: number) => {
+        const pago = pagos[index];
+        setEditingPaymentIndex(index);
+        setEditingPaymentAmount(formatNumberToCurrency(pago.precioUnitario));
+        setEditingPaymentType(pago.paymentType);
+    };
+
+    const saveEditingPayment = () => {
+        if (editingPaymentIndex === null) return;
+
+        const newPagos = [...pagos];
+        newPagos[editingPaymentIndex] = {
+            ...newPagos[editingPaymentIndex],
+            precioUnitario: parseCurrency(editingPaymentAmount),
+            paymentType: editingPaymentType
+        };
+        setPagos(newPagos);
+        cancelEditingPayment();
+    };
+
+    const cancelEditingPayment = () => {
+        setEditingPaymentIndex(null);
+        setEditingPaymentAmount('');
+        setEditingPaymentType(undefined);
+    };
+
+    const deleteEditingPayment = () => {
+        if (editingPaymentIndex === null) return;
+        setPagos(currentPagos => currentPagos.filter((_, index) => index !== editingPaymentIndex));
+        cancelEditingPayment();
     };
 
     const handleDeleteJob = async () => {
@@ -363,11 +414,12 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
                     precioUnitario: p.isCategory ? 0 : parseCurrency(p.precioUnitario),
                     isCategory: !!p.isCategory,
                     isService: !!p.isService,
-                    maintenanceType: p.maintenanceType || undefined
+                    maintenanceType: p.maintenanceType || undefined,
+                    clientPaidDirectly: !!p.clientPaidDirectly
                 }));
             
             const calculatedManoDeObra = cleanPartes
-                .filter(p => p.isService && !p.isCategory)
+                .filter(p => p.isService && !p.isCategory && !p.clientPaidDirectly)
                 .reduce((sum, p) => sum + (p.cantidad * p.precioUnitario), 0);
             
             const kmValue = kilometraje ? parseInt(kilometraje, 10) : null;
@@ -509,6 +561,14 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
                                                     onChange={e => handleParteChange(index, 'nombre', e.target.value)} 
                                                     className="flex-grow min-w-0 px-3 py-2 bg-transparent border-b border-transparent focus:border-taller-primary focus:outline-none font-semibold text-taller-dark dark:text-taller-light" 
                                                 />
+                                                <button 
+                                                    type="button" 
+                                                    onClick={() => handleParteChange(index, 'clientPaidDirectly', !parte.clientPaidDirectly)}
+                                                    className={`p-2 rounded-full transition-colors ${parte.clientPaidDirectly ? 'bg-purple-100 text-purple-600 dark:bg-purple-900/50 dark:text-purple-300' : 'text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'}`}
+                                                    title="Marcar categoría pagada por cliente"
+                                                >
+                                                    <ShoppingBagIcon className="h-5 w-5"/>
+                                                </button>
                                                 <button type="button" onClick={() => removeParte(index)} className="p-2 text-red-500 hover:bg-red-100 dark:hover:bg-red-900/50 rounded-full">
                                                     <TrashIcon className="h-5 w-5"/>
                                                 </button>
@@ -533,8 +593,18 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
                                                         placeholder={parte.isService ? "Servicio" : "Repuesto"}
                                                         value={parte.nombre}
                                                         onChange={e => handleParteChange(index, 'nombre', e.target.value)}
-                                                        className="flex-grow min-w-0 px-2 py-1 bg-transparent focus:outline-none text-sm font-medium"
+                                                        className={`flex-grow min-w-0 px-2 py-1 bg-transparent focus:outline-none text-sm font-medium ${parte.clientPaidDirectly ? 'line-through text-gray-400' : ''}`}
                                                     />
+                                                    {/* Only show button if NOT a service */}
+                                                    {!parte.isService && (
+                                                        <button 
+                                                            type="button" 
+                                                            onClick={() => handleParteChange(index, 'clientPaidDirectly', !parte.clientPaidDirectly)}
+                                                            className={`p-1 rounded transition-colors ${parte.clientPaidDirectly ? 'text-purple-600 bg-purple-50' : 'text-gray-400'}`}
+                                                        >
+                                                            <ShoppingBagIcon className="h-5 w-5"/>
+                                                        </button>
+                                                    )}
                                                     <button type="button" onClick={() => removeParte(index)} className="p-1 text-red-500">
                                                         <TrashIcon className="h-5 w-5"/>
                                                     </button>
@@ -550,7 +620,7 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
                                                             const val = e.target.value;
                                                             handleParteChange(index, 'cantidad', val === '' ? '' : parseInt(val, 10));
                                                         }}
-                                                        className="w-12 px-2 py-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-center text-sm"
+                                                        className={`w-12 px-2 py-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-center text-sm ${parte.clientPaidDirectly ? 'opacity-50' : ''}`}
                                                     />
                                                      <input 
                                                         type="text" 
@@ -558,12 +628,12 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
                                                         placeholder="$ 0" 
                                                         value={parte.precioUnitario} 
                                                         onChange={e => handleParteChange(index, 'precioUnitario', formatCurrency(e.target.value))} 
-                                                        className="flex-1 min-w-0 px-2 py-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-sm text-right" 
+                                                        className={`flex-1 min-w-0 px-2 py-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-sm text-right ${parte.clientPaidDirectly ? 'opacity-50 line-through' : ''}`} 
                                                     />
                                                 </div>
 
                                                 {/* Desktop Layout (Grid) */}
-                                                <div className="hidden sm:grid sm:grid-cols-[auto_auto_1fr_130px_70px_100px_auto] items-center gap-2 w-full">
+                                                <div className="hidden sm:grid sm:grid-cols-[auto_auto_1fr_130px_70px_100px_auto_auto] items-center gap-2 w-full">
                                                     <div className="cursor-move text-gray-400 hover:text-taller-primary" onDragStart={() => handleDragStart(index)}><Bars3Icon className="h-5 w-5"/></div>
                                                     <div title={parte.isService ? "Servicio" : "Repuesto"} className={`p-1.5 rounded ${parte.isService ? 'bg-blue-100 text-blue-600' : 'bg-gray-200 text-gray-600'}`}>
                                                         {parte.isService ? <WrenchScrewdriverIcon className="h-4 w-4"/> : <ArchiveBoxIcon className="h-4 w-4"/>}
@@ -572,7 +642,7 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
                                                         type="text" 
                                                         value={parte.nombre} 
                                                         onChange={e => handleParteChange(index, 'nombre', e.target.value)} 
-                                                        className="w-full px-2 py-1 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded text-sm focus:outline-none focus:ring-1 focus:ring-taller-primary"
+                                                        className={`w-full px-2 py-1 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded text-sm focus:outline-none focus:ring-1 focus:ring-taller-primary ${parte.clientPaidDirectly ? 'line-through text-gray-400' : ''}`}
                                                     />
                                                     <select
                                                         value={parte.maintenanceType || ''}
@@ -586,14 +656,28 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
                                                         type="number" 
                                                         value={parte.cantidad} 
                                                         onChange={e => handleParteChange(index, 'cantidad', e.target.value === '' ? '' : parseInt(e.target.value, 10))} 
-                                                        className="w-full px-2 py-1 text-center bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded text-sm focus:outline-none focus:ring-1 focus:ring-taller-primary" 
+                                                        className={`w-full px-2 py-1 text-center bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded text-sm focus:outline-none focus:ring-1 focus:ring-taller-primary ${parte.clientPaidDirectly ? 'opacity-50' : ''}`} 
                                                     />
                                                     <input 
                                                         type="text" 
                                                         value={parte.precioUnitario} 
                                                         onChange={e => handleParteChange(index, 'precioUnitario', formatCurrency(e.target.value))} 
-                                                        className="w-full px-2 py-1 text-right bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded text-sm focus:outline-none focus:ring-1 focus:ring-taller-primary" 
+                                                        className={`w-full px-2 py-1 text-right bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded text-sm focus:outline-none focus:ring-1 focus:ring-taller-primary ${parte.clientPaidDirectly ? 'opacity-50 line-through' : ''}`} 
                                                     />
+                                                    {/* Only show button if NOT a service */}
+                                                    {!parte.isService && (
+                                                        <button 
+                                                            type="button" 
+                                                            onClick={() => handleParteChange(index, 'clientPaidDirectly', !parte.clientPaidDirectly)}
+                                                            className={`p-1.5 rounded-full transition-colors ${parte.clientPaidDirectly ? 'bg-purple-100 text-purple-600 dark:bg-purple-900/50 dark:text-purple-300' : 'text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
+                                                            title="Marcar pagado por cliente"
+                                                        >
+                                                            <ShoppingBagIcon className="h-4 w-4"/>
+                                                        </button>
+                                                    )}
+                                                    {/* Placeholder div to keep grid alignment if button is hidden */}
+                                                    {parte.isService && <div className="w-[28px]"></div>}
+
                                                     <button type="button" onClick={() => removeParte(index)} className="p-1.5 text-red-500 hover:bg-red-100 rounded-full"><TrashIcon className="h-4 w-4"/></button>
                                                 </div>
                                             </>
@@ -620,16 +704,65 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
                                 <h3 className="text-md font-semibold text-taller-dark dark:text-taller-light mb-2 border-t dark:border-gray-600 pt-4">Historial de Pagos</h3>
                                 <div className="space-y-2">
                                     {pagos.map((pago, index) => (
-                                        <div key={index} className="flex justify-between items-center p-2 bg-taller-light dark:bg-gray-700/50 rounded-md">
-                                            <div>
-                                                <p className="font-semibold text-green-600 dark:text-green-500">{new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(pago.precioUnitario)}</p>
-                                                <p className="text-xs text-taller-gray dark:text-gray-400">
-                                                    Registrado el {new Date(pago.fecha!).toLocaleDateString('es-ES')}
-                                                </p>
-                                            </div>
-                                            <button type="button" onClick={() => handleRemovePago(index)} className="p-2 text-red-500 hover:bg-red-100 dark:hover:bg-red-900/50 rounded-full">
-                                                <TrashIcon className="h-5 w-5"/>
-                                            </button>
+                                        <div key={index} className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-2 bg-taller-light dark:bg-gray-700/50 rounded-md border dark:border-gray-600">
+                                            {editingPaymentIndex === index ? (
+                                                // Modo Edición
+                                                <div className="w-full flex flex-col gap-2">
+                                                    <div className="flex gap-2 items-center">
+                                                        <span className="text-xs font-bold text-gray-500">Monto:</span>
+                                                        <input 
+                                                            type="text" 
+                                                            value={editingPaymentAmount}
+                                                            onChange={(e) => setEditingPaymentAmount(formatCurrency(e.target.value))}
+                                                            className="flex-1 px-2 py-1 text-sm border dark:border-gray-500 rounded dark:bg-gray-600"
+                                                        />
+                                                    </div>
+                                                    <div className="flex gap-1 justify-between bg-white dark:bg-gray-800 p-1 rounded border dark:border-gray-600">
+                                                        <button 
+                                                            type="button"
+                                                            onClick={() => setEditingPaymentType('items')}
+                                                            className={`flex-1 py-1 px-1 text-[10px] rounded transition-colors flex items-center justify-center gap-1 ${editingPaymentType === 'items' ? 'bg-blue-100 text-blue-700 font-bold border border-blue-200' : 'text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
+                                                        >
+                                                            <ArchiveBoxIcon className="h-3 w-3" /> Repuestos
+                                                        </button>
+                                                        <button 
+                                                            type="button"
+                                                            onClick={() => setEditingPaymentType('labor')}
+                                                            className={`flex-1 py-1 px-1 text-[10px] rounded transition-colors flex items-center justify-center gap-1 ${editingPaymentType === 'labor' ? 'bg-blue-100 text-blue-700 font-bold border border-blue-200' : 'text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
+                                                        >
+                                                            <WrenchScrewdriverIcon className="h-3 w-3" /> M. Obra
+                                                        </button>
+                                                        <button 
+                                                            type="button"
+                                                            onClick={() => setEditingPaymentType(undefined)}
+                                                            className={`flex-1 py-1 px-1 text-[10px] rounded transition-colors flex items-center justify-center gap-1 ${!editingPaymentType ? 'bg-blue-100 text-blue-700 font-bold border border-blue-200' : 'text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
+                                                        >
+                                                            Gral.
+                                                        </button>
+                                                    </div>
+                                                    <div className="flex justify-end gap-2 mt-1">
+                                                        <button type="button" onClick={deleteEditingPayment} className="text-red-500 text-xs font-semibold hover:underline px-2">Eliminar</button>
+                                                        <button type="button" onClick={cancelEditingPayment} className="text-gray-500 text-xs font-semibold hover:underline px-2">Cancelar</button>
+                                                        <button type="button" onClick={saveEditingPayment} className="bg-green-500 text-white text-xs px-3 py-1 rounded hover:bg-green-600 flex items-center gap-1"><CheckIcon className="h-3 w-3"/> Guardar</button>
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                // Modo Visualización
+                                                <>
+                                                    <div>
+                                                        <p className="font-semibold text-green-600 dark:text-green-500">{new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(pago.precioUnitario)}</p>
+                                                        <p className="text-xs text-taller-gray dark:text-gray-400">
+                                                            {new Date(pago.fecha!).toLocaleDateString('es-ES')} 
+                                                            <span className="ml-1 opacity-75 italic">
+                                                                ({pago.paymentType === 'items' ? 'Repuestos' : pago.paymentType === 'labor' ? 'Mano de Obra' : 'General'})
+                                                            </span>
+                                                        </p>
+                                                    </div>
+                                                    <button type="button" onClick={() => startEditingPayment(index)} className="p-2 text-taller-gray hover:text-taller-secondary dark:text-gray-400 dark:hover:text-white rounded-full">
+                                                        <PencilIcon className="h-4 w-4"/>
+                                                    </button>
+                                                </>
+                                            )}
                                         </div>
                                     ))}
                                 </div>
