@@ -1,4 +1,3 @@
-
 import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import type { Cliente, Trabajo, Gasto } from '../types';
@@ -210,7 +209,7 @@ const FinancialDetailOverlay: React.FC<FinancialDetailOverlayProps> = ({ detailV
                             data.transactions.map((t, index) => (
                                 <div 
                                     key={t.id} 
-                                    className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm flex items-center justify-between border-l-4 border-transparent hover:border-l-4 transition-all duration-300 animate-in fade-in slide-in-from-bottom-2 fill-mode-backwards" 
+                                    className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm flex items-center justify-between border-l-4 border-transparent hover:border-l-4 transition-all duration-300 animate-slide-in-bottom fill-mode-backwards" 
                                     style={{ 
                                         borderLeftColor: t.type === 'income' ? '#22c55e' : '#ef4444',
                                         animationDelay: `${index * 50}ms` // Staggered list animation

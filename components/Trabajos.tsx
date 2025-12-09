@@ -1,4 +1,3 @@
-
 import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import type { Trabajo, Cliente, TallerInfo } from '../types';
@@ -442,11 +441,16 @@ const Trabajos: React.FC<TrabajosProps> = ({
     // Animation States
     const [showFloatingMenu, setShowFloatingMenu] = useState(false);
     const [animateFloatingMenu, setAnimateFloatingMenu] = useState(false);
+    
+    // Directional Animation Logic
+    const prevTabRef = useRef<number>(statusOrder.indexOf(initialTab || JobStatus.Presupuesto));
+    const [slideDirection, setSlideDirection] = useState<'left' | 'right'>('right');
 
     useEffect(() => {
         // Reset tab whenever the view becomes active (navigation)
         if (isActive) {
             setActiveMobileTab(initialTab || JobStatus.Presupuesto);
+            prevTabRef.current = statusOrder.indexOf(initialTab || JobStatus.Presupuesto);
         }
         
         if (initialTab) {
@@ -457,6 +461,17 @@ const Trabajos: React.FC<TrabajosProps> = ({
             }
         }
     }, [isActive, initialTab]);
+    
+    // Handle Directional State on Tab Change
+    useEffect(() => {
+        const currentIdx = statusOrder.indexOf(activeMobileTab);
+        const prevIdx = prevTabRef.current;
+        
+        if (currentIdx !== prevIdx) {
+            setSlideDirection(currentIdx > prevIdx ? 'right' : 'left');
+            prevTabRef.current = currentIdx;
+        }
+    }, [activeMobileTab]);
 
     useEffect(() => {
         const pendingClientId = localStorage.getItem('pending_job_client_id');
@@ -467,21 +482,18 @@ const Trabajos: React.FC<TrabajosProps> = ({
         }
     }, []);
 
-    // Animation Logic
+    // Animation Logic (Floating Menu)
     useEffect(() => {
         const shouldShow = isActive && !isJobModalOpen;
         let timer: ReturnType<typeof setTimeout>;
 
         if (shouldShow) {
             setShowFloatingMenu(true);
-            // Usamos setTimeout (50ms) para asegurar que el navegador pinte el estado inicial
-            // (opacity-0) en móviles antes de iniciar la transición visible.
             timer = setTimeout(() => {
                 setAnimateFloatingMenu(true);
             }, 50);
         } else {
             setAnimateFloatingMenu(false);
-            // Timeout reducido para fade out más rápido
             timer = setTimeout(() => {
                 setShowFloatingMenu(false);
             }, 200); 
@@ -574,10 +586,14 @@ const Trabajos: React.FC<TrabajosProps> = ({
                     </div>
                 ) : (
                     <>
-                        {/* Mobile View: Render only ACTIVE tab */}
-                        <div className="lg:hidden w-full pb-36">
+                        {/* Mobile View: Render only ACTIVE tab with Animation */}
+                        <div 
+                            key={activeMobileTab}
+                            className={`lg:hidden w-full pb-36 transform-gpu will-change-transform ${
+                                slideDirection === 'right' ? 'animate-slide-in-right' : 'animate-slide-in-left'
+                            }`}
+                        >
                             <StatusColumn
-                                key={activeMobileTab}
                                 status={activeMobileTab}
                                 trabajos={trabajosByStatus[activeMobileTab] || []}
                                 clientes={clientes}
