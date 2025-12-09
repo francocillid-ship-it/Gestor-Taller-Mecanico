@@ -28,17 +28,17 @@ interface StatCardProps {
 const StatCard: React.FC<StatCardProps> = ({ title, value, icon, color, onClick }) => (
     <div 
         onClick={onClick}
-        className={`bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-xl shadow-md flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:space-x-4 h-full transition-all duration-200 select-none ${onClick ? 'cursor-pointer hover:shadow-lg hover:scale-[1.01] active:scale-[0.98]' : ''}`}
+        className={`bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-xl shadow-md flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:space-x-4 h-full transform-gpu transition-all duration-300 ease-out select-none will-change-transform ${onClick ? 'cursor-pointer hover:shadow-lg hover:scale-[1.02] active:scale-[0.96]' : ''}`}
     >
-        <div className={`p-2 sm:p-3 rounded-full ${color} shrink-0`}>
+        <div className={`p-2 sm:p-3 rounded-full ${color} shrink-0 shadow-sm`}>
             {React.isValidElement(icon) 
                 ? React.cloneElement(icon as React.ReactElement<any>, { className: "h-5 w-5 sm:h-6 sm:w-6 text-white" }) 
                 : icon
             }
         </div>
         <div className="min-w-0">
-            <p className="text-xs sm:text-sm text-taller-gray dark:text-gray-400 truncate">{title}</p>
-            <p className="text-lg sm:text-2xl font-bold text-taller-dark dark:text-taller-light truncate">{value}</p>
+            <p className="text-xs sm:text-sm text-taller-gray dark:text-gray-400 truncate font-medium">{title}</p>
+            <p className="text-lg sm:text-2xl font-bold text-taller-dark dark:text-taller-light truncate tracking-tight">{value}</p>
         </div>
     </div>
 );
@@ -70,7 +70,7 @@ const FilterControls = ({ activePeriod, setPeriodFn }: { activePeriod: Period, s
                 onClick={() => setPeriodFn(p.value as Period)}
                 className={`flex-shrink-0 px-4 py-2 text-xs sm:text-sm font-medium rounded-full transition-all border whitespace-nowrap ${
                     activePeriod === p.value 
-                    ? 'bg-taller-primary text-white border-taller-primary shadow-md' 
+                    ? 'bg-taller-primary text-white border-taller-primary shadow-md transform-gpu scale-105' 
                     : 'bg-white dark:bg-gray-800 text-taller-gray dark:text-gray-300 border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700'
                 }`}
             >
@@ -92,8 +92,28 @@ interface FinancialDetailOverlayProps {
 
 const FinancialDetailOverlay: React.FC<FinancialDetailOverlayProps> = ({ detailView, onClose, period, setPeriod, data, gananciasNetasDisplay }) => {
     const [isFilterVisible, setIsFilterVisible] = useState(true);
+    const [isVisible, setIsVisible] = useState(false); // Controls CSS animation state
     const lastScrollTop = useRef(0);
     const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+    // Entry animation on mount
+    useEffect(() => {
+        // Double RAF ensures the browser has painted the initial state (translate-y-full) before applying the transition
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                setIsVisible(true);
+            });
+        });
+    }, []);
+
+    // Intercept onClose to play exit animation first
+    const handleClose = () => {
+        setIsVisible(false);
+        // Wait for the duration of the transition (500ms) before unmounting
+        setTimeout(() => {
+            onClose();
+        }, 500);
+    };
 
     const handleScroll = () => {
         if (!scrollContainerRef.current) return;
@@ -101,8 +121,6 @@ const FinancialDetailOverlay: React.FC<FinancialDetailOverlayProps> = ({ detailV
         const { scrollTop, scrollHeight, clientHeight } = scrollContainerRef.current;
 
         // OVERSCROLL PROTECTION
-        // Evitamos ejecutar lógica si el scroll está fuera de los límites (iOS/Mac bounce)
-        // Esto previene el flickering causado por cambios de layout durante el rebote elástico.
         if (scrollTop <= 0 || scrollTop + clientHeight >= scrollHeight) {
             return;
         }
@@ -110,11 +128,8 @@ const FinancialDetailOverlay: React.FC<FinancialDetailOverlayProps> = ({ detailV
         const diff = scrollTop - lastScrollTop.current;
         lastScrollTop.current = scrollTop;
 
-        // Ignorar micro-movimientos
         if (Math.abs(diff) < 10) return;
 
-        // BOTTOM BUFFER
-        // Si estamos cerca del final, evitamos mostrar el filtro al subir un poco para no interferir con el rebote del fondo.
         const isNearBottom = scrollTop + clientHeight > scrollHeight - 100;
         if (isNearBottom) return;
 
@@ -137,76 +152,95 @@ const FinancialDetailOverlay: React.FC<FinancialDetailOverlayProps> = ({ detailV
     const isProfitView = detailView === 'ganancias';
     const displayTotal = isProfitView ? gananciasNetasDisplay : new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(data.total);
 
-    // Using createPortal to ensure it overlays absolutely everything (headers, bottom navs)
     return createPortal(
-        <div className="fixed inset-0 z-[100] bg-taller-light dark:bg-taller-dark flex flex-col animate-in slide-in-from-bottom-5 duration-300">
-            {/* Header with Safe Area Padding */}
-            <div className="bg-white dark:bg-gray-800 shadow-sm flex-shrink-0 pt-[env(safe-area-inset-top)] border-b dark:border-gray-700 z-20 relative transition-transform duration-300">
-                <div className="flex items-center justify-between p-4">
-                    <button 
-                        onClick={onClose}
-                        className="p-2 -ml-2 text-taller-gray dark:text-gray-400 hover:text-taller-dark dark:hover:text-white rounded-full hover:bg-gray-100 dark:hover:bg-gray-700"
-                    >
-                        <ArrowLeftIcon className="h-6 w-6" />
-                    </button>
-                    <h2 className="text-lg font-bold text-taller-dark dark:text-taller-light">{titleMap[detailView]}</h2>
-                    <div className="w-10"></div>
-                </div>
-            </div>
-
-            {/* Filter Section - Collapsible */}
-            <div className={`bg-taller-light dark:bg-taller-dark z-10 flex-shrink-0 transition-all duration-300 ease-in-out overflow-hidden ${isFilterVisible ? 'max-h-[80px] opacity-100 translate-y-0' : 'max-h-0 opacity-0 -translate-y-4'}`}>
-                <div className="p-4 pb-2">
-                    <FilterControls activePeriod={period} setPeriodFn={setPeriod} />
-                </div>
-            </div>
-
-            {/* Scrollable Content */}
+        <>
+            {/* Backdrop Layer */}
             <div 
-                ref={scrollContainerRef}
-                onScroll={handleScroll}
-                className="flex-1 overflow-y-auto px-4 pb-4 pt-2 space-y-4 overscroll-contain"
+                className={`fixed inset-0 z-[99] bg-black/30 backdrop-blur-sm transition-opacity duration-500 ease-in-out ${isVisible ? 'opacity-100' : 'opacity-0'}`}
+                onClick={handleClose}
+                aria-hidden="true"
+            />
+            
+            {/* Content Layer - Slides up from bottom */}
+            <div 
+                className={`fixed inset-0 z-[100] bg-taller-light dark:bg-taller-dark flex flex-col shadow-2xl transition-transform duration-500 will-change-transform ${isVisible ? 'translate-y-0' : 'translate-y-full'}`}
+                style={{ transitionTimingFunction: 'cubic-bezier(0.32, 0.72, 0, 1)' }} // iOS-like fluid spring
             >
-                <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm text-center mt-2 border dark:border-gray-700">
-                    <p className="text-sm text-taller-gray dark:text-gray-400 uppercase tracking-wide">Total {period === 'this_month' ? 'Este Mes' : period === 'last_7_days' ? '7 Días' : period === 'last_15_days' ? '15 Días' : 'Mes Pasado'}</p>
-                    <p className={`text-4xl font-bold mt-2 ${data.total >= 0 ? 'text-taller-dark dark:text-taller-light' : 'text-red-600'}`}>
-                        {displayTotal}
-                    </p>
-                    {isProfitView && (
-                       <p className="text-xs text-taller-gray dark:text-gray-500 mt-2">
-                           * Cálculo: Mano de Obra (cobrada) - Gastos.
-                       </p>
-                    )}
+                {/* Header */}
+                <div className="bg-white dark:bg-gray-800 shadow-sm flex-shrink-0 pt-[env(safe-area-inset-top)] border-b dark:border-gray-700 z-20 relative">
+                    <div className="flex items-center justify-between p-4">
+                        <button 
+                            onClick={handleClose}
+                            className="p-2 -ml-2 text-taller-gray dark:text-gray-400 hover:text-taller-dark dark:hover:text-white rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                        >
+                            <ArrowLeftIcon className="h-6 w-6" />
+                        </button>
+                        <h2 className="text-lg font-bold text-taller-dark dark:text-taller-light">{titleMap[detailView]}</h2>
+                        <div className="w-10"></div>
+                    </div>
                 </div>
 
-                <div className="space-y-3 pb-24">
-                     {data.transactions.length > 0 ? (
-                        data.transactions.map((t) => (
-                            <div key={t.id} className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm flex items-center justify-between border-l-4 border-transparent hover:border-l-4 transition-all" style={{ borderLeftColor: t.type === 'income' ? '#22c55e' : '#ef4444' }}>
-                                <div className="flex items-center gap-3">
-                                    <div className={`p-2 rounded-full ${t.type === 'income' ? 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400' : 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400'}`}>
-                                        {t.type === 'income' ? <ArrowTrendingUpIcon className="h-5 w-5" /> : <ArrowTrendingDownIcon className="h-5 w-5" />}
+                {/* Filter Section */}
+                <div className={`bg-taller-light dark:bg-taller-dark z-10 flex-shrink-0 transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] overflow-hidden ${isFilterVisible ? 'max-h-[80px] opacity-100 translate-y-0' : 'max-h-0 opacity-0 -translate-y-4'}`}>
+                    <div className="p-4 pb-2">
+                        <FilterControls activePeriod={period} setPeriodFn={setPeriod} />
+                    </div>
+                </div>
+
+                {/* Scrollable Content */}
+                <div 
+                    ref={scrollContainerRef}
+                    onScroll={handleScroll}
+                    className="flex-1 overflow-y-auto px-4 pb-4 pt-2 space-y-4 overscroll-contain"
+                >
+                    <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm text-center mt-2 border dark:border-gray-700 transform-gpu">
+                        <p className="text-sm text-taller-gray dark:text-gray-400 uppercase tracking-wide">Total {period === 'this_month' ? 'Este Mes' : period === 'last_7_days' ? '7 Días' : period === 'last_15_days' ? '15 Días' : 'Mes Pasado'}</p>
+                        <p className={`text-4xl font-bold mt-2 ${data.total >= 0 ? 'text-taller-dark dark:text-taller-light' : 'text-red-600'}`}>
+                            {displayTotal}
+                        </p>
+                        {isProfitView && (
+                           <p className="text-xs text-taller-gray dark:text-gray-500 mt-2">
+                               * Cálculo: Mano de Obra (cobrada) - Gastos.
+                           </p>
+                        )}
+                    </div>
+
+                    <div className="space-y-3 pb-24">
+                         {data.transactions.length > 0 ? (
+                            data.transactions.map((t, index) => (
+                                <div 
+                                    key={t.id} 
+                                    className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm flex items-center justify-between border-l-4 border-transparent hover:border-l-4 transition-all duration-300 animate-in fade-in slide-in-from-bottom-2 fill-mode-backwards" 
+                                    style={{ 
+                                        borderLeftColor: t.type === 'income' ? '#22c55e' : '#ef4444',
+                                        animationDelay: `${index * 50}ms` // Staggered list animation
+                                    }}
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <div className={`p-2 rounded-full ${t.type === 'income' ? 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400' : 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400'}`}>
+                                            {t.type === 'income' ? <ArrowTrendingUpIcon className="h-5 w-5" /> : <ArrowTrendingDownIcon className="h-5 w-5" />}
+                                        </div>
+                                        <div>
+                                            <p className="font-bold text-taller-dark dark:text-taller-light text-sm">{t.description}</p>
+                                            <p className="text-xs text-taller-gray dark:text-gray-400">{t.subtext}</p>
+                                            <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">{t.date.toLocaleDateString('es-ES')} {t.date.toLocaleTimeString([], { hour: '2-digit', minute:'2-digit' })}</p>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <p className="font-bold text-taller-dark dark:text-taller-light text-sm">{t.description}</p>
-                                        <p className="text-xs text-taller-gray dark:text-gray-400">{t.subtext}</p>
-                                        <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">{t.date.toLocaleDateString('es-ES')} {t.date.toLocaleTimeString([], { hour: '2-digit', minute:'2-digit' })}</p>
-                                    </div>
+                                    <p className={`font-bold ${t.type === 'income' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                                        {t.type === 'income' ? '+' : '-'} {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(t.amount)}
+                                    </p>
                                 </div>
-                                <p className={`font-bold ${t.type === 'income' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                                    {t.type === 'income' ? '+' : '-'} {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(t.amount)}
-                                </p>
-                            </div>
-                        ))
-                     ) : (
-                         <div className="text-center py-10 text-taller-gray dark:text-gray-400">
-                             <ScaleIcon className="h-12 w-12 mx-auto mb-2 opacity-20" />
-                             <p>No hay movimientos en este periodo.</p>
-                         </div>
-                     )}
+                            ))
+                         ) : (
+                             <div className="text-center py-10 text-taller-gray dark:text-gray-400">
+                                 <ScaleIcon className="h-12 w-12 mx-auto mb-2 opacity-20" />
+                                 <p>No hay movimientos en este periodo.</p>
+                             </div>
+                         )}
+                    </div>
                 </div>
             </div>
-        </div>,
+        </>,
         document.body
     );
 };
@@ -448,7 +482,7 @@ const Dashboard: React.FC<DashboardProps> = ({ clientes, trabajos, gastos, onDat
     }, [detailView, trabajos, gastos, clientes, period]);
 
     const renderGastoRow = (gasto: Gasto) => (
-        <div key={gasto.id} className="flex flex-col sm:flex-row sm:justify-between sm:items-center p-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 rounded-lg gap-2 border-b dark:border-gray-700 last:border-0 sm:border-0">
+        <div key={gasto.id} className="flex flex-col sm:flex-row sm:justify-between sm:items-center p-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 rounded-lg gap-2 border-b dark:border-gray-700 last:border-0 sm:border-0 transition-colors">
             <div className="w-full sm:w-auto">
                 <p className="font-medium text-taller-dark dark:text-taller-light">{gasto.descripcion}</p>
                 <p className="text-sm text-taller-gray dark:text-gray-400">{new Date(gasto.fecha).toLocaleDateString('es-ES')}</p>
@@ -560,7 +594,7 @@ const Dashboard: React.FC<DashboardProps> = ({ clientes, trabajos, gastos, onDat
                     <h3 className="text-lg font-bold text-taller-dark dark:text-taller-light">Gastos Recientes</h3>
                     <button
                         onClick={() => setIsAddGastoModalOpen(true)}
-                        className="flex items-center justify-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-taller-primary rounded-lg shadow-md hover:bg-taller-secondary"
+                        className="flex items-center justify-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-taller-primary rounded-lg shadow-md hover:bg-taller-secondary transition-colors"
                     >
                         <PlusIcon className="h-5 w-5"/> Añadir Gasto
                     </button>
