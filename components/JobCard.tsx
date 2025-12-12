@@ -29,8 +29,8 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
     
     // Status Menu State
     const [isStatusMenuOpen, setIsStatusMenuOpen] = useState(false);
-    // Added 'width' to coordinates state
-    const [menuCoords, setMenuCoords] = useState<{ top?: number; bottom?: number; left: number; width: number } | null>(null);
+    const [isMenuVisible, setIsMenuVisible] = useState(false); // Controls CSS animation classes
+    const [menuCoords, setMenuCoords] = useState<{ top?: number; bottom?: number; left: number; width: number; placement: 'top' | 'bottom' } | null>(null);
     const buttonRef = useRef<HTMLButtonElement>(null);
     
     // Schedule Editing State
@@ -108,22 +108,29 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
     // Close menu on scroll or resize to prevent it from detaching visually
     useEffect(() => {
         if (isStatusMenuOpen) {
-            const handleClose = () => setIsStatusMenuOpen(false);
+            const handleScrollOrResize = () => handleCloseMenu();
             // Capture scroll events on any parent container
-            document.addEventListener('scroll', handleClose, true);
-            window.addEventListener('resize', handleClose);
+            document.addEventListener('scroll', handleScrollOrResize, true);
+            window.addEventListener('resize', handleScrollOrResize);
             return () => {
-                document.removeEventListener('scroll', handleClose, true);
-                window.removeEventListener('resize', handleClose);
+                document.removeEventListener('scroll', handleScrollOrResize, true);
+                window.removeEventListener('resize', handleScrollOrResize);
             };
         }
     }, [isStatusMenuOpen]);
 
+    const handleCloseMenu = () => {
+        setIsMenuVisible(false); // Start exit animation
+        setTimeout(() => {
+            setIsStatusMenuOpen(false);
+            setMenuCoords(null);
+        }, 200); // Wait for duration of transition
+    };
+
     const toggleStatusMenu = (e: React.MouseEvent) => {
         e.stopPropagation();
         if (isStatusMenuOpen) {
-            setIsStatusMenuOpen(false);
-            setMenuCoords(null);
+            handleCloseMenu();
         } else {
              if (buttonRef.current) {
                 const rect = buttonRef.current.getBoundingClientRect();
@@ -131,20 +138,18 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
                 const menuHeight = 180; // Estimate for ~4 items
 
                 // If space below is limited, open upwards
-                if (spaceBelow < menuHeight) {
-                    setMenuCoords({
-                        bottom: window.innerHeight - rect.top + 4,
-                        left: rect.left,
-                        width: rect.width // Capture button width
-                    });
-                } else {
-                    setMenuCoords({
-                        top: rect.bottom + 4,
-                        left: rect.left,
-                        width: rect.width // Capture button width
-                    });
-                }
+                const placement = spaceBelow < menuHeight ? 'top' : 'bottom';
+
+                setMenuCoords({
+                    top: placement === 'bottom' ? rect.bottom + 4 : undefined,
+                    bottom: placement === 'top' ? window.innerHeight - rect.top + 4 : undefined,
+                    left: rect.left,
+                    width: rect.width, // Capture button width
+                    placement
+                });
                 setIsStatusMenuOpen(true);
+                // Allow DOM to mount before triggering animation
+                requestAnimationFrame(() => setIsMenuVisible(true));
             }
         }
     };
@@ -620,17 +625,23 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
             
             {/* Floating Status Menu Portal */}
             {isStatusMenuOpen && menuCoords && createPortal(
-                <div className="fixed inset-0 z-50 flex flex-col" style={{ pointerEvents: 'none' }}>
+                <div className="fixed inset-0 z-[9999] flex flex-col" style={{ pointerEvents: 'none' }}>
                     {/* Backdrop */}
                     <div 
                         className="fixed inset-0 bg-transparent" 
                         style={{ pointerEvents: 'auto' }} 
-                        onClick={() => setIsStatusMenuOpen(false)}
+                        onClick={handleCloseMenu}
                     />
                     
                     {/* Menu */}
                     <div 
-                        className="fixed bg-white dark:bg-gray-700 rounded-md shadow-lg border dark:border-gray-600 overflow-hidden"
+                        className={`fixed bg-white dark:bg-gray-700 rounded-md shadow-lg border dark:border-gray-600 overflow-hidden transition-all duration-200 ease-out transform
+                            ${isMenuVisible
+                                ? 'opacity-100 scale-100 translate-y-0'
+                                : `opacity-0 scale-95 ${menuCoords.placement === 'bottom' ? '-translate-y-2' : 'translate-y-2'}`
+                            }
+                            ${menuCoords.placement === 'bottom' ? 'origin-top' : 'origin-bottom'}
+                        `}
                         style={{ 
                             top: menuCoords.top, 
                             bottom: menuCoords.bottom, 
@@ -644,7 +655,7 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
                                 key={status}
                                 onClick={() => {
                                     onUpdateStatus(trabajo.id, status);
-                                    setIsStatusMenuOpen(false);
+                                    handleCloseMenu();
                                 }}
                                 className={`block w-full text-left px-4 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-600 border-b dark:border-gray-600 last:border-0 ${
                                     status === trabajo.status

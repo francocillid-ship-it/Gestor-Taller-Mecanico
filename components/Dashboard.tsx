@@ -3,7 +3,7 @@ import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import type { Cliente, Trabajo, Gasto } from '../types';
 import { JobStatus } from '../types';
-import { CurrencyDollarIcon, UsersIcon, WrenchScrewdriverIcon, PlusIcon, PencilIcon, TrashIcon, ChartPieIcon, BuildingLibraryIcon, ScaleIcon, ChevronDownIcon, CalendarIcon, ArrowLeftIcon, ArrowTrendingUpIcon, ArrowTrendingDownIcon } from '@heroicons/react/24/solid';
+import { CurrencyDollarIcon, UsersIcon, WrenchScrewdriverIcon, PlusIcon, PencilIcon, TrashIcon, ChartPieIcon, BuildingLibraryIcon, ScaleIcon, ChevronDownIcon, CalendarIcon, ArrowLeftIcon, ArrowTrendingUpIcon, ArrowTrendingDownIcon, ArrowTopRightOnSquareIcon } from '@heroicons/react/24/solid';
 import AddGastoModal from './AddGastoModal';
 import EditGastoModal from './EditGastoModal';
 import { supabase } from '../supabaseClient';
@@ -14,7 +14,7 @@ interface DashboardProps {
     gastos: Gasto[];
     onDataRefresh: () => void;
     searchQuery: string;
-    onNavigate: (view: 'dashboard' | 'trabajos' | 'clientes' | 'ajustes', jobStatus?: JobStatus) => void;
+    onNavigate: (view: 'dashboard' | 'trabajos' | 'clientes' | 'ajustes', jobStatus?: JobStatus, jobId?: string) => void;
 }
 
 interface StatCardProps {
@@ -48,6 +48,7 @@ type DetailType = 'ingresos' | 'ganancias' | 'gastos' | 'balance' | null;
 
 interface TransactionItem {
     id: string;
+    referenceId: string; // The ID of the Job or Expense
     date: Date;
     description: string;
     amount: number;
@@ -88,9 +89,10 @@ interface FinancialDetailOverlayProps {
     setPeriod: (p: Period) => void;
     data: { transactions: TransactionItem[], total: number };
     gananciasNetasDisplay: string;
+    onItemClick: (item: TransactionItem) => void;
 }
 
-const FinancialDetailOverlay: React.FC<FinancialDetailOverlayProps> = ({ detailView, onClose, period, setPeriod, data, gananciasNetasDisplay }) => {
+const FinancialDetailOverlay: React.FC<FinancialDetailOverlayProps> = ({ detailView, onClose, period, setPeriod, data, gananciasNetasDisplay, onItemClick }) => {
     const [isFilterVisible, setIsFilterVisible] = useState(true);
     const [isVisible, setIsVisible] = useState(false); // Controls CSS animation state
     const lastScrollTop = useRef(0);
@@ -200,7 +202,7 @@ const FinancialDetailOverlay: React.FC<FinancialDetailOverlayProps> = ({ detailV
                         </p>
                         {isProfitView && (
                            <p className="text-xs text-taller-gray dark:text-gray-500 mt-2">
-                               * Cálculo: Mano de Obra (Pagos) - Gastos Fijos.
+                               * Cálculo: Mano de Obra + Sobrantes de Repuestos.
                            </p>
                         )}
                     </div>
@@ -210,7 +212,8 @@ const FinancialDetailOverlay: React.FC<FinancialDetailOverlayProps> = ({ detailV
                             data.transactions.map((t, index) => (
                                 <div 
                                     key={t.id} 
-                                    className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm flex items-center justify-between border-l-4 border-transparent hover:border-l-4 transition-all duration-300 animate-slide-in-bottom fill-mode-backwards" 
+                                    onClick={() => onItemClick(t)}
+                                    className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm flex items-center justify-between border-l-4 border-transparent hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer active:scale-[0.98] transition-all duration-300 animate-slide-in-bottom fill-mode-backwards group" 
                                     style={{ 
                                         borderLeftColor: t.type === 'income' ? '#22c55e' : '#ef4444',
                                         animationDelay: `${index * 50}ms` // Staggered list animation
@@ -221,7 +224,10 @@ const FinancialDetailOverlay: React.FC<FinancialDetailOverlayProps> = ({ detailV
                                             {t.type === 'income' ? <ArrowTrendingUpIcon className="h-5 w-5" /> : <ArrowTrendingDownIcon className="h-5 w-5" />}
                                         </div>
                                         <div>
-                                            <p className="font-bold text-taller-dark dark:text-taller-light text-sm">{t.description}</p>
+                                            <p className="font-bold text-taller-dark dark:text-taller-light text-sm flex items-center gap-1">
+                                                {t.description}
+                                                <ArrowTopRightOnSquareIcon className="h-3 w-3 text-gray-300 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                            </p>
                                             <p className="text-xs text-taller-gray dark:text-gray-400">{t.subtext}</p>
                                             <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">{t.date.toLocaleDateString('es-ES')} {t.date.toLocaleTimeString([], { hour: '2-digit', minute:'2-digit' })}</p>
                                         </div>
@@ -335,17 +341,16 @@ const Dashboard: React.FC<DashboardProps> = ({ clientes, trabajos, gastos, onDat
                         ingresosTotales += monto;
                         gananciaManoDeObraReal += monto;
                     }
-                    // No afecta la cobertura de repuestos
-                } else if (type === 'items') {
-                    // Si el pago es explícitamente "Repuestos", es 0% ganancia (cubre costo)
-                     if (esDelPeriodo) {
-                        ingresosTotales += monto;
-                    }
-                    partsCostCoveredSoFar += monto;
                 } else {
-                    // Si es pago General, aplicar lógica de cascada (primero cubre repuestos restantes)
+                    // Caso 'items' (Repuestos) o 'undefined' (General)
+                    // Lógica de desbordamiento: Todo lo que supere el costo restante de repuestos se va a ganancia
+                    // Esto arregla el caso donde el pago de repuestos es mayor al costo real
+                    
                     const remainingPartsCost = Math.max(0, costoRepuestosTaller - partsCostCoveredSoFar);
                     const contributionToParts = Math.min(monto, remainingPartsCost);
+                    
+                    // Si el pago es 'items', la intención es cubrir costo, pero si sobra, es ganancia.
+                    // Si es 'general', misma lógica.
                     const contributionToLabor = monto - contributionToParts;
 
                     partsCostCoveredSoFar += contributionToParts;
@@ -410,6 +415,27 @@ const Dashboard: React.FC<DashboardProps> = ({ clientes, trabajos, gastos, onDat
         setConfirmingDeleteGastoId(null);
     };
 
+    const handleTransactionClick = (item: TransactionItem) => {
+        if (item.type === 'income') {
+            // It's a job. Navigate to Trabajos view and highlight/open the job
+            // First we close the overlay
+            setDetailView(null);
+            
+            // Find the job status to switch to the correct tab if possible
+            const job = trabajos.find(t => t.id === item.referenceId);
+            const status = job ? job.status : undefined;
+            
+            onNavigate('trabajos', status, item.referenceId);
+        } else if (item.type === 'expense') {
+            // It's an expense. Close overlay and open edit modal
+            const gasto = gastos.find(g => g.id === item.referenceId);
+            if (gasto) {
+                setDetailView(null);
+                setGastoToEdit(gasto);
+            }
+        }
+    };
+
     const groupedGastos = useMemo(() => {
         let filtered = [...gastos];
         
@@ -457,7 +483,6 @@ const Dashboard: React.FC<DashboardProps> = ({ clientes, trabajos, gastos, onDat
 
         if (detailView === 'ingresos' || detailView === 'balance' || detailView === 'ganancias') {
             trabajos.forEach(t => {
-                // Cálculo de repuestos para desglose correcto en vista ganancias
                 const parts = t.partes.filter(p => p.nombre !== '__PAGO_REGISTRADO__');
                 const costoRepuestosTaller = parts
                     .filter(p => !p.isService && !p.isCategory && !p.clientPaidDirectly)
@@ -474,32 +499,29 @@ const Dashboard: React.FC<DashboardProps> = ({ clientes, trabajos, gastos, onDat
                     const amount = p.precioUnitario;
                     const type = p.paymentType;
                     
-                    let amountToReport = 0;
-                    let shouldReport = false;
+                    let profitPortion = 0;
                     
-                    // Logic MUST match 'stats' useMemo
+                    // Calcular la porción de ganancia igual que en 'stats'
                     if (type === 'labor') {
-                        amountToReport = amount; // 100% profit
-                        shouldReport = true;
-                    } else if (type === 'items') {
-                        amountToReport = 0; // 0% profit (all cost)
-                        partsCostCoveredSoFar += amount;
-                        shouldReport = detailView !== 'ganancias'; // Show in income, hide in profit view if 0
+                        profitPortion = amount;
                     } else {
-                        // General
                         const remainingPartsCost = Math.max(0, costoRepuestosTaller - partsCostCoveredSoFar);
                         const contributionToParts = Math.min(amount, remainingPartsCost);
-                        const contributionToLabor = amount - contributionToParts;
-
+                        profitPortion = amount - contributionToParts;
                         partsCostCoveredSoFar += contributionToParts;
-                        
-                        if (detailView === 'ganancias') {
-                            amountToReport = contributionToLabor;
-                            shouldReport = amountToReport > 0;
-                        } else {
-                            amountToReport = amount;
-                            shouldReport = true;
-                        }
+                    }
+
+                    // Definir qué monto mostrar según la vista
+                    let amountToReport = 0;
+                    let shouldReport = false;
+
+                    if (detailView === 'ganancias') {
+                        amountToReport = profitPortion;
+                        shouldReport = amountToReport > 0; // Solo mostrar si hay ganancia
+                    } else {
+                        // Para 'ingresos' y 'balance' (flujo de caja), mostramos el monto total del pago, no solo la ganancia
+                        amountToReport = amount;
+                        shouldReport = true; 
                     }
 
                     if (shouldReport && date >= startDate && date <= endDate) {
@@ -507,6 +529,7 @@ const Dashboard: React.FC<DashboardProps> = ({ clientes, trabajos, gastos, onDat
                         const vehiculo = cliente?.vehiculos.find(v => v.id === t.vehiculoId);
                         transactions.push({
                             id: `${t.id}_pago_${idx}`,
+                            referenceId: t.id, // Store real job ID
                             date: date,
                             amount: amountToReport,
                             description: `Pago de ${cliente ? cliente.nombre : 'Cliente'}`,
@@ -524,6 +547,7 @@ const Dashboard: React.FC<DashboardProps> = ({ clientes, trabajos, gastos, onDat
                 if (date >= startDate && date <= endDate) {
                     transactions.push({
                         id: g.id,
+                        referenceId: g.id, // Store real expense ID
                         date: date,
                         amount: g.monto,
                         description: g.descripcion,
@@ -710,6 +734,7 @@ const Dashboard: React.FC<DashboardProps> = ({ clientes, trabajos, gastos, onDat
                     setPeriod={setPeriod}
                     data={financialDetailData}
                     gananciasNetasDisplay={stats.gananciasNetas}
+                    onItemClick={handleTransactionClick}
                 />
             )}
         </div>

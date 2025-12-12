@@ -610,7 +610,7 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
                                                     </button>
                                                 </div>
                                                 
-                                                {/* Mobile Row Layout: Controls (Qty, Price, Type) */}
+                                                {/* Mobile Row Layout: Controls (Qty, Price, Type, Tag) */}
                                                 <div className="flex items-center gap-2 w-full sm:hidden pl-8">
                                                      <input 
                                                         type="number" 
@@ -630,6 +630,14 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
                                                         onChange={e => handleParteChange(index, 'precioUnitario', formatCurrency(e.target.value))} 
                                                         className={`flex-1 min-w-0 px-2 py-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-sm text-right ${parte.clientPaidDirectly ? 'opacity-50 line-through' : ''}`} 
                                                     />
+                                                    <select
+                                                        value={parte.maintenanceType || ''}
+                                                        onChange={e => handleParteChange(index, 'maintenanceType', e.target.value)}
+                                                        className="flex-[1.5] min-w-0 px-2 py-1 text-xs bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-taller-dark dark:text-taller-light focus:outline-none focus:ring-1 focus:ring-taller-primary"
+                                                    >
+                                                        <option value="">Etiqueta...</option>
+                                                        {ALL_MAINTENANCE_OPTS.map(opt => <option key={opt.key} value={opt.key}>{opt.label}</option>)}
+                                                    </select>
                                                 </div>
 
                                                 {/* Desktop Layout (Grid) */}

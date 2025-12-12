@@ -1,3 +1,4 @@
+
 import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import type { Trabajo, Cliente, TallerInfo } from '../types';
@@ -14,6 +15,7 @@ interface TrabajosProps {
     tallerInfo: TallerInfo;
     searchQuery: string;
     initialTab?: JobStatus;
+    initialJobId?: string; // New Prop for deep linking
     isActive?: boolean;
 }
 
@@ -432,11 +434,13 @@ const Trabajos: React.FC<TrabajosProps> = ({
     tallerInfo, 
     searchQuery, 
     initialTab, 
+    initialJobId,
     isActive = false 
 }) => {
     const [isJobModalOpen, setIsJobModalOpen] = useState(false);
     const [initialClientIdForModal, setInitialClientIdForModal] = useState<string | undefined>(undefined);
     const [activeMobileTab, setActiveMobileTab] = useState<JobStatus>(initialTab || JobStatus.Presupuesto);
+    const [trabajoToEdit, setTrabajoToEdit] = useState<Trabajo | undefined>(undefined);
     
     // Animation States
     const [showFloatingMenu, setShowFloatingMenu] = useState(false);
@@ -461,6 +465,17 @@ const Trabajos: React.FC<TrabajosProps> = ({
             }
         }
     }, [isActive, initialTab]);
+
+    // Handle Deep Linking to a Job (from Dashboard)
+    useEffect(() => {
+        if (isActive && initialJobId) {
+            const job = trabajos.find(t => t.id === initialJobId);
+            if (job) {
+                setTrabajoToEdit(job);
+                setIsJobModalOpen(true);
+            }
+        }
+    }, [isActive, initialJobId, trabajos]);
     
     // Handle Directional State on Tab Change
     useEffect(() => {
@@ -566,6 +581,7 @@ const Trabajos: React.FC<TrabajosProps> = ({
                     <button
                         onClick={() => {
                             setInitialClientIdForModal(undefined);
+                            setTrabajoToEdit(undefined);
                             setIsJobModalOpen(true);
                         }}
                         className="flex items-center justify-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-taller-primary rounded-lg shadow-md hover:bg-taller-secondary transition-colors"
@@ -642,6 +658,7 @@ const Trabajos: React.FC<TrabajosProps> = ({
                             <button
                                 onClick={() => {
                                     setInitialClientIdForModal(undefined);
+                                    setTrabajoToEdit(undefined);
                                     setIsJobModalOpen(true);
                                 }}
                                 className="flex items-center justify-center gap-2 px-6 py-2.5 text-xs font-bold text-white bg-taller-primary rounded-full shadow-lg shadow-taller-primary/40 hover:bg-taller-secondary hover:scale-105 transition-all transform active:scale-95"
@@ -703,13 +720,18 @@ const Trabajos: React.FC<TrabajosProps> = ({
             {isJobModalOpen && (
                 <CrearTrabajoModal
                     clientes={clientes}
-                    onClose={() => setIsJobModalOpen(false)}
+                    onClose={() => {
+                        setIsJobModalOpen(false);
+                        setTrabajoToEdit(undefined); // Clear edit state on close
+                    }}
                     onSuccess={() => {
                         setIsJobModalOpen(false);
+                        setTrabajoToEdit(undefined);
                         onDataRefresh();
                     }}
                     onDataRefresh={onDataRefresh}
                     initialClientId={initialClientIdForModal}
+                    trabajoToEdit={trabajoToEdit}
                 />
             )}
         </div>

@@ -49,6 +49,7 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
     const [targetJobStatus, setTargetJobStatus] = useState<JobStatus | undefined>(undefined);
+    const [targetJobId, setTargetJobId] = useState<string | undefined>(undefined);
     
     // Refs for scrolling to top on view change
     const dashboardRef = useRef<HTMLDivElement>(null);
@@ -186,15 +187,32 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
 
     const handleUpdateStatus = async (trabajoId: string, newStatus: JobStatus) => {
         try {
+            // Determinar si debemos actualizar la fecha de salida
+            let fechaSalida: string | null | undefined = undefined;
+            const updates: any = { status: newStatus };
+
+            if (newStatus === 'Finalizado') {
+                fechaSalida = new Date().toISOString();
+                updates.fecha_salida = fechaSalida;
+            } else {
+                // Si se mueve de Finalizado a otro estado (ej. En Proceso), limpiamos la fecha de salida
+                fechaSalida = null;
+                updates.fecha_salida = null;
+            }
+
             const { error } = await supabase
                 .from('trabajos')
-                .update({ status: newStatus })
+                .update(updates)
                 .eq('id', trabajoId);
             
             if (error) throw error;
             
             setTrabajos(prev => prev.map(t => 
-                t.id === trabajoId ? { ...t, status: newStatus } : t
+                t.id === trabajoId ? { 
+                    ...t, 
+                    status: newStatus,
+                    fechaSalida: fechaSalida !== undefined ? (fechaSalida as string | undefined) : t.fechaSalida
+                } : t
             ));
         } catch (error) {
             console.error("Error updating status:", error);
@@ -240,10 +258,13 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
         }
     };
 
-    const handleNavigate = (newView: View, status?: JobStatus) => {
+    const handleNavigate = (newView: View, status?: JobStatus, jobId?: string) => {
         setView(newView);
         if (status) {
             setTargetJobStatus(status);
+        }
+        if (jobId) {
+            setTargetJobId(jobId);
         }
     };
 
@@ -272,7 +293,10 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
                                 key={item.id}
                                 onClick={() => {
                                     setView(item.id as View);
-                                    if (item.id === 'trabajos') setTargetJobStatus(undefined);
+                                    if (item.id === 'trabajos') {
+                                        setTargetJobStatus(undefined);
+                                        setTargetJobId(undefined);
+                                    }
                                 }}
                                 className={`w-full flex items-center px-4 py-3 rounded-lg transition-colors ${
                                     view === item.id
@@ -331,7 +355,8 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
                                         onDataRefresh={handleSilentRefresh} 
                                         tallerInfo={tallerInfo} 
                                         searchQuery={searchQuery} 
-                                        initialTab={targetJobStatus} 
+                                        initialTab={targetJobStatus}
+                                        initialJobId={targetJobId}
                                         isActive={view === 'trabajos'}
                                     />
                                 </div>
@@ -362,7 +387,10 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
                                 key={item.id}
                                 onClick={() => {
                                     setView(item.id as View);
-                                    if (item.id === 'trabajos') setTargetJobStatus(undefined);
+                                    if (item.id === 'trabajos') {
+                                        setTargetJobStatus(undefined);
+                                        setTargetJobId(undefined);
+                                    }
                                 }}
                                 className={`relative flex flex-col items-center justify-center w-full h-full transition-colors duration-200 ${
                                     view === item.id ? 'text-taller-primary' : 'text-taller-gray dark:text-gray-400'
