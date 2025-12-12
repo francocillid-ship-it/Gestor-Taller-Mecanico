@@ -17,9 +17,10 @@ interface JobCardProps {
     clientes: Cliente[];
     onDataRefresh: () => void;
     compactMode?: boolean;
+    isHighlighted?: boolean;
 }
 
-const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateStatus, tallerInfo, clientes, onDataRefresh, compactMode }) => {
+const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateStatus, tallerInfo, clientes, onDataRefresh, compactMode, isHighlighted }) => {
     const [isExpanded, setIsExpanded] = useState(false);
     const [isJobModalOpen, setIsJobModalOpen] = useState(false);
     const [isAddingPayment, setIsAddingPayment] = useState(false);
@@ -76,6 +77,13 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
         }
     }, [trabajo]);
 
+    // Auto-expand if highlighted
+    useEffect(() => {
+        if (isHighlighted) {
+            setIsExpanded(true);
+        }
+    }, [isHighlighted]);
+
     useEffect(() => {
         // Apply scroll logic to both normal and compact mode when expanded
         if (isExpanded && cardRef.current) {
@@ -90,20 +98,21 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
                 const headerOffset = 80;
 
                 // Condición: Si la parte superior está oculta por el header O la parte inferior se sale de la pantalla
+                // Si es Highlighted, forzamos scroll siempre para asegurarnos que se vea
                 const isTopHidden = rect.top < headerOffset;
                 const isBottomHidden = rect.bottom > windowHeight;
 
-                if (isTopHidden || isBottomHidden) {
+                if (isTopHidden || isBottomHidden || isHighlighted) {
                     element.scrollIntoView({
                         behavior: 'smooth',
-                        block: 'start',
+                        block: 'center',
                         inline: 'nearest'
                     });
                 }
             }, 350);
             return () => clearTimeout(timer);
         }
-    }, [isExpanded, compactMode]);
+    }, [isExpanded, compactMode, isHighlighted]);
 
     // Close menu on scroll or resize to prevent it from detaching visually
     useEffect(() => {
@@ -308,13 +317,27 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
             ? (isExpanded 
                 ? 'col-span-2 shadow-lg ring-2 ring-taller-primary/20 z-10' 
                 : 'col-span-1 shadow-sm hover:shadow-md cursor-pointer active:scale-[0.98] border border-gray-200 dark:border-gray-700 min-h-[80px]') 
-            : `shadow-md border-l-4 ${needsScheduling ? 'border-red-500 ring-2 ring-red-100 dark:ring-red-900/20' : 'border-taller-secondary/50 dark:border-taller-secondary'}`
+            : `shadow-md border-l-4 ${
+                needsScheduling 
+                ? 'border-red-500 ring-2 ring-red-100 dark:ring-red-900/20' 
+                : (isHighlighted ? 'border-taller-primary ring-2 ring-taller-primary/50' : 'border-taller-secondary/50 dark:border-taller-secondary')
+            }`
         }
         ${!isCompactMode && isExpanded ? 'mb-4 ring-2 ring-taller-primary/20 dark:ring-taller-primary/40' : ''}
+        ${isHighlighted ? 'animate-pulse-once' : ''} 
     `;
 
     return (
         <>
+            <style>{`
+                @keyframes pulse-once {
+                    0%, 100% { transform: scale(1); }
+                    50% { transform: scale(1.02); }
+                }
+                .animate-pulse-once {
+                    animation: pulse-once 0.3s ease-out;
+                }
+            `}</style>
             <div 
                 ref={cardRef} 
                 className={containerClasses}

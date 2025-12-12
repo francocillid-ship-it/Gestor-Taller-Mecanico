@@ -156,8 +156,17 @@ const JobGroup: React.FC<{
     tallerInfo: TallerInfo;
     onDataRefresh: () => void;
     defaultExpanded: boolean;
-}> = ({ category, trabajos, clientes, onUpdateStatus, tallerInfo, onDataRefresh, defaultExpanded }) => {
-    const [isExpanded, setIsExpanded] = useState(defaultExpanded);
+    highlightedJobId?: string;
+}> = ({ category, trabajos, clientes, onUpdateStatus, tallerInfo, onDataRefresh, defaultExpanded, highlightedJobId }) => {
+    // Si el grupo contiene el trabajo resaltado, debe expandirse
+    const containsHighlighted = highlightedJobId ? trabajos.some(t => t.id === highlightedJobId) : false;
+    const [isExpanded, setIsExpanded] = useState(defaultExpanded || containsHighlighted);
+
+    useEffect(() => {
+        if (containsHighlighted) {
+            setIsExpanded(true);
+        }
+    }, [containsHighlighted]);
 
     if (trabajos.length === 0) return null;
 
@@ -193,6 +202,7 @@ const JobGroup: React.FC<{
                                     tallerInfo={tallerInfo}
                                     clientes={clientes}
                                     onDataRefresh={onDataRefresh}
+                                    isHighlighted={trabajo.id === highlightedJobId}
                                 />
                             );
                         })}
@@ -212,8 +222,9 @@ const StatusColumn: React.FC<{
     tallerInfo: TallerInfo;
     onDataRefresh: () => void;
     searchQuery: string;
-    isMobileMode?: boolean; 
-}> = ({ status, trabajos, clientes, onUpdateStatus, tallerInfo, onDataRefresh, searchQuery, isMobileMode }) => {
+    isMobileMode?: boolean;
+    highlightedJobId?: string;
+}> = ({ status, trabajos, clientes, onUpdateStatus, tallerInfo, onDataRefresh, searchQuery, isMobileMode, highlightedJobId }) => {
     const [selectedDate, setSelectedDate] = useState<Date | null>(null);
 
     const getStatusColor = (status: JobStatus) => {
@@ -267,6 +278,9 @@ const StatusColumn: React.FC<{
     }, [trabajos, status]);
 
     const filteredCalendarJobs = useMemo(() => {
+        // If searching or highlighting a specific job, ignore the calendar filter
+        if (searchQuery || highlightedJobId) return scheduledJobs;
+
         if (!selectedDate) return scheduledJobs;
         return scheduledJobs.filter(t => {
             // Must have fechaProgramada to be in calendar
@@ -276,7 +290,7 @@ const StatusColumn: React.FC<{
                    tDate.getMonth() === selectedDate.getMonth() &&
                    tDate.getDate() === selectedDate.getDate();
         });
-    }, [scheduledJobs, selectedDate]);
+    }, [scheduledJobs, selectedDate, searchQuery, highlightedJobId]);
 
     const renderContent = () => {
         // --- LOGIC FOR PROGRAMADO STATUS ---
@@ -312,6 +326,7 @@ const StatusColumn: React.FC<{
                                             tallerInfo={tallerInfo}
                                             clientes={clientes}
                                             onDataRefresh={onDataRefresh}
+                                            isHighlighted={trabajo.id === highlightedJobId}
                                         />
                                     );
                                 })}
@@ -325,10 +340,11 @@ const StatusColumn: React.FC<{
                      </div>
 
                      {filteredCalendarJobs.length > 0 ? (
-                        <div className="grid grid-cols-2 gap-2 pb-2">
+                        <div className={`grid ${highlightedJobId ? 'grid-cols-1' : 'grid-cols-2'} gap-2 pb-2`}>
                             {filteredCalendarJobs.map(trabajo => {
                                 const cliente = clientes.find(c => c.id === trabajo.clienteId);
                                 const vehiculo = cliente?.vehiculos.find(v => v.id === trabajo.vehiculoId);
+                                const isHighlighted = trabajo.id === highlightedJobId;
                                 return (
                                     <JobCard
                                         key={trabajo.id}
@@ -339,7 +355,8 @@ const StatusColumn: React.FC<{
                                         tallerInfo={tallerInfo}
                                         clientes={clientes}
                                         onDataRefresh={onDataRefresh}
-                                        compactMode={true} // Enable compact grid mode
+                                        compactMode={!isHighlighted} // Switch to full mode if highlighted
+                                        isHighlighted={isHighlighted}
                                     />
                                 );
                             })}
@@ -369,10 +386,10 @@ const StatusColumn: React.FC<{
         if (status === JobStatus.Finalizado && groupedJobs) {
             return (
                 <>
-                    <JobGroup category="Esta semana" trabajos={groupedJobs['Esta semana']} defaultExpanded={true} clientes={clientes} onUpdateStatus={onUpdateStatus} tallerInfo={tallerInfo} onDataRefresh={onDataRefresh} />
-                    <JobGroup category="Semana pasada" trabajos={groupedJobs['Semana pasada']} defaultExpanded={false} clientes={clientes} onUpdateStatus={onUpdateStatus} tallerInfo={tallerInfo} onDataRefresh={onDataRefresh} />
-                    <JobGroup category="Mes pasado" trabajos={groupedJobs['Mes pasado']} defaultExpanded={false} clientes={clientes} onUpdateStatus={onUpdateStatus} tallerInfo={tallerInfo} onDataRefresh={onDataRefresh} />
-                    <JobGroup category="Anteriores" trabajos={groupedJobs['Anteriores']} defaultExpanded={false} clientes={clientes} onUpdateStatus={onUpdateStatus} tallerInfo={tallerInfo} onDataRefresh={onDataRefresh} />
+                    <JobGroup category="Esta semana" trabajos={groupedJobs['Esta semana']} defaultExpanded={true} clientes={clientes} onUpdateStatus={onUpdateStatus} tallerInfo={tallerInfo} onDataRefresh={onDataRefresh} highlightedJobId={highlightedJobId} />
+                    <JobGroup category="Semana pasada" trabajos={groupedJobs['Semana pasada']} defaultExpanded={false} clientes={clientes} onUpdateStatus={onUpdateStatus} tallerInfo={tallerInfo} onDataRefresh={onDataRefresh} highlightedJobId={highlightedJobId} />
+                    <JobGroup category="Mes pasado" trabajos={groupedJobs['Mes pasado']} defaultExpanded={false} clientes={clientes} onUpdateStatus={onUpdateStatus} tallerInfo={tallerInfo} onDataRefresh={onDataRefresh} highlightedJobId={highlightedJobId} />
+                    <JobGroup category="Anteriores" trabajos={groupedJobs['Anteriores']} defaultExpanded={false} clientes={clientes} onUpdateStatus={onUpdateStatus} tallerInfo={tallerInfo} onDataRefresh={onDataRefresh} highlightedJobId={highlightedJobId} />
                 </>
             );
         }
@@ -393,6 +410,7 @@ const StatusColumn: React.FC<{
                             tallerInfo={tallerInfo}
                             clientes={clientes}
                             onDataRefresh={onDataRefresh}
+                            isHighlighted={trabajo.id === highlightedJobId}
                         />
                     );
                 })}
@@ -466,16 +484,14 @@ const Trabajos: React.FC<TrabajosProps> = ({
         }
     }, [isActive, initialTab]);
 
-    // Handle Deep Linking to a Job (from Dashboard)
+    // Handle Deep Linking to a Job (from Dashboard) - MODIFICADO: Ya no abre el modal
     useEffect(() => {
         if (isActive && initialJobId) {
-            const job = trabajos.find(t => t.id === initialJobId);
-            if (job) {
-                setTrabajoToEdit(job);
-                setIsJobModalOpen(true);
-            }
+            // We removed the logic that automatically opened the edit modal.
+            // Now we rely on passing `initialJobId` down to JobCard via StatusColumn/JobGroup
+            // so it highlights and expands itself.
         }
-    }, [isActive, initialJobId, trabajos]);
+    }, [isActive, initialJobId]);
     
     // Handle Directional State on Tab Change
     useEffect(() => {
@@ -618,6 +634,7 @@ const Trabajos: React.FC<TrabajosProps> = ({
                                 onDataRefresh={onDataRefresh}
                                 searchQuery={searchQuery}
                                 isMobileMode={true}
+                                highlightedJobId={initialJobId}
                             />
                         </div>
 
@@ -636,6 +653,7 @@ const Trabajos: React.FC<TrabajosProps> = ({
                                             onDataRefresh={onDataRefresh}
                                             searchQuery={searchQuery}
                                             isMobileMode={false}
+                                            highlightedJobId={initialJobId}
                                         />
                                     </div>
                                 );
