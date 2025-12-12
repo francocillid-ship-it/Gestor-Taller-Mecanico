@@ -75,10 +75,16 @@ const ClientCard: React.FC<ClientCardProps> = ({ cliente, trabajos, onEdit, onCo
         const tempPass = localStorage.getItem(`temp_pass_${cliente.id}`);
 
         let shareUrl = window.location.origin;
+        let messageHeader = '';
+
         if (tempPass) {
+             // Opción A: Cliente nuevo con contraseña temporal guardada
              shareUrl = `${window.location.origin}/?type=invite&email=${encodeURIComponent(cliente.email)}&password=${encodeURIComponent(tempPass)}`;
+             messageHeader = `Hola ${cliente.nombre}, accede a tu historial de trabajos en el taller. Tu sistema generó un acceso automático, por seguridad se te pedirá cambiar la contraseña al entrar.`;
         } else {
-             shareUrl = window.location.origin;
+             // Opción B: Cliente existente o contraseña temporal perdida -> Enlace directo a recuperación
+             shareUrl = `${window.location.origin}/?view=forgot_password&email=${encodeURIComponent(cliente.email)}`;
+             messageHeader = `Hola ${cliente.nombre}, accede a tu historial de trabajos en el taller. Si no recuerdas tu clave, usa este enlace para restablecerla rápidamente.`;
         }
 
         const confirmSend = window.confirm(`¿Compartir acceso con ${cliente.nombre}?`);
@@ -86,10 +92,6 @@ const ClientCard: React.FC<ClientCardProps> = ({ cliente, trabajos, onEdit, onCo
 
         setSendingAccess(true);
         try {
-            const messageHeader = tempPass
-                ? `Hola ${cliente.nombre}, accede a tu historial de trabajos en el taller. Tu sistema generó un acceso automático, por seguridad se te pedirá cambiar la contraseña al entrar.`
-                : `Hola ${cliente.nombre}, accede a tu historial de trabajos en el taller ingresando con tu email y contraseña.`;
-
             if (navigator.share) {
                 try {
                     await navigator.share({
@@ -110,9 +112,9 @@ const ClientCard: React.FC<ClientCardProps> = ({ cliente, trabajos, onEdit, onCo
                  alert("Enlace de acceso copiado al portapapeles. Puedes pegarlo en WhatsApp.");
             }
             
-            if (tempPass) {
-                localStorage.removeItem(`temp_pass_${cliente.id}`);
-            }
+            // IMPORTANTE: Ya no borramos el tempPass aquí.
+            // Esto permite volver a compartir el enlace si el usuario se equivocó.
+            // Se borrará eventualmente si se limpia el caché o si el usuario cambia la contraseña manualmente.
 
         } catch (error: any) {
             console.error("Error sending access:", error);

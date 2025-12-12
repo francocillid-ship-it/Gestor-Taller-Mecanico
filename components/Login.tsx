@@ -19,6 +19,18 @@ const Login: React.FC = () => {
     const [loading, setLoading] = useState(false);
     const [passwordValid, setPasswordValid] = useState(false);
 
+    // Detect URL params for deep linking into Forgot Password
+    useEffect(() => {
+        const params = new URLSearchParams(window.location.search);
+        const viewParam = params.get('view');
+        const emailParam = params.get('email');
+
+        if (viewParam === 'forgot_password') {
+            setView('forgotPassword');
+            if (emailParam) setEmail(emailParam);
+        }
+    }, []);
+
     useEffect(() => {
         if (view === 'signup') {
             const hasLength = password.length >= 6;
