@@ -54,6 +54,7 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
     // FLIP Animation Refs
     const listRef = useRef<HTMLDivElement>(null);
     const prevPositions = useRef<Map<string, number>>(new Map());
+    const lastReorderTime = useRef(0); // Throttle reference for drag stability
 
     const [localNewClient, setLocalNewClient] = useState<Cliente | null>(null);
 
@@ -363,13 +364,17 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
     };
     const handleDragEnd = () => setDraggedItemIndex(null);
 
-    // Touch Drag - Logic Fixed: Use Closest Center instead of Intersection
+    // Touch Drag - Logic Fixed: Use Closest Center + Throttle
     const handleTouchStart = (index: number) => setDraggedItemIndex(index);
     
     const handleTouchMove = (e: React.TouchEvent) => {
         if (draggedItemIndex === null || !listRef.current) return;
         e.preventDefault(); // Prevent scrolling while dragging
         
+        // 1. Throttle Logic - 150ms delay creates stability
+        const now = Date.now();
+        if (now - lastReorderTime.current < 150) return;
+
         const touch = e.touches[0];
         const clientY = touch.clientY;
         const children = Array.from(listRef.current.children) as HTMLElement[];
@@ -377,15 +382,16 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
         let closestIndex = -1;
         let minDistance = Number.MAX_VALUE;
 
-        // "Closest Center" algorithm:
-        // Finds which item's vertical center is closest to the finger.
-        // This is robust against margins, gaps, and varying item heights.
+        // "Closest Center" algorithm
         children.forEach((child) => {
             const rect = child.getBoundingClientRect();
+            
+            // Optimization: Ignore items far away vertically to prevent jumpiness
+            if (clientY < rect.top - 150 || clientY > rect.bottom + 150) return;
+
             const centerY = rect.top + (rect.height / 2);
             const distance = Math.abs(clientY - centerY);
             
-            // Check if this child has a valid data-index
             const indexAttr = child.getAttribute('data-index');
             if (indexAttr !== null && distance < minDistance) {
                 minDistance = distance;
@@ -393,18 +399,16 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
             }
         });
 
-        // Swap if we found a valid target and it's different from current
         if (closestIndex !== -1 && closestIndex !== draggedItemIndex) {
              const newPartes = [...partes];
              const item = newPartes[draggedItemIndex];
              
-             // 1. Remove from old position
              newPartes.splice(draggedItemIndex, 1);
-             // 2. Insert at new position
              newPartes.splice(closestIndex, 0, item);
              
              setPartes(newPartes);
              setDraggedItemIndex(closestIndex);
+             lastReorderTime.current = now;
         }
     };
     
@@ -599,8 +603,10 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
                                             data-index={index}
                                             data-id={parte._id}
                                             onAnimationEnd={() => handleAnimationEnd(parte._id)}
-                                            className={`flex flex-col sm:flex-row items-stretch sm:items-center gap-2 p-2 mb-3 rounded-lg border dark:border-gray-700 transition-colors duration-300 ease-out select-none 
-                                                ${draggedItemIndex === index ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-300 opacity-50' : 'bg-gray-50 dark:bg-gray-700/30'}
+                                            className={`flex flex-col sm:flex-row items-stretch sm:items-center gap-2 p-2 mb-3 rounded-lg border dark:border-gray-700 transition-all duration-200 ease-out select-none 
+                                                ${draggedItemIndex === index 
+                                                    ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-300 opacity-90 shadow-xl scale-[1.02] z-50 ring-1 ring-blue-400' 
+                                                    : 'bg-gray-50 dark:bg-gray-700/30'}
                                                 ${animationClass}`}
                                             style={{ WebkitUserSelect: 'none', userSelect: 'none', WebkitTouchCallout: 'none' }}
                                             draggable={true}
