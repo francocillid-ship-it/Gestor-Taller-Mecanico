@@ -363,49 +363,48 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
     };
     const handleDragEnd = () => setDraggedItemIndex(null);
 
-    // Touch Drag - Improved for stability
+    // Touch Drag - Logic Fixed: Use Closest Center instead of Intersection
     const handleTouchStart = (index: number) => setDraggedItemIndex(index);
     
     const handleTouchMove = (e: React.TouchEvent) => {
         if (draggedItemIndex === null || !listRef.current) return;
-        
         e.preventDefault(); // Prevent scrolling while dragging
+        
         const touch = e.touches[0];
         const clientY = touch.clientY;
-        
         const children = Array.from(listRef.current.children) as HTMLElement[];
-        let targetIndex = -1;
-
-        // Geometric hit-testing instead of elementFromPoint
-        // This is robust against the finger covering the target or layout shifts
-        for (let i = 0; i < children.length; i++) {
-            const rect = children[i].getBoundingClientRect();
-            // Expanded hit area (buffer) to make swapping easier
-            if (clientY >= rect.top - 5 && clientY <= rect.bottom + 5) {
-                const indexAttr = children[i].getAttribute('data-index');
-                if (indexAttr) {
-                    targetIndex = parseInt(indexAttr, 10);
-                    break;
-                }
-            }
-        }
         
-        // Edge case: Dragging above the first item
-        if (targetIndex === -1 && children.length > 0) {
-             const firstRect = children[0].getBoundingClientRect();
-             if (clientY < firstRect.top) targetIndex = 0;
-             
-             const lastRect = children[children.length - 1].getBoundingClientRect();
-             if (clientY > lastRect.bottom) targetIndex = children.length - 1;
-        }
+        let closestIndex = -1;
+        let minDistance = Number.MAX_VALUE;
 
-        if (targetIndex !== -1 && targetIndex !== draggedItemIndex) {
+        // "Closest Center" algorithm:
+        // Finds which item's vertical center is closest to the finger.
+        // This is robust against margins, gaps, and varying item heights.
+        children.forEach((child) => {
+            const rect = child.getBoundingClientRect();
+            const centerY = rect.top + (rect.height / 2);
+            const distance = Math.abs(clientY - centerY);
+            
+            // Check if this child has a valid data-index
+            const indexAttr = child.getAttribute('data-index');
+            if (indexAttr !== null && distance < minDistance) {
+                minDistance = distance;
+                closestIndex = parseInt(indexAttr, 10);
+            }
+        });
+
+        // Swap if we found a valid target and it's different from current
+        if (closestIndex !== -1 && closestIndex !== draggedItemIndex) {
              const newPartes = [...partes];
              const item = newPartes[draggedItemIndex];
+             
+             // 1. Remove from old position
              newPartes.splice(draggedItemIndex, 1);
-             newPartes.splice(targetIndex, 0, item);
+             // 2. Insert at new position
+             newPartes.splice(closestIndex, 0, item);
+             
              setPartes(newPartes);
-             setDraggedItemIndex(targetIndex);
+             setDraggedItemIndex(closestIndex);
         }
     };
     
