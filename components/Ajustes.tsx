@@ -1,8 +1,9 @@
 
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import type { TallerInfo } from '../types';
 import { supabase } from '../supabaseClient';
-import { BuildingOffice2Icon, PhotoIcon, ArrowUpOnSquareIcon, PaintBrushIcon, SunIcon, MoonIcon, ComputerDesktopIcon, DocumentTextIcon, SparklesIcon, CheckCircleIcon, ExclamationTriangleIcon, KeyIcon, ArrowTopRightOnSquareIcon, ArrowRightOnRectangleIcon, MagnifyingGlassPlusIcon, CloudArrowUpIcon, ArrowPathIcon } from '@heroicons/react/24/solid';
+import { BuildingOffice2Icon, PhotoIcon, ArrowUpOnSquareIcon, PaintBrushIcon, SunIcon, MoonIcon, ComputerDesktopIcon, DocumentTextIcon, SparklesIcon, CheckCircleIcon, ExclamationTriangleIcon, KeyIcon, ArrowTopRightOnSquareIcon, ArrowRightOnRectangleIcon, MagnifyingGlassPlusIcon, ArrowPathIcon } from '@heroicons/react/24/solid';
 import ChangePasswordModal from './ChangePasswordModal';
 import { APP_THEMES, applyAppTheme, applyFontSize } from '../constants';
 
@@ -27,35 +28,41 @@ const HEADER_COLORS = [
 ];
 
 const FloatingStatus = ({ status }: { status: SaveStatus }) => {
+    // Usamos Portal para que el elemento 'fixed' sea relativo al viewport (window)
+    // y no al contenedor transformado del slider en el Dashboard.
+    
     if (status === 'idle') return null;
 
-    const baseClasses = "fixed bottom-6 right-6 z-50 flex items-center gap-2 px-4 py-2 rounded-full shadow-lg font-bold text-sm transition-all duration-300 transform translate-y-0 opacity-100 animate-in slide-in-from-bottom-4 fade-in";
+    // Posición: Top Right (flotante superior)
+    // z-index muy alto para estar sobre modales o headers
+    const baseClasses = "fixed top-24 right-4 md:top-24 md:right-8 z-[9999] flex items-center gap-2 px-4 py-2 rounded-full shadow-xl font-bold text-sm transition-all duration-300 transform translate-y-0 opacity-100 animate-in slide-in-from-top-4 fade-in border border-white/20 backdrop-blur-sm";
     
+    let content = null;
+
     if (status === 'saving') {
-        return (
-            <div className={`${baseClasses} bg-blue-600 text-white shadow-blue-500/30`}>
+        content = (
+            <div className={`${baseClasses} bg-blue-600/90 text-white shadow-blue-500/30`}>
                 <ArrowPathIcon className="h-4 w-4 animate-spin" />
                 <span>Guardando...</span>
             </div>
         );
-    }
-    if (status === 'saved') {
-        return (
-            <div className={`${baseClasses} bg-green-600 text-white shadow-green-500/30`}>
+    } else if (status === 'saved') {
+        content = (
+            <div className={`${baseClasses} bg-green-600/90 text-white shadow-green-500/30`}>
                 <CheckCircleIcon className="h-5 w-5" />
                 <span>Guardado</span>
             </div>
         );
-    }
-    if (status === 'error') {
-        return (
-            <div className={`${baseClasses} bg-red-600 text-white shadow-red-500/30`}>
+    } else if (status === 'error') {
+        content = (
+            <div className={`${baseClasses} bg-red-600/90 text-white shadow-red-500/30`}>
                 <ExclamationTriangleIcon className="h-5 w-5" />
                 <span>Error al guardar</span>
             </div>
         );
     }
-    return null;
+
+    return createPortal(content, document.body);
 };
 
 const Ajustes: React.FC<AjustesProps> = ({ tallerInfo, onUpdateTallerInfo, onLogout, searchQuery }) => {
@@ -67,6 +74,9 @@ const Ajustes: React.FC<AjustesProps> = ({ tallerInfo, onUpdateTallerInfo, onLog
     const isFirstRender = useRef(true);
     const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const statusTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    
+    // Stable ref for the callback to prevent effect loops
+    const onUpdateTallerInfoRef = useRef(onUpdateTallerInfo);
 
     const [isUploading, setIsUploading] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -76,13 +86,27 @@ const Ajustes: React.FC<AjustesProps> = ({ tallerInfo, onUpdateTallerInfo, onLog
     const [geminiStatus, setGeminiStatus] = useState<'checking' | 'active' | 'inactive'>('checking');
     const [isChangePasswordModalOpen, setIsChangePasswordModalOpen] = useState(false);
 
-    // Initial sync
+    // Keep ref updated
     useEffect(() => {
-        setFormData(tallerInfo);
-        setLastSavedData(JSON.stringify(tallerInfo));
+        onUpdateTallerInfoRef.current = onUpdateTallerInfo;
+    }, [onUpdateTallerInfo]);
+
+    // Initial sync / External updates
+    useEffect(() => {
+        const incomingStr = JSON.stringify(tallerInfo);
+        
+        // Solo actualizamos el estado local si la data que viene del padre es diferente 
+        // a lo que NOSOTROS creemos que está guardado.
+        if (incomingStr !== lastSavedData) {
+            setFormData(tallerInfo);
+            setLastSavedData(incomingStr);
+        }
+        
         if (tallerInfo.appTheme) applyAppTheme(tallerInfo.appTheme);
         if (tallerInfo.fontSize) applyFontSize(tallerInfo.fontSize as any);
-    }, [tallerInfo]);
+        
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [tallerInfo]); 
 
     // Load Gemini Key
     useEffect(() => {
@@ -106,17 +130,22 @@ const Ajustes: React.FC<AjustesProps> = ({ tallerInfo, onUpdateTallerInfo, onLog
             return;
         }
 
-        // 1. Immediate Feedback: Show "Saving..." as soon as user types
-        setSaveStatus('saving');
+        // RESET STATUS IMMEDIATELY:
+        // Si el usuario empieza a escribir, quitamos cualquier mensaje de "Guardado"
+        // para que se entienda que hay cambios pendientes (estado sucio/dirty).
+        setSaveStatus('idle');
 
         // Clear previous pending save
         if (timeoutRef.current) clearTimeout(timeoutRef.current);
 
         // 2. Debounce the actual API call
         timeoutRef.current = setTimeout(async () => {
+            // AHORA sí mostramos el indicador, justo antes de llamar a la API
+            setSaveStatus('saving');
+
             try {
-                // Perform the save
-                await onUpdateTallerInfo(formData);
+                // Perform the save using the Ref
+                await onUpdateTallerInfoRef.current(formData);
                 
                 // Update baseline
                 setLastSavedData(currentDataStr);
@@ -125,7 +154,7 @@ const Ajustes: React.FC<AjustesProps> = ({ tallerInfo, onUpdateTallerInfo, onLog
                 // 3. Clear the "Saved" message after a delay
                 if (statusTimeoutRef.current) clearTimeout(statusTimeoutRef.current);
                 statusTimeoutRef.current = setTimeout(() => {
-                    setSaveStatus(prev => prev === 'saved' ? 'idle' : prev);
+                    setSaveStatus('idle');
                 }, 2000);
 
             } catch (error) {
@@ -136,9 +165,9 @@ const Ajustes: React.FC<AjustesProps> = ({ tallerInfo, onUpdateTallerInfo, onLog
 
         return () => {
             if (timeoutRef.current) clearTimeout(timeoutRef.current);
-            if (statusTimeoutRef.current) clearTimeout(statusTimeoutRef.current);
+            // No limpiamos statusTimeoutRef aquí para dejar que el mensaje de éxito se desvanezca naturalmente
         };
-    }, [formData, onUpdateTallerInfo, lastSavedData]);
+    }, [formData, lastSavedData]); 
 
     // --- GEMINI AUTOSAVE ---
     useEffect(() => {
@@ -349,7 +378,8 @@ const Ajustes: React.FC<AjustesProps> = ({ tallerInfo, onUpdateTallerInfo, onLog
         <>
             <FloatingStatus status={saveStatus} />
             
-            <div className="space-y-8 pb-16 max-w-5xl mx-auto">
+            {/* Margen inferior asegurado (pb-32) para evitar superposición con menu movil y floating status */}
+            <div className="space-y-8 pb-32 max-w-5xl mx-auto">
                 <div className="flex justify-between items-center">
                     <h2 className="text-2xl font-bold text-taller-dark dark:text-taller-light">Ajustes del Taller</h2>
                 </div>
