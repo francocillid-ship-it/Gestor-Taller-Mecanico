@@ -97,6 +97,15 @@
         }
       }
     </script>
+    <script>
+      // Inicialización del Modo Oscuro
+      // Verifica si hay una preferencia guardada o usa la del sistema
+      if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+        document.documentElement.classList.add('dark')
+      } else {
+        document.documentElement.classList.remove('dark')
+      }
+    </script>
     <script type="importmap">
     {
       "imports": {
