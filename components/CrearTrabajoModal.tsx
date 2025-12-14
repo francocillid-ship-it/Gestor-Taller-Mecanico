@@ -57,6 +57,7 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
     
     // FLIP Animation Refs
     const listRef = useRef<HTMLDivElement>(null);
+    // Stores the positions of items from the *previous* render
     const prevPositions = useRef<Map<string, number>>(new Map());
 
     // Almacenamiento local temporal para el cliente recién creado
@@ -105,28 +106,16 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
     // Helper to generate IDs
     const generateId = () => Math.random().toString(36).substr(2, 9);
 
-    // --- FLIP ANIMATION LOGIC ---
-    // Captura las posiciones actuales antes de que ocurra un cambio de estado
-    const snapshotPositions = () => {
-        if (!listRef.current) return;
-        const children = Array.from(listRef.current.children) as HTMLElement[];
-        children.forEach(child => {
-            const id = child.dataset.id;
-            if (id) {
-                prevPositions.current.set(id, child.getBoundingClientRect().top);
-            }
-        });
-    };
-
-    // Ejecuta la animación después de que el DOM se ha actualizado
+    // --- FLIP ANIMATION LOGIC (Reactive) ---
+    // This effect runs synchronously after every DOM mutation (render)
     useLayoutEffect(() => {
         if (!listRef.current) return;
         
         const children = Array.from(listRef.current.children) as HTMLElement[];
         const movedItems: HTMLElement[] = [];
         
-        // 1. PHASE: INVERT (Instantáneo)
-        // Calculamos y aplicamos la posición visual "antigua" inmediatamente
+        // 1. PHASE: CALCULATE & INVERT
+        // Compare current positions (new) with stored positions (old)
         children.forEach(child => {
             const id = child.dataset.id;
             if (!id) return;
@@ -134,42 +123,56 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
             const oldTop = prevPositions.current.get(id);
             const newTop = child.getBoundingClientRect().top;
             
-            // Si el elemento existía y se movió
+            // We check strict equality with undefined to distinguish "new item" (undefined) from "moved item"
             if (oldTop !== undefined && oldTop !== newTop) {
                 const dy = oldTop - newTop;
                 
-                child.style.transform = `translateY(${dy}px)`;
-                child.style.transition = 'none';
-                // Asegurar que los elementos moviéndose estén por encima si se superponen
-                child.style.zIndex = '10'; 
-                movedItems.push(child);
+                // Only animate if the movement is significant (avoids jitter)
+                if (Math.abs(dy) > 0) {
+                    child.style.transform = `translateY(${dy}px)`;
+                    child.style.transition = 'none';
+                    // Higher z-index ensures items sliding over each other look correct
+                    child.style.zIndex = '10'; 
+                    movedItems.push(child);
+                }
             }
         });
 
-        // 2. PHASE: PLAY (Con Delay)
-        // El pequeño delay permite que el navegador pinte el frame "Invertido" correctamente
-        // antes de iniciar la transición, evitando saltos de cálculo.
+        // 2. PHASE: PLAY
+        // Animate from inverted position to natural position (0)
         if (movedItems.length > 0) {
             requestAnimationFrame(() => {
-                // Delay de 30ms: Suficiente para estabilizar, imperceptible para el ojo como "lag"
-                setTimeout(() => {
+                // Ensure the browser registers the 'none' transition first
+                requestAnimationFrame(() => {
                     movedItems.forEach(child => {
                         child.style.transform = '';
                         child.style.transition = 'transform 300ms cubic-bezier(0.2, 0.8, 0.2, 1)';
                     });
 
-                    // Limpieza después de la animación
+                    // Cleanup styles after animation
                     setTimeout(() => {
                         movedItems.forEach(child => {
                             child.style.transform = '';
                             child.style.transition = '';
                             child.style.zIndex = '';
                         });
-                    }, 350);
-                }, 30); 
+                    }, 300);
+                });
             });
         }
-    }, [partes]); // Se ejecuta cada vez que cambia la lista
+
+        // 3. PHASE: RECORD
+        // Save the current positions to be used as "old" positions in the next render
+        const newPositions = new Map<string, number>();
+        children.forEach(child => {
+            const id = child.dataset.id;
+            if (id) {
+                newPositions.set(id, child.getBoundingClientRect().top);
+            }
+        });
+        prevPositions.current = newPositions;
+
+    }, [partes]); // Trigger on any list change
 
     // Initialization Effect
     useEffect(() => {
@@ -374,19 +377,16 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
     };
 
     const addParte = () => {
-        snapshotPositions(); // Snapshot before add
         setPartes([...partes, { _id: generateId(), nombre: '', cantidad: 1, precioUnitario: '', isService: false, maintenanceType: '' }]);
         setShouldFocusNewItem(true);
     };
     
     const addService = () => {
-        snapshotPositions(); // Snapshot before add
         setPartes([...partes, { _id: generateId(), nombre: '', cantidad: 1, precioUnitario: '', isService: true, maintenanceType: '' }]);
         setShouldFocusNewItem(true);
     };
     
     const addCategory = () => {
-        snapshotPositions(); // Snapshot before add
         setPartes([...partes, { _id: generateId(), nombre: '', cantidad: 0, precioUnitario: '', isCategory: true }]);
         setShouldFocusNewItem(true);
     };
@@ -396,15 +396,11 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
         const itemToRemove = partes[index];
         if (!itemToRemove) return;
 
-        snapshotPositions(); // Snapshot before remove start (optional, but good for neighbors)
-
         // 1. Mark as exiting
         setExitingItemIds(prev => new Set(prev).add(itemToRemove._id));
 
         // 2. Wait for animation to finish before removing from state
         setTimeout(() => {
-            // Need to snapshot again right before the state update that physically removes it
-            snapshotPositions();
             setPartes(currentPartes => currentPartes.filter((_, i) => i !== index));
             setExitingItemIds(prev => {
                 const next = new Set(prev);
@@ -426,7 +422,7 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
     const handleDragEnter = (index: number) => {
         if (draggedItemIndex === null || draggedItemIndex === index) return;
         
-        snapshotPositions(); // <--- SNAPSHOT before reorder
+        // No explicit snapshot here. useEffect handles it post-render.
 
         const newPartes = [...partes];
         const item = newPartes[draggedItemIndex];
@@ -464,7 +460,6 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
         if (row) {
             const newIndex = parseInt(row.getAttribute('data-index') || '-1', 10);
             if (newIndex !== -1 && newIndex !== draggedItemIndex) {
-                 snapshotPositions(); // <--- SNAPSHOT before reorder
                  const newPartes = [...partes];
                  const item = newPartes[draggedItemIndex];
                  newPartes.splice(draggedItemIndex, 1);
@@ -700,7 +695,7 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
                                         data-id={parte._id}
                                         onAnimationEnd={() => handleAnimationEnd(parte._id)}
                                         className={`flex flex-col sm:flex-row items-stretch sm:items-center gap-2 p-2 mb-3 rounded-lg border dark:border-gray-700 transition-colors duration-300 ease-out 
-                                            ${draggedItemIndex === index ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-300' : 'bg-gray-50 dark:bg-gray-700/30'}
+                                            ${draggedItemIndex === index ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-300 opacity-50' : 'bg-gray-50 dark:bg-gray-700/30'}
                                             ${animationClass}`}
                                         draggable={true}
                                         onDragStart={() => handleDragStart(index)}
