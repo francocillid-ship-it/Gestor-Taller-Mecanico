@@ -53,6 +53,7 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
     
     // FLIP Animation Refs
     const listRef = useRef<HTMLDivElement>(null);
+    const addButtonsRef = useRef<HTMLDivElement>(null);
     const prevPositions = useRef<Map<string, number>>(new Map());
     const lastReorderTime = useRef(0); // Throttle reference for drag stability
 
@@ -228,7 +229,7 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
         requestAnimationFrame(() => setIsVisible(true));
     }, [trabajoToEdit, initialClientId]);
 
-    // AUTO-FOCUS EFFECT
+    // AUTO-FOCUS & SCROLL EFFECT
     useEffect(() => {
         if (shouldFocusNewItem && partes.length > 0) {
             const lastIndex = partes.length - 1;
@@ -237,7 +238,11 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
                 const inputElement = document.getElementById(inputId);
                 if (inputElement) {
                     inputElement.focus({ preventScroll: true });
-                    inputElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+                
+                // Scroll buttons into view so "Add" actions are always visible at the bottom
+                if (addButtonsRef.current) {
+                    addButtonsRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
                 }
             }, 150);
             setShouldFocusNewItem(false);
@@ -771,7 +776,7 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
                                         );
                                     })}
 
-                                    <div className="flex flex-wrap items-center gap-2 mt-4 justify-center sm:justify-start">
+                                    <div className="flex flex-wrap items-center gap-2 mt-4 justify-center sm:justify-start" ref={addButtonsRef}>
                                         <button type="button" onClick={addParte} className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 shadow-sm transition-all active:scale-95">
                                             <ArchiveBoxIcon className="h-4 w-4 text-gray-500"/> Ítem
                                         </button>
