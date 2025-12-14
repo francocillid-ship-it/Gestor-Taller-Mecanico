@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import type { TallerInfo } from '../types';
 import { supabase } from '../supabaseClient';
-import { BuildingOffice2Icon, PhotoIcon, ArrowUpOnSquareIcon, PaintBrushIcon, SunIcon, MoonIcon, ComputerDesktopIcon, DocumentTextIcon, SparklesIcon, CheckCircleIcon, ExclamationTriangleIcon, KeyIcon, ArrowTopRightOnSquareIcon, ArrowRightOnRectangleIcon, MagnifyingGlassPlusIcon } from '@heroicons/react/24/solid';
+import { BuildingOffice2Icon, PhotoIcon, ArrowUpOnSquareIcon, PaintBrushIcon, SunIcon, MoonIcon, ComputerDesktopIcon, DocumentTextIcon, SparklesIcon, CheckCircleIcon, ExclamationTriangleIcon, KeyIcon, ArrowTopRightOnSquareIcon, ArrowRightOnRectangleIcon, MagnifyingGlassPlusIcon, CloudArrowUpIcon, ArrowPathIcon } from '@heroicons/react/24/solid';
 import ChangePasswordModal from './ChangePasswordModal';
 import { APP_THEMES, applyAppTheme, applyFontSize } from '../constants';
 
@@ -14,6 +14,7 @@ interface AjustesProps {
 }
 
 type Theme = 'light' | 'dark' | 'system';
+type SaveStatus = 'idle' | 'saving' | 'saved' | 'error';
 
 // Professional, less saturated color palette for invoices (Sobrios)
 const HEADER_COLORS = [
@@ -27,40 +28,93 @@ const HEADER_COLORS = [
 
 const Ajustes: React.FC<AjustesProps> = ({ tallerInfo, onUpdateTallerInfo, onLogout, searchQuery }) => {
     const [formData, setFormData] = useState<TallerInfo>(tallerInfo);
-    const [isSaved, setIsSaved] = useState(false);
-    const [isSubmitting, setIsSubmitting] = useState(false);
+    
+    // Autosave State
+    const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle');
+    const [lastSavedData, setLastSavedData] = useState<string>(JSON.stringify(tallerInfo));
+    const isFirstRender = useRef(true);
+    const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
     const [isUploading, setIsUploading] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [theme, setTheme] = useState<Theme>(() => (localStorage.getItem('theme') as Theme) || 'system');
+    
     const [geminiApiKey, setGeminiApiKey] = useState('');
     const [geminiStatus, setGeminiStatus] = useState<'checking' | 'active' | 'inactive'>('checking');
     const [isChangePasswordModalOpen, setIsChangePasswordModalOpen] = useState(false);
 
+    // Initial sync
     useEffect(() => {
         setFormData(tallerInfo);
-        // FIX CRÍTICO: Sincronizar visuales con el estado guardado al montar el componente.
-        // Si el usuario cambió la fuente antes pero no guardó y salió, esto revierte el cambio visual
-        // para coincidir con la base de datos (tallerInfo), asegurando consistencia.
+        setLastSavedData(JSON.stringify(tallerInfo));
         if (tallerInfo.appTheme) applyAppTheme(tallerInfo.appTheme);
         if (tallerInfo.fontSize) applyFontSize(tallerInfo.fontSize as any);
     }, [tallerInfo]);
 
+    // Load Gemini Key
     useEffect(() => {
         const key = localStorage.getItem('gemini_api_key');
         setGeminiApiKey(key || '');
-        setGeminiStatus('active');
-        // Simple check if key exists
         setGeminiStatus(key ? 'active' : 'inactive');
     }, []);
 
-    const handleSaveApiKey = () => {
-        if (geminiApiKey.trim()) {
-            localStorage.setItem('gemini_api_key', geminiApiKey.trim());
-            setGeminiStatus('active');
-        } else {
-            handleDeleteApiKey();
+    // --- AUTOSAVE LOGIC ---
+    useEffect(() => {
+        if (isFirstRender.current) {
+            isFirstRender.current = false;
+            return;
         }
-    };
+
+        const currentDataStr = JSON.stringify(formData);
+        
+        // Evitar guardado si no hubo cambios reales
+        if (currentDataStr === lastSavedData) return;
+
+        setSaveStatus('saving');
+
+        if (timeoutRef.current) clearTimeout(timeoutRef.current);
+
+        timeoutRef.current = setTimeout(async () => {
+            try {
+                await onUpdateTallerInfo(formData);
+                setLastSavedData(currentDataStr);
+                setSaveStatus('saved');
+                
+                // Volver a idle después de un momento
+                setTimeout(() => {
+                    setSaveStatus(prev => prev === 'saved' ? 'idle' : prev);
+                }, 2000);
+            } catch (error) {
+                console.error("Autosave error:", error);
+                setSaveStatus('error');
+            }
+        }, 1000); // 1 segundo de debounce
+
+        return () => {
+            if (timeoutRef.current) clearTimeout(timeoutRef.current);
+        };
+    }, [formData, onUpdateTallerInfo, lastSavedData]);
+
+    // --- GEMINI AUTOSAVE ---
+    useEffect(() => {
+        // Evitar ejecutar en el primer render si está vacío
+        if (isFirstRender.current) return;
+
+        const saveGemini = setTimeout(() => {
+            if (geminiApiKey.trim()) {
+                localStorage.setItem('gemini_api_key', geminiApiKey.trim());
+                setGeminiStatus('active');
+            } else {
+                if (localStorage.getItem('gemini_api_key')) {
+                    localStorage.removeItem('gemini_api_key');
+                    setGeminiStatus('inactive');
+                }
+            }
+        }, 500);
+
+        return () => clearTimeout(saveGemini);
+    }, [geminiApiKey]);
+
 
     const handleDeleteApiKey = () => {
         localStorage.removeItem('gemini_api_key');
@@ -88,27 +142,26 @@ const Ajustes: React.FC<AjustesProps> = ({ tallerInfo, onUpdateTallerInfo, onLog
     };
     
     const handleAppThemeChange = (themeKey: string) => {
-        setFormData(prev => ({ ...prev, appTheme: themeKey }));
-        // Apply instantly for preview
+        // Visual update immediate
         applyAppTheme(themeKey);
-        setIsSaved(false);
+        // State update triggers autosave
+        setFormData(prev => ({ ...prev, appTheme: themeKey }));
     };
 
     const handleFontSizeChange = (size: 'small' | 'normal' | 'large') => {
-        setFormData(prev => ({ ...prev, fontSize: size }));
+        // Visual update immediate
         applyFontSize(size);
-        setIsSaved(false);
+        // State update triggers autosave
+        setFormData(prev => ({ ...prev, fontSize: size }));
     };
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: value } as TallerInfo));
-        setIsSaved(false);
     };
 
     const handleColorChange = (color: string) => {
         setFormData(prev => ({ ...prev, headerColor: color }));
-        setIsSaved(false);
     };
 
     const handleLogoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -133,29 +186,14 @@ const Ajustes: React.FC<AjustesProps> = ({ tallerInfo, onUpdateTallerInfo, onLog
                 .from('logos')
                 .getPublicUrl(filePath);
 
+            // This will trigger autosave automatically via useEffect
             setFormData(prev => ({ ...prev, logoUrl: data.publicUrl }));
-            setIsSaved(false);
 
         } catch (error) {
             console.error('Error uploading logo:', error);
             alert('Error al subir el logo. Por favor, inténtelo de nuevo.');
         } finally {
             setIsUploading(false);
-        }
-    };
-
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setIsSubmitting(true);
-        try {
-            await onUpdateTallerInfo(formData);
-            setIsSaved(true);
-            setTimeout(() => setIsSaved(false), 3000); 
-        } catch (error) {
-            // Error is handled in onUpdateTallerInfo, just reset states here
-            setIsSaved(false);
-        } finally {
-            setIsSubmitting(false);
         }
     };
     
@@ -178,6 +216,36 @@ const Ajustes: React.FC<AjustesProps> = ({ tallerInfo, onUpdateTallerInfo, onLog
     const shouldShow = (keywords: string[]) => {
         if (!searchQuery) return true;
         return keywords.some(k => k.toLowerCase().includes(searchQuery.toLowerCase()));
+    };
+
+    // Status Indicator Component
+    const StatusIndicator = () => {
+        if (saveStatus === 'idle') return null;
+        if (saveStatus === 'saving') {
+            return (
+                <div className="flex items-center gap-2 text-taller-gray dark:text-gray-400 text-sm animate-pulse">
+                    <ArrowPathIcon className="h-4 w-4 animate-spin" />
+                    <span>Guardando...</span>
+                </div>
+            );
+        }
+        if (saveStatus === 'saved') {
+            return (
+                <div className="flex items-center gap-2 text-green-600 dark:text-green-400 text-sm animate-in fade-in slide-in-from-bottom-1 duration-300">
+                    <CheckCircleIcon className="h-4 w-4" />
+                    <span>Guardado</span>
+                </div>
+            );
+        }
+        if (saveStatus === 'error') {
+            return (
+                <div className="flex items-center gap-2 text-red-600 dark:text-red-400 text-sm">
+                    <ExclamationTriangleIcon className="h-4 w-4" />
+                    <span>Error al guardar</span>
+                </div>
+            );
+        }
+        return null;
     };
 
     // PDF Preview Component (Mockup)
@@ -271,12 +339,15 @@ const Ajustes: React.FC<AjustesProps> = ({ tallerInfo, onUpdateTallerInfo, onLog
     return (
         <>
             <div className="space-y-8 pb-16 max-w-5xl mx-auto">
-                <h2 className="text-2xl font-bold text-taller-dark dark:text-taller-light">Ajustes del Taller</h2>
+                <div className="flex justify-between items-center">
+                    <h2 className="text-2xl font-bold text-taller-dark dark:text-taller-light">Ajustes del Taller</h2>
+                    <StatusIndicator />
+                </div>
                 
-                <form onSubmit={handleSubmit} className="space-y-8">
+                <form className="space-y-8" onSubmit={(e) => e.preventDefault()}>
                     
                     {shouldShow(['datos', 'nombre', 'telefono', 'direccion', 'cuit', 'logo']) && (
-                        <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md">
+                        <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md transition-shadow hover:shadow-lg">
                             <h3 className="text-lg font-bold mb-6 flex items-center"><BuildingOffice2Icon className="h-6 w-6 mr-2 text-taller-primary"/>Datos del Taller</h3>
                             <div className="space-y-4">
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -312,6 +383,9 @@ const Ajustes: React.FC<AjustesProps> = ({ tallerInfo, onUpdateTallerInfo, onLog
                                                 <ArrowUpOnSquareIcon className="h-4 w-4"/>
                                             </div>
                                         </button>
+                                        <p className="text-xs text-center text-taller-gray dark:text-gray-500 mt-2">
+                                            Click para subir. Se guarda automáticamente.
+                                        </p>
                                     </div>
                                     <div className="md:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-6">
                                         <div>
@@ -334,15 +408,14 @@ const Ajustes: React.FC<AjustesProps> = ({ tallerInfo, onUpdateTallerInfo, onLog
                                                     id="showCuitOnPdf"
                                                     name="showCuitOnPdf"
                                                     type="checkbox"
-                                                    checked={formData.showCuitOnPdf !== false} // Default to true if undefined
+                                                    checked={formData.showCuitOnPdf !== false} 
                                                     onChange={(e) => {
                                                          setFormData(prev => ({ ...prev, showCuitOnPdf: e.target.checked }));
-                                                         setIsSaved(false);
                                                     }}
                                                     className="h-4 w-4 text-taller-primary focus:ring-taller-primary border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700"
                                                 />
                                                 <label htmlFor="showCuitOnPdf" className="ml-2 block text-sm text-taller-gray dark:text-gray-400">
-                                                    Mostrar CUIT en presupuestos y recibos PDF
+                                                    Mostrar CUIT en PDFs
                                                 </label>
                                             </div>
                                         </div>
@@ -353,7 +426,7 @@ const Ajustes: React.FC<AjustesProps> = ({ tallerInfo, onUpdateTallerInfo, onLog
                     )}
 
                     {shouldShow(['documentos', 'pdf', 'plantilla', 'logo', 'color', 'diseño']) && (
-                        <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md">
+                        <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md transition-shadow hover:shadow-lg">
                             <h3 className="text-lg font-bold mb-6 flex items-center"><DocumentTextIcon className="h-6 w-6 mr-2 text-taller-primary"/>Plantillas de Documentos</h3>
                             
                             <div className="flex flex-col lg:flex-row gap-8">
@@ -373,7 +446,6 @@ const Ajustes: React.FC<AjustesProps> = ({ tallerInfo, onUpdateTallerInfo, onLog
                                             id="showLogoOnPdf"
                                             onClick={() => {
                                                 setFormData(prev => ({ ...prev, showLogoOnPdf: !prev.showLogoOnPdf }));
-                                                setIsSaved(false);
                                             }}
                                             className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-taller-primary focus:ring-offset-2 dark:focus:ring-offset-gray-800 ${
                                                 formData.showLogoOnPdf ? 'bg-taller-primary' : 'bg-gray-200 dark:bg-gray-600'
@@ -423,7 +495,7 @@ const Ajustes: React.FC<AjustesProps> = ({ tallerInfo, onUpdateTallerInfo, onLog
                     )}
                     
                     {shouldShow(['apariencia', 'tema', 'oscuro', 'claro', 'fuente', 'texto']) && (
-                        <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md">
+                        <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md transition-shadow hover:shadow-lg">
                             <h3 className="text-lg font-bold mb-4 flex items-center"><PaintBrushIcon className="h-6 w-6 mr-2 text-taller-primary"/>Apariencia de la App</h3>
                             
                             <div className="space-y-8">
@@ -452,7 +524,7 @@ const Ajustes: React.FC<AjustesProps> = ({ tallerInfo, onUpdateTallerInfo, onLog
 
                                     <div>
                                         <label className="block text-sm font-medium text-taller-gray dark:text-gray-400 mb-2">Modo Oscuro</label>
-                                        <p className="text-xs text-taller-gray dark:text-gray-500 mb-3">Preferencia de luz y contraste.</p>
+                                        <p className="text-xs text-taller-gray dark:text-gray-500 mb-3">Preferencia de luz y contraste (Local).</p>
                                         <div className="grid grid-cols-3 gap-2 rounded-lg bg-taller-light dark:bg-gray-900/50 p-1">
                                             <ThemeButton value="light" currentTheme={theme} onClick={handleThemeChange} icon={SunIcon} label="Claro" />
                                             <ThemeButton value="dark" currentTheme={theme} onClick={handleThemeChange} icon={MoonIcon} label="Oscuro" />
@@ -500,7 +572,7 @@ const Ajustes: React.FC<AjustesProps> = ({ tallerInfo, onUpdateTallerInfo, onLog
                     )}
 
                     {shouldShow(['ia', 'inteligencia', 'artificial', 'gemini', 'api']) && (
-                        <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md">
+                        <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md transition-shadow hover:shadow-lg">
                             <h3 className="text-lg font-bold mb-2 flex items-center"><SparklesIcon className="h-6 w-6 mr-2 text-taller-primary"/>Integración con IA (Gemini)</h3>
                             <p className="text-sm text-taller-gray dark:text-gray-400 mb-4">
                                 Usa la cámara para escanear y rellenar datos del vehículo automáticamente. Ingresa tu API Key de Google AI Studio para activar esta función.
@@ -523,20 +595,13 @@ const Ajustes: React.FC<AjustesProps> = ({ tallerInfo, onUpdateTallerInfo, onLog
                                         onChange={(e) => setGeminiApiKey(e.target.value)}
                                         onFocus={(e) => e.target.type = 'text'}
                                         onBlur={(e) => e.target.type = 'password'}
-                                        placeholder="Ingresa tu API Key"
+                                        placeholder="Ingresa tu API Key (Se guarda automáticamente)"
                                         className="flex-grow mt-1 block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-taller-primary focus:border-taller-primary sm:text-sm"
                                     />
-                                    <button
-                                        type="button"
-                                        onClick={handleSaveApiKey}
-                                        className="py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-taller-primary hover:bg-taller-secondary disabled:opacity-50"
-                                    >
-                                        Guardar
-                                    </button>
                                 </div>
                             </div>
                             {geminiStatus === 'active' && (
-                                <div className="mt-4 flex items-center justify-between">
+                                <div className="mt-4 flex items-center justify-between animate-in fade-in slide-in-from-top-1 duration-300">
                                     <span className="flex items-center gap-2 text-sm text-green-600 dark:text-green-400">
                                         <CheckCircleIcon className="h-5 w-5"/>
                                         API Key activa.
@@ -552,15 +617,6 @@ const Ajustes: React.FC<AjustesProps> = ({ tallerInfo, onUpdateTallerInfo, onLog
                             )}
                         </div>
                     )}
-                    
-                    {/* Se ha eliminado la sección de configuración de interfaz móvil (barra lateral vs inferior) */}
-
-                    <div className="pt-4 flex items-center justify-end">
-                        {isSaved && <span className="text-sm text-green-600 mr-4">¡Guardado con éxito!</span>}
-                        <button type="submit" disabled={isSubmitting || isUploading} className="flex justify-center py-2 px-6 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-taller-primary hover:bg-taller-secondary focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-taller-primary disabled:opacity-50">
-                            {isSubmitting ? 'Guardando...' : 'Guardar Cambios'}
-                        </button>
-                    </div>
                 </form>
 
                 {shouldShow(['cuenta', 'contraseña', 'salir', 'password']) && (
