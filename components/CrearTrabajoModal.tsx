@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useLayoutEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { supabase } from '../supabaseClient';
 import type { Cliente, Parte, Trabajo } from '../types';
@@ -55,6 +55,10 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
     // Track items that have finished their entry animation to prevent re-animating during drag reorders
     const [animatedItemIds, setAnimatedItemIds] = useState<Set<string>>(new Set());
     
+    // FLIP Animation Refs
+    const listRef = useRef<HTMLDivElement>(null);
+    const prevPositions = useRef<Map<string, number>>(new Map());
+
     // Almacenamiento local temporal para el cliente recién creado
     const [localNewClient, setLocalNewClient] = useState<Cliente | null>(null);
 
@@ -100,6 +104,61 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
 
     // Helper to generate IDs
     const generateId = () => Math.random().toString(36).substr(2, 9);
+
+    // --- FLIP ANIMATION LOGIC ---
+    // Captura las posiciones actuales antes de que ocurra un cambio de estado
+    const snapshotPositions = () => {
+        if (!listRef.current) return;
+        const children = Array.from(listRef.current.children) as HTMLElement[];
+        children.forEach(child => {
+            const id = child.dataset.id;
+            if (id) {
+                prevPositions.current.set(id, child.getBoundingClientRect().top);
+            }
+        });
+    };
+
+    // Ejecuta la animación después de que el DOM se ha actualizado
+    useLayoutEffect(() => {
+        if (!listRef.current) return;
+        
+        const children = Array.from(listRef.current.children) as HTMLElement[];
+        
+        children.forEach(child => {
+            const id = child.dataset.id;
+            if (!id) return;
+            
+            const oldTop = prevPositions.current.get(id);
+            const newTop = child.getBoundingClientRect().top;
+            
+            // Si el elemento existía y se movió
+            if (oldTop !== undefined && oldTop !== newTop) {
+                const dy = oldTop - newTop;
+                
+                // 1. Invert: Mover visualmente el elemento a su posición anterior instantáneamente
+                child.style.transform = `translateY(${dy}px)`;
+                child.style.transition = 'none';
+                // Asegurar que los elementos moviéndose estén por encima si se superponen
+                child.style.zIndex = '10'; 
+                
+                // 2. Play: Animar hacia la nueva posición (0)
+                requestAnimationFrame(() => {
+                    // Doble RAF para asegurar que el navegador registre el cambio a 'none' primero
+                    requestAnimationFrame(() => {
+                        child.style.transform = '';
+                        child.style.transition = 'transform 300ms cubic-bezier(0.2, 0.8, 0.2, 1)';
+                        
+                        // Limpieza después de la animación
+                        setTimeout(() => {
+                            child.style.transform = '';
+                            child.style.transition = '';
+                            child.style.zIndex = '';
+                        }, 300);
+                    });
+                });
+            }
+        });
+    }, [partes]); // Se ejecuta cada vez que cambia la lista
 
     // Initialization Effect
     useEffect(() => {
@@ -304,16 +363,19 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
     };
 
     const addParte = () => {
+        snapshotPositions(); // Snapshot before add
         setPartes([...partes, { _id: generateId(), nombre: '', cantidad: 1, precioUnitario: '', isService: false, maintenanceType: '' }]);
         setShouldFocusNewItem(true);
     };
     
     const addService = () => {
+        snapshotPositions(); // Snapshot before add
         setPartes([...partes, { _id: generateId(), nombre: '', cantidad: 1, precioUnitario: '', isService: true, maintenanceType: '' }]);
         setShouldFocusNewItem(true);
     };
     
     const addCategory = () => {
+        snapshotPositions(); // Snapshot before add
         setPartes([...partes, { _id: generateId(), nombre: '', cantidad: 0, precioUnitario: '', isCategory: true }]);
         setShouldFocusNewItem(true);
     };
@@ -323,11 +385,15 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
         const itemToRemove = partes[index];
         if (!itemToRemove) return;
 
+        snapshotPositions(); // Snapshot before remove start (optional, but good for neighbors)
+
         // 1. Mark as exiting
         setExitingItemIds(prev => new Set(prev).add(itemToRemove._id));
 
         // 2. Wait for animation to finish before removing from state
         setTimeout(() => {
+            // Need to snapshot again right before the state update that physically removes it
+            snapshotPositions();
             setPartes(currentPartes => currentPartes.filter((_, i) => i !== index));
             setExitingItemIds(prev => {
                 const next = new Set(prev);
@@ -349,6 +415,8 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
     const handleDragEnter = (index: number) => {
         if (draggedItemIndex === null || draggedItemIndex === index) return;
         
+        snapshotPositions(); // <--- SNAPSHOT before reorder
+
         const newPartes = [...partes];
         const item = newPartes[draggedItemIndex];
         
@@ -385,6 +453,7 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
         if (row) {
             const newIndex = parseInt(row.getAttribute('data-index') || '-1', 10);
             if (newIndex !== -1 && newIndex !== draggedItemIndex) {
+                 snapshotPositions(); // <--- SNAPSHOT before reorder
                  const newPartes = [...partes];
                  const item = newPartes[draggedItemIndex];
                  newPartes.splice(draggedItemIndex, 1);
@@ -600,7 +669,7 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
                                 <h3 className="text-md font-semibold text-taller-dark dark:text-taller-light">Items y Servicios</h3>
                             </div>
                             
-                            <div className="flex flex-col">
+                            <div className="flex flex-col" ref={listRef}>
                                 {partes.map((parte, index) => {
                                     const isExiting = exitingItemIds.has(parte._id);
                                     const hasAnimated = animatedItemIds.has(parte._id);
@@ -617,6 +686,7 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
                                     <div 
                                         key={parte._id}
                                         data-index={index}
+                                        data-id={parte._id}
                                         onAnimationEnd={() => handleAnimationEnd(parte._id)}
                                         className={`flex flex-col sm:flex-row items-stretch sm:items-center gap-2 p-2 mb-3 rounded-lg border dark:border-gray-700 transition-colors duration-300 ease-out 
                                             ${draggedItemIndex === index ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-300' : 'bg-gray-50 dark:bg-gray-700/30'}
