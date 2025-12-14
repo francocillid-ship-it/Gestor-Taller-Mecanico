@@ -26,6 +26,38 @@ const HEADER_COLORS = [
     { name: 'Bronce', value: '#78350f', bg: 'bg-amber-900' },         // Amber 900
 ];
 
+const FloatingStatus = ({ status }: { status: SaveStatus }) => {
+    if (status === 'idle') return null;
+
+    const baseClasses = "fixed bottom-6 right-6 z-50 flex items-center gap-2 px-4 py-2 rounded-full shadow-lg font-bold text-sm transition-all duration-300 transform translate-y-0 opacity-100 animate-in slide-in-from-bottom-4 fade-in";
+    
+    if (status === 'saving') {
+        return (
+            <div className={`${baseClasses} bg-blue-600 text-white shadow-blue-500/30`}>
+                <ArrowPathIcon className="h-4 w-4 animate-spin" />
+                <span>Guardando...</span>
+            </div>
+        );
+    }
+    if (status === 'saved') {
+        return (
+            <div className={`${baseClasses} bg-green-600 text-white shadow-green-500/30`}>
+                <CheckCircleIcon className="h-5 w-5" />
+                <span>Guardado</span>
+            </div>
+        );
+    }
+    if (status === 'error') {
+        return (
+            <div className={`${baseClasses} bg-red-600 text-white shadow-red-500/30`}>
+                <ExclamationTriangleIcon className="h-5 w-5" />
+                <span>Error al guardar</span>
+            </div>
+        );
+    }
+    return null;
+};
+
 const Ajustes: React.FC<AjustesProps> = ({ tallerInfo, onUpdateTallerInfo, onLogout, searchQuery }) => {
     const [formData, setFormData] = useState<TallerInfo>(tallerInfo);
     
@@ -34,6 +66,7 @@ const Ajustes: React.FC<AjustesProps> = ({ tallerInfo, onUpdateTallerInfo, onLog
     const [lastSavedData, setLastSavedData] = useState<string>(JSON.stringify(tallerInfo));
     const isFirstRender = useRef(true);
     const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const statusTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     const [isUploading, setIsUploading] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -60,6 +93,7 @@ const Ajustes: React.FC<AjustesProps> = ({ tallerInfo, onUpdateTallerInfo, onLog
 
     // --- AUTOSAVE LOGIC ---
     useEffect(() => {
+        // Skip run on mount
         if (isFirstRender.current) {
             isFirstRender.current = false;
             return;
@@ -67,37 +101,47 @@ const Ajustes: React.FC<AjustesProps> = ({ tallerInfo, onUpdateTallerInfo, onLog
 
         const currentDataStr = JSON.stringify(formData);
         
-        // Evitar guardado si no hubo cambios reales
-        if (currentDataStr === lastSavedData) return;
+        // Skip if no changes compared to what we believe is saved
+        if (currentDataStr === lastSavedData) {
+            return;
+        }
 
+        // 1. Immediate Feedback: Show "Saving..." as soon as user types
         setSaveStatus('saving');
 
+        // Clear previous pending save
         if (timeoutRef.current) clearTimeout(timeoutRef.current);
 
+        // 2. Debounce the actual API call
         timeoutRef.current = setTimeout(async () => {
             try {
+                // Perform the save
                 await onUpdateTallerInfo(formData);
+                
+                // Update baseline
                 setLastSavedData(currentDataStr);
                 setSaveStatus('saved');
                 
-                // Volver a idle después de un momento
-                setTimeout(() => {
+                // 3. Clear the "Saved" message after a delay
+                if (statusTimeoutRef.current) clearTimeout(statusTimeoutRef.current);
+                statusTimeoutRef.current = setTimeout(() => {
                     setSaveStatus(prev => prev === 'saved' ? 'idle' : prev);
                 }, 2000);
+
             } catch (error) {
                 console.error("Autosave error:", error);
                 setSaveStatus('error');
             }
-        }, 1000); // 1 segundo de debounce
+        }, 1000); // 1 second debounce
 
         return () => {
             if (timeoutRef.current) clearTimeout(timeoutRef.current);
+            if (statusTimeoutRef.current) clearTimeout(statusTimeoutRef.current);
         };
     }, [formData, onUpdateTallerInfo, lastSavedData]);
 
     // --- GEMINI AUTOSAVE ---
     useEffect(() => {
-        // Evitar ejecutar en el primer render si está vacío
         if (isFirstRender.current) return;
 
         const saveGemini = setTimeout(() => {
@@ -142,16 +186,12 @@ const Ajustes: React.FC<AjustesProps> = ({ tallerInfo, onUpdateTallerInfo, onLog
     };
     
     const handleAppThemeChange = (themeKey: string) => {
-        // Visual update immediate
         applyAppTheme(themeKey);
-        // State update triggers autosave
         setFormData(prev => ({ ...prev, appTheme: themeKey }));
     };
 
     const handleFontSizeChange = (size: 'small' | 'normal' | 'large') => {
-        // Visual update immediate
         applyFontSize(size);
-        // State update triggers autosave
         setFormData(prev => ({ ...prev, fontSize: size }));
     };
 
@@ -186,7 +226,6 @@ const Ajustes: React.FC<AjustesProps> = ({ tallerInfo, onUpdateTallerInfo, onLog
                 .from('logos')
                 .getPublicUrl(filePath);
 
-            // This will trigger autosave automatically via useEffect
             setFormData(prev => ({ ...prev, logoUrl: data.publicUrl }));
 
         } catch (error) {
@@ -216,36 +255,6 @@ const Ajustes: React.FC<AjustesProps> = ({ tallerInfo, onUpdateTallerInfo, onLog
     const shouldShow = (keywords: string[]) => {
         if (!searchQuery) return true;
         return keywords.some(k => k.toLowerCase().includes(searchQuery.toLowerCase()));
-    };
-
-    // Status Indicator Component
-    const StatusIndicator = () => {
-        if (saveStatus === 'idle') return null;
-        if (saveStatus === 'saving') {
-            return (
-                <div className="flex items-center gap-2 text-taller-gray dark:text-gray-400 text-sm animate-pulse">
-                    <ArrowPathIcon className="h-4 w-4 animate-spin" />
-                    <span>Guardando...</span>
-                </div>
-            );
-        }
-        if (saveStatus === 'saved') {
-            return (
-                <div className="flex items-center gap-2 text-green-600 dark:text-green-400 text-sm animate-in fade-in slide-in-from-bottom-1 duration-300">
-                    <CheckCircleIcon className="h-4 w-4" />
-                    <span>Guardado</span>
-                </div>
-            );
-        }
-        if (saveStatus === 'error') {
-            return (
-                <div className="flex items-center gap-2 text-red-600 dark:text-red-400 text-sm">
-                    <ExclamationTriangleIcon className="h-4 w-4" />
-                    <span>Error al guardar</span>
-                </div>
-            );
-        }
-        return null;
     };
 
     // PDF Preview Component (Mockup)
@@ -338,10 +347,11 @@ const Ajustes: React.FC<AjustesProps> = ({ tallerInfo, onUpdateTallerInfo, onLog
 
     return (
         <>
+            <FloatingStatus status={saveStatus} />
+            
             <div className="space-y-8 pb-16 max-w-5xl mx-auto">
                 <div className="flex justify-between items-center">
                     <h2 className="text-2xl font-bold text-taller-dark dark:text-taller-light">Ajustes del Taller</h2>
-                    <StatusIndicator />
                 </div>
                 
                 <form className="space-y-8" onSubmit={(e) => e.preventDefault()}>
