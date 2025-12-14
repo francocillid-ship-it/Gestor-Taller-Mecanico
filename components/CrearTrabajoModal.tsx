@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { supabase } from '../supabaseClient';
 import type { Cliente, Parte, Trabajo } from '../types';
@@ -45,6 +45,12 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
     const [confirmingDelete, setConfirmingDelete] = useState(false);
     const [draggedItemIndex, setDraggedItemIndex] = useState<number | null>(null);
     const [isVisible, setIsVisible] = useState(false);
+    
+    // Auto-focus state
+    const [shouldFocusNewItem, setShouldFocusNewItem] = useState(false);
+    
+    // Animation exit state
+    const [exitingItemIds, setExitingItemIds] = useState<Set<string>>(new Set());
     
     // Almacenamiento local temporal para el cliente recién creado
     const [localNewClient, setLocalNewClient] = useState<Cliente | null>(null);
@@ -176,6 +182,30 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
         requestAnimationFrame(() => setIsVisible(true));
     }, [trabajoToEdit, initialClientId]); // Dependencies clean to prevent unnecessary re-runs
 
+    // AUTO-FOCUS EFFECT
+    useEffect(() => {
+        if (shouldFocusNewItem && partes.length > 0) {
+            const lastIndex = partes.length - 1;
+            const inputId = `parte-nombre-${lastIndex}`;
+            
+            // Usamos un timeout para dar tiempo a que React renderice y la animación CSS comience a "abrir" el espacio.
+            // Esto suaviza el cálculo de posición del navegador.
+            setTimeout(() => {
+                const inputElement = document.getElementById(inputId);
+                
+                if (inputElement) {
+                    // preventScroll: true es clave para evitar el salto nativo instantáneo del navegador
+                    inputElement.focus({ preventScroll: true });
+                    
+                    // Luego controlamos el scroll nosotros mismos suavemente
+                    inputElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }, 150); // 150ms es suficiente para que la animación visual haya empezado
+            
+            setShouldFocusNewItem(false);
+        }
+    }, [partes, shouldFocusNewItem]);
+
     const handleClose = () => {
         setIsVisible(false);
         setTimeout(onClose, 300);
@@ -269,20 +299,36 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
 
     const addParte = () => {
         setPartes([...partes, { _id: generateId(), nombre: '', cantidad: 1, precioUnitario: '', isService: false, maintenanceType: '' }]);
+        setShouldFocusNewItem(true);
     };
     
     const addService = () => {
         setPartes([...partes, { _id: generateId(), nombre: '', cantidad: 1, precioUnitario: '', isService: true, maintenanceType: '' }]);
+        setShouldFocusNewItem(true);
     };
     
     const addCategory = () => {
         setPartes([...partes, { _id: generateId(), nombre: '', cantidad: 0, precioUnitario: '', isCategory: true }]);
+        setShouldFocusNewItem(true);
     };
 
 
     const removeParte = (index: number) => {
-        const newPartes = partes.filter((_, i) => i !== index);
-        setPartes(newPartes);
+        const itemToRemove = partes[index];
+        if (!itemToRemove) return;
+
+        // 1. Mark as exiting
+        setExitingItemIds(prev => new Set(prev).add(itemToRemove._id));
+
+        // 2. Wait for animation to finish before removing from state
+        setTimeout(() => {
+            setPartes(currentPartes => currentPartes.filter((_, i) => i !== index));
+            setExitingItemIds(prev => {
+                const next = new Set(prev);
+                next.delete(itemToRemove._id);
+                return next;
+            });
+        }, 300); // 300ms matches CSS transition duration
     };
 
     // HTML5 Drag and Drop Handlers (Desktop)
@@ -498,14 +544,14 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
                                         <UserPlusIcon className="h-4 w-4"/> Nuevo Cliente
                                     </button>
                                 </div>
-                                <select id="cliente" value={selectedClienteId} onChange={e => setSelectedClienteId(e.target.value)} className="block w-full px-3 py-2.5 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-taller-primary focus:border-transparent sm:text-sm" required>
+                                <select id="cliente" value={selectedClienteId} onChange={e => setSelectedClienteId(e.target.value)} className="block w-full px-3 py-2.5 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-taller-primary focus:border-taller-primary sm:text-sm" required>
                                     <option value="">Seleccione un cliente</option>
                                     {mergedClientes.map(c => <option key={c.id} value={c.id}>{`${c.nombre} ${c.apellido || ''}`.trim()}</option>)}
                                 </select>
                             </div>
                             <div>
                                 <label htmlFor="vehiculo" className="block text-sm font-medium text-taller-gray dark:text-gray-400 mb-1">Vehículo</label>
-                                <select id="vehiculo" value={selectedVehiculoId} onChange={e => setSelectedVehiculoId(e.target.value)} disabled={!selectedClienteId} className="block w-full px-3 py-2.5 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-taller-primary focus:border-transparent sm:text-sm disabled:bg-gray-100 dark:disabled:bg-gray-700/50 disabled:text-gray-400" required>
+                                <select id="vehiculo" value={selectedVehiculoId} onChange={e => setSelectedVehiculoId(e.target.value)} disabled={!selectedClienteId} className="block w-full px-3 py-2.5 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-taller-primary focus:border-taller-primary sm:text-sm disabled:bg-gray-100 dark:disabled:bg-gray-700/50 disabled:text-gray-400" required>
                                     <option value="">Seleccione un vehículo</option>
                                     {selectedClientVehiculos.map(v => <option key={v.id} value={v.id}>{`${v.marca} ${v.modelo} (${v.matricula})`}</option>)}
                                 </select>
@@ -515,7 +561,7 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                              <div className="md:col-span-2">
                                 <label htmlFor="descripcion" className="block text-sm font-medium text-taller-gray dark:text-gray-400 mb-1">Descripción (Opcional)</label>
-                                <textarea id="descripcion" value={descripcion} onChange={e => setDescripcion(e.target.value)} rows={2} className="block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-taller-primary focus:border-transparent sm:text-sm" />
+                                <textarea id="descripcion" value={descripcion} onChange={e => setDescripcion(e.target.value)} rows={2} className="block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-taller-primary focus:border-taller-primary sm:text-sm" />
                             </div>
                              <div>
                                 <label htmlFor="kilometraje" className="block text-sm font-medium text-taller-gray dark:text-gray-400 mb-1">Kilometraje</label>
@@ -525,7 +571,7 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
                                     value={kilometraje} 
                                     onChange={e => setKilometraje(e.target.value)} 
                                     placeholder="Ej. 150000"
-                                    className="block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-taller-primary focus:border-transparent sm:text-sm" 
+                                    className="block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-taller-primary focus:border-taller-primary sm:text-sm" 
                                 />
                             </div>
                         </div>
@@ -533,7 +579,7 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
                         {isEditMode && (
                             <div>
                                 <label htmlFor="status" className="block text-sm font-medium text-taller-gray dark:text-gray-400 mb-1">Estado</label>
-                                <select id="status" value={status} onChange={e => setStatus(e.target.value as JobStatus)} className="block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-taller-primary focus:border-transparent sm:text-sm">
+                                <select id="status" value={status} onChange={e => setStatus(e.target.value as JobStatus)} className="block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-taller-primary focus:border-taller-primary sm:text-sm">
                                     {Object.values(JobStatus).map(s => <option key={s} value={s}>{s}</option>)}
                                 </select>
                             </div>
@@ -544,12 +590,16 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
                                 <h3 className="text-md font-semibold text-taller-dark dark:text-taller-light">Items y Servicios</h3>
                             </div>
                             
-                            <div className="space-y-3">
-                                {partes.map((parte, index) => (
+                            <div className="flex flex-col">
+                                {partes.map((parte, index) => {
+                                    const isExiting = exitingItemIds.has(parte._id);
+                                    return (
                                     <div 
                                         key={parte._id}
                                         data-index={index}
-                                        className={`flex flex-col sm:flex-row items-stretch sm:items-center gap-2 p-2 rounded-lg border dark:border-gray-700 transition-colors ${draggedItemIndex === index ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-300' : 'bg-gray-50 dark:bg-gray-700/30'}`}
+                                        className={`flex flex-col sm:flex-row items-stretch sm:items-center gap-2 p-2 mb-3 rounded-lg border dark:border-gray-700 transition-colors duration-300 ease-out 
+                                            ${draggedItemIndex === index ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-300' : 'bg-gray-50 dark:bg-gray-700/30'}
+                                            ${isExiting ? 'animate-slide-out-right' : 'animate-entry-expand'}`}
                                         draggable={true}
                                         onDragStart={() => handleDragStart(index)}
                                         onDragEnter={() => handleDragEnter(index)}
@@ -569,6 +619,7 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
                                                 <TagIcon className="h-5 w-5 text-taller-accent flex-shrink-0"/>
                                                 <input 
                                                     type="text" 
+                                                    id={`parte-nombre-${index}`}
                                                     placeholder="Nombre de la categoría" 
                                                     value={parte.nombre} 
                                                     onChange={e => handleParteChange(index, 'nombre', e.target.value)} 
@@ -578,7 +629,7 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
                                                     type="button" 
                                                     onClick={() => handleParteChange(index, 'clientPaidDirectly', !parte.clientPaidDirectly)}
                                                     className={`p-2 rounded-full transition-colors ${parte.clientPaidDirectly ? 'bg-purple-100 text-purple-600 dark:bg-purple-900/50 dark:text-purple-300' : 'text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'}`}
-                                                    title="Marcar categoría pagada por cliente"
+                                                    title="Marcar categoría pagada por el cliente"
                                                 >
                                                     <ShoppingBagIcon className="h-5 w-5"/>
                                                 </button>
@@ -603,6 +654,7 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
                                                     </div>
                                                     <input 
                                                         type="text" 
+                                                        id={`parte-nombre-${index}`}
                                                         placeholder={parte.isService ? "Servicio" : "Repuesto"}
                                                         value={parte.nombre}
                                                         onChange={e => handleParteChange(index, 'nombre', e.target.value)}
@@ -661,6 +713,7 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
                                                     </div>
                                                     <input 
                                                         type="text" 
+                                                        id={`parte-nombre-desktop-${index}`}
                                                         value={parte.nombre} 
                                                         onChange={e => handleParteChange(index, 'nombre', e.target.value)} 
                                                         className={`w-full px-2 py-1 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded text-sm focus:outline-none focus:ring-1 focus:ring-taller-primary ${parte.clientPaidDirectly ? 'line-through text-gray-400' : ''}`}
@@ -704,7 +757,8 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
                                             </>
                                         )}
                                     </div>
-                                ))}
+                                    );
+                                })}
 
                                 <div className="flex flex-wrap items-center gap-2 mt-4 justify-center sm:justify-start">
                                     <button type="button" onClick={addParte} className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 shadow-sm transition-all active:scale-95">
