@@ -52,6 +52,9 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
     // Animation exit state
     const [exitingItemIds, setExitingItemIds] = useState<Set<string>>(new Set());
     
+    // Track items that have finished their entry animation to prevent re-animating during drag reorders
+    const [animatedItemIds, setAnimatedItemIds] = useState<Set<string>>(new Set());
+    
     // Almacenamiento local temporal para el cliente recién creado
     const [localNewClient, setLocalNewClient] = useState<Cliente | null>(null);
 
@@ -132,6 +135,9 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
             }
 
             setPartes(processedPartes);
+            // Mark initial items as animated so they render instantly without animation
+            setAnimatedItemIds(new Set(processedPartes.map(p => p._id)));
+            
             setPagos(trabajoToEdit.partes.filter(p => p.nombre === '__PAGO_REGISTRADO__'));
             setStatus(trabajoToEdit.status);
         } else if (initialClientId) {
@@ -329,6 +335,10 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
                 return next;
             });
         }, 300); // 300ms matches CSS transition duration
+    };
+
+    const handleAnimationEnd = (id: string) => {
+        setAnimatedItemIds(prev => new Set(prev).add(id));
     };
 
     // HTML5 Drag and Drop Handlers (Desktop)
@@ -593,13 +603,24 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
                             <div className="flex flex-col">
                                 {partes.map((parte, index) => {
                                     const isExiting = exitingItemIds.has(parte._id);
+                                    const hasAnimated = animatedItemIds.has(parte._id);
+                                    const isDraggingGlobal = draggedItemIndex !== null;
+                                    
+                                    let animationClass = '';
+                                    if (isExiting) {
+                                        animationClass = 'animate-slide-out-right';
+                                    } else if (!hasAnimated && !isDraggingGlobal) {
+                                        animationClass = 'animate-entry-expand';
+                                    }
+
                                     return (
                                     <div 
                                         key={parte._id}
                                         data-index={index}
+                                        onAnimationEnd={() => handleAnimationEnd(parte._id)}
                                         className={`flex flex-col sm:flex-row items-stretch sm:items-center gap-2 p-2 mb-3 rounded-lg border dark:border-gray-700 transition-colors duration-300 ease-out 
                                             ${draggedItemIndex === index ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-300' : 'bg-gray-50 dark:bg-gray-700/30'}
-                                            ${isExiting ? 'animate-slide-out-right' : 'animate-entry-expand'}`}
+                                            ${animationClass}`}
                                         draggable={true}
                                         onDragStart={() => handleDragStart(index)}
                                         onDragEnter={() => handleDragEnter(index)}
