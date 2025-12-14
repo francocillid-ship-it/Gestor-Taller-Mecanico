@@ -123,7 +123,10 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
         if (!listRef.current) return;
         
         const children = Array.from(listRef.current.children) as HTMLElement[];
+        const movedItems: HTMLElement[] = [];
         
+        // 1. PHASE: INVERT (Instantáneo)
+        // Calculamos y aplicamos la posición visual "antigua" inmediatamente
         children.forEach(child => {
             const id = child.dataset.id;
             if (!id) return;
@@ -135,29 +138,37 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
             if (oldTop !== undefined && oldTop !== newTop) {
                 const dy = oldTop - newTop;
                 
-                // 1. Invert: Mover visualmente el elemento a su posición anterior instantáneamente
                 child.style.transform = `translateY(${dy}px)`;
                 child.style.transition = 'none';
                 // Asegurar que los elementos moviéndose estén por encima si se superponen
                 child.style.zIndex = '10'; 
-                
-                // 2. Play: Animar hacia la nueva posición (0)
-                requestAnimationFrame(() => {
-                    // Doble RAF para asegurar que el navegador registre el cambio a 'none' primero
-                    requestAnimationFrame(() => {
+                movedItems.push(child);
+            }
+        });
+
+        // 2. PHASE: PLAY (Con Delay)
+        // El pequeño delay permite que el navegador pinte el frame "Invertido" correctamente
+        // antes de iniciar la transición, evitando saltos de cálculo.
+        if (movedItems.length > 0) {
+            requestAnimationFrame(() => {
+                // Delay de 30ms: Suficiente para estabilizar, imperceptible para el ojo como "lag"
+                setTimeout(() => {
+                    movedItems.forEach(child => {
                         child.style.transform = '';
                         child.style.transition = 'transform 300ms cubic-bezier(0.2, 0.8, 0.2, 1)';
-                        
-                        // Limpieza después de la animación
-                        setTimeout(() => {
+                    });
+
+                    // Limpieza después de la animación
+                    setTimeout(() => {
+                        movedItems.forEach(child => {
                             child.style.transform = '';
                             child.style.transition = '';
                             child.style.zIndex = '';
-                        }, 300);
-                    });
-                });
-            }
-        });
+                        });
+                    }, 350);
+                }, 30); 
+            });
+        }
     }, [partes]); // Se ejecuta cada vez que cambia la lista
 
     // Initialization Effect
