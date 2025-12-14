@@ -32,11 +32,21 @@ const CameraRecognitionModal: React.FC<CameraRecognitionModalProps> = ({ onClose
     const [detectedTexts, setDetectedTexts] = useState<DetectedText[]>([]);
     const [videoDimensions, setVideoDimensions] = useState({ width: 0, height: 0 });
     const [capturedImage, setCapturedImage] = useState<string | null>(null);
+    const [isVisible, setIsVisible] = useState(false);
     
     // State to track if we should try to start the camera automatically
     const [permissionGranted, setPermissionGranted] = useState(() => {
         return localStorage.getItem('camera_permission_granted') === 'true';
     });
+
+    useEffect(() => {
+        requestAnimationFrame(() => setIsVisible(true));
+    }, []);
+
+    const handleClose = () => {
+        setIsVisible(false);
+        setTimeout(onClose, 300);
+    };
 
     const stopCamera = useCallback(() => {
         if (streamRef.current) {
@@ -158,6 +168,9 @@ const CameraRecognitionModal: React.FC<CameraRecognitionModalProps> = ({ onClose
             if (Object.keys(data).length === 0) {
                  setError("No se pudo reconocer ningún dato. Intente con una foto más clara y nítida.");
             } else {
+                handleClose();
+                // Delay callback slightly to allow animation out, but typically data processing is important to show immediately.
+                // For better UX with data flow, we can just call it.
                 onDataRecognized(data);
             }
         } catch (err: any) {
@@ -180,9 +193,15 @@ const CameraRecognitionModal: React.FC<CameraRecognitionModalProps> = ({ onClose
     const scaleY = videoRef.current ? videoRef.current.clientHeight / videoDimensions.height : 0;
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-75 flex justify-center items-center z-[110]">
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-4 w-full max-w-lg relative text-center">
-                <button onClick={onClose} className="absolute top-2 right-2 text-taller-gray dark:text-gray-400 hover:text-taller-dark dark:hover:text-white z-10 bg-white/50 dark:bg-black/50 rounded-full p-1">
+        <div className="fixed inset-0 z-[110] flex justify-center items-center">
+             <div 
+                className={`fixed inset-0 bg-black/75 transition-opacity duration-300 ease-out ${isVisible ? 'opacity-100' : 'opacity-0'}`} 
+                onClick={handleClose}
+            />
+            <div 
+                className={`bg-white dark:bg-gray-800 rounded-lg shadow-xl p-4 w-full max-w-lg relative text-center z-10 transform transition-all duration-300 ease-out ${isVisible ? 'scale-100 opacity-100' : 'scale-95 opacity-0'}`}
+            >
+                <button onClick={handleClose} className="absolute top-2 right-2 text-taller-gray dark:text-gray-400 hover:text-taller-dark dark:hover:text-white z-10 bg-white/50 dark:bg-black/50 rounded-full p-1">
                     <XMarkIcon className="h-6 w-6" />
                 </button>
                 

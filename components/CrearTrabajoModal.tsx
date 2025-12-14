@@ -44,6 +44,7 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
     const [isClientModalOpen, setIsClientModalOpen] = useState(false);
     const [confirmingDelete, setConfirmingDelete] = useState(false);
     const [draggedItemIndex, setDraggedItemIndex] = useState<number | null>(null);
+    const [isVisible, setIsVisible] = useState(false);
     
     // Almacenamiento local temporal para el cliente recién creado
     const [localNewClient, setLocalNewClient] = useState<Cliente | null>(null);
@@ -172,7 +173,13 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
             
             fetchVehicleData();
         }
+        requestAnimationFrame(() => setIsVisible(true));
     }, [trabajoToEdit, initialClientId]); // Dependencies clean to prevent unnecessary re-runs
+
+    const handleClose = () => {
+        setIsVisible(false);
+        setTimeout(onClose, 300);
+    };
 
     const handleClientCreatedIntermediate = (newClientId: string) => {
         // This is called BEFORE session restore/reload
@@ -382,12 +389,13 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
             if (deleteError) throw deleteError;
 
             onDataRefresh();
-            onSuccess();
+            setIsVisible(false);
+            setTimeout(() => onSuccess(), 300);
         } catch (err: any) {
             setError(err.message || 'Error al eliminar el trabajo.');
             console.error(err);
-        } finally {
             setIsDeleting(false);
+        } finally {
             setConfirmingDelete(false);
         }
     };
@@ -451,25 +459,30 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
             }
 
             localStorage.removeItem('pending_job_client_id');
-            onSuccess();
+            setIsVisible(false);
+            setTimeout(() => onSuccess(), 300);
         } catch (err: any) {
             setError(err.message || 'Error al guardar el trabajo.');
             console.error(err);
-        } finally {
             setIsSubmitting(false);
-        }
+        } 
     };
 
     const modalContent = (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex justify-center items-end sm:items-center z-[100] sm:p-4">
-            <div className="bg-white dark:bg-gray-800 w-full h-[100dvh] sm:h-auto sm:max-h-[90vh] sm:max-w-3xl sm:rounded-xl shadow-2xl flex flex-col overflow-hidden">
-                
+        <div className="fixed inset-0 z-[100] flex justify-center items-end sm:items-center sm:p-4">
+             <div 
+                className={`fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-300 ease-out ${isVisible ? 'opacity-100' : 'opacity-0'}`} 
+                onClick={handleClose}
+            />
+            <div 
+                className={`bg-white dark:bg-gray-800 w-full h-[100dvh] sm:h-auto sm:max-h-[90vh] sm:max-w-3xl sm:rounded-xl shadow-2xl flex flex-col overflow-hidden relative z-10 transform transition-all duration-300 ease-out ${isVisible ? 'translate-y-0 opacity-100 sm:scale-100' : 'translate-y-full opacity-0 sm:translate-y-0 sm:scale-95'}`}
+            >
                 {/* Header - Fixed */}
                 <div className="flex justify-between items-center p-4 border-b dark:border-gray-700 bg-white dark:bg-gray-800 flex-shrink-0">
                     <h2 className="text-lg sm:text-xl font-bold text-taller-dark dark:text-taller-light truncate pr-4">
                         {isEditMode ? 'Editar Trabajo' : 'Crear Nuevo Presupuesto'}
                     </h2>
-                    <button onClick={onClose} className="p-2 -mr-2 text-taller-gray dark:text-gray-400 hover:text-taller-dark dark:hover:text-white rounded-full hover:bg-gray-100 dark:hover:bg-gray-700">
+                    <button onClick={handleClose} className="p-2 -mr-2 text-taller-gray dark:text-gray-400 hover:text-taller-dark dark:hover:text-white rounded-full hover:bg-gray-100 dark:hover:bg-gray-700">
                         <XMarkIcon className="h-6 w-6" />
                     </button>
                 </div>
@@ -830,7 +843,7 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
                     <div className="flex gap-3 w-full sm:w-auto sm:flex-[2] order-1 sm:order-2">
                         <button 
                             type="button" 
-                            onClick={onClose} 
+                            onClick={handleClose} 
                             className="flex-1 justify-center py-3 px-4 border border-gray-300 dark:border-gray-600 rounded-xl text-sm font-bold text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
                         >
                             Cancelar

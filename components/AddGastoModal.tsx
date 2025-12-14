@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import type { Gasto } from '../types';
 import { XMarkIcon, PlusCircleIcon } from '@heroicons/react/24/solid';
 
@@ -12,6 +13,16 @@ const AddGastoModal: React.FC<AddGastoModalProps> = ({ onClose, onAddGasto }) =>
     const [monto, setMonto] = useState('');
     const [isRecurring, setIsRecurring] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isVisible, setIsVisible] = useState(false);
+
+    useEffect(() => {
+        requestAnimationFrame(() => setIsVisible(true));
+    }, []);
+
+    const handleClose = () => {
+        setIsVisible(false);
+        setTimeout(onClose, 300);
+    };
 
     const handleMontoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const rawValue = e.target.value;
@@ -68,18 +79,25 @@ const AddGastoModal: React.FC<AddGastoModalProps> = ({ onClose, onAddGasto }) =>
             }
             
             await onAddGasto(gastosToAdd);
+            handleClose();
         }
     };
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-md">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-0">
+            <div 
+                className={`fixed inset-0 bg-black/50 transition-opacity duration-300 ease-out ${isVisible ? 'opacity-100' : 'opacity-0'}`} 
+                onClick={handleClose}
+            />
+            <div 
+                className={`bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-md relative z-10 transform transition-all duration-300 ease-out ${isVisible ? 'scale-100 opacity-100 translate-y-0' : 'scale-95 opacity-0 translate-y-4 sm:translate-y-0'}`}
+            >
                 <div className="flex justify-between items-center mb-4">
                     <h2 className="text-xl font-bold text-taller-dark dark:text-taller-light flex items-center">
                         <PlusCircleIcon className="h-6 w-6 mr-2 text-taller-primary"/>
                         Añadir Gasto
                     </h2>
-                    <button onClick={onClose} className="text-taller-gray dark:text-gray-400 hover:text-taller-dark dark:hover:text-white"><XMarkIcon className="h-6 w-6" /></button>
+                    <button onClick={handleClose} className="text-taller-gray dark:text-gray-400 hover:text-taller-dark dark:hover:text-white"><XMarkIcon className="h-6 w-6" /></button>
                 </div>
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <div>
@@ -120,7 +138,7 @@ const AddGastoModal: React.FC<AddGastoModalProps> = ({ onClose, onAddGasto }) =>
                         </label>
                     </div>
                     <div className="pt-4 flex justify-end space-x-3">
-                        <button type="button" onClick={onClose} className="py-2 px-4 border border-gray-300 dark:border-gray-500 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
+                        <button type="button" onClick={handleClose} className="py-2 px-4 border border-gray-300 dark:border-gray-500 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
                             Cancelar
                         </button>
                         <button type="submit" disabled={isSubmitting} className="py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-taller-primary hover:bg-taller-secondary disabled:opacity-50">

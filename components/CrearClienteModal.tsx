@@ -38,6 +38,7 @@ const CrearClienteModal: React.FC<CrearClienteModalProps> = ({ onClose, onSucces
     const [contactApiAvailable, setContactApiAvailable] = useState(false);
     const [isCameraModalOpen, setIsCameraModalOpen] = useState(false);
     const [scanningVehicleIndex, setScanningVehicleIndex] = useState<number | null>(null);
+    const [isVisible, setIsVisible] = useState(false);
     const geminiEnabled = isGeminiAvailable();
 
     const isEditMode = Boolean(clienteToEdit);
@@ -51,6 +52,7 @@ const CrearClienteModal: React.FC<CrearClienteModalProps> = ({ onClose, onSucces
             setTelefono(clienteToEdit.telefono);
             setVehicles(clienteToEdit.vehiculos.map(v => ({...v, año: v.año ? String(v.año) : ''})) || []);
         }
+        requestAnimationFrame(() => setIsVisible(true));
     }, [clienteToEdit]);
 
     useEffect(() => {
@@ -59,6 +61,11 @@ const CrearClienteModal: React.FC<CrearClienteModalProps> = ({ onClose, onSucces
             document.body.style.overflow = 'unset';
         };
     }, []);
+
+    const handleClose = () => {
+        setIsVisible(false);
+        setTimeout(onClose, 300);
+    };
 
     const handleSelectContact = async () => {
         try {
@@ -97,10 +104,11 @@ const CrearClienteModal: React.FC<CrearClienteModalProps> = ({ onClose, onSucces
             if (rpcError && rpcError.code !== '42883') {
                 throw rpcError;
             }
-            onSuccess();
+            
+            setIsVisible(false);
+            setTimeout(() => onSuccess(), 300);
         } catch (err: any) {
             setError(err.message || 'Error al eliminar el cliente.');
-        } finally {
             setIsDeleting(false);
         }
     };
@@ -241,7 +249,8 @@ const CrearClienteModal: React.FC<CrearClienteModalProps> = ({ onClose, onSucces
                 if (data) resultClient = data as Cliente;
             }
             
-            onSuccess(resultClient);
+            setIsVisible(false);
+            setTimeout(() => onSuccess(resultClient), 300);
 
         } catch (err: any) {
             console.error("Error submit client", err);
@@ -354,12 +363,18 @@ const CrearClienteModal: React.FC<CrearClienteModalProps> = ({ onClose, onSucces
     );
 
     const modalContent = (
-         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex justify-center items-end sm:items-center z-[100] sm:p-4">
-             <div className="bg-white dark:bg-gray-800 w-full h-[100dvh] sm:h-auto sm:max-h-[90vh] sm:max-w-2xl sm:rounded-xl shadow-2xl flex flex-col overflow-hidden">
+         <div className="fixed inset-0 z-[100] flex justify-center items-end sm:items-center sm:p-4">
+             <div 
+                className={`fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-300 ease-out ${isVisible ? 'opacity-100' : 'opacity-0'}`} 
+                onClick={handleClose}
+            />
+            <div 
+                className={`bg-white dark:bg-gray-800 w-full h-[100dvh] sm:h-auto sm:max-h-[90vh] sm:max-w-2xl sm:rounded-xl shadow-2xl flex flex-col overflow-hidden relative z-10 transform transition-all duration-300 ease-out ${isVisible ? 'translate-y-0 opacity-100 sm:scale-100' : 'translate-y-full opacity-0 sm:translate-y-0 sm:scale-95'}`}
+            >
                 {/* Header */}
                 <div className="flex justify-between items-center p-4 border-b dark:border-gray-700 bg-white dark:bg-gray-800 flex-shrink-0">
                     <h2 className="text-xl font-bold text-taller-dark dark:text-taller-light">{isEditMode ? 'Editar Cliente' : 'Crear Nuevo Cliente'}</h2>
-                    <button onClick={onClose} className="p-2 -mr-2 text-taller-gray dark:text-gray-400 hover:text-taller-dark dark:hover:text-white rounded-full hover:bg-gray-100 dark:hover:bg-gray-700">
+                    <button onClick={handleClose} className="p-2 -mr-2 text-taller-gray dark:text-gray-400 hover:text-taller-dark dark:hover:text-white rounded-full hover:bg-gray-100 dark:hover:bg-gray-700">
                         <XMarkIcon className="h-6 w-6" />
                     </button>
                 </div>
@@ -405,7 +420,7 @@ const CrearClienteModal: React.FC<CrearClienteModalProps> = ({ onClose, onSucces
                    ) : <div className="hidden sm:block sm:flex-1 order-1"></div>}
                    
                    <div className="flex gap-3 w-full sm:w-auto sm:flex-[2] order-1 sm:order-2">
-                        <button type="button" onClick={onClose} className="flex-1 justify-center py-3 px-4 border border-gray-300 dark:border-gray-600 rounded-xl text-sm font-bold text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors">Cancelar</button>
+                        <button type="button" onClick={handleClose} className="flex-1 justify-center py-3 px-4 border border-gray-300 dark:border-gray-600 rounded-xl text-sm font-bold text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors">Cancelar</button>
                         <button type="button" onClick={submitForm} disabled={isSubmitting || isDeleting} className="flex-[2] justify-center py-3 px-6 border border-transparent rounded-xl shadow-lg shadow-taller-primary/30 text-sm font-bold text-white bg-taller-primary hover:bg-taller-secondary disabled:opacity-50 disabled:shadow-none transition-all active:scale-95">
                             {isSubmitting ? 'Guardando...' : (isEditMode ? 'Guardar Cambios' : 'Crear Cliente')}
                         </button>
@@ -418,7 +433,12 @@ const CrearClienteModal: React.FC<CrearClienteModalProps> = ({ onClose, onSucces
     return createPortal(
         <>
             {modalContent}
-            {isCameraModalOpen && <CameraRecognitionModal onClose={() => { setIsCameraModalOpen(false); setScanningVehicleIndex(null); }} onDataRecognized={handleDataRecognized} />}
+            {isCameraModalOpen && (
+                <CameraRecognitionModal
+                    onClose={() => { setIsCameraModalOpen(false); setScanningVehicleIndex(null); }}
+                    onDataRecognized={handleDataRecognized}
+                />
+            )}
             <style>{`
                 .input-class { background-color: white; border: 1px solid #d1d5db; border-radius: 0.375rem; box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05); padding: 0.5rem 0.75rem; font-size: 0.875rem; line-height: 1.25rem; color: #0f172a; } 
                 .dark .input-class { background-color: #374151; border-color: #4b5563; color: #f1f5f9; } 

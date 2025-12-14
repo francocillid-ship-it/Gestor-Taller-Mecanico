@@ -39,6 +39,7 @@ const MaintenanceConfigModal: React.FC<MaintenanceConfigModalProps> = ({ vehicul
     // Usamos LocalMaintenanceConfig para permitir strings vacíos durante la edición
     const [config, setConfig] = useState<LocalMaintenanceConfig>({});
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isVisible, setIsVisible] = useState(false);
 
     useEffect(() => {
         // Cargar configuración existente o inicializar con valores por defecto
@@ -56,7 +57,13 @@ const MaintenanceConfigModal: React.FC<MaintenanceConfigModalProps> = ({ vehicul
             }
         });
         setConfig(initialConfig);
+        requestAnimationFrame(() => setIsVisible(true));
     }, [vehiculo]);
+
+    const handleClose = () => {
+        setIsVisible(false);
+        setTimeout(onClose, 300);
+    };
 
     const handleChange = (key: string, field: 'months' | 'mileage', value: string) => {
         // Permitimos string vacío para mejor UX al borrar
@@ -104,11 +111,11 @@ const MaintenanceConfigModal: React.FC<MaintenanceConfigModalProps> = ({ vehicul
                 .eq('id', vehiculo.id);
 
             if (error) throw error;
-            onSuccess();
+            setIsVisible(false);
+            setTimeout(() => onSuccess(), 300);
         } catch (error) {
             console.error("Error saving maintenance config:", error);
             alert("Error al guardar la configuración.");
-        } finally {
             setIsSubmitting(false);
         }
     };
@@ -129,15 +136,21 @@ const MaintenanceConfigModal: React.FC<MaintenanceConfigModalProps> = ({ vehicul
     };
 
     const modalContent = (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex justify-center items-end sm:items-center z-[100] sm:p-4">
-             <div className="bg-white dark:bg-gray-800 w-full h-[100dvh] sm:h-auto sm:max-h-[90vh] sm:max-w-2xl sm:rounded-xl shadow-2xl flex flex-col overflow-hidden">
+        <div className="fixed inset-0 z-[100] flex justify-center items-end sm:items-center sm:p-4">
+             <div 
+                className={`fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-300 ease-out ${isVisible ? 'opacity-100' : 'opacity-0'}`} 
+                onClick={handleClose}
+            />
+             <div 
+                className={`bg-white dark:bg-gray-800 w-full h-[100dvh] sm:h-auto sm:max-h-[90vh] sm:max-w-2xl sm:rounded-xl shadow-2xl flex flex-col overflow-hidden relative z-10 transform transition-all duration-300 ease-out ${isVisible ? 'translate-y-0 opacity-100 sm:scale-100' : 'translate-y-full opacity-0 sm:translate-y-0 sm:scale-95'}`}
+            >
                 {/* Header */}
                 <div className="flex justify-between items-center p-4 border-b dark:border-gray-700 bg-white dark:bg-gray-800 flex-shrink-0">
                     <div>
                         <h2 className="text-xl font-bold text-taller-dark dark:text-taller-light">Configurar Mantenimiento</h2>
                         <p className="text-sm text-taller-gray dark:text-gray-400">{vehiculo.marca} {vehiculo.modelo} ({vehiculo.matricula})</p>
                     </div>
-                    <button onClick={onClose} className="p-2 -mr-2 text-taller-gray dark:text-gray-400 hover:text-taller-dark dark:hover:text-white rounded-full hover:bg-gray-100 dark:hover:bg-gray-700">
+                    <button onClick={handleClose} className="p-2 -mr-2 text-taller-gray dark:text-gray-400 hover:text-taller-dark dark:hover:text-white rounded-full hover:bg-gray-100 dark:hover:bg-gray-700">
                         <XMarkIcon className="h-6 w-6" />
                     </button>
                 </div>
@@ -199,7 +212,7 @@ const MaintenanceConfigModal: React.FC<MaintenanceConfigModalProps> = ({ vehicul
 
                 {/* Footer */}
                 <div className="border-t dark:border-gray-700 p-4 bg-white dark:bg-gray-800 flex gap-3 shrink-0 z-10 safe-area-bottom">
-                    <button type="button" onClick={onClose} className="flex-1 justify-center py-3 px-4 border border-gray-300 dark:border-gray-500 rounded-xl text-sm font-bold text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors">
+                    <button type="button" onClick={handleClose} className="flex-1 justify-center py-3 px-4 border border-gray-300 dark:border-gray-500 rounded-xl text-sm font-bold text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors">
                         Cancelar
                     </button>
                     <button type="button" onClick={submitForm} disabled={isSubmitting} className="flex-[2] justify-center py-3 px-6 border border-transparent rounded-xl shadow-lg shadow-taller-primary/30 text-sm font-bold text-white bg-taller-primary hover:bg-taller-secondary disabled:opacity-50 disabled:shadow-none transition-all active:scale-95">

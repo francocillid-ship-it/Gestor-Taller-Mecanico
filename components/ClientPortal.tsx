@@ -34,6 +34,7 @@ const ClientPortal: React.FC<ClientPortalProps> = ({ client, trabajos, onLogout,
     
     // Settings State
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+    const [isSettingsVisible, setIsSettingsVisible] = useState(false);
     const [isChangePasswordModalOpen, setIsChangePasswordModalOpen] = useState(false);
 
     // Estado para el tamaño de fuente, inicializado desde localStorage
@@ -76,6 +77,16 @@ const ClientPortal: React.FC<ClientPortalProps> = ({ client, trabajos, onLogout,
 
     const closeHistorialModal = () => {
         setIsHistorialModalOpen(false);
+    };
+    
+    const openSettings = () => {
+        setIsSettingsOpen(true);
+        requestAnimationFrame(() => setIsSettingsVisible(true));
+    };
+
+    const closeSettings = () => {
+        setIsSettingsVisible(false);
+        setTimeout(() => setIsSettingsOpen(false), 300);
     };
 
     const trabajosRecientes = useMemo(() => {
@@ -132,7 +143,7 @@ const ClientPortal: React.FC<ClientPortalProps> = ({ client, trabajos, onLogout,
                         
                         <div className="flex items-center gap-2 sm:gap-4">
                             <button
-                                onClick={() => setIsSettingsOpen(true)}
+                                onClick={openSettings}
                                 className="p-2 text-taller-gray hover:text-taller-primary dark:text-gray-400 dark:hover:text-white rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
                                 title="Ajustes"
                             >
@@ -214,14 +225,20 @@ const ClientPortal: React.FC<ClientPortalProps> = ({ client, trabajos, onLogout,
 
             {/* Settings Modal */}
             {isSettingsOpen && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4">
-                    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md max-h-[80dvh] overflow-y-auto">
+                <div className="fixed inset-0 z-50 flex justify-center items-center p-4">
+                    <div 
+                        className={`fixed inset-0 bg-black/50 transition-opacity duration-300 ease-out ${isSettingsVisible ? 'opacity-100' : 'opacity-0'}`} 
+                        onClick={closeSettings}
+                    />
+                    <div 
+                        className={`bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md max-h-[80dvh] overflow-y-auto relative z-10 transform transition-all duration-300 ease-out ${isSettingsVisible ? 'scale-100 opacity-100 translate-y-0' : 'scale-95 opacity-0 translate-y-4 sm:translate-y-0'}`}
+                    >
                          <div className="flex justify-between items-center p-4 border-b dark:border-gray-700 sticky top-0 bg-white dark:bg-gray-800 z-10">
                             <h2 className="text-lg font-bold text-taller-dark dark:text-taller-light flex items-center gap-2">
                                 <Cog6ToothIcon className="h-5 w-5 text-taller-primary" />
                                 Ajustes
                             </h2>
-                            <button onClick={() => setIsSettingsOpen(false)} className="text-taller-gray dark:text-gray-400 hover:text-taller-dark dark:hover:text-white">
+                            <button onClick={closeSettings} className="text-taller-gray dark:text-gray-400 hover:text-taller-dark dark:hover:text-white">
                                 <XMarkIcon className="h-6 w-6" />
                             </button>
                         </div>
