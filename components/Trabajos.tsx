@@ -1,4 +1,3 @@
-
 import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import type { Trabajo, Cliente, TallerInfo } from '../types';
@@ -298,13 +297,11 @@ const StatusColumn: React.FC<{
              return (
                  <div className="flex flex-col gap-3">
                      {/* 1. Calendar Widget */}
-                     <div className="bg-gray-100 dark:bg-gray-800">
-                        <CalendarWidget 
-                            trabajos={scheduledJobs} 
-                            onSelectDate={setSelectedDate} 
-                            selectedDate={selectedDate}
-                        />
-                     </div>
+                     <CalendarWidget 
+                        trabajos={scheduledJobs} 
+                        onSelectDate={setSelectedDate} 
+                        selectedDate={selectedDate}
+                    />
 
                      {/* 2. Unscheduled Jobs Section (Need Attention) */}
                      {unscheduledJobs.length > 0 && (
