@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { supabase } from './supabaseClient';
 import type { Session, User } from '@supabase/supabase-js';
@@ -39,6 +38,7 @@ const App: React.FC = () => {
                  const password = searchParams.get('password');
                  
                  if (email && password) {
+                     // Intentamos iniciar sesión con la clave temporal
                      const { data, error } = await supabase.auth.signInWithPassword({
                          email,
                          password
@@ -46,10 +46,12 @@ const App: React.FC = () => {
                      
                      if (!error && data.session) {
                          setAuthAction('SET_INITIAL_PASSWORD');
+                         // Limpiamos la URL para seguridad
                          window.history.replaceState(null, '', window.location.pathname);
+                     } else {
+                         console.error("Error en auto-login de invitación:", error?.message);
+                         setAuthAction('APP'); // Fallback al login normal
                      }
-                 } else {
-                     setAuthAction('SET_INITIAL_PASSWORD');
                  }
             }
         };
@@ -81,10 +83,6 @@ const App: React.FC = () => {
 
     useEffect(() => {
         const processSession = async () => {
-            // REMOVED: setLoading(true) here to prevent unmounting components during session refreshes.
-            // Loading is initialized to true, so it handles the first load. 
-            // Subsequent updates will run in the background without resetting the UI state.
-            
             if (authAction !== 'APP') {
                 setUser(session?.user ?? null);
                 setRole(null);
