@@ -1,4 +1,3 @@
-
 export const MAINTENANCE_TYPES = {
     FLUIDS: [
         { key: 'oil', label: 'Aceite de Motor', keywords: ['aceite motor', 'cambio aceite', '5w30', '10w40', '5w40', 'semisintetico', 'sintetico', 'elaion', 'total', 'shell', 'motul'] },
@@ -28,10 +27,9 @@ export const ALL_MAINTENANCE_OPTS = [
 ];
 
 // Definición de Temas para la Aplicación
-// Los valores son RGB para usar en las variables CSS
 export const APP_THEMES = {
     slate: {
-        name: 'Slate (Clásico)',
+        name: 'Gris Oscuro',
         primary: '51 65 85',    // Slate 700
         secondary: '71 85 105', // Slate 600
         accent: '217 119 6',    // Amber 600
@@ -39,32 +37,41 @@ export const APP_THEMES = {
         dark: '15 23 42',       // Slate 900
         gray: '100 116 139',    // Slate 500
     },
-    zinc: {
-        name: 'Zinc (Neutro)',
-        primary: '63 63 70',    // Zinc 700
-        secondary: '82 82 91',  // Zinc 600
-        accent: '22 163 74',    // Green 600 (Toque sutil)
-        light: '250 250 250',   // Zinc 50
-        dark: '24 24 27',       // Zinc 900
-        gray: '113 113 122',    // Zinc 500
-    },
-    stone: {
-        name: 'Stone (Cálido)',
-        primary: '68 64 60',    // Stone 700
-        secondary: '87 83 78',  // Stone 600
-        accent: '234 88 12',    // Orange 600
-        light: '250 250 249',   // Stone 50
-        dark: '28 25 23',       // Stone 900
-        gray: '120 113 108',    // Stone 500
-    },
     midnight: {
-        name: 'Midnight (Azul Profundo)',
-        primary: '30 58 138',   // Blue 900 (Desaturado oscuro)
-        secondary: '30 64 175', // Blue 800
+        name: 'Azul Profundo',
+        primary: '30 58 138',   // Blue 900
+        secondary: '37 99 235', // Blue 600
         accent: '14 165 233',   // Sky 500
         light: '240 249 255',   // Sky 50
-        dark: '11 17 32',       // Custom Dark Navy
-        gray: '100 116 139',    // Slate 500
+        dark: '11 17 32',       // Navy Dark
+        gray: '100 116 139',
+    },
+    crimson: {
+        name: 'Rojo Taller',
+        primary: '153 27 27',   // Red 800
+        secondary: '185 28 28', // Red 700
+        accent: '245 158 11',   // Amber 500
+        light: '254 242 242',   // Red 50
+        dark: '24 9 9',         // Very dark red
+        gray: '113 113 122',
+    },
+    emerald: {
+        name: 'Verde Bosque',
+        primary: '21 128 61',   // Green 700
+        secondary: '22 163 74', // Green 600
+        accent: '250 204 21',   // Yellow 400
+        light: '240 253 244',   // Green 50
+        dark: '6 15 10',        // Very dark green
+        gray: '113 113 122',
+    },
+    amber: {
+        name: 'Naranja Óxido',
+        primary: '194 65 12',   // Orange 700
+        secondary: '217 119 6', // Orange 600
+        accent: '30 58 138',    // Contrast with blue
+        light: '255 251 235',   // Amber 50
+        dark: '20 10 4',        // Very dark orange
+        gray: '113 113 122',
     }
 };
 
@@ -82,8 +89,6 @@ export const applyAppTheme = (themeName: string) => {
 
 export const applyFontSize = (size: 'small' | 'normal' | 'large') => {
     const root = document.documentElement;
-    // Default base size is 16px (100%). We scale from there.
-    // Tailwind uses rems, so changing root font-size scales the entire UI.
     switch (size) {
         case 'small':
             root.style.fontSize = '14px';
