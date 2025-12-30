@@ -1,4 +1,3 @@
-
 export type UserRole = 'taller' | 'cliente';
 
 export enum JobStatus {
@@ -86,10 +85,8 @@ export interface TallerInfo {
     cuit: string;
     logoUrl?: string;
     pdfTemplate: 'classic' | 'modern';
-    // mobileNavStyle eliminado, ahora es siempre bottom_nav
     showLogoOnPdf: boolean;
     showCuitOnPdf?: boolean;
     headerColor?: string;
-    appTheme?: string;
     fontSize?: 'small' | 'normal' | 'large';
 }

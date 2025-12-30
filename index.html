@@ -1,22 +1,24 @@
-
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <title>Gestor Taller Mecánico</title>
+    <title>Mi Taller</title>
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/favicon.svg" />
     <link rel="manifest" href="/manifest.json" />
-    <meta name="theme-color" content="#334155">
+    <meta name="theme-color" content="#1e3a8a">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-      /* Definición de variables CSS para el tema dinámico. */
+      /* Definición de variables CSS para el tema fijo azul oscuro. */
       :root {
-        --color-taller-primary: 51 65 85;    /* Slate 700 */
-        --color-taller-secondary: 71 85 105; /* Slate 600 */
-        --color-taller-accent: 217 119 6;    /* Amber 600 */
-        --color-taller-light: 248 250 252;   /* Slate 50 */
-        --color-taller-dark: 15 23 42;       /* Slate 900 */
+        --color-taller-primary: 30 58 138;   /* Blue 900 */
+        --color-taller-secondary: 37 99 235; /* Blue 600 */
+        --color-taller-accent: 245 158 11;    /* Amber 500 */
+        --color-taller-light: 240 249 255;   /* Sky 50 */
+        --color-taller-dark: 11 17 32;       /* Navy Dark */
         --color-taller-gray: 100 116 139;    /* Slate 500 */
       }
 
@@ -115,7 +117,6 @@
     </script>
     <script>
       // Inicialización del Modo Oscuro
-      // Verifica si hay una preferencia guardada o usa la del sistema
       if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
         document.documentElement.classList.add('dark')
       } else {

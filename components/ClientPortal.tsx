@@ -6,18 +6,16 @@ import {
     ClockIcon, 
     Cog6ToothIcon, 
     XMarkIcon,
-    SwatchIcon,
     ArrowRightOnRectangleIcon,
     KeyIcon,
     MagnifyingGlassPlusIcon,
-    // Fix: Added missing CheckCircleIcon import
     CheckCircleIcon
 } from '@heroicons/react/24/solid';
 import VehicleInfoCard from './VehicleInfoCard';
 import TrabajoListItem from './TrabajoListItem';
 import TrabajoHistorialModal from './TrabajoHistorialModal';
 import ChangePasswordModal from './ChangePasswordModal';
-import { APP_THEMES, applyAppTheme } from '../constants';
+import { applyAppTheme } from '../constants';
 
 interface ClientPortalProps {
     client: Cliente;
@@ -36,28 +34,14 @@ const ClientPortal: React.FC<ClientPortalProps> = ({ client, trabajos, onLogout,
     const [isSettingsVisible, setIsSettingsVisible] = useState(false);
     const [isChangePasswordModalOpen, setIsChangePasswordModalOpen] = useState(false);
     const [fontSize, setFontSize] = useState<FontSize>(() => (localStorage.getItem('client_font_size') as FontSize) || 'normal');
-    const [clientTheme, setClientTheme] = useState<string>(() => localStorage.getItem('client_custom_theme') || tallerInfo?.appTheme || 'slate');
 
     useEffect(() => {
         localStorage.setItem('client_font_size', fontSize);
     }, [fontSize]);
 
     useEffect(() => {
-        const savedTheme = localStorage.getItem('client_custom_theme');
-        if (savedTheme) {
-            applyAppTheme(savedTheme);
-            setClientTheme(savedTheme);
-        } else if (tallerInfo?.appTheme) {
-            applyAppTheme(tallerInfo.appTheme);
-            setClientTheme(tallerInfo.appTheme);
-        }
-    }, [tallerInfo]);
-
-    const handleThemeChange = (themeKey: string) => {
-        setClientTheme(themeKey);
-        applyAppTheme(themeKey);
-        localStorage.setItem('client_custom_theme', themeKey);
-    };
+        applyAppTheme();
+    }, []);
 
     const openHistorialModal = (trabajosParaMostrar: Trabajo[], title: string) => {
         setModalTrabajos(trabajosParaMostrar);
@@ -96,67 +80,63 @@ const ClientPortal: React.FC<ClientPortalProps> = ({ client, trabajos, onLogout,
                         <section className="mb-10 space-y-4">
                             <h3 className="text-xl font-bold mb-4">Sus Vehículos</h3>
                             {client.vehiculos.map(vehiculo => (
-                                <VehicleInfoCard key={vehiculo.id} vehiculo={vehiculo} trabajos={trabajos.filter(t => t.vehiculoId === vehiculo.id)} onViewHistory={() => openHistorialModal(trabajos.filter(t => t.vehiculoId === vehiculo.id), `Historial de ${vehiculo.marca}`)} tallerInfo={tallerInfo} cliente={client} />
+                                <VehicleInfoCard 
+                                    key={vehiculo.id} 
+                                    vehiculo={vehiculo} 
+                                    cliente={client}
+                                    tallerInfo={tallerInfo}
+                                    trabajos={trabajos.filter(t => t.vehiculoId === vehiculo.id)} 
+                                    onViewHistory={() => openHistorialModal(trabajos.filter(t => t.vehiculoId === vehiculo.id), `Historial ${vehiculo.marca} ${vehiculo.modelo}`)} 
+                                />
                             ))}
                         </section>
-                        <section>
-                            <h3 className="text-xl font-bold mb-4 flex items-center gap-2"><ClockIcon className="h-6 w-6 text-taller-primary" />Actividad Reciente</h3>
-                            {trabajosRecientes.length > 0 ? (
-                                <div className="space-y-3">
-                                    {trabajosRecientes.map(trabajo => <TrabajoListItem key={trabajo.id} trabajo={trabajo} vehiculo={client.vehiculos.find(v => v.id === trabajo.vehiculoId)} cliente={client} tallerInfo={tallerInfo} />)}
-                                    <div className="pt-4 flex justify-center"><button onClick={() => openHistorialModal(trabajos, 'Historial Completo')} className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-taller-primary rounded-lg shadow-md">Ver Todo</button></div>
-                                </div>
-                            ) : <p className="text-center py-8">No tiene trabajos registrados.</p>}
+
+                        <section className="mb-10">
+                            <div className="flex justify-between items-center mb-4">
+                                <h3 className="text-xl font-bold">Trabajos Recientes</h3>
+                                <button onClick={() => openHistorialModal(trabajos, 'Historial Completo')} className="text-taller-primary font-semibold flex items-center gap-1"><BookOpenIcon className="h-4 w-4" /> Ver Todo</button>
+                            </div>
+                            <div className="space-y-3">
+                                {trabajosRecientes.map(trabajo => (
+                                    <TrabajoListItem key={trabajo.id} trabajo={trabajo} vehiculo={client.vehiculos.find(v => v.id === trabajo.vehiculoId)} cliente={client} tallerInfo={tallerInfo} />
+                                ))}
+                            </div>
                         </section>
                     </div>
                 </main>
-            </div>
-            
-            {isHistorialModalOpen && <TrabajoHistorialModal trabajos={modalTrabajos} title={modalTitle} onClose={closeHistorialModal} cliente={client} tallerInfo={tallerInfo} />}
 
-            {isSettingsOpen && (
-                <div className="fixed inset-0 z-50 flex justify-center items-center p-4">
-                    <div className={`fixed inset-0 bg-black/50 transition-opacity ${isSettingsVisible ? 'opacity-100' : 'opacity-0'}`} onClick={closeSettings}/>
-                    <div className={`bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md max-h-[80dvh] overflow-y-auto relative z-10 transform transition-all ${isSettingsVisible ? 'scale-100 opacity-100' : 'scale-95 opacity-0'}`}>
-                         <div className="flex justify-between items-center p-4 border-b sticky top-0 bg-white dark:bg-gray-800 z-10"><h2 className="text-lg font-bold flex items-center gap-2"><Cog6ToothIcon className="h-5 w-5 text-taller-primary" />Ajustes</h2><button onClick={closeSettings}><XMarkIcon className="h-6 w-6" /></button></div>
-                        <div className="p-4 space-y-6">
-                            <div>
-                                <h3 className="text-sm font-semibold text-taller-gray mb-3 flex items-center gap-2"><SwatchIcon className="h-4 w-4" /> Color del Portal</h3>
-                                <div className="flex flex-wrap gap-4 justify-center">
-                                    {Object.entries(APP_THEMES).map(([key, themeDef]) => (
-                                        <button
-                                            key={key}
-                                            onClick={() => handleThemeChange(key)}
-                                            title={themeDef.name}
-                                            className={`relative w-10 h-10 rounded-full transition-all transform hover:scale-110 shadow-sm
-                                                ${clientTheme === key ? 'ring-4 ring-taller-primary ring-offset-2 scale-110' : ''}
-                                            `}
-                                            style={{ backgroundColor: `rgb(${themeDef.primary})` }}
-                                        >
-                                            {clientTheme === key && <CheckCircleIcon className="h-6 w-6 text-white mx-auto" />}
-                                        </button>
-                                    ))}
-                                </div>
+                {isSettingsOpen && (
+                    <div className="fixed inset-0 z-50 flex justify-end">
+                        <div className={`fixed inset-0 bg-black/50 transition-opacity duration-300 ${isSettingsVisible ? 'opacity-100' : 'opacity-0'}`} onClick={closeSettings} />
+                        <div className={`bg-white dark:bg-gray-800 w-full max-w-xs shadow-2xl flex flex-col transform transition-transform duration-300 ${isSettingsVisible ? 'translate-x-0' : 'translate-x-full'}`}>
+                            <div className="p-4 border-b dark:border-gray-700 flex justify-between items-center bg-gray-50 dark:bg-gray-900/50">
+                                <h4 className="font-bold">Ajustes</h4>
+                                <button onClick={closeSettings} className="p-1"><XMarkIcon className="h-6 w-6" /></button>
                             </div>
-                            <div>
-                                <h3 className="text-sm font-semibold text-taller-gray mb-3 flex items-center gap-2"><MagnifyingGlassPlusIcon className="h-4 w-4" /> Tamaño de Letra</h3>
-                                <div className="flex gap-2 bg-gray-100 dark:bg-gray-700/50 p-1 rounded-lg">
-                                    {['normal', 'large', 'xl'].map((opt) => (
-                                        <button key={opt} onClick={() => setFontSize(opt as any)} className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-all ${fontSize === opt ? 'bg-white dark:bg-gray-600 text-taller-primary shadow-sm' : 'text-taller-gray'}`}>
-                                            {opt === 'normal' ? 'Normal' : opt === 'large' ? 'Grande' : 'XL'}
-                                        </button>
-                                    ))}
+                            <div className="flex-1 p-6 space-y-8 overflow-y-auto">
+                                <div>
+                                    <label className="block text-sm font-bold text-gray-400 uppercase tracking-wider mb-4 flex items-center gap-2"><MagnifyingGlassPlusIcon className="h-4 w-4" /> Tamaño de Texto</label>
+                                    <div className="grid grid-cols-1 gap-2">
+                                        {(['normal', 'large', 'xl'] as FontSize[]).map(size => (
+                                            <button key={size} onClick={() => setFontSize(size)} className={`flex items-center justify-between p-3 rounded-xl border-2 transition-all ${fontSize === size ? 'border-taller-primary bg-blue-50 dark:bg-blue-900/20 text-taller-primary' : 'border-gray-100 dark:border-gray-700 hover:bg-gray-50'}`}>
+                                                <span className="capitalize">{size === 'normal' ? 'Normal' : size === 'large' ? 'Grande' : 'Extra Grande'}</span>
+                                                {fontSize === size && <CheckCircleIcon className="h-5 w-5" />}
+                                            </button>
+                                        ))}
+                                    </div>
                                 </div>
-                            </div>
-                            <div className="border-t pt-4 space-y-3">
-                                <button onClick={() => setIsChangePasswordModalOpen(true)} className="w-full flex items-center gap-2 p-3 rounded-lg bg-gray-50 dark:bg-gray-700/30 text-sm font-medium"><KeyIcon className="h-4 w-4" />Cambiar Contraseña</button>
-                                <button onClick={onLogout} className="w-full flex items-center justify-center gap-2 p-3 text-sm font-semibold text-white bg-red-600 rounded-lg">Cerrar Sesión</button>
+                                <div className="space-y-3 pt-4">
+                                    <button onClick={() => setIsChangePasswordModalOpen(true)} className="w-full flex items-center justify-center gap-2 p-3 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-xl font-bold"><KeyIcon className="h-5 w-5" /> Cambiar Contraseña</button>
+                                    <button onClick={onLogout} className="w-full flex items-center justify-center gap-2 p-3 bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-xl font-bold"><ArrowRightOnRectangleIcon className="h-5 w-5" /> Cerrar Sesión</button>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
-            )}
-            {isChangePasswordModalOpen && <ChangePasswordModal onClose={() => setIsChangePasswordModalOpen(false)} />}
+                )}
+
+                {isHistorialModalOpen && <TrabajoHistorialModal trabajos={modalTrabajos} title={modalTitle} onClose={closeHistorialModal} cliente={client} tallerInfo={tallerInfo} />}
+                {isChangePasswordModalOpen && <ChangePasswordModal onClose={() => setIsChangePasswordModalOpen(false)} />}
+            </div>
         </>
     );
 };

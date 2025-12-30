@@ -38,7 +38,6 @@ const App: React.FC = () => {
                  const password = searchParams.get('password');
                  
                  if (email && password) {
-                     // Intentamos iniciar sesión con la clave temporal
                      const { data, error } = await supabase.auth.signInWithPassword({
                          email,
                          password
@@ -46,11 +45,10 @@ const App: React.FC = () => {
                      
                      if (!error && data.session) {
                          setAuthAction('SET_INITIAL_PASSWORD');
-                         // Limpiamos la URL para seguridad
                          window.history.replaceState(null, '', window.location.pathname);
                      } else {
                          console.error("Error en auto-login de invitación:", error?.message);
-                         setAuthAction('APP'); // Fallback al login normal
+                         setAuthAction('APP'); 
                      }
                  }
             }
@@ -72,7 +70,7 @@ const App: React.FC = () => {
                 setRole(null);
                 setUser(null);
                 setClientData(null);
-                applyAppTheme('slate'); 
+                applyAppTheme(); 
             }
         });
 
@@ -139,13 +137,9 @@ const App: React.FC = () => {
                                 showLogoOnPdf: tallerInfoData.show_logo_on_pdf === true,
                                 showCuitOnPdf: tallerInfoData.show_cuit_on_pdf !== false,
                                 headerColor: tallerInfoData.header_color || '#334155',
-                                appTheme: tallerInfoData.app_theme || 'slate'
                             };
                             setTallerInfoForClient(info);
-                            
-                            if (info.appTheme) {
-                                applyAppTheme(info.appTheme);
-                            }
+                            applyAppTheme();
 
                         } else {
                             const tallerInfo = currentUser.user_metadata?.taller_info_ref || null;

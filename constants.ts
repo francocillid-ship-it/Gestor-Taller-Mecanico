@@ -26,65 +26,17 @@ export const ALL_MAINTENANCE_OPTS = [
     ...MAINTENANCE_TYPES.OTHERS
 ];
 
-// Definición de Temas para la Aplicación
-export const APP_THEMES = {
-    slate: {
-        name: 'Gris Oscuro',
-        primary: '51 65 85',    // Slate 700
-        secondary: '71 85 105', // Slate 600
-        accent: '217 119 6',    // Amber 600
-        light: '248 250 252',   // Slate 50
-        dark: '15 23 42',       // Slate 900
-        gray: '100 116 139',    // Slate 500
-    },
-    midnight: {
-        name: 'Azul Profundo',
-        primary: '30 58 138',   // Blue 900
-        secondary: '37 99 235', // Blue 600
-        accent: '14 165 233',   // Sky 500
-        light: '240 249 255',   // Sky 50
-        dark: '11 17 32',       // Navy Dark
-        gray: '100 116 139',
-    },
-    crimson: {
-        name: 'Rojo Taller',
-        primary: '153 27 27',   // Red 800
-        secondary: '185 28 28', // Red 700
-        accent: '245 158 11',   // Amber 500
-        light: '254 242 242',   // Red 50
-        dark: '24 9 9',         // Very dark red
-        gray: '113 113 122',
-    },
-    emerald: {
-        name: 'Verde Bosque',
-        primary: '21 128 61',   // Green 700
-        secondary: '22 163 74', // Green 600
-        accent: '250 204 21',   // Yellow 400
-        light: '240 253 244',   // Green 50
-        dark: '6 15 10',        // Very dark green
-        gray: '113 113 122',
-    },
-    amber: {
-        name: 'Naranja Óxido',
-        primary: '194 65 12',   // Orange 700
-        secondary: '217 119 6', // Orange 600
-        accent: '30 58 138',    // Contrast with blue
-        light: '255 251 235',   // Amber 50
-        dark: '20 10 4',        // Very dark orange
-        gray: '113 113 122',
-    }
-};
-
-export const applyAppTheme = (themeName: string) => {
-    const theme = APP_THEMES[themeName as keyof typeof APP_THEMES] || APP_THEMES.slate;
+// Aplicar el tema único azul oscuro corporativo
+export const applyAppTheme = () => {
     const root = document.documentElement;
 
-    root.style.setProperty('--color-taller-primary', theme.primary);
-    root.style.setProperty('--color-taller-secondary', theme.secondary);
-    root.style.setProperty('--color-taller-accent', theme.accent);
-    root.style.setProperty('--color-taller-light', theme.light);
-    root.style.setProperty('--color-taller-dark', theme.dark);
-    root.style.setProperty('--color-taller-gray', theme.gray);
+    // Paleta Azul Marino Profesional
+    root.style.setProperty('--color-taller-primary', '30 58 138');   // Blue 900
+    root.style.setProperty('--color-taller-secondary', '37 99 235'); // Blue 600
+    root.style.setProperty('--color-taller-accent', '245 158 11');    // Amber 500
+    root.style.setProperty('--color-taller-light', '240 249 255');   // Sky 50
+    root.style.setProperty('--color-taller-dark', '11 17 32');       // Navy Dark
+    root.style.setProperty('--color-taller-gray', '100 116 139');    // Slate 500
 };
 
 export const applyFontSize = (size: 'small' | 'normal' | 'large') => {

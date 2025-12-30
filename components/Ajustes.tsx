@@ -2,9 +2,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import type { TallerInfo } from '../types';
 import { supabase } from '../supabaseClient';
-import { BuildingOffice2Icon, PhotoIcon, ArrowUpOnSquareIcon, PaintBrushIcon, SunIcon, MoonIcon, ComputerDesktopIcon, DocumentTextIcon, SparklesIcon, CheckCircleIcon, ExclamationTriangleIcon, KeyIcon, ArrowRightOnRectangleIcon, MagnifyingGlassPlusIcon, ArrowPathIcon, SwatchIcon } from '@heroicons/react/24/solid';
+import { BuildingOffice2Icon, PhotoIcon, ArrowUpOnSquareIcon, PaintBrushIcon, SunIcon, MoonIcon, ComputerDesktopIcon, DocumentTextIcon, SparklesIcon, CheckCircleIcon, ExclamationTriangleIcon, KeyIcon, ArrowRightOnRectangleIcon, MagnifyingGlassPlusIcon, ArrowPathIcon } from '@heroicons/react/24/solid';
 import ChangePasswordModal from './ChangePasswordModal';
-import { APP_THEMES, applyAppTheme, applyFontSize } from '../constants';
+import { applyAppTheme, applyFontSize } from '../constants';
 
 interface AjustesProps {
     tallerInfo: TallerInfo;
@@ -84,7 +84,7 @@ const Ajustes: React.FC<AjustesProps> = ({ tallerInfo, onUpdateTallerInfo, onLog
             setFormData(tallerInfo);
             setLastSavedData(incomingStr);
         }
-        if (tallerInfo.appTheme) applyAppTheme(tallerInfo.appTheme);
+        applyAppTheme();
         if (tallerInfo.fontSize) applyFontSize(tallerInfo.fontSize as any);
     }, [tallerInfo]); 
 
@@ -163,11 +163,6 @@ const Ajustes: React.FC<AjustesProps> = ({ tallerInfo, onUpdateTallerInfo, onLog
         }
     };
     
-    const handleAppThemeChange = (themeKey: string) => {
-        applyAppTheme(themeKey);
-        setFormData(prev => ({ ...prev, appTheme: themeKey }));
-    };
-
     const handleFontSizeChange = (size: 'small' | 'normal' | 'large') => {
         applyFontSize(size);
         setFormData(prev => ({ ...prev, fontSize: size }));
@@ -375,35 +370,6 @@ const Ajustes: React.FC<AjustesProps> = ({ tallerInfo, onUpdateTallerInfo, onLog
                             <h3 className="text-lg font-bold mb-4 flex items-center"><PaintBrushIcon className="h-6 w-6 mr-2 text-taller-primary"/>Apariencia de la App</h3>
                             <div className="space-y-8">
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                    <div>
-                                        <label className="block text-sm font-medium text-taller-gray dark:text-gray-400 mb-2 flex items-center gap-2">
-                                            <SwatchIcon className="h-4 w-4" /> Color Principal de la App
-                                        </label>
-                                        <div className="flex flex-wrap gap-4 mt-4">
-                                            {Object.entries(APP_THEMES).map(([key, themeDef]) => (
-                                                <button
-                                                    key={key}
-                                                    type="button"
-                                                    onClick={() => handleAppThemeChange(key)}
-                                                    title={themeDef.name}
-                                                    className={`relative w-12 h-12 rounded-full transition-all duration-200 transform hover:scale-110 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-taller-primary shadow-sm
-                                                        ${(formData.appTheme || 'slate') === key ? 'ring-4 ring-taller-primary ring-offset-2 scale-110 shadow-lg' : ''}
-                                                    `}
-                                                    style={{ backgroundColor: `rgb(${themeDef.primary})` }}
-                                                >
-                                                    {(formData.appTheme || 'slate') === key && (
-                                                        <div className="absolute inset-0 flex items-center justify-center">
-                                                            <CheckCircleIcon className="h-7 w-7 text-white drop-shadow-md" />
-                                                        </div>
-                                                    )}
-                                                </button>
-                                            ))}
-                                        </div>
-                                        <p className="text-xs text-taller-gray dark:text-gray-500 mt-4">
-                                            Elige el color principal que define la personalidad de tu taller.
-                                        </p>
-                                    </div>
-
                                     <div>
                                         <label className="block text-sm font-medium text-taller-gray dark:text-gray-400 mb-2">Modo Visual</label>
                                         <div className="grid grid-cols-3 gap-2 rounded-lg bg-taller-light dark:bg-gray-900/50 p-1">
