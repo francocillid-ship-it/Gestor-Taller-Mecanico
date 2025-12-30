@@ -57,7 +57,7 @@ interface TransactionItem {
 
 // --- Filter Controls Component (Horizontal Scroll) ---
 const FilterControls = ({ activePeriod, setPeriodFn }: { activePeriod: Period, setPeriodFn: (p: Period) => void }) => (
-    <div className="flex items-center gap-2 overflow-x-auto flex-nowrap pb-2 px-4 scrollbar-hide w-full">
+    <div className="flex items-center gap-2 overflow-x-auto flex-nowrap pb-2 -mx-4 px-4 sm:mx-0 sm:px-0 scrollbar-hide">
         <style>{`.scrollbar-hide::-webkit-scrollbar { display: none; } .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }`}</style>
         {[
             { label: 'Este mes', value: 'this_month' },
@@ -99,6 +99,7 @@ const FinancialDetailOverlay: React.FC<FinancialDetailOverlayProps> = ({ detailV
 
     // Entry animation on mount
     useEffect(() => {
+        // Double RAF ensures the browser has painted the initial state (translate-y-full) before applying the transition
         requestAnimationFrame(() => {
             requestAnimationFrame(() => {
                 setIsVisible(true);
@@ -106,8 +107,10 @@ const FinancialDetailOverlay: React.FC<FinancialDetailOverlayProps> = ({ detailV
         });
     }, []);
 
+    // Intercept onClose to play exit animation first
     const handleClose = () => {
         setIsVisible(false);
+        // Wait for the duration of the transition (500ms) before unmounting
         setTimeout(() => {
             onClose();
         }, 500);
@@ -128,8 +131,10 @@ const FinancialDetailOverlay: React.FC<FinancialDetailOverlayProps> = ({ detailV
 
         if (Math.abs(diff) < 10) return;
 
-        // Hide filter on scroll down, show on scroll up
-        if (diff > 0 && scrollTop > 20 && isFilterVisible) {
+        const isNearBottom = scrollTop + clientHeight > scrollHeight - 100;
+        if (isNearBottom) return;
+
+        if (diff > 0 && scrollTop > 60 && isFilterVisible) {
             setIsFilterVisible(false);
         } else if (diff < 0 && !isFilterVisible) {
             setIsFilterVisible(true);
@@ -160,10 +165,10 @@ const FinancialDetailOverlay: React.FC<FinancialDetailOverlayProps> = ({ detailV
             {/* Content Layer - Slides up from bottom */}
             <div 
                 className={`fixed inset-0 z-[100] bg-taller-light dark:bg-taller-dark flex flex-col shadow-2xl transition-transform duration-500 will-change-transform ${isVisible ? 'translate-y-0' : 'translate-y-full'}`}
-                style={{ transitionTimingFunction: 'cubic-bezier(0.32, 0.72, 0, 1)' }}
+                style={{ transitionTimingFunction: 'cubic-bezier(0.32, 0.72, 0, 1)' }} // iOS-like fluid spring
             >
-                {/* Header - Always visible on top */}
-                <div className="bg-white dark:bg-gray-800 shadow-sm flex-shrink-0 pt-[env(safe-area-inset-top)] border-b dark:border-gray-700 z-30 relative">
+                {/* Header */}
+                <div className="bg-white dark:bg-gray-800 shadow-sm flex-shrink-0 pt-[env(safe-area-inset-top)] border-b dark:border-gray-700 z-20 relative">
                     <div className="flex items-center justify-between p-4">
                         <button 
                             onClick={handleClose}
@@ -176,76 +181,72 @@ const FinancialDetailOverlay: React.FC<FinancialDetailOverlayProps> = ({ detailV
                     </div>
                 </div>
 
-                {/* Main Content Area - Relative wrapper to contain absolute filter bar */}
-                <div className="flex-1 relative overflow-hidden flex flex-col">
-                    
-                    {/* Floating Filter Bar - Absolute Positioned */}
-                    <div 
-                        className={`absolute top-0 left-0 right-0 z-20 bg-taller-light/95 dark:bg-taller-dark/95 backdrop-blur-md border-b dark:border-gray-700 transition-transform duration-300 ease-out py-3 shadow-sm ${isFilterVisible ? 'translate-y-0' : '-translate-y-full'}`}
-                    >
+                {/* Filter Section */}
+                <div className={`bg-taller-light dark:bg-taller-dark z-10 flex-shrink-0 transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] overflow-hidden ${isFilterVisible ? 'max-h-[80px] opacity-100 translate-y-0' : 'max-h-0 opacity-0 -translate-y-4'}`}>
+                    <div className="p-4 pb-2">
                         <FilterControls activePeriod={period} setPeriodFn={setPeriod} />
                     </div>
+                </div>
 
-                    {/* Scrollable List - Has top padding to account for the filter bar space */}
-                    <div 
-                        ref={scrollContainerRef}
-                        onScroll={handleScroll}
-                        className="flex-1 overflow-y-auto px-4 pb-4 overscroll-none pt-[70px]" // Static padding to avoid layout jump
-                    >
-                        <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm text-center border dark:border-gray-700 transform-gpu mb-4">
-                            <p className="text-sm text-taller-gray dark:text-gray-400 uppercase tracking-wide">Total {period === 'this_month' ? 'Este Mes' : period === 'last_7_days' ? '7 Días' : period === 'last_15_days' ? '15 Días' : 'Mes Pasado'}</p>
-                            <p className={`text-4xl font-bold mt-2 ${data.total >= 0 ? 'text-taller-dark dark:text-taller-light' : 'text-red-600'}`}>
-                                {displayTotal}
-                            </p>
-                            {isProfitView && (
-                            <p className="text-xs text-taller-gray dark:text-gray-500 mt-2">
-                                * Cálculo: Mano de Obra + Sobrantes de Repuestos.
-                            </p>
-                            )}
-                        </div>
+                {/* Scrollable Content */}
+                <div 
+                    ref={scrollContainerRef}
+                    onScroll={handleScroll}
+                    className="flex-1 overflow-y-auto px-4 pb-4 pt-2 space-y-4 overscroll-none"
+                >
+                    <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm text-center mt-2 border dark:border-gray-700 transform-gpu">
+                        <p className="text-sm text-taller-gray dark:text-gray-400 uppercase tracking-wide">Total {period === 'this_month' ? 'Este Mes' : period === 'last_7_days' ? '7 Días' : period === 'last_15_days' ? '15 Días' : 'Mes Pasado'}</p>
+                        <p className={`text-4xl font-bold mt-2 ${data.total >= 0 ? 'text-taller-dark dark:text-taller-light' : 'text-red-600'}`}>
+                            {displayTotal}
+                        </p>
+                        {isProfitView && (
+                           <p className="text-xs text-taller-gray dark:text-gray-500 mt-2">
+                               * Cálculo: Mano de Obra + Sobrantes de Repuestos.
+                           </p>
+                        )}
+                    </div>
 
-                        <div className="space-y-3 pb-24">
-                            {data.transactions.length > 0 ? (
-                                data.transactions.map((t, index) => (
-                                    <div 
-                                        key={t.id} 
-                                        onClick={() => onItemClick(t)}
-                                        className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm flex items-center justify-between border-l-4 border-transparent hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer active:scale-[0.98] transition-all duration-300 animate-slide-in-bottom fill-mode-backwards group" 
-                                        style={{ 
-                                            borderLeftColor: t.type === 'income' ? '#22c55e' : '#ef4444',
-                                            animationDelay: `${Math.min(index * 30, 300)}ms` // Faster stagger
-                                        }}
-                                    >
-                                        <div className="flex items-center gap-3">
-                                            <div className={`p-2 rounded-full ${t.type === 'income' ? 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400' : 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400'}`}>
-                                                {t.type === 'income' ? <ArrowTrendingUpIcon className="h-5 w-5" /> : <ArrowTrendingDownIcon className="h-5 w-5" />}
-                                            </div>
-                                            <div>
-                                                <p className="font-bold text-taller-dark dark:text-taller-light text-sm flex items-center gap-1">
-                                                    {t.description}
-                                                    <ArrowTopRightOnSquareIcon className="h-3 w-3 text-gray-300 opacity-0 group-hover:opacity-100 transition-opacity" />
-                                                </p>
-                                                <p className="text-xs text-taller-gray dark:text-gray-400">{t.subtext}</p>
-                                                <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">{t.date.toLocaleDateString('es-ES')} {t.date.toLocaleTimeString([], { hour: '2-digit', minute:'2-digit' })}</p>
-                                            </div>
+                    <div className="space-y-3 pb-24">
+                         {data.transactions.length > 0 ? (
+                            data.transactions.map((t, index) => (
+                                <div 
+                                    key={t.id} 
+                                    onClick={() => onItemClick(t)}
+                                    className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm flex items-center justify-between border-l-4 border-transparent hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer active:scale-[0.98] transition-all duration-300 animate-slide-in-bottom fill-mode-backwards group" 
+                                    style={{ 
+                                        borderLeftColor: t.type === 'income' ? '#22c55e' : '#ef4444',
+                                        animationDelay: `${index * 50}ms` // Staggered list animation
+                                    }}
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <div className={`p-2 rounded-full ${t.type === 'income' ? 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400' : 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400'}`}>
+                                            {t.type === 'income' ? <ArrowTrendingUpIcon className="h-5 w-5" /> : <ArrowTrendingDownIcon className="h-5 w-5" />}
                                         </div>
-                                        <div className="text-right">
-                                            <p className={`font-bold ${t.type === 'income' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                                                {t.type === 'income' ? '+' : '-'} {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(t.amount)}
+                                        <div>
+                                            <p className="font-bold text-taller-dark dark:text-taller-light text-sm flex items-center gap-1">
+                                                {t.description}
+                                                <ArrowTopRightOnSquareIcon className="h-3 w-3 text-gray-300 opacity-0 group-hover:opacity-100 transition-opacity" />
                                             </p>
-                                            {isProfitView && t.type === 'income' && (
-                                                <p className="text-[10px] text-gray-400 italic">Neto Mano de Obra</p>
-                                            )}
+                                            <p className="text-xs text-taller-gray dark:text-gray-400">{t.subtext}</p>
+                                            <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">{t.date.toLocaleDateString('es-ES')} {t.date.toLocaleTimeString([], { hour: '2-digit', minute:'2-digit' })}</p>
                                         </div>
                                     </div>
-                                ))
-                            ) : (
-                                <div className="text-center py-10 text-taller-gray dark:text-gray-400">
-                                    <ScaleIcon className="h-12 w-12 mx-auto mb-2 opacity-20" />
-                                    <p>No hay movimientos en este periodo.</p>
+                                    <div className="text-right">
+                                        <p className={`font-bold ${t.type === 'income' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                                            {t.type === 'income' ? '+' : '-'} {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(t.amount)}
+                                        </p>
+                                        {isProfitView && t.type === 'income' && (
+                                            <p className="text-[10px] text-gray-400 italic">Neto Mano de Obra</p>
+                                        )}
+                                    </div>
                                 </div>
-                            )}
-                        </div>
+                            ))
+                         ) : (
+                             <div className="text-center py-10 text-taller-gray dark:text-gray-400">
+                                 <ScaleIcon className="h-12 w-12 mx-auto mb-2 opacity-20" />
+                                 <p>No hay movimientos en este periodo.</p>
+                             </div>
+                         )}
                     </div>
                 </div>
             </div>
@@ -364,7 +365,8 @@ const Dashboard: React.FC<DashboardProps> = ({ clientes, trabajos, gastos, onDat
         const gananciaNeta = gananciaManoDeObraReal - totalGastos;
         const balance = ingresosTotales - totalGastos;
 
-        const trabajosActivos = trabajos.filter(t => t.status !== JobStatus.Finalizado).length;
+        // ACTUALIZACIÓN: Solo contar trabajos que están estrictamente 'En Proceso'
+        const trabajosActivos = trabajos.filter(t => t.status === JobStatus.EnProceso).length;
         const totalClientes = clientes.length;
 
         return {
