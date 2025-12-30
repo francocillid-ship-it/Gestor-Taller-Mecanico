@@ -1,7 +1,6 @@
-
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import type { Vehiculo, Trabajo, Cliente, TallerInfo } from '../types';
-import { ChevronDownIcon, DocumentTextIcon, Cog8ToothIcon, WrenchIcon, BookOpenIcon, BeakerIcon, FunnelIcon, EllipsisHorizontalCircleIcon, ChevronUpIcon } from '@heroicons/react/24/solid';
+import { ChevronDownIcon, DocumentTextIcon, Cog8ToothIcon, WrenchIcon, BookOpenIcon, BeakerIcon, FunnelIcon, EllipsisHorizontalCircleIcon, ChevronUpIcon, ArrowRightIcon } from '@heroicons/react/24/solid';
 import TrabajoListItem from './TrabajoListItem';
 import { MAINTENANCE_TYPES } from '../constants';
 
@@ -73,9 +72,20 @@ const MaintenanceItemRow: React.FC<{ item: MaintenanceItemStatus }> = ({ item })
                                     style={{ width: `${item.percentage}%` }}
                                 ></div>
                             </div>
-                            <div className="flex gap-4 text-xs text-taller-gray dark:text-gray-400">
-                                <span>Último: {item.lastDate?.toLocaleDateString('es-ES')}</span>
-                                {item.lastMileage && <span>({item.lastMileage} km)</span>}
+                            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-taller-gray dark:text-gray-400">
+                                <div className="flex items-center gap-1">
+                                    <span className="opacity-70">Realizado:</span>
+                                    <span className="font-medium">{item.lastDate?.toLocaleDateString('es-ES')}</span>
+                                    {item.lastMileage ? <span className="text-taller-primary dark:text-taller-secondary font-bold ml-0.5">({item.lastMileage.toLocaleString()} km)</span> : null}
+                                </div>
+                                
+                                {item.nextMileage && item.nextMileage > 0 && (
+                                    <div className="flex items-center gap-1 bg-taller-primary/5 dark:bg-white/5 px-1.5 py-0.5 rounded border border-taller-primary/10 dark:border-white/10">
+                                        <ArrowRightIcon className="h-2.5 w-2.5 text-taller-primary" />
+                                        <span className="opacity-70">Próximo Service:</span>
+                                        <span className="font-bold text-taller-primary dark:text-taller-secondary">{item.nextMileage.toLocaleString()} km</span>
+                                    </div>
+                                )}
                             </div>
                         </>
                     ) : (
@@ -456,7 +466,6 @@ const VehicleInfoCard: React.FC<VehicleInfoCardProps> = ({ vehiculo, trabajos, o
                                 Estado de Mantenimiento
                             </h5>
                             
-                            {/* HERE IS THE FIX: Using flex gap instead of space-y */}
                             <div className="flex flex-col gap-3">
                                 {maintenanceGroups.map(group => (
                                     <MaintenanceCategoryRow key={group.id} group={group} />

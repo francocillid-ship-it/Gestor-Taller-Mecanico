@@ -51,8 +51,9 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
     const [exitingItemIds, setExitingItemIds] = useState<Set<string>>(new Set());
     const [animatedItemIds, setAnimatedItemIds] = useState<Set<string>>(new Set());
     
-    // FLIP Animation Refs
+    // Refs
     const listRef = useRef<HTMLDivElement>(null);
+    const scrollContainerRef = useRef<HTMLDivElement>(null); // Ref for the main scrollable area
     const prevPositions = useRef<Map<string, number>>(new Map());
     const lastReorderTime = useRef(0); // Throttle reference for drag stability
 
@@ -228,18 +229,34 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
         requestAnimationFrame(() => setIsVisible(true));
     }, [trabajoToEdit, initialClientId]);
 
-    // AUTO-FOCUS EFFECT
+    // AUTO-SCROLL & FOCUS EFFECT
     useEffect(() => {
         if (shouldFocusNewItem && partes.length > 0) {
             const lastIndex = partes.length - 1;
-            const inputId = `parte-nombre-${lastIndex}`;
+            
+            // Timeout to allow DOM render
             setTimeout(() => {
-                const inputElement = document.getElementById(inputId);
-                if (inputElement) {
-                    inputElement.focus({ preventScroll: true });
-                    inputElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                // 1. Handle Scroll - Scroll container to bottom
+                if (scrollContainerRef.current) {
+                    const container = scrollContainerRef.current;
+                    container.scrollTo({
+                        top: container.scrollHeight,
+                        behavior: 'smooth'
+                    });
                 }
-            }, 150);
+
+                // 2. Handle Focus
+                const mobileInput = document.getElementById(`parte-nombre-${lastIndex}`);
+                const desktopInput = document.getElementById(`parte-nombre-desktop-${lastIndex}`);
+                const targetInput = mobileInput || desktopInput;
+
+                if (targetInput) {
+                    // preventScroll: true ensures the browser doesn't try its own jumpy scroll
+                    // We handle the scroll gracefully with the container scrollTo above
+                    targetInput.focus({ preventScroll: true }); 
+                }
+            }, 100); 
+            
             setShouldFocusNewItem(false);
         }
     }, [partes, shouldFocusNewItem]);
@@ -528,8 +545,8 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
                     </div>
                     
                     {/* Content */}
-                    <div className="flex-1 overflow-y-auto p-4 space-y-5 overscroll-contain">
-                        <form id="job-form" onSubmit={handleSubmit} className="space-y-5 text-taller-dark dark:text-taller-light pb-24 sm:pb-0">
+                    <div ref={scrollContainerRef} className="flex-1 overflow-y-auto p-4 space-y-5 overscroll-contain">
+                        <form id="job-form" onSubmit={handleSubmit} className="space-y-5 text-taller-dark dark:text-taller-light pb-40 sm:pb-0">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
                                     <div className="flex justify-between items-center mb-1">
