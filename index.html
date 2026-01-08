@@ -5,30 +5,20 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>Mi Taller</title>
     
-    <!-- Favicons estándar para Safari y navegadores de escritorio -->
-    <!-- Safari Desktop prefiere PNG si el SVG falla en tamaños pequeños -->
-    <link rel="icon" type="image/svg+xml" href="./favicon.svg" sizes="any" />
-    <link rel="icon" type="image/png" sizes="32x32" href="./favicon.svg" />
-    <link rel="icon" type="image/png" sizes="16x16" href="./favicon.svg" />
+    <!-- Favicons con rutas raíz absolutas para Vercel -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="alternate icon" type="image/png" href="/favicon.svg" />
     
-    <!-- Apple Touch Icon (iOS y iPadOS) -->
-    <!-- Safari iOS ignora 'any' y busca tamaños específicos o el rel sin tamaños -->
-    <link rel="apple-touch-icon" href="./favicon.svg" />
-    <link rel="apple-touch-icon" sizes="152x152" href="./favicon.svg" />
-    <link rel="apple-touch-icon" sizes="180x180" href="./favicon.svg" />
-    <link rel="apple-touch-icon" sizes="167x167" href="./favicon.svg" />
-    
-    <!-- Safari Pinned Tab (macOS) -->
-    <link rel="mask-icon" href="./favicon.svg" color="#1e3a8a" />
+    <!-- Apple Touch Icon -->
+    <link rel="apple-touch-icon" href="/favicon.svg" />
     
     <!-- PWA Meta Tags -->
-    <link rel="manifest" href="./manifest.json" />
+    <link rel="manifest" href="/manifest.json" />
     <meta name="theme-color" content="#1e3a8a">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-title" content="Mi Taller">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="application-name" content="Mi Taller">
 
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
@@ -49,7 +39,6 @@
         overflow: hidden; 
         overscroll-behavior: none; 
         -webkit-overflow-scrolling: touch;
-        position: fixed; 
       }
     </style>
     <script>
