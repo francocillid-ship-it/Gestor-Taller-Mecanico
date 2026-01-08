@@ -50,6 +50,8 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
     const [pagos, setPagos] = useState<Parte[]>([]);
 
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
+    const [confirmingDelete, setConfirmingDelete] = useState(false);
     const [error, setError] = useState('');
     const [draggedItemIndex, setDraggedItemIndex] = useState<number | null>(null);
     const [isVisible, setIsVisible] = useState(false);
@@ -226,6 +228,21 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
         setDraggedItemIndex(index);
     };
     const handleDragEnd = () => setDraggedItemIndex(null);
+
+    const handleDelete = async () => {
+        if (!trabajoToEdit) return;
+        setIsDeleting(true);
+        try {
+            const { error } = await supabase.from('trabajos').delete().eq('id', trabajoToEdit.id);
+            if (error) throw error;
+            setIsVisible(false);
+            setTimeout(() => onSuccess(), 300);
+        } catch (err: any) {
+            setError(err.message || 'Error al eliminar el trabajo.');
+            setIsDeleting(false);
+            setConfirmingDelete(false);
+        }
+    };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -540,13 +557,44 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
                     </form>
                 </div>
 
-                <div className="p-4 border-t flex gap-3 bg-white dark:bg-gray-800 safe-area-bottom">
-                    <button type="button" onClick={handleClose} className="flex-1 py-3 border border-gray-300 dark:border-gray-600 rounded-xl font-bold text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 transition-all">Cancelar</button>
+                <div className="p-4 border-t flex flex-wrap gap-3 bg-white dark:bg-gray-800 safe-area-bottom">
+                    {isEditMode && (
+                        <div className="flex-[1] min-w-[120px]">
+                            {confirmingDelete ? (
+                                <div className="flex gap-2 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                                    <button 
+                                        type="button" 
+                                        onClick={handleDelete} 
+                                        disabled={isDeleting}
+                                        className="flex-1 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold text-xs shadow-lg transition-all"
+                                    >
+                                        {isDeleting ? '...' : 'Confirmar'}
+                                    </button>
+                                    <button 
+                                        type="button" 
+                                        onClick={() => setConfirmingDelete(false)}
+                                        className="flex-1 py-3 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-xl font-bold text-xs transition-all"
+                                    >
+                                        No
+                                    </button>
+                                </div>
+                            ) : (
+                                <button 
+                                    type="button" 
+                                    onClick={() => setConfirmingDelete(true)}
+                                    className="w-full py-3 border border-red-200 dark:border-red-900/30 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10 rounded-xl font-bold transition-all flex items-center justify-center gap-2"
+                                >
+                                    <TrashIcon className="h-4 w-4" /> Eliminar
+                                </button>
+                            )}
+                        </div>
+                    )}
+                    <button type="button" onClick={handleClose} className="flex-1 min-w-[100px] py-3 border border-gray-300 dark:border-gray-600 rounded-xl font-bold text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 transition-all">Cancelar</button>
                     <button 
                         type="button" 
                         onClick={handleSubmit} 
                         disabled={isSubmitting} 
-                        className="flex-[2] py-3 bg-taller-primary hover:bg-taller-secondary text-white rounded-xl font-bold shadow-lg shadow-taller-primary/20 transition-all active:scale-95 disabled:opacity-50"
+                        className="flex-[2] min-w-[150px] py-3 bg-taller-primary hover:bg-taller-secondary text-white rounded-xl font-bold shadow-lg shadow-taller-primary/20 transition-all active:scale-95 disabled:opacity-50"
                     >
                         {isSubmitting ? 'Guardando...' : (isEditMode ? 'Guardar Cambios' : 'Crear Presupuesto')}
                     </button>
