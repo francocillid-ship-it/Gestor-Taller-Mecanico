@@ -1,6 +1,9 @@
+
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { supabase } from '../supabaseClient';
+import { supabase, supabaseUrl, supabaseKey } from '../supabaseClient';
+import { createClient } from '@supabase/supabase-js';
 import type { Cliente, Trabajo, Gasto, JobStatus, TallerInfo } from '../types';
+import { JobStatus as JobStatusEnum } from '../types';
 import Dashboard from './Dashboard';
 import Trabajos from './Trabajos';
 import Clientes from './Clientes';
@@ -119,7 +122,10 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
                     fechaSalida: t.fecha_salida,
                     fechaProgramada: t.fecha_programada,
                     kilometraje: t.kilometraje,
-                    notaAdicional: t.nota_adicional
+                    notaAdicional: t.nota_adicional,
+                    isQuickBudget: t.is_quick_budget,
+                    quickBudgetData: t.quick_budget_data,
+                    expiresAt: t.expires_at
                 }));
                 setTrabajos(mappedTrabajos as Trabajo[]);
             }
@@ -173,15 +179,77 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
 
     const handleUpdateStatus = async (trabajoId: string, newStatus: JobStatus) => {
         try {
+            const trabajoActual = trabajos.find(t => t.id === trabajoId);
+            if (!trabajoActual) return;
+
             let fechaSalida: string | null | undefined = undefined;
             const updates: any = { status: newStatus };
 
-            if (newStatus === 'Finalizado') {
+            if (newStatus === JobStatusEnum.Finalizado) {
                 fechaSalida = new Date().toISOString();
                 updates.fecha_salida = fechaSalida;
             } else {
                 fechaSalida = null;
                 updates.fecha_salida = null;
+            }
+
+            // LÓGICA DE CONVERSIÓN: Si es presupuesto rápido y pasa a otro estado
+            if (trabajoActual.isQuickBudget && newStatus !== JobStatusEnum.Presupuesto && trabajoActual.quickBudgetData) {
+                const { data: { user } } = await supabase.auth.getUser();
+                if (!user) return;
+
+                // 1. Crear usuario en Auth y Tabla Clientes
+                const tempPassword = Math.random().toString(36).slice(-8) + '!Aa1';
+                const signUpEmail = `${crypto.randomUUID()}@taller-quick.com`;
+
+                const tempSupabase = createClient(supabaseUrl, supabaseKey, {
+                    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false }
+                });
+
+                const { data: signUpData, error: signUpError } = await tempSupabase.auth.signUp({
+                    email: signUpEmail,
+                    password: tempPassword,
+                    options: {
+                        data: {
+                            role: 'cliente',
+                            taller_nombre_ref: tallerInfo.nombre,
+                        },
+                    }
+                });
+
+                if (signUpError) throw signUpError;
+                const newUserId = signUpData.user!.id;
+
+                // Guardar pass temporal
+                localStorage.setItem(`temp_pass_${newUserId}`, tempPassword);
+
+                // Insertar Perfil Cliente
+                const { error: clientError } = await supabase.from('clientes').insert({
+                    id: newUserId,
+                    taller_id: user.id,
+                    nombre: trabajoActual.quickBudgetData.nombre,
+                    apellido: trabajoActual.quickBudgetData.apellido || '',
+                    email: '',
+                    telefono: ''
+                });
+
+                if (clientError) throw clientError;
+
+                // 2. Crear Vehículo
+                const { data: newVeh, error: vehError } = await supabase.from('vehiculos').insert({
+                    cliente_id: newUserId,
+                    marca: trabajoActual.quickBudgetData.marca,
+                    modelo: trabajoActual.quickBudgetData.modelo,
+                    matricula: trabajoActual.quickBudgetData.matricula || ''
+                }).select().single();
+
+                if (vehError) throw vehError;
+
+                // 3. Vincular el trabajo al nuevo cliente y vehículo, y quitar flag de quickBudget
+                updates.cliente_id = newUserId;
+                updates.vehiculo_id = newVeh.id;
+                updates.is_quick_budget = false;
+                updates.quick_budget_data = null;
             }
 
             const { error } = await supabase
@@ -191,15 +259,12 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
             
             if (error) throw error;
             
-            setTrabajos(prev => prev.map(t => 
-                t.id === trabajoId ? { 
-                    ...t, 
-                    status: newStatus,
-                    fechaSalida: fechaSalida !== undefined ? (fechaSalida as string | undefined) : t.fechaSalida
-                } : t
-            ));
-        } catch (error) {
+            // Refrescar datos para que desaparezca el aviso de "Presupuesto Rápido"
+            fetchData(false);
+            
+        } catch (error: any) {
             console.error("Error updating status:", error);
+            alert("Error al actualizar: " + error.message);
         }
     };
 

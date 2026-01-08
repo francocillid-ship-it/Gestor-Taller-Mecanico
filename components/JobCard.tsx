@@ -51,6 +51,19 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
     const isCompactMode = compactMode === true;
     const isCollapsedInCompact = isCompactMode && !isExpanded;
 
+    // Lógica para mostrar datos de Presupuesto Rápido si no hay cliente/vehículo real
+    const displayClientName = cliente 
+        ? `${cliente.nombre} ${cliente.apellido || ''}`.trim() 
+        : (trabajo.quickBudgetData ? `${trabajo.quickBudgetData.nombre} ${trabajo.quickBudgetData.apellido || ''}`.trim() : 'Cliente no identificado');
+
+    const displayVehicleInfo = vehiculo 
+        ? `${vehiculo.marca} ${vehiculo.modelo} (${vehiculo.matricula})` 
+        : (trabajo.quickBudgetData ? `${trabajo.quickBudgetData.marca} ${trabajo.quickBudgetData.modelo} ${trabajo.quickBudgetData.matricula ? `(${trabajo.quickBudgetData.matricula})` : ''}`.trim() : 'Vehículo no identificado');
+
+    const displayVehicleModelOnly = vehiculo 
+        ? vehiculo.modelo 
+        : (trabajo.quickBudgetData ? trabajo.quickBudgetData.modelo : 'Vehículo');
+
     useEffect(() => {
         // Initialize fields based on existing data
         if (trabajo) {
@@ -198,10 +211,29 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
     const saldoPendiente = totalA_Cobrar - totalPagado;
 
     const handleGeneratePDF = async () => {
-        if (!cliente || !vehiculo) return;
+        // En presupuestos rápidos el cliente no es un objeto real, pero pdfGenerator puede necesitarlo.
+        // Creamos un objeto cliente temporal para el PDF si es un presupuesto rápido
+        const pdfClient = cliente || (trabajo.quickBudgetData ? {
+            id: 'temp',
+            nombre: trabajo.quickBudgetData.nombre,
+            apellido: trabajo.quickBudgetData.apellido || '',
+            email: '',
+            telefono: '',
+            vehiculos: []
+        } : undefined);
+
+        const pdfVehiculo = vehiculo || (trabajo.quickBudgetData ? {
+            id: 'temp',
+            marca: trabajo.quickBudgetData.marca,
+            modelo: trabajo.quickBudgetData.modelo,
+            matricula: trabajo.quickBudgetData.matricula || '',
+        } : undefined);
+
+        if (!pdfClient || !pdfVehiculo) return;
+        
         setIsGeneratingPdf(true);
         try {
-            await generateClientPDF(trabajo, cliente, vehiculo, tallerInfo);
+            await generateClientPDF(trabajo, pdfClient as Cliente, pdfVehiculo as Vehiculo, tallerInfo);
         } catch (error) {
             console.error("PDF generation failed:", error);
             alert("No se pudo generar el PDF.");
@@ -296,7 +328,6 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
     };
     
     const hasServices = realParts.some(p => p.isService);
-    const clientFullName = cliente ? `${cliente.nombre} ${cliente.apellido || ''}`.trim() : 'Cliente no encontrado';
     
     // Display Logic for Time
     let displayTime = '';
@@ -359,7 +390,7 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
                             {/* Client Name */}
                             <div className="flex items-center gap-2">
                                 <p className={`font-bold text-taller-dark dark:text-taller-light truncate transition-all duration-300 ${isCollapsedInCompact ? 'text-xs' : 'text-sm'}`}>
-                                    {clientFullName}
+                                    {displayClientName}
                                 </p>
                                 {/* Warning for non-compact view or expanded view */}
                                 {!isCollapsedInCompact && needsScheduling && (
@@ -371,7 +402,7 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
                             
                             {/* Vehicle Info */}
                             <p className={`text-taller-gray dark:text-gray-400 truncate transition-all duration-300 ${isCollapsedInCompact ? 'text-[10px] mt-0.5' : 'text-xs'}`}>
-                                {vehiculo ? (isCollapsedInCompact ? vehiculo.modelo : `${vehiculo.marca} ${vehiculo.modelo} (${vehiculo.matricula})`) : 'Vehículo no encontrado'}
+                                {isCollapsedInCompact ? displayVehicleModelOnly : displayVehicleInfo}
                             </p>
 
                             {/* Full View Date Display (Hidden in collapsed compact mode) */}

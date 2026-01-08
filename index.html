@@ -5,9 +5,20 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>Mi Taller</title>
     
-    <!-- Favicons y App Icons (Rutas relativas para Safari) -->
+    <!-- Favicons estándar para Safari y navegadores de escritorio -->
+    <!-- Safari Desktop prefiere PNG si el SVG falla en tamaños pequeños -->
     <link rel="icon" type="image/svg+xml" href="./favicon.svg" sizes="any" />
+    <link rel="icon" type="image/png" sizes="32x32" href="./favicon.svg" />
+    <link rel="icon" type="image/png" sizes="16x16" href="./favicon.svg" />
+    
+    <!-- Apple Touch Icon (iOS y iPadOS) -->
+    <!-- Safari iOS ignora 'any' y busca tamaños específicos o el rel sin tamaños -->
     <link rel="apple-touch-icon" href="./favicon.svg" />
+    <link rel="apple-touch-icon" sizes="152x152" href="./favicon.svg" />
+    <link rel="apple-touch-icon" sizes="180x180" href="./favicon.svg" />
+    <link rel="apple-touch-icon" sizes="167x167" href="./favicon.svg" />
+    
+    <!-- Safari Pinned Tab (macOS) -->
     <link rel="mask-icon" href="./favicon.svg" color="#1e3a8a" />
     
     <!-- PWA Meta Tags -->
@@ -21,17 +32,15 @@
 
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-      /* Definición de variables CSS para el tema fijo azul oscuro. */
       :root {
-        --color-taller-primary: 30 58 138;   /* Blue 900 */
-        --color-taller-secondary: 37 99 235; /* Blue 600 */
-        --color-taller-accent: 245 158 11;    /* Amber 500 */
-        --color-taller-light: 240 249 255;   /* Sky 50 */
-        --color-taller-dark: 11 17 32;       /* Navy Dark */
-        --color-taller-gray: 100 116 139;    /* Slate 500 */
+        --color-taller-primary: 30 58 138;
+        --color-taller-secondary: 37 99 235;
+        --color-taller-accent: 245 158 11;
+        --color-taller-light: 240 249 255;
+        --color-taller-dark: 11 17 32;
+        --color-taller-gray: 100 116 139;
       }
 
-      /* FIX OVERSCROLL: Bloquear el rebote en móviles y fijar altura */
       html, body, #root {
         height: 100%;
         width: 100%;
@@ -57,54 +66,18 @@
               'taller-gray': 'rgb(var(--color-taller-gray) / <alpha-value>)',
             },
             keyframes: {
-              'slide-in-right': {
-                '0%': { transform: 'translateX(20px)', opacity: '0' },
-                '100%': { transform: 'translateX(0)', opacity: '1' },
-              },
-              'slide-in-left': {
-                '0%': { transform: 'translateX(-20px)', opacity: '0' },
-                '100%': { transform: 'translateX(0)', opacity: '1' },
-              },
-              'slide-in-bottom': {
-                '0%': { transform: 'translateY(10px)', opacity: '0' },
-                '100%': { transform: 'translateY(0)', opacity: '1' },
-              },
-              'slide-in-top': {
-                '0%': { transform: 'translateY(-10px)', opacity: '0' },
-                '100%': { transform: 'translateY(0)', opacity: '1' },
-              },
-              'entry-expand': {
-                '0%': { transform: 'translateY(-15px)', opacity: '0', maxHeight: '0', padding: '0', borderWidth: '0', marginBottom: '0', overflow: 'hidden' },
-                '100%': { transform: 'translateY(0)', opacity: '1', maxHeight: '300px', padding: '0.5rem', borderWidth: '1px', marginBottom: '0.75rem', overflow: 'visible' },
-              },
-              'slide-out-right': {
-                '0%': { transform: 'translateX(0)', opacity: '1', maxHeight: '300px', padding: '0.5rem', borderWidth: '1px', marginBottom: '0.75rem', overflow: 'hidden' },
-                '100%': { transform: 'translateX(50px)', opacity: '0', maxHeight: '0', padding: '0', borderWidth: '0', marginBottom: '0', overflow: 'hidden' },
-              },
-              'fade-in': {
-                '0%': { opacity: '0' },
-                '100%': { opacity: '1' },
-              },
-              'fade-out': {
-                '0%': { opacity: '1' },
-                '100%': { opacity: '0' },
-              },
-              'scale-in': {
-                '0%': { transform: 'scale(0.95)', opacity: '0' },
-                '100%': { transform: 'scale(1)', opacity: '1' },
-              },
-              'scale-out': {
-                '0%': { transform: 'scale(1)', opacity: '1' },
-                '100%': { transform: 'scale(0.95)', opacity: '0' },
-              },
-              'slide-in-up-sheet': {
-                '0%': { transform: 'translateY(100%)' },
-                '100%': { transform: 'translateY(0)' },
-              },
-              'slide-out-down-sheet': {
-                '0%': { transform: 'translateY(0)' },
-                '100%': { transform: 'translateY(100%)' },
-              }
+              'slide-in-right': { '0%': { transform: 'translateX(20px)', opacity: '0' }, '100%': { transform: 'translateX(0)', opacity: '1' } },
+              'slide-in-left': { '0%': { transform: 'translateX(-20px)', opacity: '0' }, '100%': { transform: 'translateX(0)', opacity: '1' } },
+              'slide-in-bottom': { '0%': { transform: 'translateY(10px)', opacity: '0' }, '100%': { transform: 'translateY(0)', opacity: '1' } },
+              'slide-in-top': { '0%': { transform: 'translateY(-10px)', opacity: '0' }, '100%': { transform: 'translateY(0)', opacity: '1' } },
+              'entry-expand': { '0%': { transform: 'translateY(-15px)', opacity: '0', maxHeight: '0', padding: '0', borderWidth: '0', marginBottom: '0', overflow: 'hidden' }, '100%': { transform: 'translateY(0)', opacity: '1', maxHeight: '300px', padding: '0.5rem', borderWidth: '1px', marginBottom: '0.75rem', overflow: 'visible' } },
+              'slide-out-right': { '0%': { transform: 'translateX(0)', opacity: '1', maxHeight: '300px', padding: '0.5rem', borderWidth: '1px', marginBottom: '0.75rem', overflow: 'hidden' }, '100%': { transform: 'translateX(50px)', opacity: '0', maxHeight: '0', padding: '0', borderWidth: '0', marginBottom: '0', overflow: 'hidden' } },
+              'fade-in': { '0%': { opacity: '0' }, '100%': { opacity: '1' } },
+              'fade-out': { '0%': { opacity: '1' }, '100%': { opacity: '0' } },
+              'scale-in': { '0%': { transform: 'scale(0.95)', opacity: '0' }, '100%': { transform: 'scale(1)', opacity: '1' } },
+              'scale-out': { '0%': { transform: 'scale(1)', opacity: '1' }, '100%': { transform: 'scale(0.95)', opacity: '0' } },
+              'slide-in-up-sheet': { '0%': { transform: 'translateY(100%)' }, '100%': { transform: 'translateY(0)' } },
+              'slide-out-down-sheet': { '0%': { transform: 'translateY(0)' }, '100%': { transform: 'translateY(100%)' } }
             },
             animation: {
               'slide-in-right': 'slide-in-right 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) forwards',

@@ -1,3 +1,4 @@
+
 export type UserRole = 'taller' | 'cliente';
 
 export enum JobStatus {
@@ -11,12 +12,12 @@ export interface Parte {
     nombre: string;
     cantidad: number;
     precioUnitario: number;
-    fecha?: string; // Para registrar la fecha de los pagos
+    fecha?: string; 
     isCategory?: boolean;
     isService?: boolean;
-    maintenanceType?: string; // Nuevo campo: "oil", "transmission_fluid", etc.
-    paymentType?: 'items' | 'labor'; // Nuevo campo: Tipo de pago (Repuestos o Mano de Obra)
-    clientPaidDirectly?: boolean; // Nuevo campo: Si el cliente pagó directamente el repuesto
+    maintenanceType?: string; 
+    paymentType?: 'items' | 'labor'; 
+    clientPaidDirectly?: boolean; 
 }
 
 export interface Pago {
@@ -36,9 +37,19 @@ export interface Trabajo {
     status: JobStatus;
     fechaEntrada: string;
     fechaSalida?: string;
-    fechaProgramada?: string; // Nuevo campo para la fecha del turno
+    fechaProgramada?: string; 
     kilometraje?: number;
     notaAdicional?: string;
+    // Campos para Presupuesto Rápido
+    isQuickBudget?: boolean;
+    quickBudgetData?: {
+        nombre: string;
+        apellido?: string;
+        marca: string;
+        modelo: string;
+        matricula?: string;
+    };
+    expiresAt?: string;
 }
 
 export interface MaintenanceItemConfig {
