@@ -5,14 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>Mi Taller</title>
     
-    <!-- Favicons y App Icons -->
-    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
-    <link rel="icon" type="image/png" href="/favicon.svg" /> <!-- Fallback para navegadores antiguos -->
-    <link rel="apple-touch-icon" href="/favicon.svg" />
-    <link rel="mask-icon" href="/favicon.svg" color="#1e3a8a" />
+    <!-- Favicons y App Icons (Rutas relativas para Safari) -->
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg" sizes="any" />
+    <link rel="apple-touch-icon" href="./favicon.svg" />
+    <link rel="mask-icon" href="./favicon.svg" color="#1e3a8a" />
     
     <!-- PWA Meta Tags -->
-    <link rel="manifest" href="/manifest.json" />
+    <link rel="manifest" href="./manifest.json" />
     <meta name="theme-color" content="#1e3a8a">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -38,10 +37,10 @@
         width: 100%;
         margin: 0;
         padding: 0;
-        overflow: hidden; /* Evita el scroll en el body */
-        overscroll-behavior: none; /* Deshabilita el efecto rebote (rubber-banding) */
+        overflow: hidden; 
+        overscroll-behavior: none; 
         -webkit-overflow-scrolling: touch;
-        position: fixed; /* Asegura que no se mueva el viewport en iOS */
+        position: fixed; 
       }
     </style>
     <script>
@@ -126,7 +125,6 @@
       }
     </script>
     <script>
-      // Inicialización del Modo Oscuro
       if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
         document.documentElement.classList.add('dark')
       } else {
