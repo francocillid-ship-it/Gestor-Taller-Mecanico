@@ -216,8 +216,11 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
         }, 300);
     };
 
-    // Drag and Drop Logic
-    const handleDragStart = (index: number) => setDraggedItemIndex(index);
+    // --- Drag and Drop Logic (Touch Support Added) ---
+    const handleDragStart = (index: number) => {
+        setDraggedItemIndex(index);
+    };
+
     const handleDragEnter = (index: number) => {
         if (draggedItemIndex === null || draggedItemIndex === index) return;
         const newPartes = [...partes];
@@ -227,7 +230,41 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
         setPartes(newPartes);
         setDraggedItemIndex(index);
     };
-    const handleDragEnd = () => setDraggedItemIndex(null);
+
+    const handleDragEnd = () => {
+        setDraggedItemIndex(null);
+    };
+
+    // Touch Support for Reordering
+    const handleTouchStart = (index: number, e: React.TouchEvent) => {
+        // Prevent default only if we are touching the handle
+        setDraggedItemIndex(index);
+        // We don't preventDefault here to allow scrolling if they just tap/swipe outside handle
+    };
+
+    const handleTouchMove = (e: React.TouchEvent) => {
+        if (draggedItemIndex === null) return;
+        
+        // Bloquear scroll mientras se arrastra
+        if (e.cancelable) e.preventDefault();
+
+        const touch = e.touches[0];
+        const elementOver = document.elementFromPoint(touch.clientX, touch.clientY);
+        const itemElement = elementOver?.closest('[data-id]') as HTMLElement;
+        
+        if (itemElement && itemElement.dataset.id) {
+            const overId = itemElement.dataset.id;
+            const overIndex = partes.findIndex(p => p._id === overId);
+            
+            if (overIndex !== -1 && overIndex !== draggedItemIndex) {
+                handleDragEnter(overIndex);
+            }
+        }
+    };
+
+    const handleTouchEnd = () => {
+        setDraggedItemIndex(null);
+    };
 
     const handleDelete = async () => {
         if (!trabajoToEdit) return;
@@ -424,7 +461,12 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
                                 <p className="text-[10px] text-gray-400">Mantén presionado <Bars3Icon className="h-3 w-3 inline mb-0.5" /> para reordenar</p>
                             </div>
                             
-                            <div className="space-y-3" ref={listRef}>
+                            <div 
+                                className="space-y-3" 
+                                ref={listRef}
+                                onTouchMove={handleTouchMove}
+                                onTouchEnd={handleTouchEnd}
+                            >
                                 {partes.length === 0 && (
                                     <div className="text-center py-6 border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-xl">
                                         <p className="text-xs text-gray-400 font-medium italic">Usa los botones de abajo para añadir ítems</p>
@@ -443,9 +485,14 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
                                                 onDragStart={() => handleDragStart(idx)}
                                                 onDragEnter={() => handleDragEnter(idx)}
                                                 onDragEnd={handleDragEnd}
-                                                className={`flex items-center gap-2 p-2 bg-gray-200 dark:bg-gray-700 rounded-lg transition-all duration-300 ${isExiting ? 'animate-slide-out-right' : 'animate-entry-expand'} ${isDragging ? 'opacity-50 scale-95 border-2 border-taller-primary shadow-inner z-50' : 'shadow-sm'}`}
+                                                className={`flex items-center gap-2 p-2 bg-gray-200 dark:bg-gray-700 rounded-lg transition-all duration-300 ${isExiting ? 'animate-slide-out-right' : 'animate-entry-expand'} ${isDragging ? 'opacity-70 scale-[1.02] border-2 border-taller-primary shadow-xl z-[100] ring-4 ring-taller-primary/20' : 'shadow-sm'}`}
                                             >
-                                                <div className="cursor-grab active:cursor-grabbing p-1 text-gray-400"><Bars3Icon className="h-5 w-5"/></div>
+                                                <div 
+                                                    className="cursor-grab active:cursor-grabbing p-2 text-gray-400"
+                                                    onTouchStart={(e) => handleTouchStart(idx, e)}
+                                                >
+                                                    <Bars3Icon className="h-6 w-6"/>
+                                                </div>
                                                 <div className="p-1.5 rounded bg-white/50 dark:bg-gray-600 text-taller-dark dark:text-taller-light"><TagIcon className="h-4 w-4"/></div>
                                                 <input 
                                                     type="text" 
@@ -467,10 +514,15 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
                                             onDragStart={() => handleDragStart(idx)}
                                             onDragEnter={() => handleDragEnter(idx)}
                                             onDragEnd={handleDragEnd}
-                                            className={`flex flex-col gap-2 p-2 bg-white dark:bg-gray-700/50 border dark:border-gray-600 rounded-lg transition-all duration-300 ${isExiting ? 'animate-slide-out-right' : 'animate-entry-expand'} ${isDragging ? 'opacity-50 scale-95 border-2 border-taller-primary shadow-inner z-50' : 'shadow-sm'} ${p.clientPaidDirectly ? 'opacity-60 grayscale-[0.3]' : ''}`}
+                                            className={`flex flex-col gap-2 p-2 bg-white dark:bg-gray-700/50 border dark:border-gray-600 rounded-lg transition-all duration-300 ${isExiting ? 'animate-slide-out-right' : 'animate-entry-expand'} ${isDragging ? 'opacity-70 scale-[1.02] border-2 border-taller-primary shadow-xl z-[100] ring-4 ring-taller-primary/20' : 'shadow-sm'} ${p.clientPaidDirectly ? 'opacity-60 grayscale-[0.3]' : ''}`}
                                         >
                                             <div className="flex items-center gap-2">
-                                                <div className="cursor-grab active:cursor-grabbing p-1 text-gray-300"><Bars3Icon className="h-5 w-5"/></div>
+                                                <div 
+                                                    className="cursor-grab active:cursor-grabbing p-2 text-gray-300"
+                                                    onTouchStart={(e) => handleTouchStart(idx, e)}
+                                                >
+                                                    <Bars3Icon className="h-6 w-6"/>
+                                                </div>
                                                 <div className={`p-1.5 rounded ${p.isService ? 'bg-blue-100 text-blue-600' : 'bg-green-100 text-green-600'}`}>
                                                     {p.isService ? <WrenchScrewdriverIcon className="h-4 w-4"/> : <ArchiveBoxIcon className="h-4 w-4"/>}
                                                 </div>
@@ -606,6 +658,11 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
                 .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
                 .dark .custom-scrollbar::-webkit-scrollbar-thumb { background: #475569; }
                 .no-spinner::-webkit-inner-spin-button, .no-spinner::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+                
+                /* Estilos para que el arrastre táctil sea evidente */
+                [draggable="true"] {
+                    touch-action: pan-y;
+                }
             `}</style>
         </div>,
         document.body
