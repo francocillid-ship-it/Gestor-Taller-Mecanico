@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { supabase } from '../supabaseClient';
 import type { Cliente, Parte, Trabajo } from '../types';
@@ -87,13 +87,18 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
     const [isVisible, setIsVisible] = useState(false);
     const [exitingItemIds, setExitingItemIds] = useState<Set<string>>(new Set());
     
-    // Drag and Drop State
+    // DRAG AND DROP STATE & REFS
     const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
     const [dragPos, setDragPos] = useState({ x: 0, y: 0 });
-    const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
-    const [dragItemSize, setDragItemSize] = useState({ width: 0, height: 0 });
-
+    const dragInfo = useRef({
+        offsetX: 0,
+        offsetY: 0,
+        itemWidth: 0,
+        itemHeight: 0,
+        pointerId: -1
+    });
     const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
+
     const isEditMode = Boolean(trabajoToEdit);
 
     const selectedClientVehiculos = useMemo(() => {
@@ -169,57 +174,70 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
         }, 300);
     };
 
-    // --- DRAG AND DROP LÓGICA CORREGIDA ---
+    // --- DRAG AND DROP REPARADO ---
 
     const handleDragStart = (e: React.PointerEvent, index: number) => {
         const item = itemRefs.current[index];
         if (!item) return;
 
+        const target = e.currentTarget as HTMLElement;
+        target.setPointerCapture(e.pointerId);
+        
         const rect = item.getBoundingClientRect();
         
-        // Calculamos el offset exacto del puntero dentro del elemento para evitar saltos
-        setDragOffset({
-            x: e.clientX - rect.left,
-            y: e.clientY - rect.top
-        });
-        
-        setDragItemSize({ width: rect.width, height: rect.height });
+        // Compensamos el offset para que la tarjeta no salte a la derecha en desktop
+        dragInfo.current = {
+            offsetX: e.clientX - rect.left,
+            offsetY: e.clientY - rect.top,
+            itemWidth: rect.width,
+            itemHeight: rect.height,
+            pointerId: e.pointerId
+        };
+
         setDragPos({ x: rect.left, y: rect.top });
         setDraggedIndex(index);
-        
-        // Imprescindible para capturar el movimiento fuera del handle en táctil y mouse
-        (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+        document.body.classList.add('grabbing-active');
     };
 
     const handleDragMove = (e: React.PointerEvent) => {
-        if (draggedIndex === null) return;
+        if (draggedIndex === null || e.pointerId !== dragInfo.current.pointerId) return;
 
-        const newX = e.clientX - dragOffset.x;
-        const newY = e.clientY - dragOffset.y;
+        const newX = e.clientX - dragInfo.current.offsetX;
+        const newY = e.clientY - dragInfo.current.offsetY;
         setDragPos({ x: newX, y: newY });
 
-        // Detección de colisión para reordenar
-        const centerY = newY + dragItemSize.height / 2;
+        // Cálculo del centro del elemento arrastrado
+        const centerY = newY + dragInfo.current.itemHeight / 2;
         
+        // Verificamos colisión con los vecinos
         itemRefs.current.forEach((ref, idx) => {
             if (!ref || idx === draggedIndex) return;
+            
             const targetRect = ref.getBoundingClientRect();
             const targetCenterY = targetRect.top + targetRect.height / 2;
 
-            // Si el centro del item arrastrado cruza el centro de otro item, intercambiamos
-            if (Math.abs(centerY - targetCenterY) < targetRect.height / 2) {
-                const newPartes = [...partes];
-                const temp = newPartes[draggedIndex];
-                newPartes[draggedIndex] = newPartes[idx];
-                newPartes[idx] = temp;
-                setPartes(newPartes);
+            // Sensibilidad de intercambio: cuando el centro de mi tarjeta cruza el centro del vecino
+            const distance = Math.abs(centerY - targetCenterY);
+            if (distance < targetRect.height / 2) {
+                setPartes(prev => {
+                    const next = [...prev];
+                    const itemToMove = next[draggedIndex];
+                    next.splice(draggedIndex, 1);
+                    next.splice(idx, 0, itemToMove);
+                    return next;
+                });
                 setDraggedIndex(idx);
             }
         });
     };
 
-    const handleDragEnd = () => {
-        setDraggedIndex(null);
+    const handleDragEnd = (e: React.PointerEvent) => {
+        if (draggedIndex !== null) {
+            const target = e.currentTarget as HTMLElement;
+            try { target.releasePointerCapture(e.pointerId); } catch(e) {}
+            setDraggedIndex(null);
+            document.body.classList.remove('grabbing-active');
+        }
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -314,17 +332,17 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
                         )}
                         <textarea value={descripcion} onChange={e => setDescripcion(e.target.value)} placeholder="Descripción del trabajo..." className="w-full p-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 text-sm" rows={2}/>
                         
-                        <div className="space-y-3 relative">
+                        <div className={`space-y-3 relative ${draggedIndex !== null ? 'select-none' : ''}`}>
                             {partes.map((p, idx) => {
                                 const isBeingDragged = draggedIndex === idx;
                                 
                                 return (
                                     <React.Fragment key={p._id}>
-                                        {/* Placeholder dinámico que ocupa el espacio en la lista mientras arrastramos */}
+                                        {/* Placeholder visible only during drag */}
                                         {isBeingDragged && (
                                             <div 
-                                                style={{ height: dragItemSize.height }} 
-                                                className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50/50 dark:bg-gray-800/50"
+                                                style={{ height: dragInfo.current.itemHeight }} 
+                                                className="border-2 border-dashed border-taller-primary/30 dark:border-gray-600 rounded-lg bg-gray-50/50 dark:bg-gray-800/50"
                                             />
                                         )}
 
@@ -332,21 +350,23 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
                                             ref={el => itemRefs.current[idx] = el}
                                             style={isBeingDragged ? {
                                                 position: 'fixed',
-                                                left: dragPos.x,
-                                                top: dragPos.y,
-                                                width: dragItemSize.width,
-                                                height: dragItemSize.height,
                                                 zIndex: 9999,
                                                 pointerEvents: 'none',
+                                                left: dragPos.x,
+                                                top: dragPos.y,
+                                                width: dragInfo.current.itemWidth,
+                                                height: dragInfo.current.itemHeight,
                                                 boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)',
                                                 opacity: 0.95,
-                                                transform: 'scale(1.02)'
+                                                transition: 'none'
                                             } : {
-                                                position: 'relative'
+                                                position: 'relative',
+                                                transform: 'translate3d(0,0,0)',
+                                                transition: 'transform 0.2s cubic-bezier(0.2, 0, 0, 1)'
                                             }}
-                                            className={`flex items-start gap-2 p-2 bg-white dark:bg-gray-700 border dark:border-gray-600 rounded-lg shadow-sm transition-all duration-200 ${exitingItemIds.has(p._id) ? 'opacity-0 scale-95' : 'opacity-100'}`}
+                                            className={`flex items-start gap-2 p-2 bg-white dark:bg-gray-700 border dark:border-gray-600 rounded-lg shadow-sm ${exitingItemIds.has(p._id) ? 'opacity-0 scale-95 transition-all duration-300' : 'opacity-100'} ${draggedIndex !== null && !isBeingDragged ? 'pointer-events-none opacity-40' : ''}`}
                                         >
-                                            {/* Handle de Arrastre Mejorado */}
+                                            {/* Handle de Arrastre */}
                                             <div 
                                                 className="p-1 text-gray-400 cursor-grab active:cursor-grabbing touch-none select-none mt-1"
                                                 onPointerDown={(e) => handleDragStart(e, idx)}
@@ -456,6 +476,12 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
                 .touch-none { touch-action: none; }
                 .select-none { -webkit-user-select: none; user-select: none; }
                 .overscroll-none { overscroll-behavior: contain; }
+                body.grabbing-active { 
+                    overflow: hidden !important; 
+                    touch-action: none !important; 
+                    user-select: none !important; 
+                    -webkit-user-select: none !important;
+                }
             `}</style>
         </div>,
         document.body
