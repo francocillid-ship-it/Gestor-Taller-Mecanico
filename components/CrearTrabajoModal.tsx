@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { supabase } from '../supabaseClient';
 import type { Cliente, Parte, Trabajo } from '../types';
 import { JobStatus } from '../types';
-import { XMarkIcon, TrashIcon, WrenchScrewdriverIcon, TagIcon, ArchiveBoxIcon, Bars3Icon, ShoppingBagIcon, BoltIcon, UsersIcon } from '@heroicons/react/24/solid';
+import { XMarkIcon, TrashIcon, WrenchScrewdriverIcon, TagIcon, ArchiveBoxIcon, Bars3Icon, ShoppingBagIcon, BoltIcon, UsersIcon, PlusIcon } from '@heroicons/react/24/solid';
 import { ALL_MAINTENANCE_OPTS } from '../constants';
 
 interface CrearTrabajoModalProps {
@@ -26,6 +26,47 @@ type ParteState = {
     clientPaidDirectly?: boolean;
 };
 
+const AutoExpandingInput: React.FC<{
+    value: string;
+    onChange: (val: string) => void;
+    placeholder: string;
+    isCategory?: boolean;
+}> = ({ value, onChange, placeholder, isCategory }) => {
+    const [isFocused, setIsFocused] = useState(false);
+    const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+    const adjustHeight = () => {
+        const textarea = textareaRef.current;
+        if (textarea) {
+            textarea.style.height = 'auto';
+            textarea.style.height = `${textarea.scrollHeight}px`;
+        }
+    };
+
+    useEffect(() => {
+        if (isFocused) adjustHeight();
+    }, [value, isFocused]);
+
+    return (
+        <textarea
+            ref={textareaRef}
+            rows={1}
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            onFocus={() => setIsFocused(true)}
+            onBlur={() => setIsFocused(false)}
+            placeholder={placeholder}
+            className={`w-full bg-transparent text-sm font-medium focus:outline-none resize-none overflow-hidden transition-all duration-200 block ${
+                isCategory ? 'font-extrabold uppercase text-purple-700 dark:text-purple-400' : 'text-taller-dark dark:text-taller-light'
+            } ${!isFocused ? 'whitespace-nowrap truncate max-h-[1.5rem]' : ''}`}
+            style={{ 
+                minHeight: '1.5rem',
+                lineHeight: '1.5rem'
+            }}
+        />
+    );
+};
+
 const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSuccess, onDataRefresh, clientes, trabajoToEdit, initialClientId }) => {
     const [creationMode, setCreationMode] = useState<'existing' | 'quick'>(trabajoToEdit?.isQuickBudget ? 'quick' : 'existing');
     const [quickNombre, setQuickNombre] = useState('');
@@ -42,12 +83,18 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
     const [pagos, setPagos] = useState<Parte[]>([]);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState('');
-    const [draggedItemIndex, setDraggedItemIndex] = useState<number | null>(null);
     const [isVisible, setIsVisible] = useState(false);
     const [exitingItemIds, setExitingItemIds] = useState<Set<string>>(new Set());
     
+    // Drag and Drop Logic States
+    const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+    const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+    const [dragPos, setDragPos] = useState({ x: 0, y: 0 });
+    const [dragItemSize, setDragItemSize] = useState({ width: 0, height: 0 });
+
     const listRef = useRef<HTMLDivElement>(null);
     const scrollContainerRef = useRef<HTMLDivElement>(null);
+    const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
     const prevPositions = useRef<Map<string, number>>(new Map());
     const isEditMode = Boolean(trabajoToEdit);
 
@@ -71,11 +118,11 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
 
     const generateId = () => Math.random().toString(36).substr(2, 9);
 
+    // FLIP Animation for list updates
     useLayoutEffect(() => {
-        if (!listRef.current) return;
+        if (!listRef.current || draggedIndex !== null) return;
         const children = Array.from(listRef.current.children) as HTMLElement[];
-        const movedItems: HTMLElement[] = [];
-
+        
         children.forEach(child => {
             const id = child.dataset.id;
             if (!id) return;
@@ -85,28 +132,15 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
                 const dy = oldTop - newTop;
                 child.style.transform = `translateY(${dy}px)`;
                 child.style.transition = 'none';
-                movedItems.push(child);
+                requestAnimationFrame(() => {
+                    child.style.transform = '';
+                    child.style.transition = 'transform 300ms cubic-bezier(0.2, 0.8, 0.2, 1)';
+                });
             }
         });
 
-        if (movedItems.length > 0) {
-            requestAnimationFrame(() => {
-                requestAnimationFrame(() => {
-                    movedItems.forEach(child => {
-                        child.style.transform = '';
-                        child.style.transition = 'transform 300ms cubic-bezier(0.2, 0.8, 0.2, 1)';
-                    });
-                });
-            });
-        }
-
-        const newPositions = new Map<string, number>();
-        children.forEach(child => {
-            const id = child.dataset.id;
-            if (id) newPositions.set(id, child.offsetTop);
-        });
-        prevPositions.current = newPositions;
-    }, [partes]);
+        prevPositions.current = new Map(children.map(c => [c.dataset.id!, c.offsetTop]));
+    }, [partes, draggedIndex]);
 
     useEffect(() => {
         if (trabajoToEdit) {
@@ -167,37 +201,50 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
         }, 300);
     };
 
-    const handlePointerDown = (index: number, e: React.PointerEvent) => {
-        setDraggedItemIndex(index);
-        if (scrollContainerRef.current) {
-            scrollContainerRef.current.style.overflowY = 'hidden';
-            scrollContainerRef.current.style.touchAction = 'none';
-        }
-        (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    // --- NEW DRAG AND DROP LOGIC ---
+
+    const handleDragStart = (e: React.PointerEvent, index: number) => {
+        const target = e.currentTarget as HTMLElement;
+        const item = target.closest('[data-id]') as HTMLElement;
+        if (!item) return;
+
+        const rect = item.getBoundingClientRect();
+        setDragItemSize({ width: rect.width, height: rect.height });
+        setDragOffset({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+        setDragPos({ x: rect.left, y: rect.top });
+        setDraggedIndex(index);
+        
+        target.setPointerCapture(e.pointerId);
     };
 
-    const handlePointerMove = (e: React.PointerEvent) => {
-        if (draggedItemIndex === null) return;
-        const element = document.elementFromPoint(e.clientX, e.clientY);
-        const item = element?.closest('[data-id]') as HTMLElement;
-        if (item && item.dataset.id) {
-            const idx = partes.findIndex(p => p._id === item.dataset.id);
-            if (idx !== -1 && idx !== draggedItemIndex) {
+    const handleDragMove = (e: React.PointerEvent) => {
+        if (draggedIndex === null) return;
+
+        const newX = e.clientX - dragOffset.x;
+        const newY = e.clientY - dragOffset.y;
+        setDragPos({ x: newX, y: newY });
+
+        // Calculate potential swap
+        const centerY = newY + dragItemSize.height / 2;
+        
+        itemRefs.current.forEach((ref, idx) => {
+            if (!ref || idx === draggedIndex) return;
+            const targetRect = ref.getBoundingClientRect();
+            const targetCenterY = targetRect.top + targetRect.height / 2;
+
+            if (Math.abs(centerY - targetCenterY) < 30) {
                 const newPartes = [...partes];
-                const [removed] = newPartes.splice(draggedItemIndex, 1);
-                newPartes.splice(idx, 0, removed);
+                const temp = newPartes[draggedIndex];
+                newPartes[draggedIndex] = newPartes[idx];
+                newPartes[idx] = temp;
                 setPartes(newPartes);
-                setDraggedItemIndex(idx);
+                setDraggedIndex(idx);
             }
-        }
+        });
     };
 
-    const handlePointerUp = (e: React.PointerEvent) => {
-        setDraggedItemIndex(null);
-        if (scrollContainerRef.current) {
-            scrollContainerRef.current.style.overflowY = 'auto';
-            scrollContainerRef.current.style.touchAction = 'auto';
-        }
+    const handleDragEnd = (e: React.PointerEvent) => {
+        setDraggedIndex(null);
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -265,7 +312,7 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
                 )}
 
                 <div ref={scrollContainerRef} className="flex-1 overflow-y-auto p-4 space-y-4 overscroll-none touch-auto">
-                    <form onSubmit={handleSubmit} className="space-y-4 pb-32">
+                    <form onSubmit={handleSubmit} className="space-y-4 pb-12">
                         {creationMode === 'existing' ? (
                             <div className="grid grid-cols-2 gap-3">
                                 <select value={selectedClienteId} onChange={e => setSelectedClienteId(e.target.value)} className="p-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 text-sm" required>
@@ -292,46 +339,62 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
                         )}
                         <textarea value={descripcion} onChange={e => setDescripcion(e.target.value)} placeholder="Descripción del trabajo..." className="w-full p-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 text-sm" rows={2}/>
                         
-                        <div className="space-y-2 select-none" ref={listRef}>
+                        <div className="space-y-3 select-none relative" ref={listRef}>
                             {partes.map((p, idx) => (
                                 <div 
                                     key={p._id} 
                                     data-id={p._id}
-                                    className={`flex items-center gap-2 p-2 bg-white dark:bg-gray-700 border dark:border-gray-600 rounded-lg shadow-sm transition-all duration-300 relative ${exitingItemIds.has(p._id) ? 'opacity-0 scale-95' : 'opacity-100'} ${draggedItemIndex === idx ? 'opacity-50 scale-105 ring-2 ring-taller-primary z-50 shadow-xl' : ''}`}
+                                    ref={el => itemRefs.current[idx] = el}
+                                    style={draggedIndex === idx ? {
+                                        position: 'fixed',
+                                        left: dragPos.x,
+                                        top: dragPos.y,
+                                        width: dragItemSize.width,
+                                        height: dragItemSize.height,
+                                        zIndex: 9999,
+                                        pointerEvents: 'none',
+                                        boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)',
+                                        opacity: 0.9,
+                                        transform: 'scale(1.02)',
+                                        transition: 'transform 0.1s ease',
+                                    } : {
+                                        transition: 'transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)'
+                                    }}
+                                    className={`flex items-start gap-2 p-2 bg-white dark:bg-gray-700 border dark:border-gray-600 rounded-lg shadow-sm ${exitingItemIds.has(p._id) ? 'opacity-0 scale-95 transition-all duration-300' : 'opacity-100'}`}
                                 >
                                     <div 
-                                        className="p-1 text-gray-400 cursor-grab active:cursor-grabbing touch-none select-none"
-                                        onPointerDown={(e) => handlePointerDown(idx, e)}
-                                        onPointerMove={handlePointerMove}
-                                        onPointerUp={handlePointerUp}
-                                        onPointerCancel={handlePointerUp}
+                                        className="p-1 text-gray-400 cursor-grab active:cursor-grabbing touch-none select-none mt-1"
+                                        onPointerDown={(e) => handleDragStart(e, idx)}
+                                        onPointerMove={handleDragMove}
+                                        onPointerUp={handleDragEnd}
+                                        onPointerCancel={handleDragEnd}
                                     >
                                         <Bars3Icon className="h-6 w-6"/>
                                     </div>
                                     <div className="flex-1 flex flex-col min-w-0">
-                                        <div className="flex items-center gap-2">
-                                            {/* Indicadores de tipo con iconos y colores vibrantes */}
-                                            {p.isCategory ? (
-                                                <TagIcon className="h-4 w-4 text-purple-500 shrink-0" />
-                                            ) : p.isService ? (
-                                                <WrenchScrewdriverIcon className="h-4 w-4 text-orange-500 shrink-0" />
-                                            ) : (
-                                                <ArchiveBoxIcon className="h-4 w-4 text-blue-500 shrink-0" />
-                                            )}
+                                        <div className="flex items-start gap-2 w-full">
+                                            <div className="mt-1 flex-shrink-0">
+                                                {p.isCategory ? (
+                                                    <TagIcon className="h-4 w-4 text-purple-500" />
+                                                ) : p.isService ? (
+                                                    <WrenchScrewdriverIcon className="h-4 w-4 text-orange-500" />
+                                                ) : (
+                                                    <ArchiveBoxIcon className="h-4 w-4 text-blue-500" />
+                                                )}
+                                            </div>
                                             
-                                            <input 
-                                                type="text" 
-                                                value={p.nombre} 
-                                                onChange={e => handleParteChange(idx, 'nombre', e.target.value)} 
-                                                className={`bg-transparent text-sm font-medium focus:outline-none truncate ${p.isCategory ? 'font-extrabold uppercase text-purple-700 dark:text-purple-400' : ''}`} 
+                                            <AutoExpandingInput 
+                                                value={p.nombre}
+                                                onChange={val => handleParteChange(idx, 'nombre', val)}
                                                 placeholder={p.isCategory ? 'CATEGORÍA' : 'Nombre ítem...'}
+                                                isCategory={p.isCategory}
                                             />
                                         </div>
                                         {!p.isCategory && (
-                                            <div className="flex flex-col gap-2 mt-1">
+                                            <div className="flex flex-col gap-2 mt-2">
                                                 <div className="flex gap-2 ml-6">
-                                                    <input type="text" value={p.precioUnitario} onChange={e => handleParteChange(idx, 'precioUnitario', formatCurrency(e.target.value))} className="w-24 text-xs border-b dark:border-gray-500 bg-transparent" placeholder="$ 0,00"/>
-                                                    <input type="number" value={p.cantidad} onChange={e => handleParteChange(idx, 'cantidad', e.target.value)} className="w-12 text-xs border-b dark:border-gray-500 bg-transparent" placeholder="1"/>
+                                                    <input type="text" value={p.precioUnitario} onChange={e => handleParteChange(idx, 'precioUnitario', formatCurrency(e.target.value))} className="w-24 text-xs border-b dark:border-gray-500 bg-transparent py-1" placeholder="$ 0,00"/>
+                                                    <input type="number" value={p.cantidad} onChange={e => handleParteChange(idx, 'cantidad', e.target.value)} className="w-12 text-xs border-b dark:border-gray-500 bg-transparent py-1" placeholder="1"/>
                                                 </div>
                                                 <div className="flex items-center gap-2 ml-6">
                                                     <select 
@@ -356,21 +419,52 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
                                             </div>
                                         )}
                                     </div>
-                                    <button type="button" onClick={() => removeParte(idx)} className="p-1 text-red-500 flex-shrink-0"><TrashIcon className="h-5 w-5"/></button>
+                                    <button type="button" onClick={() => removeParte(idx)} className="p-1 text-red-500 flex-shrink-0 mt-1"><TrashIcon className="h-5 w-5"/></button>
                                 </div>
                             ))}
+                            
+                            {/* Dummy spacer to maintain list height during dragging */}
+                            {draggedIndex !== null && (
+                                <div style={{ height: dragItemSize.height }} className="opacity-0" />
+                            )}
+
+                            {/* Action Buttons */}
+                            <div className="grid grid-cols-3 gap-2 pt-2 animate-fade-in">
+                                <button 
+                                    type="button" 
+                                    onClick={() => setPartes([...partes, { _id: generateId(), nombre: '', cantidad: 1, precioUnitario: '', isService: false }])} 
+                                    className="flex items-center justify-center gap-2 py-2 rounded-lg transition-all active:scale-95 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border border-blue-100 dark:border-blue-800"
+                                >
+                                    <ArchiveBoxIcon className="h-4 w-4 shrink-0"/>
+                                    <span className="text-[10px] font-bold uppercase tracking-tight">Repuesto</span>
+                                </button>
+                                
+                                <button 
+                                    type="button" 
+                                    onClick={() => setPartes([...partes, { _id: generateId(), nombre: '', cantidad: 1, precioUnitario: '', isService: true }])} 
+                                    className="flex items-center justify-center gap-2 py-2 rounded-lg transition-all active:scale-95 bg-orange-50 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 border border-orange-100 dark:border-orange-800"
+                                >
+                                    <WrenchScrewdriverIcon className="h-4 w-4 shrink-0"/>
+                                    <span className="text-[10px] font-bold uppercase tracking-tight">Servicio</span>
+                                </button>
+                                
+                                <button 
+                                    type="button" 
+                                    onClick={() => setPartes([...partes, { _id: generateId(), nombre: '', cantidad: 0, precioUnitario: '', isCategory: true }])} 
+                                    className="flex items-center justify-center gap-2 py-2 rounded-lg transition-all active:scale-95 bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 border border-purple-100 dark:border-purple-800"
+                                >
+                                    <TagIcon className="h-4 w-4 shrink-0"/>
+                                    <span className="text-[10px] font-bold uppercase tracking-tight">Categoría</span>
+                                </button>
+                            </div>
                         </div>
-                        <div className="flex gap-2 sticky bottom-0 bg-white dark:bg-gray-800 py-2 border-t dark:border-gray-700">
-                            <button type="button" onClick={() => setPartes([...partes, { _id: generateId(), nombre: '', cantidad: 1, precioUnitario: '', isService: false }])} className="flex-1 py-2 text-[10px] font-bold border rounded-lg flex items-center justify-center gap-1 uppercase hover:bg-blue-50 transition-colors"><ArchiveBoxIcon className="h-3 w-3 text-blue-500"/> Repuesto</button>
-                            <button type="button" onClick={() => setPartes([...partes, { _id: generateId(), nombre: '', cantidad: 1, precioUnitario: '', isService: true }])} className="flex-1 py-2 text-[10px] font-bold border rounded-lg flex items-center justify-center gap-1 uppercase hover:bg-orange-50 transition-colors"><WrenchScrewdriverIcon className="h-3 w-3 text-orange-500"/> Servicio</button>
-                            <button type="button" onClick={() => setPartes([...partes, { _id: generateId(), nombre: '', cantidad: 0, precioUnitario: '', isCategory: true }])} className="flex-1 py-2 text-[10px] font-bold border rounded-lg flex items-center justify-center gap-1 uppercase hover:bg-purple-50 transition-colors"><TagIcon className="h-3 w-3 text-purple-500"/> Cat</button>
-                        </div>
+
                         {error && <p className="text-red-500 text-xs font-bold">{error}</p>}
                     </form>
                 </div>
                 <div className="p-4 border-t dark:border-gray-700 bg-white dark:bg-gray-800 flex gap-2 flex-shrink-0">
-                    <button onClick={handleClose} className="flex-1 py-3 border rounded-xl font-bold text-gray-500">Cancelar</button>
-                    <button onClick={handleSubmit} disabled={isSubmitting} className="flex-[2] py-3 bg-taller-primary text-white rounded-xl font-bold shadow-lg disabled:opacity-50">{isSubmitting ? '...' : 'Guardar'}</button>
+                    <button onClick={handleClose} className="flex-1 py-3 border rounded-xl font-bold text-gray-500 hover:bg-gray-50 transition-colors">Cancelar</button>
+                    <button onClick={handleSubmit} disabled={isSubmitting} className="flex-[2] py-3 bg-taller-primary text-white rounded-xl font-bold shadow-lg disabled:opacity-50 transition-all active:scale-[0.98]">{isSubmitting ? 'Guardando...' : 'Guardar Trabajo'}</button>
                 </div>
             </div>
             <style>{`
