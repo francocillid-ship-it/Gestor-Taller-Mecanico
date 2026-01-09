@@ -1,9 +1,10 @@
-import React, { useState, useEffect, useMemo, useRef, useLayoutEffect } from 'react';
+
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { supabase } from '../supabaseClient';
 import type { Cliente, Parte, Trabajo } from '../types';
 import { JobStatus } from '../types';
-import { XMarkIcon, TrashIcon, WrenchScrewdriverIcon, TagIcon, ArchiveBoxIcon, Bars3Icon, ShoppingBagIcon, BoltIcon, UsersIcon, PlusIcon } from '@heroicons/react/24/solid';
+import { XMarkIcon, TrashIcon, WrenchScrewdriverIcon, TagIcon, ArchiveBoxIcon, Bars3Icon, ShoppingBagIcon, BoltIcon, UsersIcon } from '@heroicons/react/24/solid';
 import { ALL_MAINTENANCE_OPTS } from '../constants';
 
 interface CrearTrabajoModalProps {
@@ -86,16 +87,13 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
     const [isVisible, setIsVisible] = useState(false);
     const [exitingItemIds, setExitingItemIds] = useState<Set<string>>(new Set());
     
-    // Drag and Drop Logic States
+    // Drag and Drop State
     const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
-    const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
     const [dragPos, setDragPos] = useState({ x: 0, y: 0 });
+    const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
     const [dragItemSize, setDragItemSize] = useState({ width: 0, height: 0 });
 
-    const listRef = useRef<HTMLDivElement>(null);
-    const scrollContainerRef = useRef<HTMLDivElement>(null);
     const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
-    const prevPositions = useRef<Map<string, number>>(new Map());
     const isEditMode = Boolean(trabajoToEdit);
 
     const selectedClientVehiculos = useMemo(() => {
@@ -117,30 +115,6 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
     };
 
     const generateId = () => Math.random().toString(36).substr(2, 9);
-
-    // FLIP Animation for list updates
-    useLayoutEffect(() => {
-        if (!listRef.current || draggedIndex !== null) return;
-        const children = Array.from(listRef.current.children) as HTMLElement[];
-        
-        children.forEach(child => {
-            const id = child.dataset.id;
-            if (!id) return;
-            const oldTop = prevPositions.current.get(id);
-            const newTop = child.offsetTop;
-            if (oldTop !== undefined && oldTop !== newTop) {
-                const dy = oldTop - newTop;
-                child.style.transform = `translateY(${dy}px)`;
-                child.style.transition = 'none';
-                requestAnimationFrame(() => {
-                    child.style.transform = '';
-                    child.style.transition = 'transform 300ms cubic-bezier(0.2, 0.8, 0.2, 1)';
-                });
-            }
-        });
-
-        prevPositions.current = new Map(children.map(c => [c.dataset.id!, c.offsetTop]));
-    }, [partes, draggedIndex]);
 
     useEffect(() => {
         if (trabajoToEdit) {
@@ -179,12 +153,6 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
     const handleParteChange = (index: number, field: keyof ParteState, value: any) => {
         const newPartes = [...partes];
         (newPartes[index] as any)[field] = value;
-        
-        if (field === 'nombre' && value && !newPartes[index].maintenanceType && !newPartes[index].isCategory) {
-            const val = String(value).toLowerCase();
-            const found = ALL_MAINTENANCE_OPTS.find(opt => opt.keywords.some(k => val.includes(k)));
-            if (found) newPartes[index].maintenanceType = found.key;
-        }
         setPartes(newPartes);
     };
 
@@ -201,20 +169,26 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
         }, 300);
     };
 
-    // --- NEW DRAG AND DROP LOGIC ---
+    // --- DRAG AND DROP LÓGICA CORREGIDA ---
 
     const handleDragStart = (e: React.PointerEvent, index: number) => {
-        const target = e.currentTarget as HTMLElement;
-        const item = target.closest('[data-id]') as HTMLElement;
+        const item = itemRefs.current[index];
         if (!item) return;
 
         const rect = item.getBoundingClientRect();
+        
+        // Calculamos el offset exacto del puntero dentro del elemento para evitar saltos
+        setDragOffset({
+            x: e.clientX - rect.left,
+            y: e.clientY - rect.top
+        });
+        
         setDragItemSize({ width: rect.width, height: rect.height });
-        setDragOffset({ x: e.clientX - rect.left, y: e.clientY - rect.top });
         setDragPos({ x: rect.left, y: rect.top });
         setDraggedIndex(index);
         
-        target.setPointerCapture(e.pointerId);
+        // Imprescindible para capturar el movimiento fuera del handle en táctil y mouse
+        (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
     };
 
     const handleDragMove = (e: React.PointerEvent) => {
@@ -224,7 +198,7 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
         const newY = e.clientY - dragOffset.y;
         setDragPos({ x: newX, y: newY });
 
-        // Calculate potential swap
+        // Detección de colisión para reordenar
         const centerY = newY + dragItemSize.height / 2;
         
         itemRefs.current.forEach((ref, idx) => {
@@ -232,7 +206,8 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
             const targetRect = ref.getBoundingClientRect();
             const targetCenterY = targetRect.top + targetRect.height / 2;
 
-            if (Math.abs(centerY - targetCenterY) < 30) {
+            // Si el centro del item arrastrado cruza el centro de otro item, intercambiamos
+            if (Math.abs(centerY - targetCenterY) < targetRect.height / 2) {
                 const newPartes = [...partes];
                 const temp = newPartes[draggedIndex];
                 newPartes[draggedIndex] = newPartes[idx];
@@ -243,7 +218,7 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
         });
     };
 
-    const handleDragEnd = (e: React.PointerEvent) => {
+    const handleDragEnd = () => {
         setDraggedIndex(null);
     };
 
@@ -311,7 +286,7 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
                     </div>
                 )}
 
-                <div ref={scrollContainerRef} className="flex-1 overflow-y-auto p-4 space-y-4 overscroll-none touch-auto">
+                <div className="flex-1 overflow-y-auto p-4 space-y-4 overscroll-none touch-auto">
                     <form onSubmit={handleSubmit} className="space-y-4 pb-12">
                         {creationMode === 'existing' ? (
                             <div className="grid grid-cols-2 gap-3">
@@ -339,97 +314,105 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
                         )}
                         <textarea value={descripcion} onChange={e => setDescripcion(e.target.value)} placeholder="Descripción del trabajo..." className="w-full p-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 text-sm" rows={2}/>
                         
-                        <div className="space-y-3 select-none relative" ref={listRef}>
-                            {partes.map((p, idx) => (
-                                <div 
-                                    key={p._id} 
-                                    data-id={p._id}
-                                    ref={el => itemRefs.current[idx] = el}
-                                    style={draggedIndex === idx ? {
-                                        position: 'fixed',
-                                        left: dragPos.x,
-                                        top: dragPos.y,
-                                        width: dragItemSize.width,
-                                        height: dragItemSize.height,
-                                        zIndex: 9999,
-                                        pointerEvents: 'none',
-                                        boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)',
-                                        opacity: 0.9,
-                                        transform: 'scale(1.02)',
-                                        transition: 'transform 0.1s ease',
-                                    } : {
-                                        transition: 'transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)'
-                                    }}
-                                    className={`flex items-start gap-2 p-2 bg-white dark:bg-gray-700 border dark:border-gray-600 rounded-lg shadow-sm ${exitingItemIds.has(p._id) ? 'opacity-0 scale-95 transition-all duration-300' : 'opacity-100'}`}
-                                >
-                                    <div 
-                                        className="p-1 text-gray-400 cursor-grab active:cursor-grabbing touch-none select-none mt-1"
-                                        onPointerDown={(e) => handleDragStart(e, idx)}
-                                        onPointerMove={handleDragMove}
-                                        onPointerUp={handleDragEnd}
-                                        onPointerCancel={handleDragEnd}
-                                    >
-                                        <Bars3Icon className="h-6 w-6"/>
-                                    </div>
-                                    <div className="flex-1 flex flex-col min-w-0">
-                                        <div className="flex items-start gap-2 w-full">
-                                            <div className="mt-1 flex-shrink-0">
-                                                {p.isCategory ? (
-                                                    <TagIcon className="h-4 w-4 text-purple-500" />
-                                                ) : p.isService ? (
-                                                    <WrenchScrewdriverIcon className="h-4 w-4 text-orange-500" />
-                                                ) : (
-                                                    <ArchiveBoxIcon className="h-4 w-4 text-blue-500" />
+                        <div className="space-y-3 relative">
+                            {partes.map((p, idx) => {
+                                const isBeingDragged = draggedIndex === idx;
+                                
+                                return (
+                                    <React.Fragment key={p._id}>
+                                        {/* Placeholder dinámico que ocupa el espacio en la lista mientras arrastramos */}
+                                        {isBeingDragged && (
+                                            <div 
+                                                style={{ height: dragItemSize.height }} 
+                                                className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50/50 dark:bg-gray-800/50"
+                                            />
+                                        )}
+
+                                        <div 
+                                            ref={el => itemRefs.current[idx] = el}
+                                            style={isBeingDragged ? {
+                                                position: 'fixed',
+                                                left: dragPos.x,
+                                                top: dragPos.y,
+                                                width: dragItemSize.width,
+                                                height: dragItemSize.height,
+                                                zIndex: 9999,
+                                                pointerEvents: 'none',
+                                                boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)',
+                                                opacity: 0.95,
+                                                transform: 'scale(1.02)'
+                                            } : {
+                                                position: 'relative'
+                                            }}
+                                            className={`flex items-start gap-2 p-2 bg-white dark:bg-gray-700 border dark:border-gray-600 rounded-lg shadow-sm transition-all duration-200 ${exitingItemIds.has(p._id) ? 'opacity-0 scale-95' : 'opacity-100'}`}
+                                        >
+                                            {/* Handle de Arrastre Mejorado */}
+                                            <div 
+                                                className="p-1 text-gray-400 cursor-grab active:cursor-grabbing touch-none select-none mt-1"
+                                                onPointerDown={(e) => handleDragStart(e, idx)}
+                                                onPointerMove={handleDragMove}
+                                                onPointerUp={handleDragEnd}
+                                                onPointerCancel={handleDragEnd}
+                                            >
+                                                <Bars3Icon className="h-6 w-6"/>
+                                            </div>
+
+                                            <div className="flex-1 flex flex-col min-w-0">
+                                                <div className="flex items-start gap-2 w-full">
+                                                    <div className="mt-1 flex-shrink-0">
+                                                        {p.isCategory ? (
+                                                            <TagIcon className="h-4 w-4 text-purple-500" />
+                                                        ) : p.isService ? (
+                                                            <WrenchScrewdriverIcon className="h-4 w-4 text-orange-500" />
+                                                        ) : (
+                                                            <ArchiveBoxIcon className="h-4 w-4 text-blue-500" />
+                                                        )}
+                                                    </div>
+                                                    
+                                                    <AutoExpandingInput 
+                                                        value={p.nombre}
+                                                        onChange={val => handleParteChange(idx, 'nombre', val)}
+                                                        placeholder={p.isCategory ? 'CATEGORÍA' : 'Nombre ítem...'}
+                                                        isCategory={p.isCategory}
+                                                    />
+                                                </div>
+                                                {!p.isCategory && (
+                                                    <div className="flex flex-col gap-2 mt-2">
+                                                        <div className="flex gap-2 ml-6">
+                                                            <input type="text" value={p.precioUnitario} onChange={e => handleParteChange(idx, 'precioUnitario', formatCurrency(e.target.value))} className="w-24 text-xs border-b dark:border-gray-500 bg-transparent py-1" placeholder="$ 0,00"/>
+                                                            <input type="number" value={p.cantidad} onChange={e => handleParteChange(idx, 'cantidad', e.target.value)} className="w-12 text-xs border-b dark:border-gray-500 bg-transparent py-1" placeholder="1"/>
+                                                        </div>
+                                                        <div className="flex items-center gap-2 ml-6">
+                                                            <select 
+                                                                value={p.maintenanceType || ''} 
+                                                                onChange={e => handleParteChange(idx, 'maintenanceType', e.target.value)}
+                                                                className="flex-1 text-[10px] bg-gray-50 dark:bg-gray-600 border dark:border-gray-500 rounded px-1 py-0.5 focus:outline-none"
+                                                            >
+                                                                <option value="">Sin Etiqueta</option>
+                                                                {ALL_MAINTENANCE_OPTS.map(opt => (
+                                                                    <option key={opt.key} value={opt.key}>{opt.label}</option>
+                                                                ))}
+                                                            </select>
+                                                            <button 
+                                                                type="button" 
+                                                                onClick={() => handleParteChange(idx, 'clientPaidDirectly', !p.clientPaidDirectly)} 
+                                                                className={`p-1 rounded transition-colors ${p.clientPaidDirectly ? 'bg-purple-100 text-purple-600 ring-1 ring-purple-300' : 'bg-gray-100 text-gray-400 dark:bg-gray-600'}`}
+                                                                title="Pagado por el cliente"
+                                                            >
+                                                                <ShoppingBagIcon className="h-4 w-4" />
+                                                            </button>
+                                                        </div>
+                                                    </div>
                                                 )}
                                             </div>
-                                            
-                                            <AutoExpandingInput 
-                                                value={p.nombre}
-                                                onChange={val => handleParteChange(idx, 'nombre', val)}
-                                                placeholder={p.isCategory ? 'CATEGORÍA' : 'Nombre ítem...'}
-                                                isCategory={p.isCategory}
-                                            />
+                                            <button type="button" onClick={() => removeParte(idx)} className="p-1 text-red-500 flex-shrink-0 mt-1"><TrashIcon className="h-5 w-5"/></button>
                                         </div>
-                                        {!p.isCategory && (
-                                            <div className="flex flex-col gap-2 mt-2">
-                                                <div className="flex gap-2 ml-6">
-                                                    <input type="text" value={p.precioUnitario} onChange={e => handleParteChange(idx, 'precioUnitario', formatCurrency(e.target.value))} className="w-24 text-xs border-b dark:border-gray-500 bg-transparent py-1" placeholder="$ 0,00"/>
-                                                    <input type="number" value={p.cantidad} onChange={e => handleParteChange(idx, 'cantidad', e.target.value)} className="w-12 text-xs border-b dark:border-gray-500 bg-transparent py-1" placeholder="1"/>
-                                                </div>
-                                                <div className="flex items-center gap-2 ml-6">
-                                                    <select 
-                                                        value={p.maintenanceType || ''} 
-                                                        onChange={e => handleParteChange(idx, 'maintenanceType', e.target.value)}
-                                                        className="flex-1 text-[10px] bg-gray-50 dark:bg-gray-600 border dark:border-gray-500 rounded px-1 py-0.5 focus:outline-none"
-                                                    >
-                                                        <option value="">Sin Etiqueta</option>
-                                                        {ALL_MAINTENANCE_OPTS.map(opt => (
-                                                            <option key={opt.key} value={opt.key}>{opt.label}</option>
-                                                        ))}
-                                                    </select>
-                                                    <button 
-                                                        type="button" 
-                                                        onClick={() => handleParteChange(idx, 'clientPaidDirectly', !p.clientPaidDirectly)} 
-                                                        className={`p-1 rounded transition-colors ${p.clientPaidDirectly ? 'bg-purple-100 text-purple-600 ring-1 ring-purple-300' : 'bg-gray-100 text-gray-400 dark:bg-gray-600'}`}
-                                                        title="Pagado por el cliente"
-                                                    >
-                                                        <ShoppingBagIcon className="h-4 w-4" />
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        )}
-                                    </div>
-                                    <button type="button" onClick={() => removeParte(idx)} className="p-1 text-red-500 flex-shrink-0 mt-1"><TrashIcon className="h-5 w-5"/></button>
-                                </div>
-                            ))}
+                                    </React.Fragment>
+                                );
+                            })}
                             
-                            {/* Dummy spacer to maintain list height during dragging */}
-                            {draggedIndex !== null && (
-                                <div style={{ height: dragItemSize.height }} className="opacity-0" />
-                            )}
-
                             {/* Action Buttons */}
-                            <div className="grid grid-cols-3 gap-2 pt-2 animate-fade-in">
+                            <div className="grid grid-cols-3 gap-2 pt-2">
                                 <button 
                                     type="button" 
                                     onClick={() => setPartes([...partes, { _id: generateId(), nombre: '', cantidad: 1, precioUnitario: '', isService: false }])} 
@@ -471,7 +454,7 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
                 .cursor-grab { cursor: grab; }
                 .cursor-grabbing { cursor: grabbing; }
                 .touch-none { touch-action: none; }
-                .select-none { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+                .select-none { -webkit-user-select: none; user-select: none; }
                 .overscroll-none { overscroll-behavior: contain; }
             `}</style>
         </div>,
