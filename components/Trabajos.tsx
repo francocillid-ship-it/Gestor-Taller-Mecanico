@@ -1,3 +1,4 @@
+
 import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import type { Trabajo, Cliente, TallerInfo } from '../types';
@@ -635,12 +636,12 @@ const Trabajos: React.FC<TrabajosProps> = ({
                             />
                         </div>
 
-                        {/* Desktop View: Kanban Board */}
-                        <div className="hidden lg:flex flex-row gap-4 h-full overflow-x-auto pb-2 items-stretch">
+                        {/* Desktop View: Kanban Board - ADAPTED FOR ULTRAWIDE */}
+                        <div className="hidden lg:flex flex-row gap-4 h-full overflow-x-auto pb-2 items-stretch w-full">
                             {statusOrder.map(status => {
                                 const jobs = trabajosByStatus[status] || [];
                                 return (
-                                    <div key={status} id={`status-column-${status}`} className="flex-1 min-w-[300px] h-full flex flex-col">
+                                    <div key={status} id={`status-column-${status}`} className="flex-1 min-w-[280px] h-full flex flex-col transition-all duration-300">
                                         <StatusColumn
                                             status={status}
                                             trabajos={jobs}

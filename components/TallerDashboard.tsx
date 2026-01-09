@@ -387,7 +387,7 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
                             </div>
 
                             <div ref={trabajosRef} className="w-full h-full flex-shrink-0 overflow-hidden p-0 md:p-6 bg-taller-light dark:bg-taller-dark">
-                                <div className="max-w-7xl mx-auto h-full">
+                                <div className="w-full h-full">
                                     <Trabajos 
                                         trabajos={trabajos} 
                                         clientes={clientes} 
