@@ -57,8 +57,8 @@ const AutoExpandingInput: React.FC<{
             onFocus={() => setIsFocused(true)}
             onBlur={() => setIsFocused(false)}
             placeholder={placeholder}
-            className={`w-full bg-transparent text-sm font-medium focus:outline-none resize-none overflow-hidden transition-all duration-200 block ${
-                isCategory ? 'font-extrabold uppercase text-purple-700 dark:text-purple-400' : 'text-taller-dark dark:text-taller-light'
+            className={`w-full bg-transparent text-sm font-medium focus:outline-none resize-none overflow-hidden transition-all duration-200 block text-center ${
+                isCategory ? 'font-extrabold uppercase text-taller-dark dark:text-taller-light placeholder-gray-400' : 'text-taller-dark dark:text-taller-light'
             } ${!isFocused ? 'whitespace-nowrap truncate max-h-[1.5rem]' : ''}`}
             style={{ 
                 minHeight: '1.5rem',
@@ -84,14 +84,14 @@ const DraggedItemClone = React.forwardRef<HTMLDivElement, {
             top: 0,
             left: 0
         }}
-        className="flex items-start gap-2 p-2 bg-white dark:bg-gray-700 border dark:border-gray-600 rounded-lg shadow-2xl opacity-90 ring-2 ring-taller-primary cursor-grabbing"
+        className="flex items-center gap-2 p-2 bg-white dark:bg-gray-700 border dark:border-gray-600 rounded-lg shadow-2xl opacity-90 ring-2 ring-taller-primary cursor-grabbing"
     >
-        <div className="p-1 text-gray-400 mt-1">
+        <div className="p-1 mt-0 text-gray-400">
             <Bars3Icon className="h-6 w-6"/>
         </div>
         <div className="flex-1 flex flex-col min-w-0">
-            <div className="flex items-start gap-2 w-full">
-                <div className="mt-1 flex-shrink-0">
+            <div className={`flex items-center gap-2 w-full justify-center`}>
+                <div className="flex-shrink-0">
                     {parte.isCategory ? (
                         <TagIcon className="h-4 w-4 text-purple-500" />
                     ) : parte.isService ? (
@@ -100,7 +100,7 @@ const DraggedItemClone = React.forwardRef<HTMLDivElement, {
                         <ArchiveBoxIcon className="h-4 w-4 text-blue-500" />
                     )}
                 </div>
-                <div className={`w-full text-sm font-medium ${parte.isCategory ? 'font-extrabold uppercase text-purple-700' : 'text-taller-dark'}`}>
+                <div className={`text-sm font-medium truncate ${parte.isCategory ? 'font-extrabold uppercase text-taller-dark dark:text-taller-light' : 'text-taller-dark'}`}>
                     {parte.nombre || (parte.isCategory ? 'CATEGORÍA' : 'Nombre ítem...')}
                 </div>
             </div>
@@ -459,7 +459,7 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
                                     <React.Fragment key={p._id}>
                                         <div 
                                             ref={el => itemRefs.current[idx] = el}
-                                            className={`flex items-start gap-2 p-2 bg-white dark:bg-gray-700 border dark:border-gray-600 rounded-lg shadow-sm transition-opacity duration-200 ${
+                                            className={`flex items-center gap-2 p-2 rounded-lg shadow-sm bg-white dark:bg-gray-700 border dark:border-gray-600 transition-opacity duration-200 ${
                                                 exitingItemIds.has(p._id) ? 'opacity-0 scale-95' : ''
                                             } ${
                                                 isBeingDragged 
@@ -469,7 +469,7 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
                                         >
                                             {/* Handle de Arrastre */}
                                             <div 
-                                                className="p-1 text-gray-400 cursor-grab active:cursor-grabbing touch-none select-none mt-1"
+                                                className="p-1 cursor-grab active:cursor-grabbing touch-none select-none text-gray-400"
                                                 onPointerDown={(e) => handleDragStart(e, idx)}
                                             >
                                                 <Bars3Icon className="h-6 w-6"/>
@@ -477,8 +477,8 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
 
                                             {/* Contenido Normal */}
                                             <div className="flex-1 flex flex-col min-w-0">
-                                                <div className="flex items-start gap-2 w-full">
-                                                    <div className="mt-1 flex-shrink-0">
+                                                <div className={`flex items-center gap-2 w-full justify-center`}>
+                                                    <div className="flex-shrink-0">
                                                         {p.isCategory ? (
                                                             <TagIcon className="h-4 w-4 text-purple-500" />
                                                         ) : p.isService ? (
@@ -524,7 +524,7 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
                                                     </div>
                                                 )}
                                             </div>
-                                            <button type="button" onClick={() => removeParte(idx)} className="p-1 text-red-500 flex-shrink-0 mt-1"><TrashIcon className="h-5 w-5"/></button>
+                                            <button type="button" onClick={() => removeParte(idx)} className="p-1 flex-shrink-0 text-red-500"><TrashIcon className="h-5 w-5"/></button>
                                         </div>
                                     </React.Fragment>
                                 );
