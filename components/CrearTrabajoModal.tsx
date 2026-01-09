@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback, useLayoutEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { supabase } from '../supabaseClient';
 import type { Cliente, Parte, Trabajo } from '../types';
@@ -77,10 +77,12 @@ const DraggedItemClone = React.forwardRef<HTMLDivElement, {
         ref={ref}
         style={{
             ...style, 
-            position: 'fixed', // Fundamental para que no dependa del scroll ni del padre
+            position: 'fixed', 
             zIndex: 9999,
             pointerEvents: 'none',
-            willChange: 'transform, top, left'
+            willChange: 'transform',
+            top: 0,
+            left: 0
         }}
         className="flex items-start gap-2 p-2 bg-white dark:bg-gray-700 border dark:border-gray-600 rounded-lg shadow-2xl opacity-90 ring-2 ring-taller-primary cursor-grabbing"
     >
@@ -126,20 +128,29 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
     const [isVisible, setIsVisible] = useState(false);
     const [exitingItemIds, setExitingItemIds] = useState<Set<string>>(new Set());
     
-    // --- ROBUST DRAG AND DROP STATE ---
+    // --- ROBUST DRAG AND DROP STATE & REFS ---
     const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
     const [dragDimensions, setDragDimensions] = useState({ width: 0, height: 0 });
     
-    // Usamos refs para coordenadas para evitar re-renders innecesarios durante el movimiento
     const cloneRef = useRef<HTMLDivElement>(null);
-    const dragData = useRef<{
-        pointerId: number;
-        offsetX: number; // Distancia del puntero al borde izquierdo del item
-        offsetY: number; // Distancia del puntero al borde superior del item
-        lastUpdate: number;
-    }>({ pointerId: -1, offsetX: 0, offsetY: 0, lastUpdate: 0 });
+    const descriptionRef = useRef<HTMLTextAreaElement>(null);
+    const dragData = useRef({
+        pointerId: -1,
+        offsetX: 0,
+        offsetY: 0,
+        lastX: 0,
+        lastY: 0,
+        lastUpdate: 0
+    });
     
     const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
+    const partesRef = useRef(partes);
+    const draggedIndexRef = useRef<number | null>(null);
+
+    // Mantener partesRef sincronizado para acceso instantáneo en event listeners
+    useEffect(() => {
+        partesRef.current = partes;
+    }, [partes]);
 
     const isEditMode = Boolean(trabajoToEdit);
 
@@ -192,6 +203,14 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
         requestAnimationFrame(() => setIsVisible(true));
     }, [trabajoToEdit, initialClientId]);
 
+    // Auto-resize description textarea
+    useEffect(() => {
+        if (descriptionRef.current) {
+            descriptionRef.current.style.height = 'auto';
+            descriptionRef.current.style.height = `${descriptionRef.current.scrollHeight}px`;
+        }
+    }, [descripcion, isVisible]);
+
     const handleClose = () => {
         setIsVisible(false);
         setTimeout(onClose, 300);
@@ -216,107 +235,121 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
         }, 300);
     };
 
-    // --- DRAG AND DROP HANDLERS ---
+    // --- DRAG AND DROP LOGIC OPTIMIZED ---
+
+    const handleWindowMove = useCallback((e: PointerEvent) => {
+        if (draggedIndexRef.current === null) return;
+        if (e.pointerId !== dragData.current.pointerId) return;
+        e.preventDefault();
+
+        // Actualizar coordenadas actuales
+        dragData.current.lastX = e.clientX;
+        dragData.current.lastY = e.clientY;
+
+        // 1. Mover Clon Visualmente (Direct DOM Update)
+        if (cloneRef.current) {
+            const x = e.clientX - dragData.current.offsetX;
+            const y = e.clientY - dragData.current.offsetY;
+            cloneRef.current.style.transform = `translate3d(${x}px, ${y}px, 0)`;
+        }
+
+        // 2. Lógica de Intercambio (Con Refs para evitar stale closures)
+        const now = Date.now();
+        if (now - dragData.current.lastUpdate < 50) return; // Throttle 50ms
+
+        const currentIdx = draggedIndexRef.current;
+        const currentY = e.clientY;
+        
+        const prevIdx = currentIdx - 1;
+        const nextIdx = currentIdx + 1;
+        let targetIdx = -1;
+
+        // Chequear Arriba
+        if (prevIdx >= 0) {
+            const prevEl = itemRefs.current[prevIdx];
+            if (prevEl) {
+                const rect = prevEl.getBoundingClientRect();
+                const mid = rect.top + (rect.height / 2);
+                if (currentY < mid) targetIdx = prevIdx;
+            }
+        }
+
+        // Chequear Abajo (si no se movió arriba)
+        if (targetIdx === -1 && nextIdx < partesRef.current.length) {
+            const nextEl = itemRefs.current[nextIdx];
+            if (nextEl) {
+                const rect = nextEl.getBoundingClientRect();
+                const mid = rect.top + (rect.height / 2);
+                if (currentY > mid) targetIdx = nextIdx;
+            }
+        }
+
+        if (targetIdx !== -1) {
+            dragData.current.lastUpdate = now;
+            
+            const newPartes = [...partesRef.current];
+            const [item] = newPartes.splice(currentIdx, 1);
+            newPartes.splice(targetIdx, 0, item);
+            
+            // Actualizar Refs inmediatamente para el próximo evento
+            partesRef.current = newPartes;
+            draggedIndexRef.current = targetIdx;
+            
+            // Actualizar estado para renderizar
+            setPartes(newPartes);
+            setDraggedIndex(targetIdx);
+        }
+    }, []);
+
+    const handleWindowUp = useCallback((e: PointerEvent) => {
+        if (draggedIndexRef.current !== null && e.pointerId === dragData.current.pointerId) {
+            draggedIndexRef.current = null;
+            setDraggedIndex(null);
+            document.body.classList.remove('grabbing-active');
+            window.removeEventListener('pointermove', handleWindowMove);
+            window.removeEventListener('pointerup', handleWindowUp);
+            window.removeEventListener('pointercancel', handleWindowUp);
+        }
+    }, [handleWindowMove]);
 
     const handleDragStart = (e: React.PointerEvent, index: number) => {
-        e.preventDefault(); // Evitar scroll en táctil
+        e.preventDefault();
         const item = itemRefs.current[index];
         if (!item) return;
 
-        const target = e.currentTarget as HTMLElement; 
-        target.setPointerCapture(e.pointerId);
-        
         const rect = item.getBoundingClientRect();
         
-        // Guardamos el offset relativo al puntero.
-        // Esto es CRUCIAL: El clon se dibujará en (Pointer - Offset).
-        // Así, aunque la lista se mueva, el clon sigue pegado al dedo.
         dragData.current = {
             pointerId: e.pointerId,
             offsetX: e.clientX - rect.left,
             offsetY: e.clientY - rect.top,
+            lastX: e.clientX,
+            lastY: e.clientY,
             lastUpdate: Date.now()
         };
 
         setDragDimensions({ width: rect.width, height: rect.height });
+        
+        draggedIndexRef.current = index;
         setDraggedIndex(index);
         
         document.body.classList.add('grabbing-active');
-    };
-
-    const handleDragMove = (e: React.PointerEvent) => {
-        if (draggedIndex === null || e.pointerId !== dragData.current.pointerId) return;
         
-        // 1. Mover el clon visualmente (GPU accelerated)
-        // Usamos coordenadas de ventana directas (fixed)
-        if (cloneRef.current) {
-            const newLeft = e.clientX - dragData.current.offsetX;
-            const newTop = e.clientY - dragData.current.offsetY;
-            // Usamos translate3d para mejor performance, asumiendo top:0 left:0 en el estilo fixed inicial
-            cloneRef.current.style.transform = `translate3d(${newLeft}px, ${newTop}px, 0)`;
-        }
-
-        // 2. Detectar intercambio (Throttled para no saturar React)
-        const now = Date.now();
-        if (now - dragData.current.lastUpdate < 30) return; // ~30fps check logic is enough
-        dragData.current.lastUpdate = now;
-
-        const currentY = e.clientY;
-
-        // Verificar vecinos
-        // Solo necesitamos chequear el item anterior y el siguiente
-        const prevIndex = draggedIndex - 1;
-        const nextIndex = draggedIndex + 1;
-
-        // Chequear swap hacia arriba
-        if (prevIndex >= 0) {
-            const prevEl = itemRefs.current[prevIndex];
-            if (prevEl) {
-                const rect = prevEl.getBoundingClientRect();
-                // Si el puntero cruza el centro del item anterior
-                const threshold = rect.top + (rect.height / 2);
-                if (currentY < threshold) {
-                    swapItems(draggedIndex, prevIndex);
-                    return;
-                }
-            }
-        }
-
-        // Chequear swap hacia abajo
-        if (nextIndex < partes.length) {
-            const nextEl = itemRefs.current[nextIndex];
-            if (nextEl) {
-                const rect = nextEl.getBoundingClientRect();
-                // Si el puntero cruza el centro del item siguiente
-                const threshold = rect.top + (rect.height / 2);
-                if (currentY > threshold) {
-                    swapItems(draggedIndex, nextIndex);
-                    return;
-                }
-            }
-        }
+        // Listeners Globales (Window) para no perder tracking
+        window.addEventListener('pointermove', handleWindowMove, { passive: false });
+        window.addEventListener('pointerup', handleWindowUp);
+        window.addEventListener('pointercancel', handleWindowUp);
     };
 
-    const swapItems = (from: number, to: number) => {
-        setPartes(prev => {
-            const next = [...prev];
-            const [moved] = next.splice(from, 1);
-            next.splice(to, 0, moved);
-            return next;
-        });
-        setDraggedIndex(to);
-        // NO ajustamos offsetY. El clon sigue pegado al mouse.
-        // La lista real cambia debajo del clon.
-    };
-
-    const handleDragEnd = (e: React.PointerEvent) => {
-        if (draggedIndex !== null) {
-            const target = e.currentTarget as HTMLElement;
-            try { target.releasePointerCapture(e.pointerId); } catch(e) {}
-            setDraggedIndex(null);
-            document.body.classList.remove('grabbing-active');
+    // CORRECCIÓN CRÍTICA: Restaurar posición del clon tras re-renderizado
+    // Esto evita que el clon "parpadee" a (0,0) cuando React actualiza el DOM
+    useLayoutEffect(() => {
+        if (draggedIndex !== null && cloneRef.current) {
+            const x = dragData.current.lastX - dragData.current.offsetX;
+            const y = dragData.current.lastY - dragData.current.offsetY;
+            cloneRef.current.style.transform = `translate3d(${x}px, ${y}px, 0)`;
         }
-    };
+    });
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -408,7 +441,15 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
                                 <input type="text" placeholder="Matrícula" value={quickMatricula} onChange={e => setQuickMatricula(e.target.value)} className="w-full p-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 text-sm"/>
                             </div>
                         )}
-                        <textarea value={descripcion} onChange={e => setDescripcion(e.target.value)} placeholder="Descripción del trabajo..." className="w-full p-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 text-sm" rows={2}/>
+                        
+                        <textarea
+                            ref={descriptionRef}
+                            value={descripcion}
+                            onChange={e => setDescripcion(e.target.value)}
+                            placeholder="Descripción del trabajo..."
+                            className="w-full p-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 text-sm resize-none overflow-hidden"
+                            rows={2}
+                        />
                         
                         <div className={`space-y-3 relative ${draggedIndex !== null ? 'select-none' : ''}`}>
                             {partes.map((p, idx) => {
@@ -430,9 +471,6 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
                                             <div 
                                                 className="p-1 text-gray-400 cursor-grab active:cursor-grabbing touch-none select-none mt-1"
                                                 onPointerDown={(e) => handleDragStart(e, idx)}
-                                                onPointerMove={handleDragMove}
-                                                onPointerUp={handleDragEnd}
-                                                onPointerCancel={handleDragEnd}
                                             >
                                                 <Bars3Icon className="h-6 w-6"/>
                                             </div>
@@ -538,8 +576,6 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
                     ref={cloneRef}
                     parte={partes[draggedIndex]} 
                     style={{ 
-                        left: 0, // Se controla puramente via transform en JS
-                        top: 0,
                         width: dragDimensions.width,
                         height: dragDimensions.height
                     }} 
