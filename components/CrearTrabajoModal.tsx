@@ -174,7 +174,7 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
         }, 300);
     };
 
-    // --- DRAG AND DROP REPARADO ---
+    // --- DRAG AND DROP REENGINEERED ---
 
     const handleDragStart = (e: React.PointerEvent, index: number) => {
         const item = itemRefs.current[index];
@@ -185,7 +185,6 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
         
         const rect = item.getBoundingClientRect();
         
-        // Compensamos el offset para que la tarjeta no salte a la derecha en desktop
         dragInfo.current = {
             offsetX: e.clientX - rect.left,
             offsetY: e.clientY - rect.top,
@@ -206,29 +205,42 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
         const newY = e.clientY - dragInfo.current.offsetY;
         setDragPos({ x: newX, y: newY });
 
-        // Cálculo del centro del elemento arrastrado
         const centerY = newY + dragInfo.current.itemHeight / 2;
         
-        // Verificamos colisión con los vecinos
-        itemRefs.current.forEach((ref, idx) => {
-            if (!ref || idx === draggedIndex) return;
-            
-            const targetRect = ref.getBoundingClientRect();
-            const targetCenterY = targetRect.top + targetRect.height / 2;
+        // Detección de colisión inteligente con vecinos
+        const findNewIndex = () => {
+            for (let i = 0; i < partes.length; i++) {
+                if (i === draggedIndex) continue;
+                const ref = itemRefs.current[i];
+                if (!ref) continue;
+                
+                const rect = ref.getBoundingClientRect();
+                const threshold = rect.height / 2;
+                const itemCenter = rect.top + threshold;
 
-            // Sensibilidad de intercambio: cuando el centro de mi tarjeta cruza el centro del vecino
-            const distance = Math.abs(centerY - targetCenterY);
-            if (distance < targetRect.height / 2) {
-                setPartes(prev => {
-                    const next = [...prev];
-                    const itemToMove = next[draggedIndex];
-                    next.splice(draggedIndex, 1);
-                    next.splice(idx, 0, itemToMove);
-                    return next;
-                });
-                setDraggedIndex(idx);
+                // Si movemos hacia abajo
+                if (i > draggedIndex && centerY > itemCenter) {
+                    return i;
+                }
+                // Si movemos hacia arriba
+                if (i < draggedIndex && centerY < itemCenter) {
+                    return i;
+                }
             }
-        });
+            return null;
+        };
+
+        const targetIdx = findNewIndex();
+        if (targetIdx !== null) {
+            setPartes(prev => {
+                const next = [...prev];
+                const itemToMove = next[draggedIndex];
+                next.splice(draggedIndex, 1);
+                next.splice(targetIdx, 0, itemToMove);
+                return next;
+            });
+            setDraggedIndex(targetIdx);
+        }
     };
 
     const handleDragEnd = (e: React.PointerEvent) => {
