@@ -69,13 +69,20 @@ const AutoExpandingInput: React.FC<{
 };
 
 // Componente visual para el ítem arrastrado (Clon)
-const DraggedItemClone: React.FC<{ 
+const DraggedItemClone = React.forwardRef<HTMLDivElement, { 
     parte: ParteState; 
     style: React.CSSProperties;
-}> = ({ parte, style }) => (
+}>(({ parte, style }, ref) => (
     <div 
-        style={style}
-        className="fixed z-[9999] flex items-start gap-2 p-2 bg-white dark:bg-gray-700 border dark:border-gray-600 rounded-lg shadow-2xl pointer-events-none opacity-90 ring-2 ring-taller-primary cursor-grabbing"
+        ref={ref}
+        style={{
+            ...style, 
+            position: 'fixed', // Fundamental para que no dependa del scroll ni del padre
+            zIndex: 9999,
+            pointerEvents: 'none',
+            willChange: 'transform, top, left'
+        }}
+        className="flex items-start gap-2 p-2 bg-white dark:bg-gray-700 border dark:border-gray-600 rounded-lg shadow-2xl opacity-90 ring-2 ring-taller-primary cursor-grabbing"
     >
         <div className="p-1 text-gray-400 mt-1">
             <Bars3Icon className="h-6 w-6"/>
@@ -97,7 +104,8 @@ const DraggedItemClone: React.FC<{
             </div>
         </div>
     </div>
-);
+));
+DraggedItemClone.displayName = 'DraggedItemClone';
 
 const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSuccess, onDataRefresh, clientes, trabajoToEdit, initialClientId }) => {
     const [creationMode, setCreationMode] = useState<'existing' | 'quick'>(trabajoToEdit?.isQuickBudget ? 'quick' : 'existing');
@@ -118,18 +126,19 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
     const [isVisible, setIsVisible] = useState(false);
     const [exitingItemIds, setExitingItemIds] = useState<Set<string>>(new Set());
     
-    // --- DRAG AND DROP STATE ---
+    // --- ROBUST DRAG AND DROP STATE ---
     const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
-    const [dragPos, setDragPos] = useState({ x: 0, y: 0 });
     const [dragDimensions, setDragDimensions] = useState({ width: 0, height: 0 });
     
-    const dragInfo = useRef({
-        startX: 0,
-        startY: 0,
-        initialLeft: 0,
-        initialTop: 0,
-        pointerId: -1
-    });
+    // Usamos refs para coordenadas para evitar re-renders innecesarios durante el movimiento
+    const cloneRef = useRef<HTMLDivElement>(null);
+    const dragData = useRef<{
+        pointerId: number;
+        offsetX: number; // Distancia del puntero al borde izquierdo del item
+        offsetY: number; // Distancia del puntero al borde superior del item
+        lastUpdate: number;
+    }>({ pointerId: -1, offsetX: 0, offsetY: 0, lastUpdate: 0 });
+    
     const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
 
     const isEditMode = Boolean(trabajoToEdit);
@@ -207,74 +216,81 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
         }, 300);
     };
 
-    // --- DRAG AND DROP LOGIC ---
+    // --- DRAG AND DROP HANDLERS ---
 
     const handleDragStart = (e: React.PointerEvent, index: number) => {
+        e.preventDefault(); // Evitar scroll en táctil
         const item = itemRefs.current[index];
         if (!item) return;
 
-        // Capturar el puntero en el elemento de la lista (que se convertirá en placeholder)
-        // Esto asegura que sigamos recibiendo eventos aunque el puntero se mueva fuera
         const target = e.currentTarget as HTMLElement; 
         target.setPointerCapture(e.pointerId);
         
         const rect = item.getBoundingClientRect();
         
-        dragInfo.current = {
-            startX: e.clientX,
-            startY: e.clientY,
-            initialLeft: rect.left,
-            initialTop: rect.top,
-            pointerId: e.pointerId
+        // Guardamos el offset relativo al puntero.
+        // Esto es CRUCIAL: El clon se dibujará en (Pointer - Offset).
+        // Así, aunque la lista se mueva, el clon sigue pegado al dedo.
+        dragData.current = {
+            pointerId: e.pointerId,
+            offsetX: e.clientX - rect.left,
+            offsetY: e.clientY - rect.top,
+            lastUpdate: Date.now()
         };
 
         setDragDimensions({ width: rect.width, height: rect.height });
-        // Posición inicial para el Portal
-        setDragPos({ x: rect.left, y: rect.top });
         setDraggedIndex(index);
         
         document.body.classList.add('grabbing-active');
     };
 
     const handleDragMove = (e: React.PointerEvent) => {
-        if (draggedIndex === null || e.pointerId !== dragInfo.current.pointerId) return;
-
-        // Calcular nueva posición absoluta para el Portal
-        const dx = e.clientX - dragInfo.current.startX;
-        const dy = e.clientY - dragInfo.current.startY;
+        if (draggedIndex === null || e.pointerId !== dragData.current.pointerId) return;
         
-        const newX = dragInfo.current.initialLeft + dx;
-        const newY = dragInfo.current.initialTop + dy;
-        
-        setDragPos({ x: newX, y: newY });
+        // 1. Mover el clon visualmente (GPU accelerated)
+        // Usamos coordenadas de ventana directas (fixed)
+        if (cloneRef.current) {
+            const newLeft = e.clientX - dragData.current.offsetX;
+            const newTop = e.clientY - dragData.current.offsetY;
+            // Usamos translate3d para mejor performance, asumiendo top:0 left:0 en el estilo fixed inicial
+            cloneRef.current.style.transform = `translate3d(${newLeft}px, ${newTop}px, 0)`;
+        }
 
-        // Lógica de intercambio por Vecinos (Neighbor Swap)
-        // Solo verificamos el vecino inmediato arriba y abajo para evitar saltos locos
-        const centerY = newY + (dragDimensions.height / 2);
+        // 2. Detectar intercambio (Throttled para no saturar React)
+        const now = Date.now();
+        if (now - dragData.current.lastUpdate < 30) return; // ~30fps check logic is enough
+        dragData.current.lastUpdate = now;
 
-        // Check Down
-        if (draggedIndex < partes.length - 1) {
-            const nextIndex = draggedIndex + 1;
-            const nextEl = itemRefs.current[nextIndex];
-            if (nextEl) {
-                const rect = nextEl.getBoundingClientRect();
-                const targetCenter = rect.top + (rect.height / 2);
-                if (centerY > targetCenter) {
-                    swapItems(draggedIndex, nextIndex);
-                    return; 
+        const currentY = e.clientY;
+
+        // Verificar vecinos
+        // Solo necesitamos chequear el item anterior y el siguiente
+        const prevIndex = draggedIndex - 1;
+        const nextIndex = draggedIndex + 1;
+
+        // Chequear swap hacia arriba
+        if (prevIndex >= 0) {
+            const prevEl = itemRefs.current[prevIndex];
+            if (prevEl) {
+                const rect = prevEl.getBoundingClientRect();
+                // Si el puntero cruza el centro del item anterior
+                const threshold = rect.top + (rect.height / 2);
+                if (currentY < threshold) {
+                    swapItems(draggedIndex, prevIndex);
+                    return;
                 }
             }
         }
 
-        // Check Up
-        if (draggedIndex > 0) {
-            const prevIndex = draggedIndex - 1;
-            const prevEl = itemRefs.current[prevIndex];
-            if (prevEl) {
-                const rect = prevEl.getBoundingClientRect();
-                const targetCenter = rect.top + (rect.height / 2);
-                if (centerY < targetCenter) {
-                    swapItems(draggedIndex, prevIndex);
+        // Chequear swap hacia abajo
+        if (nextIndex < partes.length) {
+            const nextEl = itemRefs.current[nextIndex];
+            if (nextEl) {
+                const rect = nextEl.getBoundingClientRect();
+                // Si el puntero cruza el centro del item siguiente
+                const threshold = rect.top + (rect.height / 2);
+                if (currentY > threshold) {
+                    swapItems(draggedIndex, nextIndex);
                     return;
                 }
             }
@@ -289,6 +305,8 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
             return next;
         });
         setDraggedIndex(to);
+        // NO ajustamos offsetY. El clon sigue pegado al mouse.
+        // La lista real cambia debajo del clon.
     };
 
     const handleDragEnd = (e: React.PointerEvent) => {
@@ -400,15 +418,15 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
                                     <React.Fragment key={p._id}>
                                         <div 
                                             ref={el => itemRefs.current[idx] = el}
-                                            className={`flex items-start gap-2 p-2 bg-white dark:bg-gray-700 border dark:border-gray-600 rounded-lg shadow-sm transition-transform duration-200 ${
+                                            className={`flex items-start gap-2 p-2 bg-white dark:bg-gray-700 border dark:border-gray-600 rounded-lg shadow-sm transition-opacity duration-200 ${
                                                 exitingItemIds.has(p._id) ? 'opacity-0 scale-95' : ''
                                             } ${
                                                 isBeingDragged 
-                                                ? 'border-2 border-dashed border-taller-primary/40 bg-blue-50/50 dark:bg-blue-900/10 opacity-50' 
+                                                ? 'opacity-0' // Ocultamos el elemento real, se muestra el clon
                                                 : 'opacity-100'
                                             }`}
                                         >
-                                            {/* Handle de Arrastre (siempre presente para capturar eventos) */}
+                                            {/* Handle de Arrastre */}
                                             <div 
                                                 className="p-1 text-gray-400 cursor-grab active:cursor-grabbing touch-none select-none mt-1"
                                                 onPointerDown={(e) => handleDragStart(e, idx)}
@@ -419,8 +437,8 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
                                                 <Bars3Icon className="h-6 w-6"/>
                                             </div>
 
-                                            {/* Contenido (oculto si se arrastra, se renderiza en Portal) */}
-                                            <div className={`flex-1 flex flex-col min-w-0 ${isBeingDragged ? 'opacity-0' : ''}`}>
+                                            {/* Contenido Normal */}
+                                            <div className="flex-1 flex flex-col min-w-0">
                                                 <div className="flex items-start gap-2 w-full">
                                                     <div className="mt-1 flex-shrink-0">
                                                         {p.isCategory ? (
@@ -468,7 +486,7 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
                                                     </div>
                                                 )}
                                             </div>
-                                            <button type="button" onClick={() => removeParte(idx)} className={`p-1 text-red-500 flex-shrink-0 mt-1 ${isBeingDragged ? 'opacity-0' : ''}`}><TrashIcon className="h-5 w-5"/></button>
+                                            <button type="button" onClick={() => removeParte(idx)} className="p-1 text-red-500 flex-shrink-0 mt-1"><TrashIcon className="h-5 w-5"/></button>
                                         </div>
                                     </React.Fragment>
                                 );
@@ -514,13 +532,14 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
                 </div>
             </div>
             
-            {/* PORTAL PARA EL ÍTEM ARRASTRADO (SOLUCIÓN ESCRITORIO Y FLUIDEZ) */}
+            {/* PORTAL PARA EL ÍTEM ARRASTRADO (SOLUCIÓN FIJA AL CURSOR) */}
             {draggedIndex !== null && createPortal(
                 <DraggedItemClone 
+                    ref={cloneRef}
                     parte={partes[draggedIndex]} 
                     style={{ 
-                        left: dragPos.x, 
-                        top: dragPos.y,
+                        left: 0, // Se controla puramente via transform en JS
+                        top: 0,
                         width: dragDimensions.width,
                         height: dragDimensions.height
                     }} 
