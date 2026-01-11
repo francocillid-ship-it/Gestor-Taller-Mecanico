@@ -4,7 +4,7 @@ import { createPortal } from 'react-dom';
 import { supabase } from '../supabaseClient';
 import type { Cliente, Parte, Trabajo } from '../types';
 import { JobStatus } from '../types';
-import { XMarkIcon, TrashIcon, WrenchScrewdriverIcon, TagIcon, ArchiveBoxIcon, Bars3Icon, ShoppingBagIcon, BoltIcon, UsersIcon } from '@heroicons/react/24/solid';
+import { XMarkIcon, TrashIcon, WrenchScrewdriverIcon, TagIcon, ArchiveBoxIcon, Bars3Icon, ShoppingBagIcon, BoltIcon, UsersIcon, CheckIcon } from '@heroicons/react/24/solid';
 import { ALL_MAINTENANCE_OPTS } from '../constants';
 
 interface CrearTrabajoModalProps {
@@ -127,6 +127,10 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
     const [error, setError] = useState('');
     const [isVisible, setIsVisible] = useState(false);
     const [exitingItemIds, setExitingItemIds] = useState<Set<string>>(new Set());
+    
+    // Estados para borrar
+    const [isDeleting, setIsDeleting] = useState(false);
+    const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
     
     // --- ROBUST DRAG AND DROP STATE & REFS ---
     const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
@@ -397,6 +401,20 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
         }
     };
 
+    const handleDelete = async () => {
+        if (!trabajoToEdit) return;
+        setIsDeleting(true);
+        try {
+            const { error } = await supabase.from('trabajos').delete().eq('id', trabajoToEdit.id);
+            if (error) throw error;
+            onSuccess(); // Close modal and refresh data
+        } catch (err: any) {
+            setError('Error al eliminar: ' + err.message);
+            setIsDeleting(false);
+            setIsConfirmingDelete(false);
+        }
+    };
+
     return createPortal(
         <div className="fixed inset-0 z-[100] flex justify-center items-end sm:items-center">
             <div className={`fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-300 ${isVisible ? 'opacity-100' : 'opacity-0'}`} onClick={handleClose}/>
@@ -565,8 +583,40 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
                     </form>
                 </div>
                 <div className="p-4 border-t dark:border-gray-700 bg-white dark:bg-gray-800 flex gap-2 flex-shrink-0">
+                     {isEditMode && (
+                        <div className="flex-1 flex gap-1">
+                            {!isConfirmingDelete ? (
+                                <button 
+                                    type="button"
+                                    onClick={() => setIsConfirmingDelete(true)}
+                                    className="w-full py-3 bg-red-600 text-white rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-red-700 transition-colors shadow-sm"
+                                >
+                                    <TrashIcon className="h-5 w-5"/> <span className="hidden sm:inline">Eliminar</span> <span className="sm:hidden">Borrar</span>
+                                </button>
+                            ) : (
+                                <>
+                                    <button 
+                                        type="button"
+                                        onClick={handleDelete}
+                                        disabled={isDeleting}
+                                        className="flex-1 py-3 bg-red-600 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-1 hover:bg-red-700 transition-colors shadow-inner"
+                                    >
+                                        {isDeleting ? '...' : <><CheckIcon className="h-4 w-4"/> Sí</>}
+                                    </button>
+                                    <button 
+                                        type="button"
+                                        onClick={() => setIsConfirmingDelete(false)}
+                                        disabled={isDeleting}
+                                        className="flex-1 py-3 bg-gray-200 text-gray-700 rounded-xl font-bold text-xs flex items-center justify-center hover:bg-gray-300 transition-colors"
+                                    >
+                                        No
+                                    </button>
+                                </>
+                            )}
+                        </div>
+                    )}
                     <button onClick={handleClose} className="flex-1 py-3 border rounded-xl font-bold text-gray-500 hover:bg-gray-50 transition-colors">Cancelar</button>
-                    <button onClick={handleSubmit} disabled={isSubmitting} className="flex-[2] py-3 bg-taller-primary text-white rounded-xl font-bold shadow-lg disabled:opacity-50 transition-all active:scale-[0.98]">{isSubmitting ? 'Guardando...' : 'Guardar Trabajo'}</button>
+                    <button onClick={handleSubmit} disabled={isSubmitting} className="flex-[2] py-3 bg-taller-primary text-white rounded-xl font-bold shadow-lg disabled:opacity-50 transition-all active:scale-[0.98]">{isSubmitting ? 'Guardando...' : 'Guardar'}</button>
                 </div>
             </div>
             
