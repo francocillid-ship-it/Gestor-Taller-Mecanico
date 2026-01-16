@@ -1,8 +1,9 @@
+
 import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import type { Cliente, Trabajo, Gasto } from '../types';
 import { JobStatus } from '../types';
-import { CurrencyDollarIcon, UsersIcon, WrenchScrewdriverIcon, PlusIcon, PencilIcon, TrashIcon, ChartPieIcon, BuildingLibraryIcon, ScaleIcon, ChevronDownIcon, CalendarIcon, ArrowLeftIcon, ArrowTrendingUpIcon, ArrowTrendingDownIcon, ArrowTopRightOnSquareIcon } from '@heroicons/react/24/solid';
+import { CurrencyDollarIcon, UsersIcon, WrenchScrewdriverIcon, PlusIcon, PencilIcon, TrashIcon, ChartPieIcon, BuildingLibraryIcon, ScaleIcon, ChevronDownIcon, CalendarIcon, ArrowLeftIcon, ArrowTrendingUpIcon, ArrowTrendingDownIcon, ArrowTopRightOnSquareIcon, ClipboardDocumentCheckIcon } from '@heroicons/react/24/solid';
 import AddGastoModal from './AddGastoModal';
 import EditGastoModal from './EditGastoModal';
 import { supabase } from '../supabaseClient';
@@ -313,6 +314,14 @@ const Dashboard: React.FC<DashboardProps> = ({ clientes, trabajos, gastos, onDat
 
         let ingresosTotales = 0;
         let gananciaManoDeObraReal = 0; 
+        
+        // Conteo de trabajos finalizados en el periodo
+        const trabajosFinalizados = trabajos.filter(t => {
+            if (t.status !== JobStatus.Finalizado) return false;
+            // Usamos fechaSalida preferentemente, sino fechaEntrada como fallback
+            const finishDate = t.fechaSalida ? new Date(t.fechaSalida) : new Date(t.fechaEntrada);
+            return finishDate >= startDate && finishDate <= endDate;
+        }).length;
 
         trabajos.forEach(trabajo => {
             // Calcular el costo de repuestos que asume el taller (NO pagados por el cliente)
@@ -343,13 +352,10 @@ const Dashboard: React.FC<DashboardProps> = ({ clientes, trabajos, gastos, onDat
                 } else {
                     // Caso 'items' (Repuestos) o 'undefined' (General)
                     // Lógica de desbordamiento: Todo lo que supere el costo restante de repuestos se va a ganancia
-                    // Esto arregla el caso donde el pago de repuestos es mayor al costo real
                     
                     const remainingPartsCost = Math.max(0, costoRepuestosTaller - partsCostCoveredSoFar);
                     const contributionToParts = Math.min(monto, remainingPartsCost);
                     
-                    // Si el pago es 'items', la intención es cubrir costo, pero si sobra, es ganancia.
-                    // Si es 'general', misma lógica.
                     const contributionToLabor = monto - contributionToParts;
 
                     partsCostCoveredSoFar += contributionToParts;
@@ -363,8 +369,7 @@ const Dashboard: React.FC<DashboardProps> = ({ clientes, trabajos, gastos, onDat
         });
 
         const gananciaNeta = gananciaManoDeObraReal - totalGastos;
-        const balance = ingresosTotales - totalGastos;
-
+        
         // ACTUALIZACIÓN: Solo contar trabajos que están estrictamente 'En Proceso'
         const trabajosActivos = trabajos.filter(t => t.status === JobStatus.EnProceso).length;
         const totalClientes = clientes.length;
@@ -373,8 +378,8 @@ const Dashboard: React.FC<DashboardProps> = ({ clientes, trabajos, gastos, onDat
             ingresosTotales: formatCurrency(ingresosTotales),
             gananciasNetas: formatCurrency(gananciaNeta),
             gastos: formatCurrency(totalGastos),
-            balance: formatCurrency(balance),
             trabajosActivos,
+            trabajosFinalizados,
             totalClientes,
         };
     }, [clientes, trabajos, gastos, period]);
@@ -418,7 +423,6 @@ const Dashboard: React.FC<DashboardProps> = ({ clientes, trabajos, gastos, onDat
     const handleTransactionClick = (item: TransactionItem) => {
         if (item.type === 'income') {
             // It's a job. Navigate to Trabajos view and highlight/open the job
-            // First we close the overlay
             setDetailView(null);
             
             // Find the job status to switch to the correct tab if possible
@@ -654,11 +658,11 @@ const Dashboard: React.FC<DashboardProps> = ({ clientes, trabajos, gastos, onDat
                     onClick={() => setDetailView('gastos')}
                 />
                 <StatCard 
-                    title="Balance (Caja)" 
-                    value={stats.balance} 
-                    icon={<ScaleIcon />} 
+                    title="Trabajos Finalizados" 
+                    value={stats.trabajosFinalizados} 
+                    icon={<ClipboardDocumentCheckIcon />} 
                     color="bg-indigo-500" 
-                    onClick={() => setDetailView('balance')}
+                    onClick={() => onNavigate('trabajos', JobStatus.Finalizado)}
                 />
                 <StatCard 
                     title="Trabajos Activos" 
