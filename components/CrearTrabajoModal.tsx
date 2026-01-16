@@ -4,7 +4,7 @@ import { createPortal } from 'react-dom';
 import { supabase } from '../supabaseClient';
 import type { Cliente, Parte, Trabajo } from '../types';
 import { JobStatus } from '../types';
-import { XMarkIcon, TrashIcon, WrenchScrewdriverIcon, TagIcon, ArchiveBoxIcon, Bars3Icon, ShoppingBagIcon, BoltIcon, UsersIcon, CheckIcon } from '@heroicons/react/24/solid';
+import { XMarkIcon, TrashIcon, WrenchScrewdriverIcon, TagIcon, ArchiveBoxIcon, Bars3Icon, ShoppingBagIcon, BoltIcon, UsersIcon, CheckIcon, CurrencyDollarIcon, CalendarDaysIcon, PencilIcon, ArrowPathIcon } from '@heroicons/react/24/solid';
 import { ALL_MAINTENANCE_OPTS } from '../constants';
 
 interface CrearTrabajoModalProps {
@@ -25,6 +25,14 @@ type ParteState = {
     isService?: boolean;
     maintenanceType?: string;
     clientPaidDirectly?: boolean;
+};
+
+// Estado extendido para manejar pagos en la UI con ID temporal
+type PaymentState = {
+    _id: string;
+    monto: string; // String para el input formateado
+    fecha: string; // ISO String
+    paymentType: 'items' | 'labor' | undefined;
 };
 
 const AutoExpandingInput: React.FC<{
@@ -122,7 +130,12 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
     const [kilometraje, setKilometraje] = useState(''); 
     const [partes, setPartes] = useState<ParteState[]>([]);
     const [status, setStatus] = useState<JobStatus>(JobStatus.Presupuesto);
-    const [pagos, setPagos] = useState<Parte[]>([]);
+    
+    // Payment State
+    const [pagosList, setPagosList] = useState<PaymentState[]>([]);
+    const [editingPaymentId, setEditingPaymentId] = useState<string | null>(null);
+    const [deletingPaymentId, setDeletingPaymentId] = useState<string | null>(null);
+
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState('');
     const [isVisible, setIsVisible] = useState(false);
@@ -163,8 +176,9 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
         return client?.vehiculos || [];
     }, [clientes, selectedClienteId]);
 
-    const formatCurrency = (value: string): string => {
-        const digits = value.replace(/\D/g, '');
+    const formatCurrency = (value: string | number): string => {
+        const strVal = String(value);
+        const digits = strVal.replace(/\D/g, '');
         if (digits === '') return '';
         const numberValue = parseInt(digits, 10);
         return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(numberValue / 100);
@@ -193,13 +207,22 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
             }
             setDescripcion(trabajoToEdit.descripcion);
             setKilometraje(trabajoToEdit.kilometraje ? String(trabajoToEdit.kilometraje) : '');
+            
             const initialPartes = trabajoToEdit.partes.filter(p => p.nombre !== '__PAGO_REGISTRADO__');
             setPartes(initialPartes.map(p => ({
                 ...p,
                 _id: generateId(),
                 precioUnitario: new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(p.precioUnitario),
             })));
-            setPagos(trabajoToEdit.partes.filter(p => p.nombre === '__PAGO_REGISTRADO__'));
+            
+            const initialPagos = trabajoToEdit.partes.filter(p => p.nombre === '__PAGO_REGISTRADO__');
+            setPagosList(initialPagos.map(p => ({
+                _id: generateId(),
+                monto: new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(p.precioUnitario),
+                fecha: p.fecha || new Date().toISOString(),
+                paymentType: p.paymentType
+            })));
+
             setStatus(trabajoToEdit.status);
         } else if (initialClientId) {
             setSelectedClienteId(initialClientId);
@@ -237,6 +260,31 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
                 return n;
             });
         }, 300);
+    };
+
+    // --- PAYMENT LOGIC ---
+    const handleUpdatePayment = (id: string, field: keyof PaymentState, value: any) => {
+        setPagosList(prev => prev.map(p => {
+            if (p._id !== id) return p;
+            if (field === 'monto') {
+                return { ...p, [field]: formatCurrency(value) };
+            }
+            return { ...p, [field]: value };
+        }));
+    };
+
+    const handleAskDeletePayment = (id: string) => {
+        setDeletingPaymentId(id);
+        setEditingPaymentId(null);
+    };
+
+    const confirmDeletePayment = (id: string) => {
+        setPagosList(prev => prev.filter(p => p._id !== id));
+        setDeletingPaymentId(null);
+    };
+
+    const cancelDeletePayment = () => {
+        setDeletingPaymentId(null);
     };
 
     // --- DRAG AND DROP LOGIC OPTIMIZED ---
@@ -355,6 +403,31 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
         }
     });
 
+    // --- Manejador para lista automática (bullets) ---
+    const handleDescriptionKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            const { selectionStart, selectionEnd, value } = e.currentTarget;
+            
+            const insertion = '\n• ';
+            const newValue = value.substring(0, selectionStart) + insertion + value.substring(selectionEnd);
+            
+            setDescripcion(newValue);
+            
+            // Mover cursor después de la inserción y ajustar altura
+            setTimeout(() => {
+                if (descriptionRef.current) {
+                    const newCursorPos = selectionStart + insertion.length;
+                    descriptionRef.current.selectionStart = newCursorPos;
+                    descriptionRef.current.selectionEnd = newCursorPos;
+                    // Forzar re-cálculo de altura
+                    descriptionRef.current.style.height = 'auto';
+                    descriptionRef.current.style.height = `${descriptionRef.current.scrollHeight}px`;
+                }
+            }, 0);
+        }
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (creationMode === 'existing' && (!selectedClienteId || !selectedVehiculoId)) {
@@ -374,13 +447,22 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
                 maintenanceType: p.maintenanceType,
                 clientPaidDirectly: !!p.clientPaidDirectly
             }));
+            
+            const cleanPagos = pagosList.map(p => ({
+                nombre: '__PAGO_REGISTRADO__',
+                cantidad: 1,
+                precioUnitario: parseCurrency(p.monto),
+                fecha: p.fecha,
+                paymentType: p.paymentType
+            }));
+
             const jobData = {
                 cliente_id: selectedClienteId || null,
                 vehiculo_id: selectedVehiculoId || null,
                 taller_id: user.id,
                 descripcion,
                 status,
-                partes: [...cleanPartes, ...pagos],
+                partes: [...cleanPartes, ...cleanPagos],
                 kilometraje: kilometraje ? parseInt(kilometraje, 10) : null,
                 costo_estimado: cleanPartes.reduce((s, p) => s + (p.cantidad * p.precioUnitario), 0),
                 is_quick_budget: creationMode === 'quick' && status === JobStatus.Presupuesto,
@@ -464,6 +546,7 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
                             ref={descriptionRef}
                             value={descripcion}
                             onChange={e => setDescripcion(e.target.value)}
+                            onKeyDown={handleDescriptionKeyDown}
                             placeholder="Descripción del trabajo..."
                             className="w-full p-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 text-sm resize-none overflow-hidden"
                             rows={2}
@@ -578,6 +661,132 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
                                 </button>
                             </div>
                         </div>
+
+                        {/* --- LISTA DE PAGOS REGISTRADOS --- */}
+                        {pagosList.length > 0 && (
+                            <div className="mt-6 pt-4 border-t dark:border-gray-700 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                                <h3 className="text-xs font-bold uppercase text-taller-gray mb-3 flex items-center gap-2">
+                                    <CurrencyDollarIcon className="h-4 w-4 text-green-500" />
+                                    Pagos Registrados
+                                </h3>
+                                <div className="space-y-3">
+                                    {pagosList.map((pago) => {
+                                        const isEditing = editingPaymentId === pago._id;
+                                        const isDeletingThis = deletingPaymentId === pago._id;
+                                        
+                                        return (
+                                            <div 
+                                                key={pago._id} 
+                                                className={`relative rounded-lg transition-all duration-300 overflow-hidden ${isEditing ? 'bg-white dark:bg-gray-700 shadow-md ring-2 ring-taller-primary p-3' : (isDeletingThis ? 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-2' : 'bg-green-50 dark:bg-green-900/10 border border-green-200 dark:border-green-800/30 p-3 hover:shadow-sm')}`}
+                                            >
+                                                {isDeletingThis ? (
+                                                    <div className="flex items-center justify-between animate-in fade-in zoom-in duration-200">
+                                                        <span className="text-xs font-bold text-red-600 dark:text-red-400 pl-1">¿Borrar este pago?</span>
+                                                        <div className="flex gap-2">
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => confirmDeletePayment(pago._id)}
+                                                                className="flex items-center gap-1 px-3 py-1.5 bg-red-600 text-white text-xs font-bold rounded shadow-sm hover:bg-red-700 transition-colors"
+                                                            >
+                                                                <CheckIcon className="h-3 w-3" /> Sí
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                onClick={cancelDeletePayment}
+                                                                className="flex items-center gap-1 px-3 py-1.5 bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-200 text-xs font-bold rounded shadow-sm hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors"
+                                                            >
+                                                                <XMarkIcon className="h-3 w-3" /> No
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                ) : isEditing ? (
+                                                    <div className="space-y-2 animate-in fade-in zoom-in duration-200">
+                                                        <div className="flex justify-between items-center mb-2">
+                                                            <span className="text-xs font-bold text-taller-primary uppercase">Editar Pago</span>
+                                                            <button type="button" onClick={() => setEditingPaymentId(null)} className="text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300">
+                                                                <XMarkIcon className="h-4 w-4" />
+                                                            </button>
+                                                        </div>
+                                                        <div className="grid grid-cols-2 gap-2">
+                                                            <div>
+                                                                <label className="block text-[10px] text-gray-500 uppercase font-bold mb-1">Monto</label>
+                                                                <input 
+                                                                    type="text" 
+                                                                    value={pago.monto} 
+                                                                    onChange={(e) => handleUpdatePayment(pago._id, 'monto', e.target.value)} 
+                                                                    className="w-full text-sm font-bold text-taller-dark dark:text-white bg-transparent border-b border-gray-300 dark:border-gray-600 focus:border-taller-primary focus:outline-none py-1"
+                                                                    autoFocus
+                                                                />
+                                                            </div>
+                                                            <div>
+                                                                <label className="block text-[10px] text-gray-500 uppercase font-bold mb-1">Fecha</label>
+                                                                <input 
+                                                                    type="date" 
+                                                                    value={pago.fecha.split('T')[0]} 
+                                                                    onChange={(e) => handleUpdatePayment(pago._id, 'fecha', new Date(e.target.value).toISOString())}
+                                                                    className="w-full text-xs bg-transparent border-b border-gray-300 dark:border-gray-600 focus:border-taller-primary focus:outline-none py-1.5 dark:text-white"
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                        <div className="pt-2">
+                                                            <label className="block text-[10px] text-gray-500 uppercase font-bold mb-1">Tipo</label>
+                                                            <div className="flex gap-1">
+                                                                {[{id: 'items', label: 'Repuestos'}, {id: 'labor', label: 'Mano Obra'}, {id: undefined, label: 'General'}].map(type => (
+                                                                    <button
+                                                                        key={String(type.id)}
+                                                                        type="button"
+                                                                        onClick={() => handleUpdatePayment(pago._id, 'paymentType', type.id)}
+                                                                        className={`flex-1 py-1 text-[10px] font-bold rounded border transition-colors ${pago.paymentType === type.id ? 'bg-taller-primary text-white border-taller-primary' : 'bg-gray-50 dark:bg-gray-800 text-gray-500 border-gray-200 dark:border-gray-600'}`}
+                                                                    >
+                                                                        {type.label}
+                                                                    </button>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                        <button 
+                                                            type="button" 
+                                                            onClick={() => setEditingPaymentId(null)} 
+                                                            className="w-full mt-2 py-1.5 bg-taller-primary text-white text-xs font-bold rounded flex items-center justify-center gap-1 hover:bg-taller-secondary"
+                                                        >
+                                                            <CheckIcon className="h-3 w-3" /> Guardar Cambios
+                                                        </button>
+                                                    </div>
+                                                ) : (
+                                                    <div className="flex justify-between items-center group">
+                                                        <div>
+                                                            <p className="text-lg font-bold text-green-700 dark:text-green-400 tracking-tight">{pago.monto}</p>
+                                                            <div className="flex items-center gap-2 mt-0.5 text-xs text-green-800/70 dark:text-green-300/70">
+                                                                <span className="flex items-center gap-1"><CalendarDaysIcon className="h-3 w-3"/> {new Date(pago.fecha).toLocaleDateString('es-ES')}</span>
+                                                                <span>•</span>
+                                                                <span className="font-medium uppercase text-[10px] border border-green-200 dark:border-green-800 px-1 rounded bg-white/50 dark:bg-black/20">
+                                                                    {pago.paymentType === 'items' ? 'Repuestos' : pago.paymentType === 'labor' ? 'Mano de Obra' : 'General'}
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                        <div className="flex gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                                                            <button 
+                                                                type="button" 
+                                                                onClick={() => { setEditingPaymentId(pago._id); setDeletingPaymentId(null); }} 
+                                                                className="p-1.5 bg-white dark:bg-gray-800 text-gray-500 hover:text-taller-primary rounded shadow-sm border border-gray-100 dark:border-gray-600 transition-colors"
+                                                            >
+                                                                <PencilIcon className="h-4 w-4" />
+                                                            </button>
+                                                            <button 
+                                                                type="button" 
+                                                                onClick={() => handleAskDeletePayment(pago._id)} 
+                                                                className="p-1.5 bg-white dark:bg-gray-800 text-gray-500 hover:text-red-500 rounded shadow-sm border border-gray-100 dark:border-gray-600 transition-colors"
+                                                            >
+                                                                <TrashIcon className="h-4 w-4" />
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        )}
 
                         {error && <p className="text-red-500 text-xs font-bold">{error}</p>}
                     </form>
