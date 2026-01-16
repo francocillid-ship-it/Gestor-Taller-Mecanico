@@ -49,6 +49,7 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
     const [targetJobStatus, setTargetJobStatus] = useState<JobStatus | undefined>(undefined);
     const [targetJobId, setTargetJobId] = useState<string | undefined>(undefined);
     
+    const mainContainerRef = useRef<HTMLElement>(null);
     const dashboardRef = useRef<HTMLDivElement>(null);
     const trabajosRef = useRef<HTMLDivElement>(null);
     const clientesRef = useRef<HTMLDivElement>(null);
@@ -154,15 +155,44 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
 
     useEffect(() => {
         setSearchQuery('');
-        const activeRef = 
-            view === 'dashboard' ? dashboardRef :
-            view === 'trabajos' ? trabajosRef :
-            view === 'clientes' ? clientesRef :
-            ajustesRef;
-            
-        if (activeRef.current) {
-            activeRef.current.scrollTop = 0;
-        }
+        
+        // Función para resetear el scroll de manera robusta
+        const resetScroll = () => {
+            // Aseguramos el scroll del viewport global
+            window.scrollTo(0, 0);
+
+            // CORRECCIÓN CRÍTICA: Resetear el scroll del contenedor principal (main)
+            // Esto evita que el navegador desplace el layout horizontalmente al hacer focus o scrollIntoView
+            if (mainContainerRef.current) {
+                mainContainerRef.current.scrollTop = 0;
+                mainContainerRef.current.scrollLeft = 0;
+            }
+
+            if (view === 'trabajos') {
+                const internalContainer = document.getElementById('trabajos-scroll-container');
+                if (internalContainer) {
+                    internalContainer.scrollTop = 0;
+                }
+            } else {
+                const activeRef = 
+                    view === 'dashboard' ? dashboardRef :
+                    view === 'clientes' ? clientesRef :
+                    view === 'ajustes' ? ajustesRef :
+                    null;
+                    
+                if (activeRef && activeRef.current) {
+                    activeRef.current.scrollTop = 0;
+                }
+            }
+        };
+
+        // Ejecutar inmediatamente
+        resetScroll();
+
+        // Ejecutar nuevamente tras un breve delay para asegurar que el layout se ha estabilizado
+        const timer = setTimeout(resetScroll, 100);
+        return () => clearTimeout(timer);
+
     }, [view]);
     
     const handleSilentRefresh = () => fetchData(false);
@@ -370,7 +400,7 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
                     onSearchChange={setSearchQuery}
                 />
                 
-                <main className="flex-1 overflow-hidden relative w-full min-h-0">
+                <main ref={mainContainerRef} className="flex-1 overflow-hidden relative w-full min-h-0">
                     {loading ? (
                         <div className="flex h-full items-center justify-center">
                             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-taller-primary"></div>

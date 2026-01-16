@@ -6,7 +6,8 @@ import CrearClienteModal from './CrearClienteModal';
 import MaintenanceConfigModal from './MaintenanceConfigModal';
 import AddVehicleModal from './AddVehicleModal';
 import CrearTrabajoModal from './CrearTrabajoModal';
-import { supabase } from '../supabaseClient';
+import { supabase, supabaseUrl, supabaseKey } from '../supabaseClient';
+import { createClient } from '@supabase/supabase-js';
 
 interface ClientesProps {
     clientes: Cliente[];
@@ -24,9 +25,10 @@ interface ClientCardProps {
     onAddVehicle: (clienteId: string) => void;
     onCreateJob: (clienteId: string) => void;
     forceExpand?: boolean;
+    onDataRefresh: () => void;
 }
 
-const ClientCard: React.FC<ClientCardProps> = ({ cliente, trabajos, onEdit, onConfigVehicle, onAddVehicle, onCreateJob, forceExpand }) => {
+const ClientCard: React.FC<ClientCardProps> = ({ cliente, trabajos, onEdit, onConfigVehicle, onAddVehicle, onCreateJob, forceExpand, onDataRefresh }) => {
     const [isExpanded, setIsExpanded] = useState(false);
     const [sendingAccess, setSendingAccess] = useState(false);
     const clientTrabajos = trabajos.filter(t => t.clienteId === cliente.id);
@@ -71,27 +73,83 @@ const ClientCard: React.FC<ClientCardProps> = ({ cliente, trabajos, onEdit, onCo
             alert("El cliente no tiene email registrado.");
             return;
         }
-        
-        const tempPass = localStorage.getItem(`temp_pass_${cliente.id}`);
 
-        let shareUrl = window.location.origin;
-        let messageHeader = '';
-
-        if (tempPass) {
-             // Opción A: Cliente nuevo con contraseña temporal guardada
-             shareUrl = `${window.location.origin}/?type=invite&email=${encodeURIComponent(cliente.email)}&password=${encodeURIComponent(tempPass)}`;
-             messageHeader = `Hola ${cliente.nombre}, accede a tu historial de trabajos en el taller. Tu sistema generó un acceso automático, por seguridad se te pedirá cambiar la contraseña al entrar.`;
-        } else {
-             // Opción B: Cliente existente o contraseña temporal perdida -> Enlace directo a recuperación
-             shareUrl = `${window.location.origin}/?view=forgot_password&email=${encodeURIComponent(cliente.email)}`;
-             messageHeader = `Hola ${cliente.nombre}, accede a tu historial de trabajos en el taller. Si no recuerdas tu clave, usa este enlace para restablecerla rápidamente.`;
-        }
-
-        const confirmSend = window.confirm(`¿Compartir acceso con ${cliente.nombre}?`);
+        const confirmSend = window.confirm(`¿Generar acceso para ${cliente.nombre}?\n\nSi es la primera vez, se creará una contraseña temporal automática.`);
         if (!confirmSend) return;
 
         setSendingAccess(true);
+        
+        // Cliente temporal para no cerrar la sesión del Taller al hacer signUp
+        const tempSupabase = createClient(supabaseUrl, supabaseKey, {
+            auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false }
+        });
+
+        const tempPassword = Math.random().toString(36).slice(-8) + 'Aa1!';
+        let shareUrl = '';
+        let messageHeader = '';
+        let successMigration = false;
+
         try {
+            // 1. Intentar registrar al usuario en Auth (Migración de Cliente Manual a Auth)
+            const { data: authData, error: authError } = await tempSupabase.auth.signUp({
+                email: cliente.email,
+                password: tempPassword,
+                options: {
+                    data: {
+                        role: 'cliente',
+                        taller_nombre_ref: 'Mi Taller Mecánico' // Podríamos pasar el nombre real si lo tuviéramos aquí
+                    },
+                }
+            });
+
+            // CASO A: Usuario Nuevo en Auth (Éxito al crear)
+            if (authData.user && authData.user.id) {
+                const newAuthId = authData.user.id;
+
+                // Si el ID generado por Auth es diferente al ID actual del cliente (siempre pasa si fue creado manual con UUID aleatorio)
+                if (newAuthId !== cliente.id) {
+                    console.log("Migrando cliente manual a usuario Auth...", cliente.id, "->", newAuthId);
+                    
+                    // 1. Crear el perfil nuevo con el ID correcto (Auth ID)
+                    const { error: insertError } = await supabase.from('clientes').insert({
+                        id: newAuthId,
+                        taller_id: cliente.taller_id,
+                        nombre: cliente.nombre,
+                        apellido: cliente.apellido,
+                        email: cliente.email,
+                        telefono: cliente.telefono
+                    });
+                    
+                    if (insertError) throw new Error("Error al migrar perfil: " + insertError.message);
+
+                    // 2. Mover Vehículos
+                    await supabase.from('vehiculos').update({ cliente_id: newAuthId }).eq('cliente_id', cliente.id);
+                    
+                    // 3. Mover Trabajos
+                    await supabase.from('trabajos').update({ cliente_id: newAuthId }).eq('cliente_id', cliente.id);
+                    
+                    // 4. Eliminar perfil viejo
+                    await supabase.from('clientes').delete().eq('id', cliente.id);
+                    
+                    // Refrescar datos globales
+                    onDataRefresh();
+                    successMigration = true;
+                } else {
+                    successMigration = true;
+                }
+
+                shareUrl = `${window.location.origin}/?type=invite&email=${encodeURIComponent(cliente.email)}&password=${encodeURIComponent(tempPassword)}`;
+                messageHeader = `Hola ${cliente.nombre}, accede a tu historial de trabajos en el taller. Tu sistema generó un acceso automático.`;
+            
+            } else {
+                // CASO B: Usuario ya existe en Auth (authError usualmente indica "User already registered")
+                // No podemos recuperar la contraseña. Generamos link de "Olvidé contraseña".
+                shareUrl = `${window.location.origin}/?view=forgot_password&email=${encodeURIComponent(cliente.email)}`;
+                messageHeader = `Hola ${cliente.nombre}, accede a tu historial de trabajos. Como ya tienes cuenta, usa este enlace si necesitas restablecer tu clave.`;
+                console.log("Usuario ya existente, enviando link de recuperación.");
+            }
+
+            // COMPARTIR
             if (navigator.share) {
                 try {
                     await navigator.share({
@@ -102,19 +160,15 @@ const ClientCard: React.FC<ClientCardProps> = ({ cliente, trabajos, onEdit, onCo
                 } catch (shareError) {
                     if ((shareError as any).name !== 'AbortError') {
                          const combinedMessage = `${messageHeader}\n\n${shareUrl}`;
-                         alert("Enlace copiado al portapapeles.");
                          await navigator.clipboard.writeText(combinedMessage);
+                         alert("Enlace copiado al portapapeles.");
                     }
                 }
             } else {
                  const combinedMessage = `${messageHeader}\n\n${shareUrl}`;
                  await navigator.clipboard.writeText(combinedMessage);
-                 alert("Enlace de acceso copiado al portapapeles. Puedes pegarlo en WhatsApp.");
+                 alert("Enlace copiado al portapapeles. Puedes pegarlo en WhatsApp.");
             }
-            
-            // IMPORTANTE: Ya no borramos el tempPass aquí.
-            // Esto permite volver a compartir el enlace si el usuario se equivocó.
-            // Se borrará eventualmente si se limpia el caché o si el usuario cambia la contraseña manualmente.
 
         } catch (error: any) {
             console.error("Error sending access:", error);
@@ -163,7 +217,7 @@ const ClientCard: React.FC<ClientCardProps> = ({ cliente, trabajos, onEdit, onCo
                                                 title="Enviar enlace de acceso automático"
                                             >
                                                 {sendingAccess ? (
-                                                    <span>...</span>
+                                                    <span>Generando...</span>
                                                 ) : (
                                                     <>
                                                         <KeyIcon className="h-3.5 w-3.5" />
@@ -319,6 +373,7 @@ const Clientes: React.FC<ClientesProps> = ({ clientes, trabajos, onDataRefresh, 
                             onAddVehicle={setClientToAddVehicle}
                             onCreateJob={setClientForNewJob}
                             forceExpand={searchQuery.length > 0} 
+                            onDataRefresh={onDataRefresh}
                         />
                     ))
                 ) : (

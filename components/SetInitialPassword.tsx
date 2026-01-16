@@ -1,6 +1,7 @@
+
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
-import { KeyIcon, CheckCircleIcon, XCircleIcon } from '@heroicons/react/24/solid';
+import { KeyIcon, CheckCircleIcon, XCircleIcon, WrenchScrewdriverIcon } from '@heroicons/react/24/solid';
 
 interface SetInitialPasswordProps {
     onSetSuccess: () => void;
@@ -37,10 +38,9 @@ const SetInitialPassword: React.FC<SetInitialPasswordProps> = ({ onSetSuccess })
             if (updateError) throw updateError;
             
             setSuccess(true);
-            // Pequeño delay para que el usuario vea el check de éxito antes de entrar al portal
             setTimeout(() => {
                 onSetSuccess();
-            }, 800);
+            }, 1000);
             
         } catch (err: any) {
             setError(err.message || 'No se pudo establecer la contraseña. El enlace de invitación puede haber expirado.');
@@ -49,99 +49,95 @@ const SetInitialPassword: React.FC<SetInitialPasswordProps> = ({ onSetSuccess })
     };
 
     return (
-        <div className="flex items-center justify-center min-h-screen bg-gray-100 dark:bg-taller-dark p-4">
+        <div className="flex items-center justify-center min-h-screen bg-gray-100 dark:bg-taller-dark">
             <div className="relative w-full max-w-md p-8 space-y-6 bg-white dark:bg-gray-800 rounded-2xl shadow-lg text-center">
-                <div className="flex justify-center">
-                    <div className={`p-4 rounded-full transition-colors duration-500 ${success ? 'bg-green-100 dark:bg-green-900/30' : 'bg-taller-light dark:bg-gray-700'}`}>
-                        <KeyIcon className={`h-12 w-12 transition-colors duration-500 ${success ? 'text-green-600' : 'text-taller-primary'}`}/>
-                    </div>
-                </div>
-                
-                <h1 className="text-2xl sm:text-3xl font-bold text-taller-dark dark:text-taller-light">
-                    {success ? '¡Todo listo!' : 'Crea tu Contraseña'}
-                </h1>
                 
                 {success ? (
-                    <div className="animate-in fade-in zoom-in duration-500">
-                         <p className="text-taller-gray dark:text-gray-400">Iniciando sesión automáticamente...</p>
-                         <div className="flex justify-center mt-4">
-                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600"></div>
-                         </div>
+                    <div className="py-8 animate-in fade-in zoom-in duration-500">
+                        <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-green-100 dark:bg-green-900/30 mb-4">
+                            <CheckCircleIcon className="h-10 w-10 text-green-600 dark:text-green-400" />
+                        </div>
+                        <h2 className="text-2xl font-bold text-taller-dark dark:text-taller-light mb-2">¡Todo listo!</h2>
+                        <p className="text-taller-gray dark:text-gray-400">Iniciando sesión en tu portal...</p>
                     </div>
                 ) : (
                     <>
+                        <div className="flex justify-center mb-4">
+                            <WrenchScrewdriverIcon className="h-12 w-12 text-taller-primary"/>
+                        </div>
+                        
+                        <h2 className="text-2xl font-bold text-taller-dark dark:text-taller-light">
+                            Activa tu Cuenta
+                        </h2>
                         <p className="text-sm text-taller-gray dark:text-gray-400">
-                            ¡Bienvenido! Para acceder a tu historial y estado de trabajos, crea una contraseña nueva.
+                            Establece una contraseña segura para acceder a tu historial de trabajos.
                         </p>
-                        <form onSubmit={handlePasswordUpdate} className="space-y-4 text-left">
+
+                        <form onSubmit={handlePasswordUpdate} className="space-y-4 text-left mt-6">
                             <div>
-                                <label htmlFor="password" className="block text-xs font-bold text-taller-gray dark:text-gray-400 uppercase tracking-wider mb-1">Nueva Contraseña</label>
+                                <label htmlFor="password" className="block text-sm font-medium text-taller-gray dark:text-gray-400 text-left">Nueva Contraseña</label>
                                 <input 
                                     type="password" 
                                     id="password" 
                                     value={password} 
                                     onChange={e => setPassword(e.target.value)} 
-                                    className="block w-full px-3 py-2.5 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-taller-primary focus:border-taller-primary text-taller-dark dark:text-taller-light sm:text-sm" 
+                                    className="mt-1 block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-taller-primary focus:border-taller-primary text-taller-dark dark:text-taller-light sm:text-sm" 
                                     required
                                     autoFocus
                                 />
                             </div>
                             <div>
-                                <label htmlFor="confirmPassword" className="block text-xs font-bold text-taller-gray dark:text-gray-400 uppercase tracking-wider mb-1">Confirmar Contraseña</label>
+                                <label htmlFor="confirmPassword" className="block text-sm font-medium text-taller-gray dark:text-gray-400 text-left">Confirmar Contraseña</label>
                                 <input 
                                     type="password" 
                                     id="confirmPassword" 
                                     value={confirmPassword} 
                                     onChange={e => setConfirmPassword(e.target.value)} 
-                                    className="block w-full px-3 py-2.5 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-taller-primary focus:border-taller-primary text-taller-dark dark:text-taller-light sm:text-sm" 
+                                    className="mt-1 block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-taller-primary focus:border-taller-primary text-taller-dark dark:text-taller-light sm:text-sm" 
                                     required
                                 />
                             </div>
                             
-                            <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700/30 rounded-lg border dark:border-gray-700">
-                                <div className="flex items-center h-5">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center">
                                     <input
                                         id="remember-me"
                                         name="remember-me"
                                         type="checkbox"
                                         checked={rememberMe}
                                         onChange={(e) => setRememberMe(e.target.checked)}
-                                        className="h-4 w-4 text-taller-primary focus:ring-taller-primary border-gray-300 dark:border-gray-600 rounded cursor-pointer"
+                                        className="h-4 w-4 text-taller-primary focus:ring-taller-primary border-gray-300 dark:border-gray-600 rounded"
                                     />
+                                    <label htmlFor="remember-me" className="ml-2 block text-sm text-taller-gray dark:text-gray-400">
+                                        Mantener sesión
+                                    </label>
                                 </div>
-                                <label htmlFor="remember-me" className="text-sm font-medium text-taller-gray dark:text-gray-300 cursor-pointer select-none">
-                                    Mantener la sesión abierta
-                                </label>
                             </div>
 
-                            <div className="text-xs space-y-2 pt-2 bg-gray-50 dark:bg-gray-700/50 p-4 rounded-xl border dark:border-gray-700">
-                                <p className={`flex items-center gap-2 transition-colors ${password.length >= 6 ? 'text-green-600 dark:text-green-400 font-bold' : 'text-taller-gray dark:text-gray-400'}`}>
+                            <div className="text-xs text-left text-taller-gray dark:text-gray-400 space-y-1 pt-1">
+                                <p className={`flex items-center gap-2 transition-colors ${password.length >= 6 ? 'text-green-600' : 'text-taller-gray dark:text-gray-400'}`}>
                                     {password.length >= 6 ? <CheckCircleIcon className="h-4 w-4" /> : <XCircleIcon className="h-4 w-4" />}
                                     <span>Mínimo 6 caracteres.</span>
                                 </p>
-                                <p className={`flex items-center gap-2 transition-colors ${/^(?=.*[A-Za-z])(?=.*\d).+$/.test(password) ? 'text-green-600 dark:text-green-400 font-bold' : 'text-taller-gray dark:text-gray-400'}`}>
+                                <p className={`flex items-center gap-2 transition-colors ${/^(?=.*[A-Za-z])(?=.*\d).+$/.test(password) ? 'text-green-600' : 'text-taller-gray dark:text-gray-400'}`}>
                                     {/^(?=.*[A-Za-z])(?=.*\d).+$/.test(password) ? <CheckCircleIcon className="h-4 w-4" /> : <XCircleIcon className="h-4 w-4" />}
                                     <span>Al menos una letra y un número.</span>
                                 </p>
-                                <p className={`flex items-center gap-2 transition-colors ${password && password === confirmPassword ? 'text-green-600 dark:text-green-400 font-bold' : 'text-taller-gray dark:text-gray-400'}`}>
+                                <p className={`flex items-center gap-2 transition-colors ${password && password === confirmPassword ? 'text-green-600' : 'text-taller-gray dark:text-gray-400'}`}>
                                     {password && confirmPassword && password === confirmPassword ? <CheckCircleIcon className="h-4 w-4" /> : <XCircleIcon className="h-4 w-4" />}
                                     <span>Las contraseñas coinciden.</span>
                                 </p>
                             </div>
 
-                            {error && (
-                                <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-900/30 rounded-lg text-xs text-red-600 dark:text-red-400 text-center font-medium">
-                                    {error}
-                                </div>
-                            )}
+                            {error && <p className="text-sm text-red-600 text-center">{error}</p>}
                             
                             <div className="pt-4">
                                 <button 
                                     type="submit" 
                                     disabled={loading || !passwordValid} 
-                                    className="w-full flex justify-center py-3.5 px-4 border border-transparent rounded-xl shadow-lg shadow-taller-primary/30 text-base font-bold text-white bg-taller-primary hover:bg-taller-secondary focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-taller-primary disabled:opacity-50 disabled:shadow-none transition-all active:scale-95"
+                                    className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-taller-primary hover:bg-taller-secondary focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-taller-primary disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                                 >
-                                    {loading ? 'Procesando...' : 'Establecer Contraseña y Entrar'}
+                                    {loading ? 'Procesando...' : 'Establecer y Entrar'}
                                 </button>
                             </div>
                         </form>

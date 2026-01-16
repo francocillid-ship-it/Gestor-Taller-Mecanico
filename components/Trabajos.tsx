@@ -457,6 +457,7 @@ const Trabajos: React.FC<TrabajosProps> = ({
     const [initialClientIdForModal, setInitialClientIdForModal] = useState<string | undefined>(undefined);
     const [activeMobileTab, setActiveMobileTab] = useState<JobStatus>(initialTab || JobStatus.Presupuesto);
     const [trabajoToEdit, setTrabajoToEdit] = useState<Trabajo | undefined>(undefined);
+    const desktopContainerRef = useRef<HTMLDivElement>(null);
     
     // Animation States
     const [showFloatingMenu, setShowFloatingMenu] = useState(false);
@@ -473,11 +474,18 @@ const Trabajos: React.FC<TrabajosProps> = ({
             prevTabRef.current = statusOrder.indexOf(initialTab || JobStatus.Presupuesto);
         }
         
-        if (initialTab) {
-            // On desktop, scroll the corresponding column into view
+        if (initialTab && desktopContainerRef.current) {
+            // CORRECCIÓN CRÍTICA: Usar scrollTo en el contenedor en lugar de scrollIntoView en el elemento
+            // scrollIntoView hace "burbujear" el scroll hasta el padre más lejano (incluyendo el slider de dashboard)
+            // lo que rompe el layout translateX.
             const columnElement = document.getElementById(`status-column-${initialTab}`);
             if (columnElement) {
-                columnElement.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+                // Calculamos el offset relativo al contenedor para hacer scroll interno seguro
+                const offsetLeft = columnElement.offsetLeft;
+                desktopContainerRef.current.scrollTo({
+                    left: offsetLeft,
+                    behavior: 'smooth'
+                });
             }
         }
     }, [isActive, initialTab]);
@@ -637,7 +645,7 @@ const Trabajos: React.FC<TrabajosProps> = ({
                         </div>
 
                         {/* Desktop View: Kanban Board - ADAPTED FOR ULTRAWIDE */}
-                        <div className="hidden lg:flex flex-row gap-4 h-full overflow-x-auto pb-2 items-stretch w-full">
+                        <div ref={desktopContainerRef} className="hidden lg:flex flex-row gap-4 h-full overflow-x-auto pb-2 items-stretch w-full">
                             {statusOrder.map(status => {
                                 const jobs = trabajosByStatus[status] || [];
                                 return (

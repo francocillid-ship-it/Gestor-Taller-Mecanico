@@ -428,6 +428,12 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
         }
     };
 
+    const handleDescriptionFocus = () => {
+        if (!descripcion) {
+            setDescripcion("• ");
+        }
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (creationMode === 'existing' && (!selectedClienteId || !selectedVehiculoId)) {
@@ -547,6 +553,7 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
                             value={descripcion}
                             onChange={e => setDescripcion(e.target.value)}
                             onKeyDown={handleDescriptionKeyDown}
+                            onFocus={handleDescriptionFocus}
                             placeholder="Descripción del trabajo..."
                             className="w-full p-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 text-sm resize-none overflow-hidden"
                             rows={2}
