@@ -4,7 +4,7 @@ import { createPortal } from 'react-dom';
 import { supabase } from '../supabaseClient';
 import type { Cliente, Parte, Trabajo } from '../types';
 import { JobStatus } from '../types';
-import { XMarkIcon, TrashIcon, WrenchScrewdriverIcon, TagIcon, ArchiveBoxIcon, Bars3Icon, ShoppingBagIcon, BoltIcon, UsersIcon, CheckIcon, CurrencyDollarIcon, CalendarDaysIcon, PencilIcon, ArrowPathIcon } from '@heroicons/react/24/solid';
+import { XMarkIcon, TrashIcon, WrenchScrewdriverIcon, TagIcon, ArchiveBoxIcon, Bars3Icon, ShoppingBagIcon, BoltIcon, UsersIcon, CheckIcon, CurrencyDollarIcon, CalendarDaysIcon, PencilIcon, ArrowPathIcon, MapPinIcon } from '@heroicons/react/24/solid';
 import { ALL_MAINTENANCE_OPTS } from '../constants';
 
 interface CrearTrabajoModalProps {
@@ -524,15 +524,33 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
                 <div className="flex-1 overflow-y-auto p-4 space-y-4 overscroll-none touch-auto">
                     <form onSubmit={handleSubmit} className="space-y-4 pb-12">
                         {creationMode === 'existing' ? (
-                            <div className="grid grid-cols-2 gap-3">
-                                <select value={selectedClienteId} onChange={e => setSelectedClienteId(e.target.value)} className="p-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 text-sm" required>
-                                    <option value="">Cliente...</option>
-                                    {clientes.map(c => <option key={c.id} value={c.id}>{c.nombre} {c.apellido}</option>)}
-                                </select>
-                                <select value={selectedVehiculoId} onChange={e => setSelectedVehiculoId(e.target.value)} className="p-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 text-sm" required disabled={!selectedClienteId}>
-                                    <option value="">Vehículo...</option>
-                                    {selectedClientVehiculos.map(v => <option key={v.id} value={v.id}>{v.marca} {v.modelo}</option>)}
-                                </select>
+                            <div className="space-y-3">
+                                <div className="grid grid-cols-2 gap-3">
+                                    <select value={selectedClienteId} onChange={e => setSelectedClienteId(e.target.value)} className="p-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 text-sm" required>
+                                        <option value="">Cliente...</option>
+                                        {clientes.map(c => <option key={c.id} value={c.id}>{c.nombre} {c.apellido}</option>)}
+                                    </select>
+                                    <select value={selectedVehiculoId} onChange={e => setSelectedVehiculoId(e.target.value)} className="p-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 text-sm" required disabled={!selectedClienteId}>
+                                        <option value="">Vehículo...</option>
+                                        {selectedClientVehiculos.map(v => <option key={v.id} value={v.id}>{v.marca} {v.modelo}</option>)}
+                                    </select>
+                                </div>
+                                {(status === JobStatus.EnProceso || status === JobStatus.Finalizado) && (
+                                    <div className="animate-in fade-in slide-in-from-top-2 duration-300">
+                                        <label className="block text-[10px] font-bold text-taller-gray dark:text-gray-400 uppercase mb-1 pl-1">Kilometraje Actual (Opcional)</label>
+                                        <div className="relative">
+                                            <MapPinIcon className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
+                                            <input 
+                                                type="number" 
+                                                placeholder="Ej: 125000" 
+                                                value={kilometraje} 
+                                                onChange={e => setKilometraje(e.target.value)} 
+                                                className="w-full pl-9 pr-12 p-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 text-sm focus:ring-1 focus:ring-taller-primary outline-none"
+                                            />
+                                            <span className="absolute right-3 top-2.5 text-[10px] font-bold text-gray-400">KM</span>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         ) : (
                             <div className="space-y-2">

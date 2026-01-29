@@ -33,8 +33,8 @@ const getDateCategory = (dateString: string): TimeCategory => {
     const jobDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
     
     const day = today.getDay() || 7; 
-    if(day !== 1) today.setHours(-24 * (day - 1));
-    const startOfCurrentWeek = today;
+    const startOfCurrentWeek = new Date(today);
+    startOfCurrentWeek.setDate(today.getDate() - (day - 1));
 
     const startOfPreviousWeek = new Date(startOfCurrentWeek);
     startOfPreviousWeek.setDate(startOfCurrentWeek.getDate() - 7);
@@ -42,9 +42,19 @@ const getDateCategory = (dateString: string): TimeCategory => {
     const startOfCurrentMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     const startOfPreviousMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
 
+    // 1. Si es de esta semana
     if (jobDate >= startOfCurrentWeek) return 'Esta semana';
+    
+    // 2. Si es de la semana pasada
     if (jobDate >= startOfPreviousWeek) return 'Semana pasada';
-    if (jobDate >= startOfCurrentMonth) return 'Mes pasado';
+
+    // 3. Si es de este mes pero más viejo que la semana pasada (ej: restos de enero)
+    if (jobDate >= startOfCurrentMonth) return 'Semana pasada';
+
+    // 4. Si es del mes pasado (ej: diciembre si estamos en enero)
+    if (jobDate >= startOfPreviousMonth) return 'Mes pasado';
+
+    // 5. Todo lo anterior
     return 'Anteriores';
 };
 
@@ -100,6 +110,7 @@ const CalendarWidget: React.FC<{
                 <button
                     key={d}
                     onClick={() => onSelectDate(isSelected ? null : date)}
+                    type="button"
                     className={`h-8 sm:h-10 flex flex-col items-center justify-center rounded-lg relative transition-colors ${
                         isSelected 
                             ? 'bg-taller-primary text-white font-bold' 
@@ -125,13 +136,13 @@ const CalendarWidget: React.FC<{
     return (
         <div className="bg-white dark:bg-gray-800 rounded-lg p-2 mb-2 border dark:border-gray-700 shadow-sm">
             <div className="flex justify-between items-center mb-2 px-2">
-                <button onClick={prevMonth} className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full">
+                <button onClick={prevMonth} type="button" className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full">
                     <ChevronLeftIcon className="h-4 w-4 text-gray-600 dark:text-gray-400"/>
                 </button>
                 <span className="text-sm font-bold text-taller-dark dark:text-taller-light capitalize">
                     {currentMonth.toLocaleString('es-ES', { month: 'long', year: 'numeric' })}
                 </span>
-                <button onClick={nextMonth} className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full">
+                <button onClick={nextMonth} type="button" className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full">
                     <ChevronRightIcon className="h-4 w-4 text-gray-600 dark:text-gray-400"/>
                 </button>
             </div>
@@ -174,6 +185,7 @@ const JobGroup: React.FC<{
         <div className="mb-3 last:mb-0">
             <button 
                 onClick={() => setIsExpanded(!isExpanded)}
+                type="button"
                 className="w-full flex justify-between items-center text-xs font-semibold text-taller-gray dark:text-gray-400 uppercase tracking-wider mb-2 hover:text-taller-primary transition-colors bg-white dark:bg-gray-700/50 p-2 rounded shadow-sm"
             >
                 <div className="flex items-center gap-2">
@@ -441,6 +453,7 @@ const StatusColumn: React.FC<{
     );
 };
 
+// --- MAIN TRABAJOS COMPONENT ---
 
 const Trabajos: React.FC<TrabajosProps> = ({ 
     trabajos, 
@@ -449,315 +462,118 @@ const Trabajos: React.FC<TrabajosProps> = ({
     onDataRefresh, 
     tallerInfo, 
     searchQuery, 
-    initialTab, 
+    initialTab,
     initialJobId,
-    isActive = false 
+    isActive
 }) => {
-    const [isJobModalOpen, setIsJobModalOpen] = useState(false);
-    const [initialClientIdForModal, setInitialClientIdForModal] = useState<string | undefined>(undefined);
-    const [activeMobileTab, setActiveMobileTab] = useState<JobStatus>(initialTab || JobStatus.Presupuesto);
-    const [trabajoToEdit, setTrabajoToEdit] = useState<Trabajo | undefined>(undefined);
-    const desktopContainerRef = useRef<HTMLDivElement>(null);
-    
-    // Animation States
-    const [showFloatingMenu, setShowFloatingMenu] = useState(false);
-    const [animateFloatingMenu, setAnimateFloatingMenu] = useState(false);
-    
-    // Directional Animation Logic
-    const prevTabRef = useRef<number>(statusOrder.indexOf(initialTab || JobStatus.Presupuesto));
-    const [slideDirection, setSlideDirection] = useState<'left' | 'right'>('right');
+    const [activeTab, setActiveTab] = useState<JobStatus>(initialTab || JobStatus.EnProceso);
+    const scrollContainerRef = useRef<HTMLDivElement>(null);
 
+    // Update active tab when initialTab changes (e.g., from Dashboard navigation)
     useEffect(() => {
-        // Reset tab whenever the view becomes active (navigation)
-        if (isActive) {
-            setActiveMobileTab(initialTab || JobStatus.Presupuesto);
-            prevTabRef.current = statusOrder.indexOf(initialTab || JobStatus.Presupuesto);
+        if (initialTab) {
+            setActiveTab(initialTab);
         }
-        
-        if (initialTab && desktopContainerRef.current) {
-            // CORRECCIÓN CRÍTICA: Usar scrollTo en el contenedor en lugar de scrollIntoView en el elemento
-            // scrollIntoView hace "burbujear" el scroll hasta el padre más lejano (incluyendo el slider de dashboard)
-            // lo que rompe el layout translateX.
-            const columnElement = document.getElementById(`status-column-${initialTab}`);
-            if (columnElement) {
-                // Calculamos el offset relativo al contenedor para hacer scroll interno seguro
-                const offsetLeft = columnElement.offsetLeft;
-                desktopContainerRef.current.scrollTo({
-                    left: offsetLeft,
-                    behavior: 'smooth'
-                });
+    }, [initialTab]);
+
+    // If we have a specific jobId to highlight, find its status and switch to it
+    useEffect(() => {
+        if (initialJobId && isActive) {
+            const job = trabajos.find(t => t.id === initialJobId);
+            if (job) {
+                setActiveTab(job.status);
             }
         }
-    }, [isActive, initialTab]);
+    }, [initialJobId, trabajos, isActive]);
 
-    // Handle Deep Linking to a Job (from Dashboard) - MODIFICADO: Ya no abre el modal
-    useEffect(() => {
-        if (isActive && initialJobId) {
-            // We removed the logic that automatically opened the edit modal.
-            // Now we rely on passing `initialJobId` down to JobCard via StatusColumn/JobGroup
-            // so it highlights and expands itself.
-        }
-    }, [isActive, initialJobId]);
-    
-    // Handle Directional State on Tab Change
-    useEffect(() => {
-        const currentIdx = statusOrder.indexOf(activeMobileTab);
-        const prevIdx = prevTabRef.current;
-        
-        if (currentIdx !== prevIdx) {
-            setSlideDirection(currentIdx > prevIdx ? 'right' : 'left');
-            prevTabRef.current = currentIdx;
-        }
-    }, [activeMobileTab]);
-
-    useEffect(() => {
-        const pendingClientId = localStorage.getItem('pending_job_client_id');
-        if (pendingClientId) {
-            setInitialClientIdForModal(pendingClientId);
-            setIsJobModalOpen(true);
-            localStorage.removeItem('pending_job_client_id');
-        }
-    }, []);
-
-    // Animation Logic (Floating Menu)
-    useEffect(() => {
-        const shouldShow = isActive && !isJobModalOpen;
-        let timer: ReturnType<typeof setTimeout>;
-
-        if (shouldShow) {
-            setShowFloatingMenu(true);
-            timer = setTimeout(() => {
-                setAnimateFloatingMenu(true);
-            }, 50);
-        } else {
-            setAnimateFloatingMenu(false);
-            timer = setTimeout(() => {
-                setShowFloatingMenu(false);
-            }, 200); 
-        }
-
-        return () => clearTimeout(timer);
-    }, [isActive, isJobModalOpen]);
-
-    const trabajosByStatus = useMemo(() => {
-        let filteredTrabajos = trabajos;
-        if (searchQuery) {
-            const query = searchQuery.toLowerCase();
-            filteredTrabajos = trabajos.filter(t => {
-                const cliente = clientes.find(c => c.id === t.clienteId);
-                const vehiculo = cliente?.vehiculos.find(v => v.id === t.vehiculoId);
-                const fullName = cliente ? `${cliente.nombre} ${cliente.apellido || ''}`.toLowerCase() : '';
-                return (
-                    t.descripcion.toLowerCase().includes(query) ||
-                    fullName.includes(query) ||
-                    vehiculo?.marca.toLowerCase().includes(query) ||
-                    vehiculo?.modelo.toLowerCase().includes(query) ||
-                    vehiculo?.matricula.toLowerCase().includes(query) ||
-                    t.status.toLowerCase().includes(query)
-                );
-            });
-        }
-
-        return statusOrder.reduce((acc, status) => {
-            acc[status] = filteredTrabajos.filter(t => t.status === status).sort((a,b) => new Date(b.fechaEntrada).getTime() - new Date(a.fechaEntrada).getTime());
-            return acc;
-        }, {} as Record<JobStatus, Trabajo[]>);
+    const filteredTrabajos = useMemo(() => {
+        if (!searchQuery) return trabajos;
+        const query = searchQuery.toLowerCase();
+        return trabajos.filter(t => {
+            const cliente = clientes.find(c => c.id === t.clienteId);
+            const vehiculo = cliente?.vehiculos.find(v => v.id === t.vehiculoId);
+            const clientName = cliente ? `${cliente.nombre} ${cliente.apellido}`.toLowerCase() : '';
+            const vehicleInfo = vehiculo ? `${vehiculo.marca} ${vehiculo.modelo} ${vehiculo.matricula}`.toLowerCase() : '';
+            const desc = t.descripcion.toLowerCase();
+            const quickInfo = t.quickBudgetData ? `${t.quickBudgetData.nombre} ${t.quickBudgetData.apellido} ${t.quickBudgetData.marca} ${t.quickBudgetData.modelo} ${t.quickBudgetData.matricula}`.toLowerCase() : '';
+            
+            return clientName.includes(query) || vehicleInfo.includes(query) || desc.includes(query) || quickInfo.includes(query);
+        });
     }, [trabajos, searchQuery, clientes]);
 
-    const hasResults = useMemo(() => (Object.values(trabajosByStatus) as Trabajo[][]).some(list => list.length > 0), [trabajosByStatus]);
-    
-    const getMobileTabLabel = (status: JobStatus) => {
-        switch(status) {
-            case JobStatus.Presupuesto: return 'Presupuestos';
-            case JobStatus.Programado: return 'Programados';
-            case JobStatus.EnProceso: return 'En Proceso';
-            case JobStatus.Finalizado: return 'Historial';
-            default: return status;
-        }
-    };
-
-    const getMobileTabIcon = (status: JobStatus) => {
-        switch(status) {
-            case JobStatus.Presupuesto: return CurrencyDollarIcon;
-            case JobStatus.Programado: return CalendarIcon;
-            case JobStatus.EnProceso: return WrenchScrewdriverIcon;
-            case JobStatus.Finalizado: return ClockIcon;
-            default: return CalendarIcon;
-        }
-    };
-
     return (
-        <div className="flex flex-col h-full w-full relative overflow-hidden">
-            <style>{`
-                .custom-scrollbar::-webkit-scrollbar { width: 5px; }
-                .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-                .custom-scrollbar::-webkit-scrollbar-thumb { background-color: rgba(156, 163, 175, 0.4); border-radius: 20px; }
-                .dark .custom-scrollbar::-webkit-scrollbar-thumb { background-color: rgba(75, 85, 99, 0.4); }
-                .custom-scrollbar::-webkit-scrollbar-thumb:hover { background-color: rgba(156, 163, 175, 0.7); }
-            `}</style>
-            
-            {/* Header Section */}
-            <div className="flex flex-col gap-4 sm:flex-row sm:justify-between sm:items-center mb-4 lg:mb-4 flex-shrink-0 px-4 pt-4 md:px-0 md:pt-0">
-                <h2 className="text-2xl font-bold text-taller-dark dark:text-taller-light">Flujo de Trabajos</h2>
-                <div className="hidden lg:flex">
+        <div className="h-full flex flex-col min-h-0 bg-taller-light dark:bg-taller-dark">
+            {/* Tabs for mobile view */}
+            <div className="md:hidden flex overflow-x-auto bg-white dark:bg-gray-800 border-b dark:border-gray-700 sticky top-0 z-10 no-scrollbar">
+                {statusOrder.map((status) => (
                     <button
-                        onClick={() => {
-                            setInitialClientIdForModal(undefined);
-                            setTrabajoToEdit(undefined);
-                            setIsJobModalOpen(true);
-                        }}
-                        className="flex items-center justify-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-taller-primary rounded-lg shadow-md hover:bg-taller-secondary transition-colors"
+                        key={status}
+                        onClick={() => setActiveTab(status)}
+                        type="button"
+                        className={`flex-1 min-w-[100px] py-3 text-[10px] font-bold uppercase tracking-wider border-b-2 transition-colors ${
+                            activeTab === status
+                                ? 'border-taller-primary text-taller-primary bg-blue-50/50 dark:bg-blue-900/20'
+                                : 'border-transparent text-taller-gray dark:text-gray-400'
+                        }`}
                     >
-                       <PlusIcon className="h-5 w-5"/>
-                        Nuevo Presupuesto
+                        {status}
                     </button>
-                </div>
+                ))}
             </div>
 
-            {/* Scrollable Content Area */}
-            <div className="flex-1 overflow-y-auto overflow-x-hidden relative w-full" id="trabajos-scroll-container">
-                {searchQuery && !hasResults ? (
-                    <div className="flex-1 flex flex-col items-center justify-center text-taller-gray dark:text-gray-400 min-h-[50vh]">
-                        <MagnifyingGlassIcon className="h-16 w-16 mb-4 opacity-50"/>
-                        <p className="text-lg font-medium">No se encontraron resultados para "{searchQuery}"</p>
-                        <p className="text-sm mt-2 opacity-75">Intenta buscar por cliente, vehículo o descripción.</p>
-                    </div>
-                ) : (
-                    <>
-                        {/* Mobile View: Render only ACTIVE tab with Animation */}
+            {/* Content area: Horizontal scroll for both mobile and desktop (when constrained) */}
+            <div 
+                id="trabajos-scroll-container"
+                ref={scrollContainerRef}
+                className="flex-1 overflow-x-auto h-full scroll-smooth custom-scrollbar"
+            >
+                <div className="flex h-full min-w-full p-4 md:p-6 gap-4">
+                    {statusOrder.map((status) => (
                         <div 
-                            key={activeMobileTab}
-                            className={`lg:hidden w-full pb-36 transform-gpu will-change-transform ${
-                                slideDirection === 'right' ? 'animate-slide-in-right' : 'animate-slide-in-left'
+                            key={status} 
+                            className={`flex-shrink-0 w-[85vw] sm:w-[400px] md:w-[350px] lg:w-[380px] h-full ${
+                                activeTab === status ? 'block' : 'hidden md:block'
                             }`}
                         >
                             <StatusColumn
-                                status={activeMobileTab}
-                                trabajos={trabajosByStatus[activeMobileTab] || []}
+                                status={status}
+                                trabajos={filteredTrabajos.filter(t => t.status === status)}
                                 clientes={clientes}
                                 onUpdateStatus={onUpdateStatus}
                                 tallerInfo={tallerInfo}
                                 onDataRefresh={onDataRefresh}
                                 searchQuery={searchQuery}
-                                isMobileMode={true}
+                                isMobileMode={false} // Use desktop styling within columns
                                 highlightedJobId={initialJobId}
                             />
                         </div>
-
-                        {/* Desktop View: Kanban Board - ADAPTED FOR ULTRAWIDE */}
-                        <div ref={desktopContainerRef} className="hidden lg:flex flex-row gap-4 h-full overflow-x-auto pb-2 items-stretch w-full">
-                            {statusOrder.map(status => {
-                                const jobs = trabajosByStatus[status] || [];
-                                return (
-                                    <div key={status} id={`status-column-${status}`} className="flex-1 min-w-[280px] h-full flex flex-col transition-all duration-300">
-                                        <StatusColumn
-                                            status={status}
-                                            trabajos={jobs}
-                                            clientes={clientes}
-                                            onUpdateStatus={onUpdateStatus}
-                                            tallerInfo={tallerInfo}
-                                            onDataRefresh={onDataRefresh}
-                                            searchQuery={searchQuery}
-                                            isMobileMode={false}
-                                            highlightedJobId={initialJobId}
-                                        />
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    </>
-                )}
+                    ))}
+                </div>
             </div>
-
-            {/* Floating Buttons (Mobile Only) - Using Portal to ensure fixed positioning works correctly on all devices */}
-            {showFloatingMenu && createPortal(
-                <div 
-                    className={`lg:hidden fixed left-0 w-full flex flex-col items-center pointer-events-none z-[100] transition-all ease-out transform ${animateFloatingMenu ? 'duration-500 opacity-100 translate-y-0' : 'duration-200 opacity-0 translate-y-12'}`}
-                    style={{
-                        bottom: 'calc(5.5rem + 5px)',
-                    }}
-                >
-                    {activeMobileTab === JobStatus.Presupuesto && (
-                        <div className="w-full flex justify-center mb-4 pointer-events-auto px-4">
-                            <button
-                                onClick={() => {
-                                    setInitialClientIdForModal(undefined);
-                                    setTrabajoToEdit(undefined);
-                                    setIsJobModalOpen(true);
-                                }}
-                                className="flex items-center justify-center gap-2 px-6 py-2.5 text-xs font-bold text-white bg-taller-primary rounded-full shadow-lg shadow-taller-primary/40 hover:bg-taller-secondary hover:scale-105 transition-all transform active:scale-95"
-                            >
-                            <PlusIcon className="h-4 w-4"/>
-                                NUEVO PRESUPUESTO
-                            </button>
-                        </div>
-                    )}
-
-                    <div className="w-[95%] max-w-sm bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 pointer-events-auto overflow-hidden">
-                        <div className="grid grid-cols-4 h-14">
-                            {statusOrder.map(status => {
-                                const Icon = getMobileTabIcon(status);
-                                const isActiveTab = activeMobileTab === status;
-                                const count = trabajosByStatus[status]?.length || 0;
-                                
-                                return (
-                                    <button
-                                        key={status}
-                                        onClick={() => setActiveMobileTab(status)}
-                                        className={`relative flex flex-col items-center justify-center transition-colors duration-200 group ${
-                                            isActiveTab 
-                                            ? 'bg-blue-50 dark:bg-gray-700/50' 
-                                            : 'hover:bg-gray-50 dark:hover:bg-gray-700/30'
-                                        }`}
-                                    >
-                                        <Icon className={`h-5 w-5 mb-0.5 transition-colors ${
-                                            isActiveTab 
-                                            ? 'text-taller-primary dark:text-white' 
-                                            : 'text-gray-400 dark:text-gray-500 group-hover:text-gray-600 dark:group-hover:text-gray-400'
-                                        }`} />
-                                        <span className={`text-[9px] font-bold leading-none tracking-tight transition-colors ${
-                                            isActiveTab 
-                                            ? 'text-taller-primary dark:text-white' 
-                                            : 'text-gray-400 dark:text-gray-500'
-                                        }`}>
-                                            {getMobileTabLabel(status)}
-                                        </span>
-                                        
-                                        {count > 0 && (
-                                            <span className={`absolute top-1 right-2 flex h-3.5 w-3.5 items-center justify-center rounded-full text-[8px] font-bold shadow-sm ${
-                                                isActiveTab 
-                                                ? 'bg-taller-primary text-white dark:bg-white dark:text-taller-primary' 
-                                                : 'bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300'
-                                            }`}>
-                                                {count}
-                                            </span>
-                                        )}
-                                    </button>
-                                );
-                            })}
-                        </div>
-                    </div>
-                </div>,
-                document.body
-            )}
-
-            {isJobModalOpen && (
-                <CrearTrabajoModal
-                    clientes={clientes}
-                    onClose={() => {
-                        setIsJobModalOpen(false);
-                        setTrabajoToEdit(undefined); // Clear edit state on close
-                    }}
-                    onSuccess={() => {
-                        setIsJobModalOpen(false);
-                        setTrabajoToEdit(undefined);
-                        onDataRefresh();
-                    }}
-                    onDataRefresh={onDataRefresh}
-                    initialClientId={initialClientIdForModal}
-                    trabajoToEdit={trabajoToEdit}
-                />
-            )}
+            
+            <style>{`
+                .no-scrollbar::-webkit-scrollbar { display: none; }
+                .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+                
+                /* Custom scrollbar styling for the horizontal container */
+                .custom-scrollbar::-webkit-scrollbar {
+                    height: 8px;
+                    width: 8px;
+                }
+                .custom-scrollbar::-webkit-scrollbar-track {
+                    background: transparent;
+                }
+                .custom-scrollbar::-webkit-scrollbar-thumb {
+                    background: #cbd5e1;
+                    border-radius: 10px;
+                }
+                .dark .custom-scrollbar::-webkit-scrollbar-thumb {
+                    background: #475569;
+                }
+                .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+                    background: #94a3b8;
+                }
+            `}</style>
         </div>
     );
 };

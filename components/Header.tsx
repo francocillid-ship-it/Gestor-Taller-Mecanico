@@ -35,33 +35,34 @@ const Header: React.FC<HeaderProps> = ({ tallerName, logoUrl, onMenuClick, showM
         <header className="relative h-20 flex items-center justify-between px-4 md:px-6 bg-white dark:bg-gray-800 shadow-md dark:shadow-none dark:border-b dark:border-gray-700 z-10 flex-shrink-0">
             
             {/* --- Left Side: Logo & Menu --- */}
-            {/* Usamos flex-1 y min-w-0 para permitir que este contenedor se encoja si es necesario */}
             <div className="flex items-center gap-2 md:gap-4 z-0 flex-1 min-w-0 mr-2">
                  {showMenuButton && (
                     <button onClick={onMenuClick} className="md:hidden p-2 -ml-2 text-taller-gray hover:text-taller-dark dark:hover:text-taller-light flex-shrink-0">
                         <Bars3Icon className="h-6 w-6" />
                     </button>
                 )}
-                {logoUrl ? (
-                    <div className="relative h-14 md:h-16 flex items-center max-w-full">
+                
+                {/* Logo: Solo visible en móvil (md:hidden) para evitar duplicidad con el sidebar */}
+                {logoUrl && (
+                    <div className="md:hidden relative h-14 flex items-center max-w-full">
                         <img 
                             src={logoUrl} 
                             alt={tallerName} 
-                            className="h-full w-auto object-contain max-w-[50vw] md:max-w-[300px]" 
+                            className="h-full w-auto object-contain max-w-[50vw]" 
                         />
                     </div>
-                ) : (
-                    <h2 className="text-lg md:text-2xl font-semibold text-taller-dark dark:text-taller-light truncate">
-                        {tallerName}
-                    </h2>
                 )}
+
+                {/* Nombre del taller: Visible siempre en escritorio, o en móvil si no hay logo */}
+                <h2 className={`text-lg md:text-xl font-bold text-taller-dark dark:text-taller-light truncate ${logoUrl ? 'hidden md:block' : 'block'}`}>
+                    {tallerName}
+                </h2>
             </div>
 
             {/* --- Right Side: Search Controls --- */}
             <div className="flex items-center flex-shrink-0 z-0">
                 
                 {/* 1. Mobile Search Trigger Button */}
-                {/* Se mantiene en el flujo (invisible cuando está expandido) para no romper el layout */}
                 <button 
                     onClick={handleOpenSearch}
                     className={`md:hidden p-2 text-gray-500 hover:text-taller-primary rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-opacity duration-200 ${isSearchExpanded ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
@@ -94,7 +95,6 @@ const Header: React.FC<HeaderProps> = ({ tallerName, logoUrl, onMenuClick, showM
             </div>
 
             {/* --- Mobile Search Overlay --- */}
-            {/* Posicionado absolutamente sobre el header. No afecta el flujo de los elementos de abajo. */}
             <div className={`
                 md:hidden absolute inset-0 z-20 bg-white dark:bg-gray-800 flex items-center px-4
                 transition-all duration-300 ease-out origin-right

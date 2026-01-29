@@ -162,7 +162,6 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
             window.scrollTo(0, 0);
 
             // CORRECCIÓN CRÍTICA: Resetear el scroll del contenedor principal (main)
-            // Esto evita que el navegador desplace el layout horizontalmente al hacer focus o scrollIntoView
             if (mainContainerRef.current) {
                 mainContainerRef.current.scrollTop = 0;
                 mainContainerRef.current.scrollLeft = 0;
@@ -228,7 +227,6 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
                 const { data: { user } } = await supabase.auth.getUser();
                 if (!user) return;
 
-                // 1. Crear usuario en Auth y Tabla Clientes
                 const tempPassword = Math.random().toString(36).slice(-8) + '!Aa1';
                 const signUpEmail = `${crypto.randomUUID()}@taller-quick.com`;
 
@@ -250,10 +248,8 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
                 if (signUpError) throw signUpError;
                 const newUserId = signUpData.user!.id;
 
-                // Guardar pass temporal
                 localStorage.setItem(`temp_pass_${newUserId}`, tempPassword);
 
-                // Insertar Perfil Cliente
                 const { error: clientError } = await supabase.from('clientes').insert({
                     id: newUserId,
                     taller_id: user.id,
@@ -265,7 +261,6 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
 
                 if (clientError) throw clientError;
 
-                // 2. Crear Vehículo
                 const { data: newVeh, error: vehError } = await supabase.from('vehiculos').insert({
                     cliente_id: newUserId,
                     marca: trabajoActual.quickBudgetData.marca,
@@ -275,7 +270,6 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
 
                 if (vehError) throw vehError;
 
-                // 3. Vincular el trabajo al nuevo cliente y vehículo, y quitar flag de quickBudget
                 updates.cliente_id = newUserId;
                 updates.vehiculo_id = newVeh.id;
                 updates.is_quick_budget = false;
@@ -288,8 +282,6 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
                 .eq('id', trabajoId);
             
             if (error) throw error;
-            
-            // Refrescar datos para que desaparezca el aviso de "Presupuesto Rápido"
             fetchData(false);
             
         } catch (error: any) {
@@ -434,7 +426,14 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
 
                             <div ref={clientesRef} className="w-full h-full flex-shrink-0 overflow-y-auto p-4 md:p-6 scroll-smooth overscroll-contain">
                                 <div className="max-w-7xl mx-auto min-h-full">
-                                    <Clientes clientes={clientes} trabajos={trabajos} onDataRefresh={handleSilentRefresh} searchQuery={searchQuery} onClientUpdate={handleClientUpdate} />
+                                    <Clientes 
+                                        clientes={clientes} 
+                                        trabajos={trabajos} 
+                                        onDataRefresh={handleSilentRefresh} 
+                                        searchQuery={searchQuery} 
+                                        onClientUpdate={handleClientUpdate} 
+                                        onNavigate={handleNavigate}
+                                    />
                                 </div>
                             </div>
 

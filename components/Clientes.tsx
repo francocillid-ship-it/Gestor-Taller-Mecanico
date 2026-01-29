@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import type { Cliente, Trabajo, Vehiculo } from '../types';
-import { ChevronDownIcon, PhoneIcon, EnvelopeIcon, UserPlusIcon, PencilIcon, Cog6ToothIcon, PlusIcon, PaperAirplaneIcon, CurrencyDollarIcon, KeyIcon } from '@heroicons/react/24/solid';
+import type { Cliente, Trabajo, Vehiculo, JobStatus } from '../types';
+import { ChevronDownIcon, PhoneIcon, EnvelopeIcon, UserPlusIcon, PencilIcon, Cog6ToothIcon, PlusIcon, PaperAirplaneIcon, CurrencyDollarIcon, KeyIcon, ArrowTopRightOnSquareIcon } from '@heroicons/react/24/solid';
 import CrearClienteModal from './CrearClienteModal';
 import MaintenanceConfigModal from './MaintenanceConfigModal';
 import AddVehicleModal from './AddVehicleModal';
@@ -15,6 +15,7 @@ interface ClientesProps {
     onDataRefresh: () => void;
     searchQuery: string;
     onClientUpdate?: (client: Cliente) => void;
+    onNavigate: (view: 'dashboard' | 'trabajos' | 'clientes' | 'ajustes', jobStatus?: JobStatus, jobId?: string) => void;
 }
 
 interface ClientCardProps {
@@ -26,9 +27,10 @@ interface ClientCardProps {
     onCreateJob: (clienteId: string) => void;
     forceExpand?: boolean;
     onDataRefresh: () => void;
+    onNavigate: (view: 'dashboard' | 'trabajos' | 'clientes' | 'ajustes', jobStatus?: JobStatus, jobId?: string) => void;
 }
 
-const ClientCard: React.FC<ClientCardProps> = ({ cliente, trabajos, onEdit, onConfigVehicle, onAddVehicle, onCreateJob, forceExpand, onDataRefresh }) => {
+const ClientCard: React.FC<ClientCardProps> = ({ cliente, trabajos, onEdit, onConfigVehicle, onAddVehicle, onCreateJob, forceExpand, onDataRefresh, onNavigate }) => {
     const [isExpanded, setIsExpanded] = useState(false);
     const [sendingAccess, setSendingAccess] = useState(false);
     const clientTrabajos = trabajos.filter(t => t.clienteId === cliente.id);
@@ -79,7 +81,6 @@ const ClientCard: React.FC<ClientCardProps> = ({ cliente, trabajos, onEdit, onCo
 
         setSendingAccess(true);
         
-        // Cliente temporal para no cerrar la sesión del Taller al hacer signUp
         const tempSupabase = createClient(supabaseUrl, supabaseKey, {
             auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false }
         });
@@ -87,30 +88,23 @@ const ClientCard: React.FC<ClientCardProps> = ({ cliente, trabajos, onEdit, onCo
         const tempPassword = Math.random().toString(36).slice(-8) + 'Aa1!';
         let shareUrl = '';
         let messageHeader = '';
-        let successMigration = false;
 
         try {
-            // 1. Intentar registrar al usuario en Auth (Migración de Cliente Manual a Auth)
-            const { data: authData, error: authError } = await tempSupabase.auth.signUp({
+            const { data: authData } = await tempSupabase.auth.signUp({
                 email: cliente.email,
                 password: tempPassword,
                 options: {
                     data: {
                         role: 'cliente',
-                        taller_nombre_ref: 'Mi Taller Mecánico' // Podríamos pasar el nombre real si lo tuviéramos aquí
+                        taller_nombre_ref: 'Mi Taller Mecánico'
                     },
                 }
             });
 
-            // CASO A: Usuario Nuevo en Auth (Éxito al crear)
             if (authData.user && authData.user.id) {
                 const newAuthId = authData.user.id;
 
-                // Si el ID generado por Auth es diferente al ID actual del cliente (siempre pasa si fue creado manual con UUID aleatorio)
                 if (newAuthId !== cliente.id) {
-                    console.log("Migrando cliente manual a usuario Auth...", cliente.id, "->", newAuthId);
-                    
-                    // 1. Crear el perfil nuevo con el ID correcto (Auth ID)
                     const { error: insertError } = await supabase.from('clientes').insert({
                         id: newAuthId,
                         taller_id: cliente.taller_id,
@@ -122,34 +116,21 @@ const ClientCard: React.FC<ClientCardProps> = ({ cliente, trabajos, onEdit, onCo
                     
                     if (insertError) throw new Error("Error al migrar perfil: " + insertError.message);
 
-                    // 2. Mover Vehículos
                     await supabase.from('vehiculos').update({ cliente_id: newAuthId }).eq('cliente_id', cliente.id);
-                    
-                    // 3. Mover Trabajos
                     await supabase.from('trabajos').update({ cliente_id: newAuthId }).eq('cliente_id', cliente.id);
-                    
-                    // 4. Eliminar perfil viejo
                     await supabase.from('clientes').delete().eq('id', cliente.id);
                     
-                    // Refrescar datos globales
                     onDataRefresh();
-                    successMigration = true;
-                } else {
-                    successMigration = true;
                 }
 
                 shareUrl = `${window.location.origin}/?type=invite&email=${encodeURIComponent(cliente.email)}&password=${encodeURIComponent(tempPassword)}`;
                 messageHeader = `Hola ${cliente.nombre}, accede a tu historial de trabajos en el taller. Tu sistema generó un acceso automático.`;
             
             } else {
-                // CASO B: Usuario ya existe en Auth (authError usualmente indica "User already registered")
-                // No podemos recuperar la contraseña. Generamos link de "Olvidé contraseña".
                 shareUrl = `${window.location.origin}/?view=forgot_password&email=${encodeURIComponent(cliente.email)}`;
                 messageHeader = `Hola ${cliente.nombre}, accede a tu historial de trabajos. Como ya tienes cuenta, usa este enlace si necesitas restablecer tu clave.`;
-                console.log("Usuario ya existente, enviando link de recuperación.");
             }
 
-            // COMPARTIR
             if (navigator.share) {
                 try {
                     await navigator.share({
@@ -257,20 +238,27 @@ const ClientCard: React.FC<ClientCardProps> = ({ cliente, trabajos, onEdit, onCo
                         </div>
                         
                         <h4 className="font-semibold mb-2 text-taller-dark dark:text-taller-light">Historial de Trabajos</h4>
-                        <div className="space-y-3">
+                        <div className="space-y-2">
                             {clientTrabajos.length > 0 ? clientTrabajos.map(trabajo => {
                                 const vehiculo = cliente.vehiculos.find(v => v.id === trabajo.vehiculoId);
                                 return (
-                                    <div key={trabajo.id} className="p-3 bg-white dark:bg-gray-700 rounded-md border dark:border-gray-600">
-                                        <div className="flex justify-between items-center">
-                                            <div>
-                                                <p className="font-semibold text-taller-dark dark:text-taller-light">{vehiculo ? `${vehiculo.marca} ${vehiculo.modelo}` : ''}</p>
-                                                <p className="text-sm text-taller-gray dark:text-gray-400">{trabajo.descripcion}</p>
+                                    <button 
+                                        key={trabajo.id} 
+                                        onClick={() => onNavigate('trabajos', trabajo.status, trabajo.id)}
+                                        className="w-full text-left p-3 bg-white dark:bg-gray-700 rounded-md border dark:border-gray-600 flex justify-between items-center hover:border-taller-primary hover:shadow-sm transition-all group active:scale-[0.99]"
+                                    >
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex justify-between items-center mb-1">
+                                                <p className="font-semibold text-taller-dark dark:text-taller-light truncate">{vehiculo ? `${vehiculo.marca} ${vehiculo.modelo}` : 'Vehículo'}</p>
+                                                <span className={`flex-shrink-0 px-2 py-0.5 text-[10px] font-bold uppercase rounded-full ${trabajo.status === 'Finalizado' ? 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300' : 'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300'}`}>{trabajo.status}</span>
                                             </div>
-                                            <span className={`px-2 py-1 text-xs font-semibold rounded-full ${trabajo.status === 'Finalizado' ? 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300' : 'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300'}`}>{trabajo.status}</span>
+                                            <p className="text-sm text-taller-gray dark:text-gray-400 truncate">{trabajo.descripcion}</p>
+                                            <p className="text-[10px] text-taller-gray dark:text-gray-500 mt-1">Fecha: {new Date(trabajo.fechaEntrada).toLocaleDateString('es-ES')}</p>
                                         </div>
-                                        <p className="text-xs text-taller-gray dark:text-gray-400 mt-1">Fecha: {new Date(trabajo.fechaEntrada).toLocaleDateString('es-ES')}</p>
-                                    </div>
+                                        <div className="ml-4 text-taller-gray dark:text-gray-500 group-hover:text-taller-primary transition-colors">
+                                            <ArrowTopRightOnSquareIcon className="h-5 w-5" />
+                                        </div>
+                                    </button>
                                 )
                             }) : <p className="text-sm text-taller-gray dark:text-gray-400">No hay trabajos registrados.</p>}
                         </div>
@@ -298,7 +286,7 @@ const ClientCard: React.FC<ClientCardProps> = ({ cliente, trabajos, onEdit, onCo
     );
 };
 
-const Clientes: React.FC<ClientesProps> = ({ clientes, trabajos, onDataRefresh, searchQuery, onClientUpdate }) => {
+const Clientes: React.FC<ClientesProps> = ({ clientes, trabajos, onDataRefresh, searchQuery, onClientUpdate, onNavigate }) => {
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [clienteToEdit, setClienteToEdit] = useState<Cliente | null>(null);
     const [vehicleToConfig, setVehicleToConfig] = useState<Vehiculo | null>(null);
@@ -374,6 +362,7 @@ const Clientes: React.FC<ClientesProps> = ({ clientes, trabajos, onDataRefresh, 
                             onCreateJob={setClientForNewJob}
                             forceExpand={searchQuery.length > 0} 
                             onDataRefresh={onDataRefresh}
+                            onNavigate={onNavigate}
                         />
                     ))
                 ) : (
@@ -408,7 +397,6 @@ const Clientes: React.FC<ClientesProps> = ({ clientes, trabajos, onDataRefresh, 
                     clienteId={clientToAddVehicle}
                     onClose={() => setClientToAddVehicle(null)}
                     onSuccess={(newVehicle) => {
-                        // Optimistic Update Implementation
                         if (newVehicle && onClientUpdate && clientToAddVehicle) {
                             const clientToUpdate = clientes.find(c => c.id === clientToAddVehicle);
                             if (clientToUpdate) {
@@ -421,7 +409,6 @@ const Clientes: React.FC<ClientesProps> = ({ clientes, trabajos, onDataRefresh, 
                                 return;
                             }
                         }
-                        // Fallback to full refresh
                         setClientToAddVehicle(null);
                         onDataRefresh();
                     }}
