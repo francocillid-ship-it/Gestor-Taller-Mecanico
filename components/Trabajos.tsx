@@ -47,7 +47,7 @@ const CalendarWidget: React.FC<{ trabajos: Trabajo[]; onSelectDate: (date: Date 
     };
 
     return (
-        <div className="bg-white dark:bg-gray-800 rounded-xl p-3 border dark:border-gray-700 shadow-sm mb-4">
+        <div className="bg-white dark:bg-gray-800 rounded-xl p-3 border dark:border-gray-700 shadow-sm mb-4 flex-shrink-0">
             <div className="flex justify-between items-center mb-4 px-1">
                 <button type="button" onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1))}><ChevronLeftIcon className="h-4 w-4"/></button>
                 <span className="text-sm font-bold capitalize">{currentMonth.toLocaleString('es-ES', { month: 'long', year: 'numeric' })}</span>
@@ -59,10 +59,10 @@ const CalendarWidget: React.FC<{ trabajos: Trabajo[]; onSelectDate: (date: Date 
     );
 };
 
-const EmptyState: React.FC<{ status: string }> = ({ status }) => (
-    <div className="flex flex-col items-center justify-center py-24 opacity-30 h-full w-full select-none">
+const EmptyState: React.FC = () => (
+    <div className="flex-1 flex flex-col items-center justify-center py-12 opacity-30 select-none">
         <MagnifyingGlassIcon className="h-14 w-14 text-gray-400 mb-4" />
-        <p className="text-sm font-black uppercase tracking-widest text-taller-gray dark:text-gray-400 text-center px-8">No hay trabajos en {status}</p>
+        <p className="text-sm font-black uppercase tracking-widest text-taller-gray dark:text-gray-400 text-center px-8">Nada para mostrar</p>
     </div>
 );
 
@@ -153,29 +153,47 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
 
     const renderTabContent = (status: JobStatus) => {
         const tabJobs = filteredTrabajos.filter(t => t.status === status);
+        
         if (status === JobStatus.Programado) {
             const scheduled = tabJobs.filter(t => t.fechaProgramada);
             const pending = tabJobs.filter(t => !t.fechaProgramada);
             const calendarFiltered = selectedDate ? scheduled.filter(t => new Date(t.fechaProgramada!).toLocaleDateString() === selectedDate.toLocaleDateString()) : scheduled;
+            
             return (
-                <div className="space-y-6">
+                <div className="flex flex-col min-h-full">
                     <CalendarWidget trabajos={scheduled} selectedDate={selectedDate} onSelectDate={setSelectedDate} />
+                    
                     {pending.length > 0 && (
-                        <div className="bg-red-50 dark:bg-red-900/10 p-4 rounded-xl border border-red-100 dark:border-red-900/30">
+                        <div className="bg-red-50 dark:bg-red-900/10 p-4 rounded-xl border border-red-100 dark:border-red-900/30 mb-6 flex-shrink-0">
                             <h4 className="text-[10px] font-black text-red-600 dark:text-red-400 uppercase tracking-widest mb-4 flex items-center gap-2"><ExclamationCircleIcon className="h-4 w-4"/> Pendientes de Turno ({pending.length})</h4>
-                            <div className="space-y-4">{pending.map(t => <JobCard key={t.id} trabajo={t} cliente={clientes.find(c => c.id === t.clienteId)} vehiculo={clientes.find(c => c.id === t.clienteId)?.vehiculos.find(v => v.id === t.vehiculoId)} onUpdateStatus={onUpdateStatus} tallerInfo={tallerInfo} clientes={clientes} onDataRefresh={onDataRefresh} isHighlighted={t.id === initialJobId} />)}</div>
+                            <div className="space-y-4">
+                                {pending.map(t => (
+                                    <JobCard key={t.id} trabajo={t} cliente={clientes.find(c => c.id === t.clienteId)} vehiculo={clientes.find(c => c.id === t.clienteId)?.vehiculos.find(v => v.id === t.vehiculoId)} onUpdateStatus={onUpdateStatus} tallerInfo={tallerInfo} clientes={clientes} onDataRefresh={onDataRefresh} isHighlighted={t.id === initialJobId} />
+                                ))}
+                            </div>
                         </div>
                     )}
-                    {calendarFiltered.length > 0 ? (
-                        <div className="space-y-4 pb-40">{calendarFiltered.map(t => <JobCard key={t.id} trabajo={t} cliente={clientes.find(c => c.id === t.clienteId)} vehiculo={clientes.find(c => c.id === t.clienteId)?.vehiculos.find(v => v.id === t.vehiculoId)} onUpdateStatus={onUpdateStatus} tallerInfo={tallerInfo} clientes={clientes} onDataRefresh={onDataRefresh} isHighlighted={t.id === initialJobId} />)}</div>
-                    ) : <EmptyState status={selectedDate ? "esta fecha" : "esta sección"} />}
+                    
+                    <div className="flex-1 flex flex-col">
+                        {calendarFiltered.length > 0 ? (
+                            <div className="space-y-4 pb-40">
+                                {calendarFiltered.map(t => (
+                                    <JobCard key={t.id} trabajo={t} cliente={clientes.find(c => c.id === t.clienteId)} vehiculo={clientes.find(c => c.id === t.clienteId)?.vehiculos.find(v => v.id === t.vehiculoId)} onUpdateStatus={onUpdateStatus} tallerInfo={tallerInfo} clientes={clientes} onDataRefresh={onDataRefresh} isHighlighted={t.id === initialJobId} />
+                                ))}
+                            </div>
+                        ) : <EmptyState />}
+                    </div>
                 </div>
             );
         }
-        if (tabJobs.length === 0) return <EmptyState status={status} />;
+
+        if (tabJobs.length === 0) return <EmptyState />;
+
         return (
             <div className="space-y-4 pb-40">
-                {tabJobs.map(t => <JobCard key={t.id} trabajo={t} cliente={clientes.find(c => c.id === t.clienteId)} vehiculo={clientes.find(c => c.id === t.clienteId)?.vehiculos.find(v => v.id === t.vehiculoId)} onUpdateStatus={onUpdateStatus} tallerInfo={tallerInfo} clientes={clientes} onDataRefresh={onDataRefresh} isHighlighted={t.id === initialJobId} />)}
+                {tabJobs.map(t => (
+                    <JobCard key={t.id} trabajo={t} cliente={clientes.find(c => c.id === t.clienteId)} vehiculo={clientes.find(c => c.id === t.clienteId)?.vehiculos.find(v => v.id === t.vehiculoId)} onUpdateStatus={onUpdateStatus} tallerInfo={tallerInfo} clientes={clientes} onDataRefresh={onDataRefresh} isHighlighted={t.id === initialJobId} />
+                ))}
             </div>
         );
     };
@@ -197,7 +215,7 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
             {/* Encabezado animado con margen negativo para expansión total */}
             <div 
                 ref={headerRef}
-                className={`w-full bg-taller-light dark:bg-taller-dark transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] z-30 ${headerVisible ? 'opacity-100 translate-y-0' : 'opacity-0 pointer-events-none'}`}
+                className={`w-full bg-taller-light dark:bg-taller-dark transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] z-30 flex-shrink-0 ${headerVisible ? 'opacity-100 translate-y-0' : 'opacity-0 pointer-events-none'}`}
                 style={{ 
                     marginTop: headerVisible ? 0 : -headerHeight,
                 }}
@@ -224,7 +242,7 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
                     {statusOrder.map((status) => (
                         <div key={status} className="inner-tab-slot" style={{ pointerEvents: activeTab === status ? 'auto' : 'none' }}>
                             <div onScroll={(e) => handleVerticalScroll(e, status)} className="h-full overflow-y-auto px-4 pt-0 scrollbar-hide overscroll-none">
-                                <div className="max-w-3xl mx-auto min-h-full w-full overflow-x-hidden pt-4">
+                                <div className="max-w-3xl mx-auto min-h-full w-full overflow-x-hidden pt-4 flex flex-col">
                                     {renderTabContent(status)}
                                 </div>
                             </div>
