@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useLayoutEffect } from 'react';
 import { supabase, supabaseUrl, supabaseKey } from '../supabaseClient';
 import { createClient } from '@supabase/supabase-js';
 import type { Cliente, Trabajo, Gasto, JobStatus, TallerInfo } from '../types';
@@ -28,6 +28,7 @@ const navItems = [
 ] as const;
 
 const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
+    // ESTRICTO: Iniciar siempre en dashboard
     const [view, setView] = useState<View>('dashboard');
     const [clientes, setClientes] = useState<Cliente[]>([]);
     const [trabajos, setTrabajos] = useState<Trabajo[]>([]);
@@ -49,16 +50,16 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
     const [targetJobStatus, setTargetJobStatus] = useState<JobStatus | undefined>(undefined);
     const [targetJobId, setTargetJobId] = useState<string | undefined>(undefined);
     
-    const mainContainerRef = useRef<HTMLElement>(null);
-    const dashboardRef = useRef<HTMLDivElement>(null);
-    const trabajosRef = useRef<HTMLDivElement>(null);
-    const clientesRef = useRef<HTMLDivElement>(null);
-    const ajustesRef = useRef<HTMLDivElement>(null);
+    const scrollContainerRef = useRef<HTMLDivElement>(null);
+    const sectionRefs = useRef<{ [key in View]: HTMLDivElement | null }>({
+        dashboard: null,
+        trabajos: null,
+        clientes: null,
+        ajustes: null
+    });
 
     const fetchData = useCallback(async (showLoader = true) => {
-        if (showLoader) {
-            setLoading(true);
-        }
+        if (showLoader) setLoading(true);
         try {
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) return;
@@ -83,30 +84,20 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
                     fontSize: tallerInfoData.font_size || 'normal'
                 };
                 setTallerInfo(loadedInfo);
-                
                 applyAppTheme();
                 if (loadedInfo.fontSize) applyFontSize(loadedInfo.fontSize);
-
-            } else if (!tallerInfoData) {
-                if (user.user_metadata?.taller_info) {
-                    setTallerInfo(prev => ({ ...prev, ...user.user_metadata.taller_info }));
-                }
             }
 
-            const { data: clientesData, error: clientesError } = await supabase
+            const { data: clientesData } = await supabase
                 .from('clientes')
                 .select('*, vehiculos(*)')
                 .eq('taller_id', user.id);
-            
-            if (clientesError) throw clientesError;
             if (clientesData) setClientes(clientesData as Cliente[]);
 
-            const { data: trabajosData, error: trabajosError } = await supabase
+            const { data: trabajosData } = await supabase
                 .from('trabajos')
                 .select('*')
                 .eq('taller_id', user.id);
-
-            if (trabajosError) throw trabajosError;
             
             if (trabajosData) {
                  const mappedTrabajos = trabajosData.map(t => ({
@@ -131,21 +122,17 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
                 setTrabajos(mappedTrabajos as Trabajo[]);
             }
 
-            const { data: gastosData, error: gastosError } = await supabase
+            const { data: gastosData } = await supabase
                 .from('gastos')
                 .select('*')
                 .eq('taller_id', user.id)
                 .order('fecha', { ascending: false });
-
-            if (gastosError) throw gastosError;
             if (gastosData) setGastos(gastosData);
 
         } catch (error) {
             console.error("Error fetching data:", error);
         } finally {
-            if (showLoader) {
-                setLoading(false);
-            }
+            if (showLoader) setLoading(false);
         }
     }, []);
 
@@ -153,234 +140,95 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
         fetchData(true);
     }, [fetchData]);
 
-    useEffect(() => {
-        setSearchQuery('');
-        
-        // Función para resetear el scroll de manera robusta
-        const resetScroll = () => {
-            // Aseguramos el scroll del viewport global
-            window.scrollTo(0, 0);
+    // Gestión estricta del scroll inicial para evitar saltos
+    useLayoutEffect(() => {
+        const container = scrollContainerRef.current;
+        if (!container) return;
 
-            // CORRECCIÓN CRÍTICA: Resetear el scroll del contenedor principal (main)
-            if (mainContainerRef.current) {
-                mainContainerRef.current.scrollTop = 0;
-                mainContainerRef.current.scrollLeft = 0;
-            }
+        if (loading) {
+            container.scrollLeft = 0;
+            return;
+        }
 
-            if (view === 'trabajos') {
-                const internalContainer = document.getElementById('trabajos-scroll-container');
-                if (internalContainer) {
-                    internalContainer.scrollTop = 0;
-                }
-            } else {
-                const activeRef = 
-                    view === 'dashboard' ? dashboardRef :
-                    view === 'clientes' ? clientesRef :
-                    view === 'ajustes' ? ajustesRef :
-                    null;
-                    
-                if (activeRef && activeRef.current) {
-                    activeRef.current.scrollTop = 0;
-                }
-            }
-        };
+        const targetSection = sectionRefs.current[view];
+        if (targetSection) {
+            // Aseguramos que el scroll ocurra después de que el DOM esté estable
+            const timeout = setTimeout(() => {
+                container.scrollTo({
+                    left: targetSection.offsetLeft,
+                    behavior: 'auto' // Usar auto inicialmente para evitar deslizamientos raros al cargar
+                });
+            }, 10);
+            return () => clearTimeout(timeout);
+        }
+    }, [view, loading]);
 
-        // Ejecutar inmediatamente
-        resetScroll();
-
-        // Ejecutar nuevamente tras un breve delay para asegurar que el layout se ha estabilizado
-        const timer = setTimeout(resetScroll, 100);
-        return () => clearTimeout(timer);
-
-    }, [view]);
-    
-    const handleSilentRefresh = () => fetchData(false);
-
-    const handleClientUpdate = (newClient: Cliente) => {
-        setClientes(prev => {
-            const exists = prev.find(c => c.id === newClient.id);
-            if (exists) {
-                return prev.map(c => c.id === newClient.id ? newClient : c);
-            }
-            return [...prev, newClient];
-        });
+    const handleNavigate = (newView: View, status?: JobStatus, jobId?: string) => {
+        setView(newView);
+        if (status) setTargetJobStatus(status);
+        if (jobId) setTargetJobId(jobId);
     };
+
+    const handleSilentRefresh = () => fetchData(false);
 
     const handleUpdateStatus = async (trabajoId: string, newStatus: JobStatus) => {
         try {
             const trabajoActual = trabajos.find(t => t.id === trabajoId);
             if (!trabajoActual) return;
-
-            let fechaSalida: string | null | undefined = undefined;
             const updates: any = { status: newStatus };
-
             if (newStatus === JobStatusEnum.Finalizado) {
-                fechaSalida = new Date().toISOString();
-                updates.fecha_salida = fechaSalida;
+                updates.fecha_salida = new Date().toISOString();
             } else {
-                fechaSalida = null;
                 updates.fecha_salida = null;
             }
-
-            // LÓGICA DE CONVERSIÓN: Si es presupuesto rápido y pasa a otro estado
-            if (trabajoActual.isQuickBudget && newStatus !== JobStatusEnum.Presupuesto && trabajoActual.quickBudgetData) {
-                const { data: { user } } = await supabase.auth.getUser();
-                if (!user) return;
-
-                const tempPassword = Math.random().toString(36).slice(-8) + '!Aa1';
-                const signUpEmail = `${crypto.randomUUID()}@taller-quick.com`;
-
-                const tempSupabase = createClient(supabaseUrl, supabaseKey, {
-                    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false }
-                });
-
-                const { data: signUpData, error: signUpError } = await tempSupabase.auth.signUp({
-                    email: signUpEmail,
-                    password: tempPassword,
-                    options: {
-                        data: {
-                            role: 'cliente',
-                            taller_nombre_ref: tallerInfo.nombre,
-                        },
-                    }
-                });
-
-                if (signUpError) throw signUpError;
-                const newUserId = signUpData.user!.id;
-
-                localStorage.setItem(`temp_pass_${newUserId}`, tempPassword);
-
-                const { error: clientError } = await supabase.from('clientes').insert({
-                    id: newUserId,
-                    taller_id: user.id,
-                    nombre: trabajoActual.quickBudgetData.nombre,
-                    apellido: trabajoActual.quickBudgetData.apellido || '',
-                    email: '',
-                    telefono: ''
-                });
-
-                if (clientError) throw clientError;
-
-                const { data: newVeh, error: vehError } = await supabase.from('vehiculos').insert({
-                    cliente_id: newUserId,
-                    marca: trabajoActual.quickBudgetData.marca,
-                    modelo: trabajoActual.quickBudgetData.modelo,
-                    matricula: trabajoActual.quickBudgetData.matricula || ''
-                }).select().single();
-
-                if (vehError) throw vehError;
-
-                updates.cliente_id = newUserId;
-                updates.vehiculo_id = newVeh.id;
-                updates.is_quick_budget = false;
-                updates.quick_budget_data = null;
-            }
-
-            const { error } = await supabase
-                .from('trabajos')
-                .update(updates)
-                .eq('id', trabajoId);
-            
+            const { error } = await supabase.from('trabajos').update(updates).eq('id', trabajoId);
             if (error) throw error;
             fetchData(false);
-            
         } catch (error: any) {
             console.error("Error updating status:", error);
-            alert("Error al actualizar: " + error.message);
         }
     };
 
     const handleUpdateTallerInfo = async (newInfo: TallerInfo) => {
-        try {
-             const { data: { user } } = await supabase.auth.getUser();
-             if (!user) return;
-
-             const { error: dbError } = await supabase.from('taller_info').upsert({
-                 taller_id: user.id,
-                 nombre: newInfo.nombre,
-                 telefono: newInfo.telefono,
-                 direccion: newInfo.direccion,
-                 cuit: newInfo.cuit,
-                 logo_url: newInfo.logoUrl,
-                 pdf_template: newInfo.pdfTemplate,
-                 show_logo_on_pdf: newInfo.showLogoOnPdf,
-                 show_cuit_on_pdf: newInfo.showCuitOnPdf,
-                 header_color: newInfo.headerColor,
-                 font_size: newInfo.fontSize,
-                 updated_at: new Date().toISOString()
-             });
-
-             if (dbError) throw dbError;
-
-             await supabase.auth.updateUser({
-                 data: { taller_info: newInfo }
-             });
-
-             setTallerInfo(newInfo);
-             applyAppTheme();
-             if (newInfo.fontSize) applyFontSize(newInfo.fontSize);
-
-        } catch (error: any) {
-            console.error("Error updating taller info:", error);
-            alert(`Error al guardar configuración: ${error.message || 'Error desconocido'}.`);
-            throw error;
-        }
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+        const { error: dbError } = await supabase.from('taller_info').upsert({
+            taller_id: user.id,
+            ...newInfo,
+            updated_at: new Date().toISOString()
+        });
+        if (dbError) throw dbError;
+        setTallerInfo(newInfo);
+        applyAppTheme();
     };
-
-    const handleNavigate = (newView: View, status?: JobStatus, jobId?: string) => {
-        setView(newView);
-        if (status) {
-            setTargetJobStatus(status);
-        }
-        if (jobId) {
-            setTargetJobId(jobId);
-        }
-    };
-
-    const sidebarClasses = `hidden md:flex md:flex-col fixed inset-y-0 left-0 z-30 w-64 bg-white dark:bg-gray-800 shadow-lg md:static md:inset-0`;
-    
-    const activeIndex = VIEW_ORDER.indexOf(view);
-    const translateValue = `-${activeIndex * 100}%`;
 
     return (
-        <div className="flex h-full bg-taller-light dark:bg-taller-dark text-taller-dark dark:text-taller-light overflow-hidden transition-colors duration-300">
-            <aside className={sidebarClasses}>
-                <div className="h-full flex flex-col">
-                    <div className="h-20 flex items-center justify-center border-b dark:border-gray-700">
-                         {tallerInfo.logoUrl ? (
-                            <img src={tallerInfo.logoUrl} alt="Logo" className="h-12 object-contain"/>
-                        ) : (
-                            <WrenchScrewdriverIcon className="h-10 w-10 text-taller-primary" />
-                        )}
-                    </div>
-                    <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
-                        {navItems.map((item) => (
-                            <button
-                                key={item.id}
-                                onClick={() => {
-                                    setView(item.id as View);
-                                    if (item.id === 'trabajos') {
-                                        setTargetJobStatus(undefined);
-                                        setTargetJobId(undefined);
-                                    }
-                                }}
-                                className={`w-full flex items-center px-4 py-3 rounded-lg transition-colors ${
-                                    view === item.id
-                                        ? 'bg-taller-primary text-white shadow-md'
-                                        : 'text-taller-gray dark:text-gray-400 hover:bg-taller-light dark:hover:bg-gray-700'
-                                }`}
-                            >
-                                <item.icon className="h-6 w-6 mr-3" />
-                                <span className="font-medium">{item.label}</span>
-                            </button>
-                        ))}
-                    </nav>
-                    <div className="p-4 border-t dark:border-gray-700">
-                         <div className="text-xs text-center text-taller-gray dark:text-gray-500">
-                            &copy; {new Date().getFullYear()} Gestor Taller
-                        </div>
-                    </div>
+        <div className="flex h-full w-full bg-taller-light dark:bg-taller-dark text-taller-dark dark:text-taller-light overflow-hidden transition-colors duration-300">
+            {/* Sidebar Desktop */}
+            <aside className="hidden md:flex md:flex-col w-64 bg-white dark:bg-gray-800 shadow-lg shrink-0">
+                <div className="h-20 flex items-center justify-center border-b dark:border-gray-700">
+                    {tallerInfo.logoUrl ? (
+                        <img src={tallerInfo.logoUrl} alt="Logo" className="h-12 object-contain"/>
+                    ) : (
+                        <WrenchScrewdriverIcon className="h-10 w-10 text-taller-primary" />
+                    )}
                 </div>
+                <nav className="flex-1 px-4 py-6 space-y-2">
+                    {navItems.map((item) => (
+                        <button
+                            key={item.id}
+                            onClick={() => handleNavigate(item.id as View)}
+                            className={`w-full flex items-center px-4 py-3 rounded-lg transition-colors ${
+                                view === item.id
+                                    ? 'bg-taller-primary text-white shadow-md'
+                                    : 'text-taller-gray dark:text-gray-400 hover:bg-taller-light dark:hover:bg-gray-700'
+                            }`}
+                        >
+                            <item.icon className="h-6 w-6 mr-3" />
+                            <span className="font-medium">{item.label}</span>
+                        </button>
+                    ))}
+                </nav>
             </aside>
 
             <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
@@ -392,72 +240,89 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
                     onSearchChange={setSearchQuery}
                 />
                 
-                <main ref={mainContainerRef} className="flex-1 overflow-hidden relative w-full min-h-0">
+                {/* 
+                    CONTENEDOR PRINCIPAL:
+                    'overflow-x-hidden' y 'width: 100vw' bloquean cualquier expansión de los hijos (como Trabajos)
+                */}
+                <main 
+                    ref={scrollContainerRef}
+                    className={`flex-1 w-full max-w-full overflow-x-hidden overflow-y-hidden flex relative ${loading ? '' : 'snap-x snap-mandatory scroll-smooth'} no-scrollbar`}
+                    style={{ width: '100vw' }}
+                >
                     {loading ? (
-                        <div className="flex h-full items-center justify-center">
+                        <div className="w-full h-full flex-shrink-0 flex items-center justify-center bg-taller-light dark:bg-taller-dark">
                             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-taller-primary"></div>
                         </div>
                     ) : (
-                        <div 
-                            className="flex h-full w-full transition-transform duration-300 ease-out will-change-transform"
-                            style={{ transform: `translateX(${translateValue})` }}
-                        >
-                            <div ref={dashboardRef} className="w-full h-full flex-shrink-0 overflow-y-auto p-4 md:p-6 scroll-smooth overscroll-contain">
+                        <>
+                            {/* SECCIÓN 1: RESUMEN */}
+                            <div 
+                                ref={el => sectionRefs.current.dashboard = el}
+                                className="w-full h-full flex-shrink-0 snap-start overflow-y-auto p-4 md:p-6 overscroll-none"
+                                style={{ width: '100vw' }}
+                            >
                                 <div className="max-w-7xl mx-auto min-h-full">
                                     <Dashboard clientes={clientes} trabajos={trabajos} gastos={gastos} onDataRefresh={handleSilentRefresh} searchQuery={searchQuery} onNavigate={handleNavigate} />
                                 </div>
                             </div>
 
-                            <div ref={trabajosRef} className="w-full h-full flex-shrink-0 overflow-hidden p-0 md:p-6 bg-taller-light dark:bg-taller-dark">
-                                <div className="w-full h-full">
-                                    <Trabajos 
-                                        trabajos={trabajos} 
-                                        clientes={clientes} 
-                                        onUpdateStatus={handleUpdateStatus} 
-                                        onDataRefresh={handleSilentRefresh} 
-                                        tallerInfo={tallerInfo} 
-                                        searchQuery={searchQuery} 
-                                        initialTab={targetJobStatus}
-                                        initialJobId={targetJobId}
-                                        isActive={view === 'trabajos'}
-                                    />
-                                </div>
+                            {/* SECCIÓN 2: TRABAJOS */}
+                            <div 
+                                ref={el => sectionRefs.current.trabajos = el}
+                                className="w-full h-full flex-shrink-0 snap-start overflow-hidden bg-taller-light dark:bg-taller-dark"
+                                style={{ width: '100vw' }}
+                            >
+                                <Trabajos 
+                                    trabajos={trabajos} 
+                                    clientes={clientes} 
+                                    onUpdateStatus={handleUpdateStatus} 
+                                    onDataRefresh={handleSilentRefresh} 
+                                    tallerInfo={tallerInfo} 
+                                    searchQuery={searchQuery} 
+                                    initialTab={targetJobStatus}
+                                    initialJobId={targetJobId}
+                                    isActive={view === 'trabajos'}
+                                />
                             </div>
 
-                            <div ref={clientesRef} className="w-full h-full flex-shrink-0 overflow-y-auto p-4 md:p-6 scroll-smooth overscroll-contain">
+                            {/* SECCIÓN 3: CLIENTES */}
+                            <div 
+                                ref={el => sectionRefs.current.clientes = el}
+                                className="w-full h-full flex-shrink-0 snap-start overflow-y-auto p-4 md:p-6 overscroll-none"
+                                style={{ width: '100vw' }}
+                            >
                                 <div className="max-w-7xl mx-auto min-h-full">
                                     <Clientes 
                                         clientes={clientes} 
                                         trabajos={trabajos} 
                                         onDataRefresh={handleSilentRefresh} 
                                         searchQuery={searchQuery} 
-                                        onClientUpdate={handleClientUpdate} 
                                         onNavigate={handleNavigate}
                                     />
                                 </div>
                             </div>
 
-                            <div ref={ajustesRef} className="w-full h-full flex-shrink-0 overflow-y-auto p-4 md:p-6 scroll-smooth overscroll-contain">
+                            {/* SECCIÓN 4: AJUSTES */}
+                            <div 
+                                ref={el => sectionRefs.current.ajustes = el}
+                                className="w-full h-full flex-shrink-0 snap-start overflow-y-auto p-4 md:p-6 overscroll-none"
+                                style={{ width: '100vw' }}
+                            >
                                 <div className="max-w-7xl mx-auto min-h-full">
                                     <Ajustes tallerInfo={tallerInfo} onUpdateTallerInfo={handleUpdateTallerInfo} onLogout={onLogout} searchQuery={searchQuery} />
                                 </div>
                             </div>
-                        </div>
+                        </>
                     )}
                 </main>
 
+                {/* Navegación Móvil */}
                 <div className="md:hidden bg-white dark:bg-gray-800 border-t dark:border-gray-700 pb-5 flex-shrink-0 z-20">
-                        <nav className="flex justify-around items-center h-16">
+                    <nav className="flex justify-around items-center h-16">
                         {navItems.map((item) => (
                             <button
                                 key={item.id}
-                                onClick={() => {
-                                    setView(item.id as View);
-                                    if (item.id === 'trabajos') {
-                                        setTargetJobStatus(undefined);
-                                        setTargetJobId(undefined);
-                                    }
-                                }}
+                                onClick={() => handleNavigate(item.id as View)}
                                 className={`relative flex flex-col items-center justify-center w-full h-full transition-colors duration-200 ${
                                     view === item.id ? 'text-taller-primary' : 'text-taller-gray dark:text-gray-400'
                                 }`}
@@ -472,6 +337,11 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
                     </nav>
                 </div>
             </div>
+
+            <style>{`
+                .no-scrollbar::-webkit-scrollbar { display: none; }
+                .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+            `}</style>
         </div>
     );
 };

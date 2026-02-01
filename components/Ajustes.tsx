@@ -1,8 +1,9 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import type { TallerInfo } from '../types';
 import { supabase } from '../supabaseClient';
-import { BuildingOffice2Icon, PhotoIcon, ArrowUpOnSquareIcon, PaintBrushIcon, SunIcon, MoonIcon, ComputerDesktopIcon, DocumentTextIcon, SparklesIcon, CheckCircleIcon, ExclamationTriangleIcon, KeyIcon, ArrowRightOnRectangleIcon, MagnifyingGlassPlusIcon, ArrowPathIcon } from '@heroicons/react/24/solid';
+import { BuildingOffice2Icon, PhotoIcon, ArrowUpOnSquareIcon, PaintBrushIcon, SunIcon, MoonIcon, ComputerDesktopIcon, DocumentTextIcon, CheckCircleIcon, ExclamationTriangleIcon, KeyIcon, ArrowRightOnRectangleIcon, MagnifyingGlassPlusIcon, ArrowPathIcon } from '@heroicons/react/24/solid';
 import ChangePasswordModal from './ChangePasswordModal';
 import { applyAppTheme, applyFontSize } from '../constants';
 
@@ -70,8 +71,6 @@ const Ajustes: React.FC<AjustesProps> = ({ tallerInfo, onUpdateTallerInfo, onLog
     const [isUploading, setIsUploading] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [theme, setTheme] = useState<Theme>(() => (localStorage.getItem('theme') as Theme) || 'system');
-    const [geminiApiKey, setGeminiApiKey] = useState('');
-    const [geminiStatus, setGeminiStatus] = useState<'checking' | 'active' | 'inactive'>('checking');
     const [isChangePasswordModalOpen, setIsChangePasswordModalOpen] = useState(false);
 
     useEffect(() => {
@@ -87,12 +86,6 @@ const Ajustes: React.FC<AjustesProps> = ({ tallerInfo, onUpdateTallerInfo, onLog
         applyAppTheme();
         if (tallerInfo.fontSize) applyFontSize(tallerInfo.fontSize as any);
     }, [tallerInfo]); 
-
-    useEffect(() => {
-        const key = localStorage.getItem('gemini_api_key');
-        setGeminiApiKey(key || '');
-        setGeminiStatus(key ? 'active' : 'inactive');
-    }, []);
 
     useEffect(() => {
         if (isFirstRender.current) {
@@ -125,28 +118,6 @@ const Ajustes: React.FC<AjustesProps> = ({ tallerInfo, onUpdateTallerInfo, onLog
         };
     }, [formData, lastSavedData]); 
 
-    useEffect(() => {
-        if (isFirstRender.current) return;
-        const saveGemini = setTimeout(() => {
-            if (geminiApiKey.trim()) {
-                localStorage.setItem('gemini_api_key', geminiApiKey.trim());
-                setGeminiStatus('active');
-            } else {
-                if (localStorage.getItem('gemini_api_key')) {
-                    localStorage.removeItem('gemini_api_key');
-                    setGeminiStatus('inactive');
-                }
-            }
-        }, 500);
-        return () => clearTimeout(saveGemini);
-    }, [geminiApiKey]);
-
-    const handleDeleteApiKey = () => {
-        localStorage.removeItem('gemini_api_key');
-        setGeminiApiKey('');
-        setGeminiStatus('inactive');
-    };
-    
     const handleThemeChange = (newTheme: Theme) => {
         setTheme(newTheme);
         if (newTheme === 'system') {
@@ -393,15 +364,6 @@ const Ajustes: React.FC<AjustesProps> = ({ tallerInfo, onUpdateTallerInfo, onLog
                                     </div>
                                 </div>
                             </div>
-                        </div>
-                    )}
-
-                    {shouldShow(['ia', 'inteligencia', 'artificial', 'gemini', 'api']) && (
-                        <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md">
-                            <h3 className="text-lg font-bold mb-2 flex items-center"><SparklesIcon className="h-6 w-6 mr-2 text-taller-primary"/>IA (Gemini)</h3>
-                            <p className="text-sm text-taller-gray dark:text-gray-400 mb-4">Escanear datos con cámara.</p>
-                            <input type="password" value={geminiApiKey} onChange={(e) => setGeminiApiKey(e.target.value)} placeholder="API Key" className="mt-1 block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md sm:text-sm" />
-                            {geminiStatus === 'active' && <button type="button" onClick={handleDeleteApiKey} className="mt-2 text-sm text-red-600">Eliminar Clave</button>}
                         </div>
                     )}
                 </form>

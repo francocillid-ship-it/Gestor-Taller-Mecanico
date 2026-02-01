@@ -1,18 +1,16 @@
-import { GoogleGenAI, Part, Type } from "@google/genai";
+
+import { GoogleGenAI, Type } from "@google/genai";
 import type { Vehiculo } from './types';
 
-const getGeminiClient = (): GoogleGenAI | null => {
-    const apiKey = localStorage.getItem('gemini_api_key');
-    if (apiKey) {
-        return new GoogleGenAI({ apiKey });
-    }
-    return null;
+// Use process.env.API_KEY exclusively for initialization as per guidelines
+const getGeminiClient = (): GoogleGenAI => {
+    return new GoogleGenAI({ apiKey: process.env.API_KEY });
 };
 
 export type VehiculoData = Partial<Omit<Vehiculo, 'id' | 'año' | 'maintenance_config'> & { año: string }>;
 
 export const isGeminiAvailable = (): boolean => {
-    return !!localStorage.getItem('gemini_api_key');
+    return !!process.env.API_KEY;
 };
 
 const calculateYearFromPatente = (patente: string): string | null => {
@@ -67,42 +65,44 @@ const calculateYearFromPatente = (patente: string): string | null => {
 
 export const recognizeVehicleDataFromImage = async (base64Image: string): Promise<VehiculoData> => {
     const ai = getGeminiClient();
-    if (!ai) {
-        throw new Error("La API Key de Gemini no está configurada. Por favor, ingrésela en Ajustes.");
-    }
 
-    const imagePart: Part = {
+    // Use recommended object structure for parts instead of Part type
+    const imagePart = {
         inlineData: {
             mimeType: 'image/jpeg',
             data: base64Image,
         },
     };
 
-    const textPart: Part = {
+    const textPart = {
         text: `Eres un sistema experto en leer la 'Cédula de Identificación del Automotor' de Argentina (cédula verde). Analiza la imagen y extrae los campos 'Marca', 'Modelo', 'Año Modelo', 'Dominio', 'Nro. de Chasis', y 'Nro. de Motor'. Devuelve un objeto JSON con las claves 'marca', 'modelo', 'año', 'matricula', 'numero_chasis', y 'numero_motor'. Si no estás completamente seguro de un valor, déjalo como null. Si no puedes identificar el documento o no encuentras al menos 3 campos con alta confianza, devuelve un objeto JSON vacío.`,
     };
 
     try {
+        // Use recommended model 'gemini-3-flash-preview' for basic text extraction tasks
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
+            model: 'gemini-3-flash-preview',
             contents: { parts: [imagePart, textPart] },
             config: {
                 responseMimeType: "application/json",
                 responseSchema: {
                     type: Type.OBJECT,
                     properties: {
-                        marca: { type: Type.STRING, nullable: true },
-                        modelo: { type: Type.STRING, nullable: true },
-                        año: { type: Type.STRING, nullable: true },
-                        matricula: { type: Type.STRING, nullable: true },
-                        numero_chasis: { type: Type.STRING, nullable: true },
-                        numero_motor: { type: Type.STRING, nullable: true }
+                        marca: { type: Type.STRING },
+                        modelo: { type: Type.STRING },
+                        año: { type: Type.STRING },
+                        matricula: { type: Type.STRING },
+                        numero_chasis: { type: Type.STRING },
+                        numero_motor: { type: Type.STRING }
                     },
                 }
             }
         });
 
-        const jsonString = response.text.trim();
+        // Use response.text property directly as per guidelines
+        const jsonString = response.text?.trim();
+        if (!jsonString) return {};
+        
         const parsedData = JSON.parse(jsonString);
         
         const cleanData: VehiculoData = {};
