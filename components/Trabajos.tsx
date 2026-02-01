@@ -1,5 +1,5 @@
 
-import React, { useMemo, useState, useEffect, useRef, useCallback } from 'react';
+import React, { useMemo, useState, useEffect, useRef, useCallback, useLayoutEffect } from 'react';
 import type { Trabajo, Cliente, TallerInfo } from '../types';
 import { JobStatus } from '../types';
 import JobCard from './JobCard';
@@ -70,11 +70,33 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
     const [activeTab, setActiveTab] = useState<JobStatus>(initialTab || JobStatus.Presupuesto);
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [headerVisible, setHeaderVisible] = useState(true);
+    const [headerHeight, setHeaderHeight] = useState(0);
     const [selectedDate, setSelectedDate] = useState<Date | null>(null);
     
     const lastScrollTops = useRef<{ [key: string]: number }>({});
     const touchStart = useRef({ x: 0, y: 0 });
     const tabLabelsRef = useRef<{ [key: string]: HTMLButtonElement | null }>({});
+    const headerRef = useRef<HTMLDivElement>(null);
+
+    // Medición dinámica del encabezado para permitir expansión del 100% de la lista
+    useLayoutEffect(() => {
+        const updateHeight = () => {
+            if (headerRef.current) {
+                setHeaderHeight(headerRef.current.offsetHeight);
+            }
+        };
+
+        const resizeObserver = new ResizeObserver(updateHeight);
+        if (headerRef.current) resizeObserver.observe(headerRef.current);
+        
+        updateHeight();
+        window.addEventListener('resize', updateHeight);
+
+        return () => {
+            resizeObserver.disconnect();
+            window.removeEventListener('resize', updateHeight);
+        };
+    }, []);
 
     useEffect(() => { 
         if (initialTab) {
@@ -84,7 +106,6 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
     
     useEffect(() => {
         if (isActive) {
-            // Sincronizar el scroll de los botones de la cabecera (solo si hay scroll horizontal real ahí)
             const btn = tabLabelsRef.current[activeTab];
             if (btn) {
                 const parent = btn.parentElement;
@@ -173,7 +194,14 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
                 }
             `}</style>
             
-            <div className={`sticky top-0 z-30 w-full bg-taller-light dark:bg-taller-dark transition-all duration-400 will-change-transform shadow-sm ${headerVisible ? 'translate-y-0 opacity-100' : '-translate-y-full opacity-0 pointer-events-none'}`}>
+            {/* Encabezado animado con margen negativo para expansión total */}
+            <div 
+                ref={headerRef}
+                className={`w-full bg-taller-light dark:bg-taller-dark transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] z-30 ${headerVisible ? 'opacity-100 translate-y-0' : 'opacity-0 pointer-events-none'}`}
+                style={{ 
+                    marginTop: headerVisible ? 0 : -headerHeight,
+                }}
+            >
                 <div className="p-4 pt-5 pb-3 w-full"><button type="button" onClick={() => setIsCreateModalOpen(true)} className="w-full flex items-center justify-center gap-2 py-3.5 px-4 bg-taller-primary text-white font-extrabold rounded-xl shadow-lg shadow-taller-primary/20 active:scale-95 transition-all"><PlusIcon className="h-5 w-5" /><span className="uppercase tracking-wider text-xs">Nuevo Presupuesto</span></button></div>
                 <div className="flex border-b dark:border-gray-700 bg-taller-light dark:bg-taller-dark overflow-x-auto no-scrollbar w-full">
                     <div className="flex min-w-full px-4 sm:justify-center gap-1">
@@ -184,19 +212,19 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
                 </div>
             </div>
 
+            {/* Contenedor de listas: utiliza flex-1 para expandirse dinámicamente */}
             <div className="flex-1 w-full overflow-hidden relative" onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
                 <div 
                     className="flex h-full transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] will-change-transform" 
                     style={{ 
-                        /* Track interno del 400% */
                         width: '400%',
                         transform: `translate3d(-${activeIndex * 25}%, 0, 0)`
                     }}
                 >
                     {statusOrder.map((status) => (
                         <div key={status} className="inner-tab-slot" style={{ pointerEvents: activeTab === status ? 'auto' : 'none' }}>
-                            <div onScroll={(e) => handleVerticalScroll(e, status)} className="h-full overflow-y-auto px-4 pt-6 scrollbar-hide overscroll-none">
-                                <div className="max-w-3xl mx-auto min-h-full w-full overflow-x-hidden">
+                            <div onScroll={(e) => handleVerticalScroll(e, status)} className="h-full overflow-y-auto px-4 pt-0 scrollbar-hide overscroll-none">
+                                <div className="max-w-3xl mx-auto min-h-full w-full overflow-x-hidden pt-4">
                                     {renderTabContent(status)}
                                 </div>
                             </div>
