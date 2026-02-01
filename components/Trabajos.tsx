@@ -4,7 +4,7 @@ import type { Trabajo, Cliente, TallerInfo } from '../types';
 import { JobStatus } from '../types';
 import JobCard from './JobCard';
 import CrearTrabajoModal from './CrearTrabajoModal';
-import { PlusIcon, MagnifyingGlassIcon, ExclamationCircleIcon, ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/solid';
+import { PlusIcon, MagnifyingGlassIcon, ExclamationCircleIcon, ChevronLeftIcon, ChevronRightIcon, CalendarIcon, ChevronDownIcon, ClockIcon } from '@heroicons/react/24/solid';
 
 interface TrabajosProps {
     trabajos: Trabajo[];
@@ -19,6 +19,20 @@ interface TrabajosProps {
 }
 
 const statusOrder = [JobStatus.Presupuesto, JobStatus.Programado, JobStatus.EnProceso, JobStatus.Finalizado];
+
+// --- Utilidades de fecha para agrupamiento ---
+const getWeekOfMonth = (date: Date) => {
+    const firstDay = new Date(date.getFullYear(), date.getMonth(), 1).getDay();
+    return Math.ceil((date.getDate() + firstDay) / 7);
+};
+
+const getMonthYearKey = (date: Date) => {
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+};
+
+const getMonthName = (monthIndex: number) => {
+    return new Intl.DateTimeFormat('es-ES', { month: 'long' }).format(new Date(2000, monthIndex));
+};
 
 const CalendarWidget: React.FC<{ trabajos: Trabajo[]; onSelectDate: (date: Date | null) => void; selectedDate: Date | null; }> = ({ trabajos, onSelectDate, selectedDate }) => {
     const [currentMonth, setCurrentMonth] = useState(new Date());
@@ -66,6 +80,73 @@ const EmptyState: React.FC = () => (
     </div>
 );
 
+// --- Componente de Grupo Mensual Colapsable ---
+const MonthlyGroup: React.FC<{ 
+    monthKey: string; 
+    trabajos: Trabajo[]; 
+    clientes: Cliente[]; 
+    onUpdateStatus: (id: string, s: JobStatus) => void;
+    onDataRefresh: () => void;
+    tallerInfo: TallerInfo;
+    initialJobId?: string;
+}> = ({ monthKey, trabajos, clientes, onUpdateStatus, onDataRefresh, tallerInfo, initialJobId }) => {
+    const [isOpen, setIsOpen] = useState(false);
+    const [year, month] = monthKey.split('-').map(Number);
+    const monthName = getMonthName(month - 1);
+
+    const groupedByWeek = useMemo(() => {
+        const weeks: Record<number, Trabajo[]> = {};
+        trabajos.forEach(t => {
+            const date = new Date(t.fechaSalida || t.fechaEntrada);
+            const week = getWeekOfMonth(date);
+            if (!weeks[week]) weeks[week] = [];
+            weeks[week].push(t);
+        });
+        return Object.entries(weeks).sort((a, b) => Number(b[0]) - Number(a[0]));
+    }, [trabajos]);
+
+    return (
+        <div className="mb-3 border dark:border-gray-700 rounded-xl overflow-hidden bg-white dark:bg-gray-800 shadow-sm transition-all duration-300">
+            <button 
+                onClick={() => setIsOpen(!isOpen)}
+                className="w-full flex items-center justify-between p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors z-10 relative"
+            >
+                <div className="flex items-center gap-3">
+                    <div className="p-2 bg-blue-50 dark:bg-blue-900/30 rounded-lg text-taller-primary dark:text-blue-400">
+                        <CalendarIcon className="h-5 w-5" />
+                    </div>
+                    <div className="text-left">
+                        <h4 className="font-bold text-sm text-taller-dark dark:text-taller-light capitalize">{monthName} {year}</h4>
+                        <p className="text-[10px] font-black uppercase text-gray-400 tracking-widest">{trabajos.length} Trabajos</p>
+                    </div>
+                </div>
+                <ChevronDownIcon className={`h-5 w-5 text-gray-400 transition-transform duration-500 ${isOpen ? 'rotate-180' : ''}`} />
+            </button>
+
+            <div className={`grid transition-[grid-template-rows] duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] ${isOpen ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>
+                <div className="overflow-hidden bg-gray-50/50 dark:bg-gray-900/20">
+                    <div className="p-4 space-y-6">
+                        {groupedByWeek.map(([weekNum, weekJobs]) => (
+                            <div key={weekNum} className="space-y-3">
+                                <div className="flex items-center gap-2 mb-2 px-1">
+                                    <div className="h-px flex-1 bg-gray-200 dark:bg-gray-700"></div>
+                                    <span className="text-[9px] font-black uppercase text-gray-400 tracking-[0.2em]">Semana {weekNum}</span>
+                                    <div className="h-px flex-1 bg-gray-200 dark:bg-gray-700"></div>
+                                </div>
+                                <div className="space-y-4">
+                                    {weekJobs.map(t => (
+                                        <JobCard key={t.id} trabajo={t} cliente={clientes.find(c => c.id === t.clienteId)} vehiculo={clientes.find(c => c.id === t.clienteId)?.vehiculos.find(v => v.id === t.vehiculoId)} onUpdateStatus={onUpdateStatus} tallerInfo={tallerInfo} clientes={clientes} onDataRefresh={onDataRefresh} isHighlighted={t.id === initialJobId} />
+                                    ))}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
 const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus, onDataRefresh, tallerInfo, searchQuery, initialTab, initialJobId, isActive }) => {
     const [activeTab, setActiveTab] = useState<JobStatus>(initialTab || JobStatus.Presupuesto);
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -78,20 +159,17 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
     const tabLabelsRef = useRef<{ [key: string]: HTMLButtonElement | null }>({});
     const headerRef = useRef<HTMLDivElement>(null);
 
-    // Medición dinámica del encabezado para permitir expansión del 100% de la lista
+    // Medición dinámica del encabezado
     useLayoutEffect(() => {
         const updateHeight = () => {
             if (headerRef.current) {
                 setHeaderHeight(headerRef.current.offsetHeight);
             }
         };
-
         const resizeObserver = new ResizeObserver(updateHeight);
         if (headerRef.current) resizeObserver.observe(headerRef.current);
-        
         updateHeight();
         window.addEventListener('resize', updateHeight);
-
         return () => {
             resizeObserver.disconnect();
             window.removeEventListener('resize', updateHeight);
@@ -152,7 +230,13 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
     }, [trabajos, searchQuery, clientes]);
 
     const renderTabContent = (status: JobStatus) => {
-        const tabJobs = filteredTrabajos.filter(t => t.status === status);
+        const tabJobs = [...filteredTrabajos]
+            .filter(t => t.status === status)
+            .sort((a, b) => {
+                const dateA = new Date(a.fechaSalida || a.fechaEntrada).getTime();
+                const dateB = new Date(b.fechaSalida || b.fechaEntrada).getTime();
+                return dateB - dateA;
+            });
         
         if (status === JobStatus.Programado) {
             const scheduled = tabJobs.filter(t => t.fechaProgramada);
@@ -162,7 +246,6 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
             return (
                 <div className="flex flex-col min-h-full">
                     <CalendarWidget trabajos={scheduled} selectedDate={selectedDate} onSelectDate={setSelectedDate} />
-                    
                     {pending.length > 0 && (
                         <div className="bg-red-50 dark:bg-red-900/10 p-4 rounded-xl border border-red-100 dark:border-red-900/30 mb-6 flex-shrink-0">
                             <h4 className="text-[10px] font-black text-red-600 dark:text-red-400 uppercase tracking-widest mb-4 flex items-center gap-2"><ExclamationCircleIcon className="h-4 w-4"/> Pendientes de Turno ({pending.length})</h4>
@@ -173,7 +256,6 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
                             </div>
                         </div>
                     )}
-                    
                     <div className="flex-1 flex flex-col">
                         {calendarFiltered.length > 0 ? (
                             <div className="space-y-4 pb-40">
@@ -183,6 +265,63 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
                             </div>
                         ) : <EmptyState />}
                     </div>
+                </div>
+            );
+        }
+
+        // --- Lógica Especial para Pestaña de FINALIZADO ---
+        if (status === JobStatus.Finalizado && tabJobs.length > 0) {
+            const recentJobs = tabJobs.slice(0, 5);
+            const archivedJobs = tabJobs.slice(5);
+
+            const groupedByMonth = archivedJobs.reduce((acc, job) => {
+                const date = new Date(job.fechaSalida || job.fechaEntrada);
+                const key = getMonthYearKey(date);
+                if (!acc[key]) acc[key] = [];
+                acc[key].push(job);
+                return acc;
+            }, {} as Record<string, Trabajo[]>);
+
+            const sortedMonthKeys = Object.keys(groupedByMonth).sort((a, b) => b.localeCompare(a));
+
+            return (
+                <div className="flex flex-col min-h-full pb-40">
+                    <div className="mb-8">
+                        <div className="flex items-center gap-2 mb-4 px-1">
+                            <div className="p-1.5 bg-green-50 dark:bg-green-900/30 rounded text-green-600 dark:text-green-400">
+                                <ClockIcon className="h-4 w-4" />
+                            </div>
+                            <h4 className="text-[10px] font-black text-taller-gray uppercase tracking-[0.2em]">Últimos Trabajos</h4>
+                        </div>
+                        <div className="space-y-4">
+                            {recentJobs.map(t => (
+                                <JobCard key={t.id} trabajo={t} cliente={clientes.find(c => c.id === t.clienteId)} vehiculo={clientes.find(c => c.id === t.clienteId)?.vehiculos.find(v => v.id === t.vehiculoId)} onUpdateStatus={onUpdateStatus} tallerInfo={tallerInfo} clientes={clientes} onDataRefresh={onDataRefresh} isHighlighted={t.id === initialJobId} />
+                            ))}
+                        </div>
+                    </div>
+
+                    {sortedMonthKeys.length > 0 && (
+                        <div>
+                            <div className="flex items-center gap-2 mb-4 px-1">
+                                <div className="p-1.5 bg-gray-100 dark:bg-gray-800 rounded text-gray-500">
+                                    <CalendarIcon className="h-4 w-4" />
+                                </div>
+                                <h4 className="text-[10px] font-black text-taller-gray uppercase tracking-[0.2em]">Historial Mensual</h4>
+                            </div>
+                            {sortedMonthKeys.map(key => (
+                                <MonthlyGroup 
+                                    key={key} 
+                                    monthKey={key} 
+                                    trabajos={groupedByMonth[key]} 
+                                    clientes={clientes} 
+                                    onUpdateStatus={onUpdateStatus} 
+                                    onDataRefresh={onDataRefresh} 
+                                    tallerInfo={tallerInfo} 
+                                    initialJobId={initialJobId}
+                                />
+                            ))}
+                        </div>
+                    )}
                 </div>
             );
         }
