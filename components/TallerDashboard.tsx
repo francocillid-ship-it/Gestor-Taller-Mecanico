@@ -1,7 +1,6 @@
 
-import React, { useState, useEffect, useCallback, useRef, useLayoutEffect } from 'react';
-import { supabase, supabaseUrl, supabaseKey } from '../supabaseClient';
-import { createClient } from '@supabase/supabase-js';
+import React, { useState, useEffect, useCallback } from 'react';
+import { supabase } from '../supabaseClient';
 import type { Cliente, Trabajo, Gasto, JobStatus, TallerInfo } from '../types';
 import { JobStatus as JobStatusEnum } from '../types';
 import Dashboard from './Dashboard';
@@ -28,7 +27,6 @@ const navItems = [
 ] as const;
 
 const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
-    // ESTRICTO: Iniciar siempre en dashboard
     const [view, setView] = useState<View>('dashboard');
     const [clientes, setClientes] = useState<Cliente[]>([]);
     const [trabajos, setTrabajos] = useState<Trabajo[]>([]);
@@ -49,14 +47,6 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
     const [searchQuery, setSearchQuery] = useState('');
     const [targetJobStatus, setTargetJobStatus] = useState<JobStatus | undefined>(undefined);
     const [targetJobId, setTargetJobId] = useState<string | undefined>(undefined);
-    
-    const scrollContainerRef = useRef<HTMLDivElement>(null);
-    const sectionRefs = useRef<{ [key in View]: HTMLDivElement | null }>({
-        dashboard: null,
-        trabajos: null,
-        clientes: null,
-        ajustes: null
-    });
 
     const fetchData = useCallback(async (showLoader = true) => {
         if (showLoader) setLoading(true);
@@ -64,13 +54,8 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) return;
 
-            const { data: tallerInfoData, error: tallerInfoError } = await supabase
-                .from('taller_info')
-                .select('*')
-                .eq('taller_id', user.id)
-                .maybeSingle();
-
-            if (!tallerInfoError && tallerInfoData) {
+            const { data: tallerInfoData } = await supabase.from('taller_info').select('*').eq('taller_id', user.id).maybeSingle();
+            if (tallerInfoData) {
                 const loadedInfo: TallerInfo = {
                     nombre: tallerInfoData.nombre || '',
                     telefono: tallerInfoData.telefono || '',
@@ -88,19 +73,12 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
                 if (loadedInfo.fontSize) applyFontSize(loadedInfo.fontSize);
             }
 
-            const { data: clientesData } = await supabase
-                .from('clientes')
-                .select('*, vehiculos(*)')
-                .eq('taller_id', user.id);
+            const { data: clientesData } = await supabase.from('clientes').select('*, vehiculos(*)').eq('taller_id', user.id);
             if (clientesData) setClientes(clientesData as Cliente[]);
 
-            const { data: trabajosData } = await supabase
-                .from('trabajos')
-                .select('*')
-                .eq('taller_id', user.id);
-            
+            const { data: trabajosData } = await supabase.from('trabajos').select('*').eq('taller_id', user.id);
             if (trabajosData) {
-                 const mappedTrabajos = trabajosData.map(t => ({
+                 setTrabajos(trabajosData.map(t => ({
                     id: t.id,
                     tallerId: t.taller_id,
                     clienteId: t.cliente_id,
@@ -118,15 +96,10 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
                     isQuickBudget: t.is_quick_budget,
                     quickBudgetData: t.quick_budget_data,
                     expiresAt: t.expires_at
-                }));
-                setTrabajos(mappedTrabajos as Trabajo[]);
+                })) as Trabajo[]);
             }
 
-            const { data: gastosData } = await supabase
-                .from('gastos')
-                .select('*')
-                .eq('taller_id', user.id)
-                .order('fecha', { ascending: false });
+            const { data: gastosData } = await supabase.from('gastos').select('*').eq('taller_id', user.id).order('fecha', { ascending: false });
             if (gastosData) setGastos(gastosData);
 
         } catch (error) {
@@ -140,90 +113,48 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
         fetchData(true);
     }, [fetchData]);
 
-    // Gestión estricta del scroll inicial para evitar saltos
-    useLayoutEffect(() => {
-        const container = scrollContainerRef.current;
-        if (!container) return;
-
-        if (loading) {
-            container.scrollLeft = 0;
-            return;
-        }
-
-        const targetSection = sectionRefs.current[view];
-        if (targetSection) {
-            // Aseguramos que el scroll ocurra después de que el DOM esté estable
-            const timeout = setTimeout(() => {
-                container.scrollTo({
-                    left: targetSection.offsetLeft,
-                    behavior: 'auto' // Usar auto inicialmente para evitar deslizamientos raros al cargar
-                });
-            }, 10);
-            return () => clearTimeout(timeout);
-        }
-    }, [view, loading]);
-
-    const handleNavigate = (newView: View, status?: JobStatus, jobId?: string) => {
+    const handleNavigate = (newView: View, status?: JobStatusEnum, jobId?: string) => {
+        setTargetJobStatus(status);
+        setTargetJobId(jobId);
         setView(newView);
-        if (status) setTargetJobStatus(status);
-        if (jobId) setTargetJobId(jobId);
     };
 
-    const handleSilentRefresh = () => fetchData(false);
-
-    const handleUpdateStatus = async (trabajoId: string, newStatus: JobStatus) => {
+    const handleUpdateStatus = async (trabajoId: string, newStatus: JobStatusEnum) => {
         try {
-            const trabajoActual = trabajos.find(t => t.id === trabajoId);
-            if (!trabajoActual) return;
             const updates: any = { status: newStatus };
-            if (newStatus === JobStatusEnum.Finalizado) {
-                updates.fecha_salida = new Date().toISOString();
-            } else {
-                updates.fecha_salida = null;
-            }
-            const { error } = await supabase.from('trabajos').update(updates).eq('id', trabajoId);
-            if (error) throw error;
+            if (newStatus === JobStatusEnum.Finalizado) updates.fecha_salida = new Date().toISOString();
+            else updates.fecha_salida = null;
+            await supabase.from('trabajos').update(updates).eq('id', trabajoId);
             fetchData(false);
-        } catch (error: any) {
+        } catch (error) {
             console.error("Error updating status:", error);
         }
     };
 
-    const handleUpdateTallerInfo = async (newInfo: TallerInfo) => {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
-        const { error: dbError } = await supabase.from('taller_info').upsert({
-            taller_id: user.id,
-            ...newInfo,
-            updated_at: new Date().toISOString()
-        });
-        if (dbError) throw dbError;
-        setTallerInfo(newInfo);
-        applyAppTheme();
-    };
+    const activeIndex = VIEW_ORDER.indexOf(view);
 
     return (
-        <div className="flex h-full w-full bg-taller-light dark:bg-taller-dark text-taller-dark dark:text-taller-light overflow-hidden transition-colors duration-300">
+        <div className="flex h-full w-full bg-taller-light dark:bg-taller-dark text-taller-dark dark:text-taller-light overflow-hidden fixed inset-0">
+            <style>{`
+                /* Bloqueo total de scroll nativo para evitar saltos por enfoque */
+                body, html, #root { overflow: hidden !important; position: fixed; width: 100%; height: 100%; }
+                .main-view-slot { 
+                    width: 25%; /* 100% / 4 vistas */
+                    height: 100%; 
+                    flex-shrink: 0;
+                    overflow: hidden;
+                    position: relative;
+                }
+            `}</style>
+
             {/* Sidebar Desktop */}
-            <aside className="hidden md:flex md:flex-col w-64 bg-white dark:bg-gray-800 shadow-lg shrink-0">
-                <div className="h-20 flex items-center justify-center border-b dark:border-gray-700">
-                    {tallerInfo.logoUrl ? (
-                        <img src={tallerInfo.logoUrl} alt="Logo" className="h-12 object-contain"/>
-                    ) : (
-                        <WrenchScrewdriverIcon className="h-10 w-10 text-taller-primary" />
-                    )}
+            <aside className="hidden md:flex md:flex-col w-64 bg-white dark:bg-gray-800 shadow-lg shrink-0 border-r dark:border-gray-700 z-[60]">
+                <div className="h-20 flex items-center justify-center border-b dark:border-gray-700 p-4">
+                    {tallerInfo.logoUrl ? <img src={tallerInfo.logoUrl} alt="Logo" className="max-h-full object-contain"/> : <WrenchScrewdriverIcon className="h-10 w-10 text-taller-primary" />}
                 </div>
                 <nav className="flex-1 px-4 py-6 space-y-2">
                     {navItems.map((item) => (
-                        <button
-                            key={item.id}
-                            onClick={() => handleNavigate(item.id as View)}
-                            className={`w-full flex items-center px-4 py-3 rounded-lg transition-colors ${
-                                view === item.id
-                                    ? 'bg-taller-primary text-white shadow-md'
-                                    : 'text-taller-gray dark:text-gray-400 hover:bg-taller-light dark:hover:bg-gray-700'
-                            }`}
-                        >
+                        <button key={item.id} onClick={() => handleNavigate(item.id as View)} className={`w-full flex items-center px-4 py-3 rounded-lg transition-colors ${view === item.id ? 'bg-taller-primary text-white shadow-md' : 'text-taller-gray dark:text-gray-400 hover:bg-taller-light dark:hover:bg-gray-700'}`}>
                             <item.icon className="h-6 w-6 mr-3" />
                             <span className="font-medium">{item.label}</span>
                         </button>
@@ -231,117 +162,98 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
                 </nav>
             </aside>
 
-            <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
-                <Header 
-                    tallerName={tallerInfo.nombre} 
-                    logoUrl={tallerInfo.logoUrl}
-                    showMenuButton={false}
-                    searchQuery={searchQuery}
-                    onSearchChange={setSearchQuery}
-                />
+            {/* Contenedor Principal */}
+            <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden relative">
                 
-                {/* 
-                    CONTENEDOR PRINCIPAL:
-                    'overflow-x-hidden' y 'width: 100vw' bloquean cualquier expansión de los hijos (como Trabajos)
-                */}
-                <main 
-                    ref={scrollContainerRef}
-                    className={`flex-1 w-full max-w-full overflow-x-hidden overflow-y-hidden flex relative ${loading ? '' : 'snap-x snap-mandatory scroll-smooth'} no-scrollbar`}
-                    style={{ width: '100vw' }}
-                >
+                {/* Header (Fijo) */}
+                <div className="flex-shrink-0 w-full z-[50] overflow-hidden bg-white dark:bg-gray-800 border-b dark:border-gray-700">
+                    <Header 
+                        tallerName={tallerInfo.nombre} 
+                        logoUrl={tallerInfo.logoUrl}
+                        showMenuButton={false}
+                        searchQuery={searchQuery}
+                        onSearchChange={setSearchQuery}
+                    />
+                </div>
+                
+                {/* PAGER DE VISTAS PRINCIPALES */}
+                <div className="flex-1 w-full overflow-hidden relative bg-taller-light dark:bg-taller-dark">
                     {loading ? (
-                        <div className="w-full h-full flex-shrink-0 flex items-center justify-center bg-taller-light dark:bg-taller-dark">
+                        <div className="absolute inset-0 flex items-center justify-center bg-taller-light dark:bg-taller-dark z-[40]">
                             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-taller-primary"></div>
                         </div>
                     ) : (
-                        <>
-                            {/* SECCIÓN 1: RESUMEN */}
-                            <div 
-                                ref={el => sectionRefs.current.dashboard = el}
-                                className="w-full h-full flex-shrink-0 snap-start overflow-y-auto p-4 md:p-6 overscroll-none"
-                                style={{ width: '100vw' }}
-                            >
-                                <div className="max-w-7xl mx-auto min-h-full">
-                                    <Dashboard clientes={clientes} trabajos={trabajos} gastos={gastos} onDataRefresh={handleSilentRefresh} searchQuery={searchQuery} onNavigate={handleNavigate} />
+                        <div 
+                            className="flex h-full transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] will-change-transform"
+                            style={{ 
+                                /* IMPORTANTE: Track del 400% con saltos del 25% */
+                                width: '400%',
+                                transform: `translate3d(-${activeIndex * 25}%, 0, 0)`
+                            }}
+                        >
+                            {/* VISTA 1: RESUMEN */}
+                            <div className="main-view-slot" style={{ pointerEvents: view === 'dashboard' ? 'auto' : 'none' }}>
+                                <div className="h-full overflow-y-auto overscroll-none px-4 py-4 md:px-6 md:py-6">
+                                    <div className="max-w-7xl mx-auto min-h-full pb-32">
+                                        <Dashboard clientes={clientes} trabajos={trabajos} gastos={gastos} onDataRefresh={() => fetchData(false)} searchQuery={searchQuery} onNavigate={handleNavigate} />
+                                    </div>
                                 </div>
                             </div>
-
-                            {/* SECCIÓN 2: TRABAJOS */}
-                            <div 
-                                ref={el => sectionRefs.current.trabajos = el}
-                                className="w-full h-full flex-shrink-0 snap-start overflow-hidden bg-taller-light dark:bg-taller-dark"
-                                style={{ width: '100vw' }}
-                            >
+                            
+                            {/* VISTA 2: TRABAJOS */}
+                            <div className="main-view-slot" style={{ pointerEvents: view === 'trabajos' ? 'auto' : 'none' }}>
                                 <Trabajos 
                                     trabajos={trabajos} 
                                     clientes={clientes} 
                                     onUpdateStatus={handleUpdateStatus} 
-                                    onDataRefresh={handleSilentRefresh} 
+                                    onDataRefresh={() => fetchData(false)} 
                                     tallerInfo={tallerInfo} 
                                     searchQuery={searchQuery} 
-                                    initialTab={targetJobStatus}
-                                    initialJobId={targetJobId}
-                                    isActive={view === 'trabajos'}
+                                    initialTab={targetJobStatus} 
+                                    initialJobId={targetJobId} 
+                                    isActive={view === 'trabajos'} 
                                 />
                             </div>
 
-                            {/* SECCIÓN 3: CLIENTES */}
-                            <div 
-                                ref={el => sectionRefs.current.clientes = el}
-                                className="w-full h-full flex-shrink-0 snap-start overflow-y-auto p-4 md:p-6 overscroll-none"
-                                style={{ width: '100vw' }}
-                            >
-                                <div className="max-w-7xl mx-auto min-h-full">
-                                    <Clientes 
-                                        clientes={clientes} 
-                                        trabajos={trabajos} 
-                                        onDataRefresh={handleSilentRefresh} 
-                                        searchQuery={searchQuery} 
-                                        onNavigate={handleNavigate}
-                                    />
+                            {/* VISTA 3: CLIENTES */}
+                            <div className="main-view-slot" style={{ pointerEvents: view === 'clientes' ? 'auto' : 'none' }}>
+                                <div className="h-full overflow-y-auto overscroll-none px-4 py-4 md:px-6 md:py-6">
+                                    <div className="max-w-7xl mx-auto min-h-full pb-32">
+                                        <Clientes clientes={clientes} trabajos={trabajos} onDataRefresh={() => fetchData(false)} searchQuery={searchQuery} onNavigate={handleNavigate} />
+                                    </div>
                                 </div>
                             </div>
 
-                            {/* SECCIÓN 4: AJUSTES */}
-                            <div 
-                                ref={el => sectionRefs.current.ajustes = el}
-                                className="w-full h-full flex-shrink-0 snap-start overflow-y-auto p-4 md:p-6 overscroll-none"
-                                style={{ width: '100vw' }}
-                            >
-                                <div className="max-w-7xl mx-auto min-h-full">
-                                    <Ajustes tallerInfo={tallerInfo} onUpdateTallerInfo={handleUpdateTallerInfo} onLogout={onLogout} searchQuery={searchQuery} />
+                            {/* VISTA 4: AJUSTES */}
+                            <div className="main-view-slot" style={{ pointerEvents: view === 'ajustes' ? 'auto' : 'none' }}>
+                                <div className="h-full overflow-y-auto overscroll-none px-4 py-4 md:px-6 md:py-6">
+                                    <div className="max-w-7xl mx-auto min-h-full pb-32">
+                                        <Ajustes tallerInfo={tallerInfo} onUpdateTallerInfo={async (newInfo) => {
+                                            const { data: { user } } = await supabase.auth.getUser();
+                                            if (user) await supabase.from('taller_info').upsert({ taller_id: user.id, ...newInfo, updated_at: new Date().toISOString() });
+                                            setTallerInfo(newInfo);
+                                            applyAppTheme();
+                                        }} onLogout={onLogout} searchQuery={searchQuery} />
+                                    </div>
                                 </div>
                             </div>
-                        </>
+                        </div>
                     )}
-                </main>
+                </div>
 
-                {/* Navegación Móvil */}
-                <div className="md:hidden bg-white dark:bg-gray-800 border-t dark:border-gray-700 pb-5 flex-shrink-0 z-20">
-                    <nav className="flex justify-around items-center h-16">
+                {/* Navegación Móvil (Fija) */}
+                <nav className="md:hidden bg-white dark:bg-gray-800 border-t dark:border-gray-700 flex-shrink-0 z-[60] h-20 overflow-hidden relative">
+                    <div className="flex justify-around items-center h-full w-full">
                         {navItems.map((item) => (
-                            <button
-                                key={item.id}
-                                onClick={() => handleNavigate(item.id as View)}
-                                className={`relative flex flex-col items-center justify-center w-full h-full transition-colors duration-200 ${
-                                    view === item.id ? 'text-taller-primary' : 'text-taller-gray dark:text-gray-400'
-                                }`}
-                            >
+                            <button key={item.id} onClick={() => handleNavigate(item.id as View)} className={`relative flex flex-col items-center justify-center w-full h-full transition-colors duration-200 ${view === item.id ? 'text-taller-primary' : 'text-taller-gray dark:text-gray-400'}`}>
                                 <item.icon className="h-6 w-6" />
                                 <span className="text-[10px] mt-1 font-medium">{item.label}</span>
-                                {view === item.id && (
-                                    <span className="absolute top-0 w-8 h-1 bg-taller-primary rounded-b-lg"></span>
-                                )}
+                                {view === item.id && <span className="absolute top-0 w-8 h-1 bg-taller-primary rounded-b-lg"></span>}
                             </button>
                         ))}
-                    </nav>
-                </div>
+                    </div>
+                </nav>
             </div>
-
-            <style>{`
-                .no-scrollbar::-webkit-scrollbar { display: none; }
-                .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-            `}</style>
         </div>
     );
 };
