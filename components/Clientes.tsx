@@ -1,7 +1,8 @@
 
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import type { Cliente, Trabajo, Vehiculo, JobStatus } from '../types';
-import { ChevronDownIcon, PhoneIcon, EnvelopeIcon, UserPlusIcon, PencilIcon, Cog6ToothIcon, PlusIcon, PaperAirplaneIcon, CurrencyDollarIcon, KeyIcon, ArrowTopRightOnSquareIcon } from '@heroicons/react/24/solid';
+// Add missing ArrowPathIcon import
+import { ChevronDownIcon, PhoneIcon, EnvelopeIcon, UserPlusIcon, PencilIcon, Cog6ToothIcon, PlusIcon, PaperAirplaneIcon, CurrencyDollarIcon, KeyIcon, ArrowTopRightOnSquareIcon, ArrowPathIcon } from '@heroicons/react/24/solid';
 import CrearClienteModal from './CrearClienteModal';
 import MaintenanceConfigModal from './MaintenanceConfigModal';
 import AddVehicleModal from './AddVehicleModal';
@@ -72,39 +73,45 @@ const ClientCard: React.FC<ClientCardProps> = ({ cliente, trabajos, onEdit, onCo
     const handleSendAccess = async (e: React.MouseEvent) => {
         e.stopPropagation();
         if (!cliente.email) {
-            alert("El cliente no tiene email registrado.");
+            alert("El cliente no tiene email registrado para generar acceso.");
             return;
         }
 
-        const confirmSend = window.confirm(`¿Generar acceso para ${cliente.nombre}?\n\nSi es la primera vez, se creará una contraseña temporal automática.`);
+        const confirmSend = window.confirm(`¿Generar acceso para ${cliente.nombre}?\n\nSe creará una contraseña temporal automática y se incluirá en el enlace.`);
         if (!confirmSend) return;
 
         setSendingAccess(true);
         
+        // Cliente temporal para evitar persistencia de sesión local
         const tempSupabase = createClient(supabaseUrl, supabaseKey, {
             auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false }
         });
 
+        // GENERACIÓN DE CONTRASEÑA TEMPORAL
         const tempPassword = Math.random().toString(36).slice(-8) + 'Aa1!';
         let shareUrl = '';
-        let messageHeader = '';
+        let messageBody = '';
 
         try {
-            const { data: authData } = await tempSupabase.auth.signUp({
+            // Intentar crear el usuario en Auth
+            const { data: authData, error: signUpError } = await tempSupabase.auth.signUp({
                 email: cliente.email,
                 password: tempPassword,
                 options: {
                     data: {
                         role: 'cliente',
-                        taller_nombre_ref: 'Mi Taller Mecánico'
+                        taller_nombre_ref: 'Mi Taller'
                     },
                 }
             });
 
-            if (authData.user && authData.user.id) {
+            // Si el usuario se creó con éxito o ya existía (Supabase signUp no lanza error si ya existe pero devuelve el usuario si está configurado así)
+            if (authData.user) {
                 const newAuthId = authData.user.id;
 
+                // MIGRACIÓN DE DATOS (Si el ID actual no coincide con el de Auth, p.ej. cliente creado manualmente)
                 if (newAuthId !== cliente.id) {
+                    // 1. Crear nuevo perfil vinculado al Auth ID
                     const { error: insertError } = await supabase.from('clientes').insert({
                         id: newAuthId,
                         taller_id: cliente.taller_id,
@@ -114,46 +121,50 @@ const ClientCard: React.FC<ClientCardProps> = ({ cliente, trabajos, onEdit, onCo
                         telefono: cliente.telefono
                     });
                     
-                    if (insertError) throw new Error("Error al migrar perfil: " + insertError.message);
-
-                    await supabase.from('vehiculos').update({ cliente_id: newAuthId }).eq('cliente_id', cliente.id);
-                    await supabase.from('trabajos').update({ cliente_id: newAuthId }).eq('cliente_id', cliente.id);
-                    await supabase.from('clientes').delete().eq('id', cliente.id);
-                    
-                    onDataRefresh();
+                    if (!insertError) {
+                        // 2. Mover vehículos y trabajos al nuevo ID
+                        await supabase.from('vehiculos').update({ cliente_id: newAuthId }).eq('cliente_id', cliente.id);
+                        await supabase.from('trabajos').update({ cliente_id: newAuthId }).eq('cliente_id', cliente.id);
+                        // 3. Eliminar el registro antiguo huérfano
+                        await supabase.from('clientes').delete().eq('id', cliente.id);
+                        onDataRefresh();
+                    }
                 }
 
+                // SIEMPRE generar la URL con los parámetros email y password
                 shareUrl = `${window.location.origin}/?type=invite&email=${encodeURIComponent(cliente.email)}&password=${encodeURIComponent(tempPassword)}`;
-                messageHeader = `Hola ${cliente.nombre}, accede a tu historial de trabajos en el taller. Tu sistema generó un acceso automático.`;
-            
+                messageBody = `Hola ${cliente.nombre}, accede a tu historial de trabajos en nuestro taller.\n\nAcceso directo: ${shareUrl}\n\nUsuario: ${cliente.email}\nContraseña Temporal: ${tempPassword}\n\n(Se te pedirá cambiarla al ingresar por seguridad).`;
             } else {
-                shareUrl = `${window.location.origin}/?view=forgot_password&email=${encodeURIComponent(cliente.email)}`;
-                messageHeader = `Hola ${cliente.nombre}, accede a tu historial de trabajos. Como ya tienes cuenta, usa este enlace si necesitas restablecer tu clave.`;
+                // Fallback si no se pudo crear/recuperar usuario pero el error es que ya existe
+                if (signUpError?.message?.includes('already registered')) {
+                    shareUrl = `${window.location.origin}/?type=invite&email=${encodeURIComponent(cliente.email)}&password=${encodeURIComponent(tempPassword)}`;
+                    messageBody = `Hola ${cliente.nombre}, hemos generado una nueva invitación de acceso para ti.\n\nEnlace: ${shareUrl}\nUsuario: ${cliente.email}\nContraseña: ${tempPassword}`;
+                } else {
+                    throw signUpError || new Error("No se pudo generar el usuario.");
+                }
             }
 
+            // COMPARTIR
             if (navigator.share) {
                 try {
                     await navigator.share({
-                        title: 'Acceso al Portal Taller',
-                        text: messageHeader, 
-                        url: shareUrl
+                        title: 'Acceso a Mi Taller',
+                        text: messageBody,
                     });
                 } catch (shareError) {
                     if ((shareError as any).name !== 'AbortError') {
-                         const combinedMessage = `${messageHeader}\n\n${shareUrl}`;
-                         await navigator.clipboard.writeText(combinedMessage);
-                         alert("Enlace copiado al portapapeles.");
+                         await navigator.clipboard.writeText(messageBody);
+                         alert("Enlace y datos de acceso copiados al portapapeles.");
                     }
                 }
             } else {
-                 const combinedMessage = `${messageHeader}\n\n${shareUrl}`;
-                 await navigator.clipboard.writeText(combinedMessage);
-                 alert("Enlace copiado al portapapeles. Puedes pegarlo en WhatsApp.");
+                 await navigator.clipboard.writeText(messageBody);
+                 alert("Datos de acceso copiados al portapapeles. Puedes pegarlo en WhatsApp.");
             }
 
         } catch (error: any) {
-            console.error("Error sending access:", error);
-            alert("Error al procesar la solicitud: " + error.message);
+            console.error("Error al generar acceso:", error);
+            alert("Error al procesar la invitación: " + error.message);
         } finally {
             setSendingAccess(false);
         }
@@ -194,11 +205,11 @@ const ClientCard: React.FC<ClientCardProps> = ({ cliente, trabajos, onEdit, onCo
                                             <button 
                                                 onClick={handleSendAccess}
                                                 disabled={sendingAccess}
-                                                className="flex-shrink-0 flex items-center gap-1 text-xs font-bold text-white bg-green-500 hover:bg-green-600 px-3 py-1.5 rounded-full transition-all shadow-sm ml-auto sm:ml-0"
+                                                className="flex-shrink-0 flex items-center gap-1 text-xs font-bold text-white bg-green-500 hover:bg-green-600 px-3 py-1.5 rounded-full transition-all shadow-sm ml-auto sm:ml-0 disabled:opacity-50"
                                                 title="Enviar enlace de acceso automático"
                                             >
                                                 {sendingAccess ? (
-                                                    <span>Generando...</span>
+                                                    <span className="flex items-center gap-1"><ArrowPathIcon className="h-3 w-3 animate-spin"/> Generando...</span>
                                                 ) : (
                                                     <>
                                                         <KeyIcon className="h-3.5 w-3.5" />

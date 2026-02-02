@@ -75,7 +75,7 @@ export const recognizeVehicleDataFromImage = async (base64Image: string): Promis
     };
 
     const textPart = {
-        text: `Eres un sistema experto en leer la 'Cédula de Identificación del Automotor' de Argentina (cédula verde). Analiza la imagen y extrae los campos 'Marca', 'Modelo', 'Año Modelo', 'Dominio', 'Nro. de Chasis', y 'Nro. de Motor'. Devuelve un objeto JSON con las claves 'marca', 'modelo', 'año', 'matricula', 'numero_chasis', y 'numero_motor'. Si no estás completamente seguro de un valor, déjalo como null. Si no puedes identificar el documento o no encuentras al menos 3 campos con alta confianza, devuelve un objeto JSON vacío.`,
+        text: `Eres un sistema experto en leer la 'Cédula de Identificación del Automotor' de Argentina (cédula verde). Analiza la imagen y extrae los campos 'Marca', 'Modelo', 'Año Modelo', 'Dominio', 'Nro. de Chasis', y 'Nro. de Motor'. Devuelve un objeto JSON con las claves 'marca', 'modelo', 'año', 'matricula', 'numero_chasis', y 'numero_motor'. Los campos de texto deben estar siempre en MAYÚSCULAS. Si no estás completamente seguro de un valor, déjalo como null. Si no puedes identificar el documento o no encuentras al menos 3 campos con alta confianza, devuelve un objeto JSON vacío.`,
     };
 
     try {
@@ -108,7 +108,12 @@ export const recognizeVehicleDataFromImage = async (base64Image: string): Promis
         const cleanData: VehiculoData = {};
         for (const key in parsedData) {
             if (parsedData[key] !== null && parsedData[key] !== undefined) {
-                cleanData[key as keyof VehiculoData] = String(parsedData[key]);
+                // Ensure all tech fields are uppercase
+                if (['marca', 'modelo', 'matricula', 'numero_chasis', 'numero_motor'].includes(key)) {
+                    cleanData[key as keyof VehiculoData] = String(parsedData[key]).toUpperCase();
+                } else {
+                    cleanData[key as keyof VehiculoData] = String(parsedData[key]);
+                }
             }
         }
 

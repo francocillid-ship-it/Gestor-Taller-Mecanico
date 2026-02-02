@@ -121,13 +121,57 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
 
     const handleUpdateStatus = async (trabajoId: string, newStatus: JobStatusEnum) => {
         try {
+            const job = trabajos.find(t => t.id === trabajoId);
+            if (!job) return;
+
             const updates: any = { status: newStatus };
             if (newStatus === JobStatusEnum.Finalizado) updates.fecha_salida = new Date().toISOString();
             else updates.fecha_salida = null;
+
+            // Lógica para formalizar Presupuesto Rápido si cambia de estado
+            if (job.isQuickBudget && newStatus !== JobStatusEnum.Presupuesto && job.quickBudgetData) {
+                const { data: { user } } = await supabase.auth.getUser();
+                if (!user) return;
+
+                // 1. Crear Cliente formal
+                const { data: newClient, error: clientErr } = await supabase
+                    .from('clientes')
+                    .insert({
+                        taller_id: user.id,
+                        nombre: job.quickBudgetData.nombre,
+                        apellido: job.quickBudgetData.apellido || null,
+                    })
+                    .select()
+                    .single();
+                
+                if (clientErr) throw clientErr;
+
+                // 2. Crear Vehículo formal vinculado al cliente
+                const { data: newVehicle, error: vehicleErr } = await supabase
+                    .from('vehiculos')
+                    .insert({
+                        cliente_id: newClient.id,
+                        marca: job.quickBudgetData.marca.toUpperCase(),
+                        modelo: job.quickBudgetData.modelo.toUpperCase(),
+                        matricula: job.quickBudgetData.matricula?.toUpperCase() || null
+                    })
+                    .select()
+                    .single();
+
+                if (vehicleErr) throw vehicleErr;
+
+                // 3. Vincular el trabajo a las nuevas entidades y desactivar modo rápido
+                updates.cliente_id = newClient.id;
+                updates.vehiculo_id = newVehicle.id;
+                updates.is_quick_budget = false;
+                updates.quick_budget_data = null;
+            }
+
             await supabase.from('trabajos').update(updates).eq('id', trabajoId);
             fetchData(false);
         } catch (error) {
             console.error("Error updating status:", error);
+            alert("Error al actualizar el estado y formalizar el cliente.");
         }
     };
 

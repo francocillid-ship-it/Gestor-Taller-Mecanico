@@ -52,7 +52,13 @@ const AddVehicleModal: React.FC<AddVehicleModalProps> = ({ onClose, onSuccess, c
             // We use .select().single() to return the created object immediately
             const { data, error: vehiculoError } = await supabase
                 .from('vehiculos')
-                .insert({ cliente_id: clienteId, marca, modelo, año: yearNumber, matricula })
+                .insert({ 
+                    cliente_id: clienteId, 
+                    marca: marca.toUpperCase(), 
+                    modelo: modelo.toUpperCase(), 
+                    año: yearNumber, 
+                    matricula: matricula.toUpperCase() 
+                })
                 .select()
                 .single();
 

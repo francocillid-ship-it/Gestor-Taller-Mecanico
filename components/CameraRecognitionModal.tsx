@@ -1,7 +1,7 @@
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { recognizeVehicleDataFromImage, VehiculoData } from '../gemini';
-import { CameraIcon, XMarkIcon, ArrowPathIcon, VideoCameraIcon } from '@heroicons/react/24/solid';
+import { CameraIcon, XMarkIcon, ArrowPathIcon, VideoCameraIcon, ExclamationTriangleIcon } from '@heroicons/react/24/solid';
 
 // Type definition for the browser's experimental TextDetector API
 interface DetectedText {
@@ -16,7 +16,6 @@ declare global {
     }
 }
 
-
 interface CameraRecognitionModalProps {
     onClose: () => void;
     onDataRecognized: (data: VehiculoData) => void;
@@ -29,15 +28,11 @@ const CameraRecognitionModal: React.FC<CameraRecognitionModalProps> = ({ onClose
     const animationFrameId = useRef<number | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [isPermissionDenied, setIsPermissionDenied] = useState(false);
     const [detectedTexts, setDetectedTexts] = useState<DetectedText[]>([]);
     const [videoDimensions, setVideoDimensions] = useState({ width: 0, height: 0 });
     const [capturedImage, setCapturedImage] = useState<string | null>(null);
     const [isVisible, setIsVisible] = useState(false);
-    
-    // State to track if we should try to start the camera automatically
-    const [permissionGranted, setPermissionGranted] = useState(() => {
-        return localStorage.getItem('camera_permission_granted') === 'true';
-    });
 
     useEffect(() => {
         requestAnimationFrame(() => setIsVisible(true));
@@ -59,14 +54,10 @@ const CameraRecognitionModal: React.FC<CameraRecognitionModalProps> = ({ onClose
         }
     }, []);
 
-    const startCamera = useCallback(() => {
-        let isMounted = true;
-
-        if (streamRef.current) {
-            return;
-        }
-
+    const startCamera = useCallback(async () => {
+        stopCamera();
         setError(null);
+        setIsPermissionDenied(false);
         setDetectedTexts([]);
 
         let detector: any | null = null;
@@ -75,64 +66,59 @@ const CameraRecognitionModal: React.FC<CameraRecognitionModalProps> = ({ onClose
         }
 
         const detectText = async () => {
-            if (!isMounted || !detector || !videoRef.current || videoRef.current.readyState < 2) {
-                if (isMounted) animationFrameId.current = requestAnimationFrame(detectText);
+            if (!detector || !videoRef.current || videoRef.current.readyState < 2) {
+                animationFrameId.current = requestAnimationFrame(detectText);
                 return;
             }
             try {
                 const texts = await detector.detect(videoRef.current);
-                if (isMounted) setDetectedTexts(texts);
+                setDetectedTexts(texts);
             } catch (e) { console.error("Text detection failed:", e); }
-            if (isMounted) animationFrameId.current = requestAnimationFrame(detectText);
+            animationFrameId.current = requestAnimationFrame(detectText);
         };
 
-        const initCamera = async () => {
-            try {
-                const mediaStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-                if (!isMounted) {
-                    mediaStream.getTracks().forEach(track => track.stop());
-                    return;
-                }
-                streamRef.current = mediaStream;
-                if (videoRef.current) {
-                    videoRef.current.srcObject = mediaStream;
-                    videoRef.current.onloadedmetadata = () => {
-                        if (videoRef.current) setVideoDimensions({ width: videoRef.current.videoWidth, height: videoRef.current.videoHeight });
-                    };
-                    await videoRef.current.play();
-                    
-                    // Permission successfully granted/used
-                    setPermissionGranted(true);
-                    localStorage.setItem('camera_permission_granted', 'true');
-
-                    if (detector) { animationFrameId.current = requestAnimationFrame(detectText); }
-                }
-            } catch (err) {
-                if (isMounted) {
-                    setError("No se pudo acceder a la cámara. Verifique los permisos.");
-                    // Reset permission flag on error so user can try again
-                    setPermissionGranted(false);
-                    localStorage.removeItem('camera_permission_granted');
+        try {
+            const mediaStream = await navigator.mediaDevices.getUserMedia({ 
+                video: { 
+                    facingMode: 'environment',
+                    width: { ideal: 1920 },
+                    height: { ideal: 1080 }
+                } 
+            });
+            
+            streamRef.current = mediaStream;
+            if (videoRef.current) {
+                videoRef.current.srcObject = mediaStream;
+                videoRef.current.onloadedmetadata = () => {
+                    if (videoRef.current) setVideoDimensions({ 
+                        width: videoRef.current.videoWidth, 
+                        height: videoRef.current.videoHeight 
+                    });
+                };
+                await videoRef.current.play();
+                
+                if (detector) { 
+                    animationFrameId.current = requestAnimationFrame(detectText); 
                 }
             }
-        };
+        } catch (err: any) {
+            console.error("Error accessing camera:", err);
+            if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+                setIsPermissionDenied(true);
+                setError("El acceso a la cámara está bloqueado.");
+            } else {
+                setError("No se pudo iniciar la cámara. Verifique que no esté en uso.");
+            }
+        }
+    }, [stopCamera]);
 
-        initCamera();
-
-        return () => { isMounted = false; };
-    }, []);
-
+    // Intentar arrancar la cámara inmediatamente al abrir
     useEffect(() => {
-        // Only auto-start if we previously had permission and we aren't showing a captured image
-        if (permissionGranted && !capturedImage) {
+        if (!capturedImage) {
             startCamera();
         }
-        return () => {
-            if (!capturedImage) {
-                stopCamera();
-            }
-        };
-    }, [capturedImage, startCamera, stopCamera, permissionGranted]);
+        return () => stopCamera();
+    }, [capturedImage, startCamera, stopCamera]);
     
     const handleCapture = async () => {
         if (!videoRef.current || !canvasRef.current || !streamRef.current) return;
@@ -169,8 +155,6 @@ const CameraRecognitionModal: React.FC<CameraRecognitionModalProps> = ({ onClose
                  setError("No se pudo reconocer ningún dato. Intente con una foto más clara y nítida.");
             } else {
                 handleClose();
-                // Delay callback slightly to allow animation out, but typically data processing is important to show immediately.
-                // For better UX with data flow, we can just call it.
                 onDataRecognized(data);
             }
         } catch (err: any) {
@@ -184,9 +168,7 @@ const CameraRecognitionModal: React.FC<CameraRecognitionModalProps> = ({ onClose
         setCapturedImage(null);
         setError(null);
         setIsLoading(false);
-        // If we are retrying, we assume we want to start the camera
-        // If permission was lost, the startCamera logic will handle the error and reset the flag
-        setPermissionGranted(true); 
+        startCamera();
     };
 
     const scaleX = videoRef.current ? videoRef.current.clientWidth / videoDimensions.width : 0;
@@ -201,37 +183,44 @@ const CameraRecognitionModal: React.FC<CameraRecognitionModalProps> = ({ onClose
             <div 
                 className={`bg-white dark:bg-gray-800 rounded-lg shadow-xl p-4 w-full max-w-lg relative text-center z-10 transform transition-all duration-300 ease-out ${isVisible ? 'scale-100 opacity-100' : 'scale-95 opacity-0'}`}
             >
-                <button onClick={handleClose} className="absolute top-2 right-2 text-taller-gray dark:text-gray-400 hover:text-taller-dark dark:hover:text-white z-10 bg-white/50 dark:bg-black/50 rounded-full p-1">
+                <button onClick={handleClose} className="absolute top-2 right-2 text-taller-gray dark:text-gray-400 hover:text-taller-dark dark:hover:text-white z-20 bg-white/50 dark:bg-black/50 rounded-full p-1">
                     <XMarkIcon className="h-6 w-6" />
                 </button>
                 
-                <h2 className="text-lg font-bold text-taller-dark dark:text-taller-light mb-2">Escanear Cédula del Vehículo</h2>
+                <h2 className="text-lg font-bold text-taller-dark dark:text-taller-light mb-2">Escanear Cédula</h2>
 
                 <div className="relative w-full aspect-video bg-black rounded-md overflow-hidden flex flex-col items-center justify-center">
                     {capturedImage ? (
                         <img src={capturedImage} alt="Captura de cédula" className="w-full h-full object-cover" />
                     ) : (
                         <>
-                            {!permissionGranted ? (
-                                <div className="p-6 text-center text-white">
-                                    <VideoCameraIcon className="h-12 w-12 mx-auto mb-3 text-gray-400" />
-                                    <p className="text-sm text-gray-300 mb-4">Se requiere acceso a la cámara para escanear el documento.</p>
+                            {isPermissionDenied ? (
+                                <div className="p-6 text-center text-white space-y-4">
+                                    <ExclamationTriangleIcon className="h-12 w-12 mx-auto text-yellow-500" />
+                                    <div>
+                                        <p className="font-bold text-sm">Permiso de Cámara Denegado</p>
+                                        <p className="text-xs text-gray-400 mt-1">Para usar el escáner, debes permitir el acceso en los ajustes de tu navegador:</p>
+                                    </div>
+                                    <div className="text-[10px] text-left bg-gray-900/50 p-3 rounded border border-gray-700 space-y-2">
+                                        <p><strong>Android:</strong> Clic en los 3 puntos ⋮ > Configuración > Configuración de sitios > Cámara > Permitir.</p>
+                                        <p><strong>iOS:</strong> Ajustes > Safari > Cámara > Permitir.</p>
+                                    </div>
                                     <button 
-                                        onClick={() => { setPermissionGranted(true); }} // This triggers useEffect -> startCamera
-                                        className="px-4 py-2 bg-taller-primary text-white font-semibold rounded-lg hover:bg-taller-secondary transition-colors"
+                                        onClick={startCamera}
+                                        className="px-6 py-2 bg-taller-primary text-white font-bold rounded-lg hover:bg-taller-secondary transition-all"
                                     >
-                                        Habilitar Cámara
+                                        Reintentar Autorización
                                     </button>
                                 </div>
                             ) : (
                                 <>
-                                    <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover"></video>
+                                    <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover"></video>
                                     {detectedTexts.length > 0 && videoDimensions.width > 0 && (
-                                        <div className="absolute inset-0">
+                                        <div className="absolute inset-0 pointer-events-none">
                                             {detectedTexts.map((text, i) => (
                                                 <div
                                                     key={i}
-                                                    className="absolute border-2 border-yellow-400 bg-yellow-400/20"
+                                                    className="absolute border-2 border-taller-primary bg-taller-primary/10 rounded-sm"
                                                     style={{
                                                         left: `${text.boundingBox.x * scaleX}px`,
                                                         top: `${text.boundingBox.y * scaleY}px`,
@@ -242,33 +231,39 @@ const CameraRecognitionModal: React.FC<CameraRecognitionModalProps> = ({ onClose
                                             ))}
                                         </div>
                                     )}
+                                    {!streamRef.current && !error && (
+                                        <div className="absolute inset-0 flex flex-col items-center justify-center text-white bg-black/40">
+                                            <ArrowPathIcon className="h-8 w-8 animate-spin mb-2" />
+                                            <p className="text-xs">Iniciando cámara...</p>
+                                        </div>
+                                    )}
                                 </>
                             )}
                         </>
                     )}
                     {isLoading && (
-                        <div className="absolute inset-0 bg-black/70 flex flex-col justify-center items-center text-white">
+                        <div className="absolute inset-0 bg-black/70 flex flex-col justify-center items-center text-white z-30">
                             <ArrowPathIcon className="h-10 w-10 animate-spin mb-2" />
-                            <p>Analizando imagen...</p>
+                            <p className="font-bold">Analizando Cédula...</p>
                         </div>
                     )}
                 </div>
 
-                {error && <p className="text-sm text-red-500 mt-2">{error}</p>}
+                {error && <p className="text-xs font-bold text-red-500 mt-3 px-4">{error}</p>}
                 
                 <div className="mt-4 flex justify-center items-center h-16">
                    {error && capturedImage ? (
                          <button
                             onClick={handleRetry}
-                            className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-taller-secondary rounded-lg shadow-md hover:bg-taller-primary"
+                            className="flex items-center gap-2 px-6 py-2 text-sm font-bold text-white bg-taller-primary rounded-full shadow-lg hover:bg-taller-secondary transition-all"
                         >
-                            <ArrowPathIcon className="h-5 w-5"/> Reintentar
+                            <ArrowPathIcon className="h-5 w-5"/> Reintentar Captura
                         </button>
-                    ) : (!capturedImage && permissionGranted) ? (
+                    ) : (!capturedImage && streamRef.current) ? (
                         <button
                             onClick={handleCapture}
                             disabled={isLoading}
-                            className="w-16 h-16 bg-taller-primary rounded-full border-4 border-white dark:border-gray-600 shadow-lg flex items-center justify-center mx-auto focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-taller-secondary disabled:opacity-50"
+                            className="w-16 h-16 bg-taller-primary rounded-full border-4 border-white dark:border-gray-700 shadow-xl flex items-center justify-center mx-auto focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-taller-secondary disabled:opacity-50 active:scale-90 transition-all"
                             aria-label="Tomar foto"
                         >
                             <CameraIcon className="h-8 w-8 text-white" />

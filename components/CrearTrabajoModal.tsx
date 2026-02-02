@@ -4,7 +4,7 @@ import { createPortal } from 'react-dom';
 import { supabase } from '../supabaseClient';
 import type { Cliente, Parte, Trabajo } from '../types';
 import { JobStatus } from '../types';
-import { XMarkIcon, TrashIcon, WrenchScrewdriverIcon, TagIcon, ArchiveBoxIcon, Bars3Icon, ShoppingBagIcon, BoltIcon, UsersIcon, CheckIcon, CurrencyDollarIcon, CalendarDaysIcon, PencilIcon, ArrowPathIcon, MapPinIcon } from '@heroicons/react/24/solid';
+import { XMarkIcon, TrashIcon, WrenchScrewdriverIcon, TagIcon, ArchiveBoxIcon, Bars3Icon, ShoppingBagIcon, BoltIcon, UsersIcon, CheckIcon, CurrencyDollarIcon, CalendarDaysIcon, PencilIcon, ArrowPathIcon, MapPinIcon, ClockIcon } from '@heroicons/react/24/solid';
 import { ALL_MAINTENANCE_OPTS } from '../constants';
 
 interface CrearTrabajoModalProps {
@@ -198,9 +198,9 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
             if (trabajoToEdit.isQuickBudget && trabajoToEdit.quickBudgetData) {
                 setQuickNombre(trabajoToEdit.quickBudgetData.nombre);
                 setQuickApellido(trabajoToEdit.quickBudgetData.apellido || '');
-                setQuickMarca(trabajoToEdit.quickBudgetData.marca);
-                setQuickModelo(trabajoToEdit.quickBudgetData.modelo);
-                setQuickMatricula(trabajoToEdit.quickBudgetData.matricula || '');
+                setQuickMarca(trabajoToEdit.quickBudgetData.marca.toUpperCase());
+                setQuickModelo(trabajoToEdit.quickBudgetData.modelo.toUpperCase());
+                setQuickMatricula(trabajoToEdit.quickBudgetData.matricula?.toUpperCase() || '');
             } else {
                 setSelectedClienteId(trabajoToEdit.clienteId);
                 setSelectedVehiculoId(trabajoToEdit.vehiculoId);
@@ -444,6 +444,43 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
         try {
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) throw new Error("No auth");
+
+            let finalClienteId = selectedClienteId;
+            let finalVehiculoId = selectedVehiculoId;
+            let isQuick = creationMode === 'quick' && status === JobStatus.Presupuesto;
+            let qData = creationMode === 'quick' ? { 
+                nombre: quickNombre, 
+                apellido: quickApellido, 
+                marca: quickMarca.toUpperCase(), 
+                modelo: quickModelo.toUpperCase(), 
+                matricula: quickMatricula.toUpperCase() 
+            } : null;
+
+            // FORMALIZACIÓN AUTOMÁTICA SI ESTÁ EN MODO RÁPIDO PERO CAMBIA DE ESTADO
+            if (creationMode === 'quick' && status !== JobStatus.Presupuesto) {
+                // 1. Crear Cliente formal
+                const { data: newC, error: cE } = await supabase.from('clientes').insert({
+                    taller_id: user.id,
+                    nombre: quickNombre,
+                    apellido: quickApellido || null
+                }).select().single();
+                if (cE) throw cE;
+
+                // 2. Crear Vehículo formal vinculado al cliente
+                const { data: newV, error: vE } = await supabase.from('vehiculos').insert({
+                    cliente_id: newC.id,
+                    marca: quickMarca.toUpperCase(),
+                    modelo: quickModelo.toUpperCase(),
+                    matricula: quickMatricula.toUpperCase() || null
+                }).select().single();
+                if (vE) throw vE;
+
+                finalClienteId = newC.id;
+                finalVehiculoId = newV.id;
+                isQuick = false;
+                qData = null;
+            }
+
             const cleanPartes = partes.filter(p => p.nombre.trim() !== '').map(p => ({
                 nombre: p.nombre,
                 cantidad: p.isCategory ? 0 : Number(p.cantidad || 1),
@@ -463,25 +500,21 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
             }));
 
             const jobData = {
-                cliente_id: selectedClienteId || null,
-                vehiculo_id: selectedVehiculoId || null,
+                cliente_id: finalClienteId || null,
+                vehiculo_id: finalVehiculoId || null,
                 taller_id: user.id,
                 descripcion,
                 status,
                 partes: [...cleanPartes, ...cleanPagos],
                 kilometraje: kilometraje ? parseInt(kilometraje, 10) : null,
                 costo_estimado: cleanPartes.reduce((s, p) => s + (p.cantidad * p.precioUnitario), 0),
-                is_quick_budget: creationMode === 'quick' && status === JobStatus.Presupuesto,
-                quick_budget_data: creationMode === 'quick' ? { 
-                    nombre: quickNombre, 
-                    apellido: quickApellido, 
-                    marca: quickMarca, 
-                    modelo: quickModelo, 
-                    matricula: quickMatricula 
-                } : null
+                is_quick_budget: isQuick,
+                quick_budget_data: qData
             };
+
             if (isEditMode) await supabase.from('trabajos').update(jobData).eq('id', trabajoToEdit!.id);
             else await supabase.from('trabajos').insert(jobData);
+            
             onSuccess();
         } catch (err: any) {
             setError(err.message);
@@ -526,43 +559,61 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
                         {creationMode === 'existing' ? (
                             <div className="space-y-3">
                                 <div className="grid grid-cols-2 gap-3">
-                                    <select value={selectedClienteId} onChange={e => setSelectedClienteId(e.target.value)} className="p-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 text-sm" required>
+                                    <select value={selectedClienteId} onChange={e => setSelectedClienteId(e.target.value)} className="p-2.5 border rounded-lg dark:bg-gray-700 dark:border-gray-600 text-sm focus:ring-1 focus:ring-taller-primary outline-none" required>
                                         <option value="">Cliente...</option>
                                         {clientes.map(c => <option key={c.id} value={c.id}>{c.nombre} {c.apellido}</option>)}
                                     </select>
-                                    <select value={selectedVehiculoId} onChange={e => setSelectedVehiculoId(e.target.value)} className="p-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 text-sm" required disabled={!selectedClienteId}>
+                                    <select value={selectedVehiculoId} onChange={e => setSelectedVehiculoId(e.target.value)} className="p-2.5 border rounded-lg dark:bg-gray-700 dark:border-gray-600 text-sm focus:ring-1 focus:ring-taller-primary outline-none" required disabled={!selectedClienteId}>
                                         <option value="">Vehículo...</option>
                                         {selectedClientVehiculos.map(v => <option key={v.id} value={v.id}>{v.marca} {v.modelo}</option>)}
                                     </select>
                                 </div>
-                                {(status === JobStatus.EnProceso || status === JobStatus.Finalizado) && (
-                                    <div className="animate-in fade-in slide-in-from-top-2 duration-300">
-                                        <label className="block text-[10px] font-bold text-taller-gray dark:text-gray-400 uppercase mb-1 pl-1">Kilometraje Actual (Opcional)</label>
-                                        <div className="relative">
-                                            <MapPinIcon className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
-                                            <input 
-                                                type="number" 
-                                                placeholder="Ej: 125000" 
-                                                value={kilometraje} 
-                                                onChange={e => setKilometraje(e.target.value)} 
-                                                className="w-full pl-9 pr-12 p-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 text-sm focus:ring-1 focus:ring-taller-primary outline-none"
-                                            />
-                                            <span className="absolute right-3 top-2.5 text-[10px] font-bold text-gray-400">KM</span>
-                                        </div>
-                                    </div>
-                                )}
                             </div>
                         ) : (
                             <div className="space-y-2">
                                 <div className="grid grid-cols-2 gap-2">
-                                    <input type="text" placeholder="Nombre" value={quickNombre} onChange={e => setQuickNombre(e.target.value)} className="p-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 text-sm" required/>
-                                    <input type="text" placeholder="Apellido (Opcional)" value={quickApellido} onChange={e => setQuickApellido(e.target.value)} className="p-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 text-sm"/>
+                                    <input type="text" placeholder="Nombre" value={quickNombre} onChange={e => setQuickNombre(e.target.value)} className="p-2.5 border rounded-lg dark:bg-gray-700 dark:border-gray-600 text-sm" required/>
+                                    <input type="text" placeholder="Apellido (Opcional)" value={quickApellido} onChange={e => setQuickApellido(e.target.value)} className="p-2.5 border rounded-lg dark:bg-gray-700 dark:border-gray-600 text-sm"/>
                                 </div>
                                 <div className="grid grid-cols-2 gap-2">
-                                    <input type="text" placeholder="Marca" value={quickMarca} onChange={e => setQuickMarca(e.target.value)} className="p-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 text-sm" required/>
-                                    <input type="text" placeholder="Modelo" value={quickModelo} onChange={e => setQuickModelo(e.target.value)} className="p-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 text-sm" required/>
+                                    <input type="text" placeholder="Marca" value={quickMarca} onChange={e => setQuickMarca(e.target.value.toUpperCase())} className="p-2.5 border rounded-lg dark:bg-gray-700 dark:border-gray-600 text-sm" required/>
+                                    <input type="text" placeholder="Modelo" value={quickModelo} onChange={e => setQuickModelo(e.target.value.toUpperCase())} className="p-2.5 border rounded-lg dark:bg-gray-700 dark:border-gray-600 text-sm" required/>
                                 </div>
-                                <input type="text" placeholder="Matrícula" value={quickMatricula} onChange={e => setQuickMatricula(e.target.value)} className="w-full p-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 text-sm"/>
+                                <input type="text" placeholder="Matrícula" value={quickMatricula} onChange={e => setQuickMatricula(e.target.value.toUpperCase())} className="w-full p-2.5 border rounded-lg dark:bg-gray-700 dark:border-gray-600 text-sm"/>
+                            </div>
+                        )}
+
+                        {/* MENÚ DE SELECCIÓN DE ESTADO */}
+                        <div className="animate-in fade-in slide-in-from-top-1 duration-300">
+                            <label className="block text-[10px] font-bold text-taller-gray dark:text-gray-400 uppercase mb-1 pl-1 flex items-center gap-1">
+                                <ClockIcon className="h-3 w-3" /> Estado del Trabajo
+                            </label>
+                            <select 
+                                value={status} 
+                                onChange={e => setStatus(e.target.value as JobStatus)}
+                                className="w-full p-2.5 border rounded-lg dark:bg-gray-700 dark:border-gray-600 text-sm focus:ring-1 focus:ring-taller-primary outline-none font-semibold bg-white dark:text-white transition-all shadow-sm"
+                            >
+                                <option value={JobStatus.Presupuesto}>Presupuesto</option>
+                                <option value={JobStatus.Programado}>Programado</option>
+                                <option value={JobStatus.EnProceso}>En Proceso</option>
+                                {isEditMode && <option value={JobStatus.Finalizado}>Finalizado</option>}
+                            </select>
+                        </div>
+
+                        {(status === JobStatus.EnProceso || status === JobStatus.Finalizado) && (
+                            <div className="animate-in fade-in slide-in-from-top-2 duration-300">
+                                <label className="block text-[10px] font-bold text-taller-gray dark:text-gray-400 uppercase mb-1 pl-1">Kilometraje Actual (Opcional)</label>
+                                <div className="relative">
+                                    <MapPinIcon className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
+                                    <input 
+                                        type="number" 
+                                        placeholder="Ej: 125000" 
+                                        value={kilometraje} 
+                                        onChange={e => setKilometraje(e.target.value)} 
+                                        className="w-full pl-9 pr-12 p-2.5 border rounded-lg dark:bg-gray-700 dark:border-gray-600 text-sm focus:ring-1 focus:ring-taller-primary outline-none"
+                                    />
+                                    <span className="absolute right-3 top-2.5 text-[10px] font-bold text-gray-400">KM</span>
+                                </div>
                             </div>
                         )}
                         
@@ -573,7 +624,7 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
                             onKeyDown={handleDescriptionKeyDown}
                             onFocus={handleDescriptionFocus}
                             placeholder="Descripción del trabajo..."
-                            className="w-full p-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 text-sm resize-none overflow-hidden"
+                            className="w-full p-2.5 border rounded-lg dark:bg-gray-700 dark:border-gray-600 text-sm resize-none overflow-hidden focus:ring-1 focus:ring-taller-primary outline-none"
                             rows={2}
                         />
                         
