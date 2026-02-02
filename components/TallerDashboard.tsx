@@ -1,15 +1,17 @@
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, lazy, Suspense } from 'react';
 import { supabase } from '../supabaseClient';
 import type { Cliente, Trabajo, Gasto, JobStatus, TallerInfo } from '../types';
 import { JobStatus as JobStatusEnum } from '../types';
-import Dashboard from './Dashboard';
-import Trabajos from './Trabajos';
-import Clientes from './Clientes';
-import Ajustes from './Ajustes';
 import Header from './Header';
 import { ChartPieIcon, WrenchScrewdriverIcon, UsersIcon, Cog6ToothIcon } from '@heroicons/react/24/solid';
 import { applyAppTheme, applyFontSize } from '../constants';
+
+// Lazy loaded views
+const Dashboard = lazy(() => import('./Dashboard'));
+const Trabajos = lazy(() => import('./Trabajos'));
+const Clientes = lazy(() => import('./Clientes'));
+const Ajustes = lazy(() => import('./Ajustes'));
 
 interface TallerDashboardProps {
     onLogout: () => void;
@@ -25,6 +27,12 @@ const navItems = [
     { id: 'clientes', label: 'Clientes', icon: UsersIcon },
     { id: 'ajustes', label: 'Ajustes', icon: Cog6ToothIcon },
 ] as const;
+
+const ViewLoading = () => (
+    <div className="h-full w-full flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-taller-primary opacity-50"></div>
+    </div>
+);
 
 const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
     const [view, setView] = useState<View>('dashboard');
@@ -128,12 +136,10 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
             if (newStatus === JobStatusEnum.Finalizado) updates.fecha_salida = new Date().toISOString();
             else updates.fecha_salida = null;
 
-            // Lógica para formalizar Presupuesto Rápido si cambia de estado
             if (job.isQuickBudget && newStatus !== JobStatusEnum.Presupuesto && job.quickBudgetData) {
                 const { data: { user } } = await supabase.auth.getUser();
                 if (!user) return;
 
-                // 1. Crear Cliente formal
                 const { data: newClient, error: clientErr } = await supabase
                     .from('clientes')
                     .insert({
@@ -146,7 +152,6 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
                 
                 if (clientErr) throw clientErr;
 
-                // 2. Crear Vehículo formal vinculado al cliente
                 const { data: newVehicle, error: vehicleErr } = await supabase
                     .from('vehiculos')
                     .insert({
@@ -160,7 +165,6 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
 
                 if (vehicleErr) throw vehicleErr;
 
-                // 3. Vincular el trabajo a las nuevas entidades y desactivar modo rápido
                 updates.cliente_id = newClient.id;
                 updates.vehiculo_id = newVehicle.id;
                 updates.is_quick_budget = false;
@@ -180,10 +184,9 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
     return (
         <div className="flex h-full w-full bg-taller-light dark:bg-taller-dark text-taller-dark dark:text-taller-light overflow-hidden fixed inset-0">
             <style>{`
-                /* Bloqueo total de scroll nativo para evitar saltos por enfoque */
                 body, html, #root { overflow: hidden !important; position: fixed; width: 100%; height: 100%; }
                 .main-view-slot { 
-                    width: 25%; /* 100% / 4 vistas */
+                    width: 25%; 
                     height: 100%; 
                     flex-shrink: 0;
                     overflow: hidden;
@@ -191,7 +194,6 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
                 }
             `}</style>
 
-            {/* Sidebar Desktop */}
             <aside className="hidden md:flex md:flex-col w-64 bg-white dark:bg-gray-800 shadow-lg shrink-0 border-r dark:border-gray-700 z-[60]">
                 <div className="h-20 flex items-center justify-center border-b dark:border-gray-700 p-4">
                     {tallerInfo.logoUrl ? <img src={tallerInfo.logoUrl} alt="Logo" className="max-h-full object-contain"/> : <WrenchScrewdriverIcon className="h-10 w-10 text-taller-primary" />}
@@ -206,10 +208,7 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
                 </nav>
             </aside>
 
-            {/* Contenedor Principal */}
             <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden relative">
-                
-                {/* Header (Fijo) */}
                 <div className="flex-shrink-0 w-full z-[50] overflow-hidden bg-white dark:bg-gray-800 border-b dark:border-gray-700">
                     <Header 
                         tallerName={tallerInfo.nombre} 
@@ -220,7 +219,6 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
                     />
                 </div>
                 
-                {/* PAGER DE VISTAS PRINCIPALES */}
                 <div className="flex-1 w-full overflow-hidden relative bg-taller-light dark:bg-taller-dark">
                     {loading ? (
                         <div className="absolute inset-0 flex items-center justify-center bg-taller-light dark:bg-taller-dark z-[40]">
@@ -230,62 +228,58 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
                         <div 
                             className="flex h-full transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] will-change-transform"
                             style={{ 
-                                /* IMPORTANTE: Track del 400% con saltos del 25% */
                                 width: '400%',
                                 transform: `translate3d(-${activeIndex * 25}%, 0, 0)`
                             }}
                         >
-                            {/* VISTA 1: RESUMEN */}
-                            <div className="main-view-slot" style={{ pointerEvents: view === 'dashboard' ? 'auto' : 'none' }}>
-                                <div className="h-full overflow-y-auto overscroll-none px-4 py-4 md:px-6 md:py-6">
-                                    <div className="max-w-7xl mx-auto min-h-full pb-32">
-                                        <Dashboard clientes={clientes} trabajos={trabajos} gastos={gastos} onDataRefresh={() => fetchData(false)} searchQuery={searchQuery} onNavigate={handleNavigate} />
+                            <Suspense fallback={<ViewLoading />}>
+                                <div className="main-view-slot" style={{ pointerEvents: view === 'dashboard' ? 'auto' : 'none' }}>
+                                    <div className="h-full overflow-y-auto overscroll-none px-4 py-4 md:px-6 md:py-6">
+                                        <div className="max-w-7xl mx-auto min-h-full pb-32">
+                                            <Dashboard clientes={clientes} trabajos={trabajos} gastos={gastos} onDataRefresh={() => fetchData(false)} searchQuery={searchQuery} onNavigate={handleNavigate} />
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                            
-                            {/* VISTA 2: TRABAJOS */}
-                            <div className="main-view-slot" style={{ pointerEvents: view === 'trabajos' ? 'auto' : 'none' }}>
-                                <Trabajos 
-                                    trabajos={trabajos} 
-                                    clientes={clientes} 
-                                    onUpdateStatus={handleUpdateStatus} 
-                                    onDataRefresh={() => fetchData(false)} 
-                                    tallerInfo={tallerInfo} 
-                                    searchQuery={searchQuery} 
-                                    initialTab={targetJobStatus} 
-                                    initialJobId={targetJobId} 
-                                    isActive={view === 'trabajos'} 
-                                />
-                            </div>
+                                
+                                <div className="main-view-slot" style={{ pointerEvents: view === 'trabajos' ? 'auto' : 'none' }}>
+                                    <Trabajos 
+                                        trabajos={trabajos} 
+                                        clientes={clientes} 
+                                        onUpdateStatus={handleUpdateStatus} 
+                                        onDataRefresh={() => fetchData(false)} 
+                                        tallerInfo={tallerInfo} 
+                                        searchQuery={searchQuery} 
+                                        initialTab={targetJobStatus} 
+                                        initialJobId={targetJobId} 
+                                        isActive={view === 'trabajos'} 
+                                    />
+                                </div>
 
-                            {/* VISTA 3: CLIENTES */}
-                            <div className="main-view-slot" style={{ pointerEvents: view === 'clientes' ? 'auto' : 'none' }}>
-                                <div className="h-full overflow-y-auto overscroll-none px-4 py-4 md:px-6 md:py-6">
-                                    <div className="max-w-7xl mx-auto min-h-full pb-32">
-                                        <Clientes clientes={clientes} trabajos={trabajos} onDataRefresh={() => fetchData(false)} searchQuery={searchQuery} onNavigate={handleNavigate} />
+                                <div className="main-view-slot" style={{ pointerEvents: view === 'clientes' ? 'auto' : 'none' }}>
+                                    <div className="h-full overflow-y-auto overscroll-none px-4 py-4 md:px-6 md:py-6">
+                                        <div className="max-w-7xl mx-auto min-h-full pb-32">
+                                            <Clientes clientes={clientes} trabajos={trabajos} onDataRefresh={() => fetchData(false)} searchQuery={searchQuery} onNavigate={handleNavigate} />
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
 
-                            {/* VISTA 4: AJUSTES */}
-                            <div className="main-view-slot" style={{ pointerEvents: view === 'ajustes' ? 'auto' : 'none' }}>
-                                <div className="h-full overflow-y-auto overscroll-none px-4 py-4 md:px-6 md:py-6">
-                                    <div className="max-w-7xl mx-auto min-h-full pb-32">
-                                        <Ajustes tallerInfo={tallerInfo} onUpdateTallerInfo={async (newInfo) => {
-                                            const { data: { user } } = await supabase.auth.getUser();
-                                            if (user) await supabase.from('taller_info').upsert({ taller_id: user.id, ...newInfo, updated_at: new Date().toISOString() });
-                                            setTallerInfo(newInfo);
-                                            applyAppTheme();
-                                        }} onLogout={onLogout} searchQuery={searchQuery} />
+                                <div className="main-view-slot" style={{ pointerEvents: view === 'ajustes' ? 'auto' : 'none' }}>
+                                    <div className="h-full overflow-y-auto overscroll-none px-4 py-4 md:px-6 md:py-6">
+                                        <div className="max-w-7xl mx-auto min-h-full pb-32">
+                                            <Ajustes tallerInfo={tallerInfo} onUpdateTallerInfo={async (newInfo) => {
+                                                const { data: { user } } = await supabase.auth.getUser();
+                                                if (user) await supabase.from('taller_info').upsert({ taller_id: user.id, ...newInfo, updated_at: new Date().toISOString() });
+                                                setTallerInfo(newInfo);
+                                                applyAppTheme();
+                                            }} onLogout={onLogout} searchQuery={searchQuery} />
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
+                            </Suspense>
                         </div>
                     )}
                 </div>
 
-                {/* Navegación Móvil (Fija) */}
                 <nav className="md:hidden bg-white dark:bg-gray-800 border-t dark:border-gray-700 flex-shrink-0 z-[60] h-20 overflow-hidden relative">
                     <div className="flex justify-around items-center h-full w-full">
                         {navItems.map((item) => (

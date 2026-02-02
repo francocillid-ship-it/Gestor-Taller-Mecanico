@@ -1,15 +1,24 @@
-import React, { useState, useEffect } from 'react';
+
+import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { supabase } from './supabaseClient';
 import type { Session, User } from '@supabase/supabase-js';
-import Login from './components/Login';
-import TallerDashboard from './components/TallerDashboard';
-import ClientPortal from './components/ClientPortal';
-import ResetPassword from './components/ResetPassword';
-import SetInitialPassword from './components/SetInitialPassword';
 import type { Cliente, Trabajo, TallerInfo } from './types';
 import { applyAppTheme } from './constants';
 
+// Lazy loading components
+const Login = lazy(() => import('./components/Login'));
+const TallerDashboard = lazy(() => import('./components/TallerDashboard'));
+const ClientPortal = lazy(() => import('./components/ClientPortal'));
+const ResetPassword = lazy(() => import('./components/ResetPassword'));
+const SetInitialPassword = lazy(() => import('./components/SetInitialPassword'));
+
 type AuthAction = 'APP' | 'PASSWORD_RECOVERY' | 'SET_INITIAL_PASSWORD';
+
+const LoadingScreen = () => (
+    <div className="flex h-screen w-screen items-center justify-center bg-gray-50 dark:bg-gray-900">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-taller-primary"></div>
+    </div>
+);
 
 const App: React.FC = () => {
     const [session, setSession] = useState<Session | null>(null);
@@ -197,30 +206,36 @@ const App: React.FC = () => {
     };
 
     if (loading) {
-        return <div className="flex h-screen items-center justify-center">Cargando...</div>;
+        return <LoadingScreen />;
     }
 
-    if (authAction === 'SET_INITIAL_PASSWORD') {
-        return <SetInitialPassword onSetSuccess={handleAuthSuccess} />;
-    }
+    return (
+        <Suspense fallback={<LoadingScreen />}>
+            {authAction === 'SET_INITIAL_PASSWORD' && (
+                <SetInitialPassword onSetSuccess={handleAuthSuccess} />
+            )}
 
-    if (authAction === 'PASSWORD_RECOVERY') {
-        return <ResetPassword onResetSuccess={handleAuthSuccess} />;
-    }
-    
-    if (!session) {
-        return <Login />;
-    }
+            {authAction === 'PASSWORD_RECOVERY' && (
+                <ResetPassword onResetSuccess={handleAuthSuccess} />
+            )}
+            
+            {authAction === 'APP' && !session && (
+                <Login />
+            )}
 
-    if (role === 'taller') {
-        return <TallerDashboard onLogout={handleLogout} />;
-    }
+            {authAction === 'APP' && session && role === 'taller' && (
+                <TallerDashboard onLogout={handleLogout} />
+            )}
 
-    if (role === 'cliente' && clientData) {
-        return <ClientPortal client={clientData} trabajos={clientTrabajos} onLogout={handleLogout} tallerInfo={tallerInfoForClient} />;
-    }
+            {authAction === 'APP' && session && role === 'cliente' && clientData && (
+                <ClientPortal client={clientData} trabajos={clientTrabajos} onLogout={handleLogout} tallerInfo={tallerInfoForClient} />
+            )}
 
-    return <div className="flex h-screen items-center justify-center">Cargando portal...</div>;
+            {authAction === 'APP' && session && role === 'cliente' && !clientData && (
+                <LoadingScreen />
+            )}
+        </Suspense>
+    );
 };
 
 export default App;

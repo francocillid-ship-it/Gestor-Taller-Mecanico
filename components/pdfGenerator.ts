@@ -1,15 +1,12 @@
 
-import { jsPDF } from 'jspdf';
-import autoTable from 'jspdf-autotable';
 import type { Trabajo, Cliente, Vehiculo, TallerInfo } from '../types';
 import { JobStatus as JobStatusEnum } from '../types';
 import { supabase } from '../supabaseClient';
 
-// Helper function to convert image URL to Base64 PNG using Canvas
 const getImageDataUrl = (url: string): Promise<string> => {
     return new Promise((resolve, reject) => {
         const img = new Image();
-        img.crossOrigin = 'Anonymous'; // Critical for loading external images (Supabase)
+        img.crossOrigin = 'Anonymous'; 
         
         img.onload = () => {
             const canvas = document.createElement('canvas');
@@ -29,7 +26,6 @@ const getImageDataUrl = (url: string): Promise<string> => {
             reject(error);
         };
         
-        // Cache busting to prevent browser from using a cached non-CORS response
         const separator = url.includes('?') ? '&' : '?';
         img.src = `${url}${separator}t=${new Date().getTime()}`;
     });
@@ -42,19 +38,21 @@ export const generateClientPDF = async (
     tallerInfo: TallerInfo,
     forceDownload: boolean = false
 ): Promise<void> => {
+    // Dynamic imports for heavy libraries
+    const { jsPDF } = await import('jspdf');
+    const { default: autoTable } = await import('jspdf-autotable');
+
     const doc = new jsPDF();
     const a4Width = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
     const margin = 15;
     const mainTextColor = '#0f172a';
     
-    // Use user defined color or default to the new sober slate
     const primaryColor = tallerInfo.headerColor || '#334155';
     const lightBgColor = '#f8fafc';
     const lightTextColor = '#64748b';
 
-    // --- CALCULATE SEQUENTIAL NUMBER ---
-    let formattedNumber = trabajo.id.substring(0, 8); // Fallback
+    let formattedNumber = trabajo.id.substring(0, 8); 
 
     if (trabajo.tallerId) {
         try {
@@ -77,11 +75,9 @@ export const generateClientPDF = async (
         }
     }
 
-    // --- 1. DRAW BACKGROUND HEADER ---
     doc.setFillColor(primaryColor);
     doc.rect(0, 0, a4Width, 30, 'F');
 
-    // --- 2. HANDLE LOGO ---
     let logoOffset = 0;
     if (tallerInfo.showLogoOnPdf === true && tallerInfo.logoUrl) {
         try {
@@ -98,7 +94,6 @@ export const generateClientPDF = async (
         }
     }
 
-    // --- 3. DRAW HEADER TEXT ---
     doc.setTextColor('#FFFFFF');
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(20);
@@ -113,7 +108,6 @@ export const generateClientPDF = async (
 
     doc.text(headerSubtext, margin + logoOffset, 22);
 
-    // --- DOCUMENT TITLE ---
     const docTitle = trabajo.status === JobStatusEnum.Presupuesto ? 'PRESUPUESTO' : 'RECIBO';
     doc.setTextColor(mainTextColor);
     doc.setFontSize(18);
@@ -124,7 +118,6 @@ export const generateClientPDF = async (
     doc.text(`N°: ${formattedNumber}`, a4Width - margin, 52, { align: 'right' });
     doc.text(`Fecha: ${new Date(trabajo.fechaEntrada).toLocaleDateString('es-ES')}`, a4Width - margin, 59, { align: 'right' });
 
-    // --- CLIENT & VEHICLE INFO ---
     doc.setFillColor(lightBgColor);
     doc.rect(margin, 70, a4Width - (margin * 2), 35, 'F');
     
@@ -147,7 +140,6 @@ export const generateClientPDF = async (
     }
     doc.text(vehicleSubText, (a4Width / 2), 92);
 
-    // --- DESCRIPTION ---
     doc.setFontSize(11);
     doc.setFont('helvetica', 'bold');
     doc.text('Descripción del Trabajo:', margin, 115);
@@ -158,12 +150,10 @@ export const generateClientPDF = async (
     
     const lastDescLineY = 122 + (descLines.length * 5);
 
-    // --- PARTS TABLE & CALCULATIONS ---
     const partesSinPagos = trabajo.partes.filter(p => p.nombre !== '__PAGO_REGISTRADO__');
     const hasServices = partesSinPagos.some(p => p.isService);
     const formatCurrencyPDF = (val: number) => new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(val);
 
-    // Calculate Totals specifically for PDF (Summing EVERYTHING, ignoring clientPaidDirectly flag)
     let subtotalRepuestos = 0;
     let subtotalManoObra = 0;
 
@@ -177,7 +167,6 @@ export const generateClientPDF = async (
         }
     });
 
-    // Add legacy labor cost if no services are defined as items but cost exists
     if (!hasServices && trabajo.costoManoDeObra) {
         subtotalManoObra += trabajo.costoManoDeObra;
     }
@@ -226,10 +215,8 @@ export const generateClientPDF = async (
         });
     }
     
-    // --- TOTALS & PAGE BREAK LOGIC ---
     let finalY = (doc as any).lastAutoTable?.finalY || lastDescLineY + 10;
     
-    // Required height for subtotals + total
     let requiredHeight = 35; 
     const footerMargin = 25;
 
@@ -238,33 +225,25 @@ export const generateClientPDF = async (
         finalY = 20;
     }
     
-    // --- DRAW TOTALS ---
     const totalsX = a4Width / 2;
     const valuesX = a4Width - margin;
 
     doc.setFontSize(10);
-    
-    // Subtotal Repuestos
     doc.text(`Subtotal Repuestos:`, totalsX, finalY + 10);
     doc.text(formatCurrencyPDF(subtotalRepuestos), valuesX, finalY + 10, { align: 'right' });
-    
-    // Subtotal Mano de Obra
     doc.text(`Subtotal Mano de Obra:`, totalsX, finalY + 17);
     doc.text(formatCurrencyPDF(subtotalManoObra), valuesX, finalY + 17, { align: 'right' });
     
-    // Separator Line
     doc.setLineWidth(0.5);
     doc.setDrawColor(primaryColor);
     doc.line(totalsX, finalY + 22, valuesX, finalY + 22);
 
-    // Total Final
     doc.setFontSize(14);
     doc.setFont('helvetica', 'bold');
     doc.text(`TOTAL:`, totalsX, finalY + 30);
     doc.text(formatCurrencyPDF(totalGeneral), valuesX, finalY + 30, { align: 'right' });
     doc.setFont('helvetica', 'normal');
     
-    // --- FOOTER ON ALL PAGES ---
     const footerText = trabajo.status === JobStatusEnum.Presupuesto
         ? 'Validez del presupuesto: 30 días.'
         : '¡Gracias por su confianza!';
@@ -285,7 +264,6 @@ export const generateClientPDF = async (
         doc.text(`Página ${i} de ${totalPages}`, a4Width - margin, pageHeight - 15, { align: 'right' });
     }
 
-    // --- SAVE / SHARE ---
     const sanitizedClientName = (cliente?.nombre || 'cliente').replace(/[^a-z0-9]/gi, '_').toLowerCase();
     const sanitizedLastName = (cliente?.apellido || '').replace(/[^a-z0-9]/gi, '_').toLowerCase();
     const fullSanitizedName = sanitizedLastName ? `${sanitizedClientName}_${sanitizedLastName}` : sanitizedClientName;

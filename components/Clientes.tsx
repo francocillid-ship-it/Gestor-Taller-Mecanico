@@ -1,14 +1,15 @@
 
-import React, { useState, useMemo, useRef, useEffect } from 'react';
+import React, { useState, useMemo, useRef, useEffect, lazy, Suspense } from 'react';
 import type { Cliente, Trabajo, Vehiculo, JobStatus } from '../types';
-// Add missing ArrowPathIcon import
 import { ChevronDownIcon, PhoneIcon, EnvelopeIcon, UserPlusIcon, PencilIcon, Cog6ToothIcon, PlusIcon, PaperAirplaneIcon, CurrencyDollarIcon, KeyIcon, ArrowTopRightOnSquareIcon, ArrowPathIcon } from '@heroicons/react/24/solid';
-import CrearClienteModal from './CrearClienteModal';
-import MaintenanceConfigModal from './MaintenanceConfigModal';
-import AddVehicleModal from './AddVehicleModal';
-import CrearTrabajoModal from './CrearTrabajoModal';
 import { supabase, supabaseUrl, supabaseKey } from '../supabaseClient';
 import { createClient } from '@supabase/supabase-js';
+
+// Lazy load modals
+const CrearClienteModal = lazy(() => import('./CrearClienteModal'));
+const MaintenanceConfigModal = lazy(() => import('./MaintenanceConfigModal'));
+const AddVehicleModal = lazy(() => import('./AddVehicleModal'));
+const CrearTrabajoModal = lazy(() => import('./CrearTrabajoModal'));
 
 interface ClientesProps {
     clientes: Cliente[];
@@ -82,18 +83,15 @@ const ClientCard: React.FC<ClientCardProps> = ({ cliente, trabajos, onEdit, onCo
 
         setSendingAccess(true);
         
-        // Cliente temporal para evitar persistencia de sesión local
         const tempSupabase = createClient(supabaseUrl, supabaseKey, {
             auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false }
         });
 
-        // GENERACIÓN DE CONTRASEÑA TEMPORAL
         const tempPassword = Math.random().toString(36).slice(-8) + 'Aa1!';
         let shareUrl = '';
         let messageBody = '';
 
         try {
-            // Intentar crear el usuario en Auth
             const { data: authData, error: signUpError } = await tempSupabase.auth.signUp({
                 email: cliente.email,
                 password: tempPassword,
@@ -105,13 +103,10 @@ const ClientCard: React.FC<ClientCardProps> = ({ cliente, trabajos, onEdit, onCo
                 }
             });
 
-            // Si el usuario se creó con éxito o ya existía (Supabase signUp no lanza error si ya existe pero devuelve el usuario si está configurado así)
             if (authData.user) {
                 const newAuthId = authData.user.id;
 
-                // MIGRACIÓN DE DATOS (Si el ID actual no coincide con el de Auth, p.ej. cliente creado manualmente)
                 if (newAuthId !== cliente.id) {
-                    // 1. Crear nuevo perfil vinculado al Auth ID
                     const { error: insertError } = await supabase.from('clientes').insert({
                         id: newAuthId,
                         taller_id: cliente.taller_id,
@@ -122,20 +117,16 @@ const ClientCard: React.FC<ClientCardProps> = ({ cliente, trabajos, onEdit, onCo
                     });
                     
                     if (!insertError) {
-                        // 2. Mover vehículos y trabajos al nuevo ID
                         await supabase.from('vehiculos').update({ cliente_id: newAuthId }).eq('cliente_id', cliente.id);
                         await supabase.from('trabajos').update({ cliente_id: newAuthId }).eq('cliente_id', cliente.id);
-                        // 3. Eliminar el registro antiguo huérfano
                         await supabase.from('clientes').delete().eq('id', cliente.id);
                         onDataRefresh();
                     }
                 }
 
-                // SIEMPRE generar la URL con los parámetros email y password
                 shareUrl = `${window.location.origin}/?type=invite&email=${encodeURIComponent(cliente.email)}&password=${encodeURIComponent(tempPassword)}`;
                 messageBody = `Hola ${cliente.nombre}, accede a tu historial de trabajos en nuestro taller.\n\nAcceso directo: ${shareUrl}\n\nUsuario: ${cliente.email}\nContraseña Temporal: ${tempPassword}\n\n(Se te pedirá cambiarla al ingresar por seguridad).`;
             } else {
-                // Fallback si no se pudo crear/recuperar usuario pero el error es que ya existe
                 if (signUpError?.message?.includes('already registered')) {
                     shareUrl = `${window.location.origin}/?type=invite&email=${encodeURIComponent(cliente.email)}&password=${encodeURIComponent(tempPassword)}`;
                     messageBody = `Hola ${cliente.nombre}, hemos generado una nueva invitación de acceso para ti.\n\nEnlace: ${shareUrl}\nUsuario: ${cliente.email}\nContraseña: ${tempPassword}`;
@@ -144,7 +135,6 @@ const ClientCard: React.FC<ClientCardProps> = ({ cliente, trabajos, onEdit, onCo
                 }
             }
 
-            // COMPARTIR
             if (navigator.share) {
                 try {
                     await navigator.share({
@@ -384,60 +374,62 @@ const Clientes: React.FC<ClientesProps> = ({ clientes, trabajos, onDataRefresh, 
                 )}
             </div>
 
-            {(isCreateModalOpen || clienteToEdit) && (
-                 <CrearClienteModal
-                    clienteToEdit={clienteToEdit}
-                    onClose={handleCloseModal}
-                    onSuccess={handleClientSuccess}
-                />
-            )}
+            <Suspense fallback={null}>
+                {(isCreateModalOpen || clienteToEdit) && (
+                    <CrearClienteModal
+                        clienteToEdit={clienteToEdit}
+                        onClose={handleCloseModal}
+                        onSuccess={handleClientSuccess}
+                    />
+                )}
 
-            {vehicleToConfig && (
-                <MaintenanceConfigModal 
-                    vehiculo={vehicleToConfig}
-                    onClose={() => setVehicleToConfig(null)}
-                    onSuccess={() => {
-                        setVehicleToConfig(null);
-                        onDataRefresh();
-                    }}
-                />
-            )}
+                {vehicleToConfig && (
+                    <MaintenanceConfigModal 
+                        vehiculo={vehicleToConfig}
+                        onClose={() => setVehicleToConfig(null)}
+                        onSuccess={() => {
+                            setVehicleToConfig(null);
+                            onDataRefresh();
+                        }}
+                    />
+                )}
 
-            {clientToAddVehicle && (
-                <AddVehicleModal
-                    clienteId={clientToAddVehicle}
-                    onClose={() => setClientToAddVehicle(null)}
-                    onSuccess={(newVehicle) => {
-                        if (newVehicle && onClientUpdate && clientToAddVehicle) {
-                            const clientToUpdate = clientes.find(c => c.id === clientToAddVehicle);
-                            if (clientToUpdate) {
-                                const updatedClient = {
-                                    ...clientToUpdate,
-                                    vehiculos: [...clientToUpdate.vehiculos, newVehicle]
-                                };
-                                onClientUpdate(updatedClient);
-                                setClientToAddVehicle(null);
-                                return;
+                {clientToAddVehicle && (
+                    <AddVehicleModal
+                        clienteId={clientToAddVehicle}
+                        onClose={() => setClientToAddVehicle(null)}
+                        onSuccess={(newVehicle) => {
+                            if (newVehicle && onClientUpdate && clientToAddVehicle) {
+                                const clientToUpdate = clientes.find(c => c.id === clientToAddVehicle);
+                                if (clientToUpdate) {
+                                    const updatedClient = {
+                                        ...clientToUpdate,
+                                        vehiculos: [...clientToUpdate.vehiculos, newVehicle]
+                                    };
+                                    onClientUpdate(updatedClient);
+                                    setClientToAddVehicle(null);
+                                    return;
+                                }
                             }
-                        }
-                        setClientToAddVehicle(null);
-                        onDataRefresh();
-                    }}
-                />
-            )}
+                            setClientToAddVehicle(null);
+                            onDataRefresh();
+                        }}
+                    />
+                )}
 
-            {clientForNewJob && (
-                <CrearTrabajoModal
-                    clientes={clientes}
-                    initialClientId={clientForNewJob}
-                    onClose={() => setClientForNewJob(null)}
-                    onSuccess={() => {
-                        setClientForNewJob(null);
-                        onDataRefresh();
-                    }}
-                    onDataRefresh={onDataRefresh}
-                />
-            )}
+                {clientForNewJob && (
+                    <CrearTrabajoModal
+                        clientes={clientes}
+                        initialClientId={clientForNewJob}
+                        onClose={() => setClientForNewJob(null)}
+                        onSuccess={() => {
+                            setClientForNewJob(null);
+                            onDataRefresh();
+                        }}
+                        onDataRefresh={onDataRefresh}
+                    />
+                )}
+            </Suspense>
         </div>
     );
 };

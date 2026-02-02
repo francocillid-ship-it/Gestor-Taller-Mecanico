@@ -1,11 +1,5 @@
 
-import { GoogleGenAI, Type } from "@google/genai";
 import type { Vehiculo } from './types';
-
-// Use process.env.API_KEY exclusively for initialization as per guidelines
-const getGeminiClient = (): GoogleGenAI => {
-    return new GoogleGenAI({ apiKey: process.env.API_KEY });
-};
 
 export type VehiculoData = Partial<Omit<Vehiculo, 'id' | 'año' | 'maintenance_config'> & { año: string }>;
 
@@ -16,9 +10,7 @@ export const isGeminiAvailable = (): boolean => {
 const calculateYearFromPatente = (patente: string): string | null => {
     const cleanPatente = patente.replace(/\s/g, '').toUpperCase();
     
-    // Formato antiguo: LLLNNN (e.g., ABC123)
     const oldFormatRegex = /^[A-Z]{3}\d{3}$/;
-    // Formato Mercosur: LLNNNLL (e.g., AB123CD)
     const mercosurFormatRegex = /^[A-Z]{2}\d{3}[A-Z]{2}$/;
 
     if (oldFormatRegex.test(cleanPatente)) {
@@ -26,12 +18,12 @@ const calculateYearFromPatente = (patente: string): string | null => {
         let year: number | null = null;
         
         switch (firstLetter) {
-            case 'A': year = 1996; break; // 95/96
-            case 'B': year = 1998; break; // 97/98
-            case 'C': year = 2000; break; // 99/00
-            case 'D': year = 2002; break; // 01/02
-            case 'E': year = 2004; break; // 03/04
-            case 'F': year = 2006; break; // 05/06
+            case 'A': year = 1996; break;
+            case 'B': year = 1998; break;
+            case 'C': year = 2000; break;
+            case 'D': year = 2002; break;
+            case 'E': year = 2004; break;
+            case 'F': year = 2006; break;
             case 'G': year = 2007; break;
             case 'H': year = 2008; break;
             case 'I': year = 2009; break;
@@ -41,7 +33,7 @@ const calculateYearFromPatente = (patente: string): string | null => {
             case 'M': year = 2013; break;
             case 'N': year = 2014; break;
             case 'O': year = 2015; break;
-            case 'P': year = 2015; break; // G-P se acomodan entre 07 y 15
+            case 'P': year = 2015; break; 
             default: year = null;
         }
         
@@ -51,10 +43,9 @@ const calculateYearFromPatente = (patente: string): string | null => {
 
     } else if (mercosurFormatRegex.test(cleanPatente)) {
         const secondLetter = cleanPatente[1];
-        // A=2016, B=2017, etc.
         const year = 2016 + (secondLetter.charCodeAt(0) - 'A'.charCodeAt(0));
         const currentYear = new Date().getFullYear();
-        if (year >= 2016 && year <= currentYear + 1) { // Cap at next year
+        if (year >= 2016 && year <= currentYear + 1) { 
             return String(year);
         }
     }
@@ -64,9 +55,10 @@ const calculateYearFromPatente = (patente: string): string | null => {
 
 
 export const recognizeVehicleDataFromImage = async (base64Image: string): Promise<VehiculoData> => {
-    const ai = getGeminiClient();
+    // Dynamic import of GenAI SDK
+    const { GoogleGenAI, Type } = await import("@google/genai");
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
-    // Use recommended object structure for parts instead of Part type
     const imagePart = {
         inlineData: {
             mimeType: 'image/jpeg',
@@ -79,7 +71,6 @@ export const recognizeVehicleDataFromImage = async (base64Image: string): Promis
     };
 
     try {
-        // Use recommended model 'gemini-3-flash-preview' for basic text extraction tasks
         const response = await ai.models.generateContent({
             model: 'gemini-3-flash-preview',
             contents: { parts: [imagePart, textPart] },
@@ -99,7 +90,6 @@ export const recognizeVehicleDataFromImage = async (base64Image: string): Promis
             }
         });
 
-        // Use response.text property directly as per guidelines
         const jsonString = response.text?.trim();
         if (!jsonString) return {};
         
@@ -108,7 +98,6 @@ export const recognizeVehicleDataFromImage = async (base64Image: string): Promis
         const cleanData: VehiculoData = {};
         for (const key in parsedData) {
             if (parsedData[key] !== null && parsedData[key] !== undefined) {
-                // Ensure all tech fields are uppercase
                 if (['marca', 'modelo', 'matricula', 'numero_chasis', 'numero_motor'].includes(key)) {
                     cleanData[key as keyof VehiculoData] = String(parsedData[key]).toUpperCase();
                 } else {

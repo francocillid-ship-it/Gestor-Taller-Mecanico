@@ -202,8 +202,8 @@ const CameraRecognitionModal: React.FC<CameraRecognitionModalProps> = ({ onClose
                                         <p className="text-xs text-gray-400 mt-1">Para usar el escáner, debes permitir el acceso en los ajustes de tu navegador:</p>
                                     </div>
                                     <div className="text-[10px] text-left bg-gray-900/50 p-3 rounded border border-gray-700 space-y-2">
-                                        <p><strong>Android:</strong> Clic en los 3 puntos ⋮ > Configuración > Configuración de sitios > Cámara > Permitir.</p>
-                                        <p><strong>iOS:</strong> Ajustes > Safari > Cámara > Permitir.</p>
+                                        <p><strong>Android:</strong> Clic en los 3 puntos ⋮ &gt; Configuración &gt; Configuración de sitios &gt; Cámara &gt; Permitir.</p>
+                                        <p><strong>iOS:</strong> Ajustes &gt; Safari &gt; Cámara &gt; Permitir.</p>
                                     </div>
                                     <button 
                                         onClick={startCamera}

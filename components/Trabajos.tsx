@@ -1,10 +1,11 @@
 
-import React, { useMemo, useState, useEffect, useRef, useCallback, useLayoutEffect } from 'react';
+import React, { useMemo, useState, useEffect, useRef, useCallback, useLayoutEffect, lazy, Suspense } from 'react';
 import type { Trabajo, Cliente, TallerInfo } from '../types';
 import { JobStatus } from '../types';
 import JobCard from './JobCard';
-import CrearTrabajoModal from './CrearTrabajoModal';
 import { PlusIcon, MagnifyingGlassIcon, ExclamationCircleIcon, ChevronLeftIcon, ChevronRightIcon, CalendarIcon, ChevronDownIcon, ClockIcon } from '@heroicons/react/24/solid';
+
+const CrearTrabajoModal = lazy(() => import('./CrearTrabajoModal'));
 
 interface TrabajosProps {
     trabajos: Trabajo[];
@@ -20,7 +21,6 @@ interface TrabajosProps {
 
 const statusOrder = [JobStatus.Presupuesto, JobStatus.Programado, JobStatus.EnProceso, JobStatus.Finalizado];
 
-// --- Utilidades de fecha para agrupamiento ---
 const getWeekOfMonth = (date: Date) => {
     const firstDay = new Date(date.getFullYear(), date.getMonth(), 1).getDay();
     return Math.ceil((date.getDate() + firstDay) / 7);
@@ -80,7 +80,6 @@ const EmptyState: React.FC = () => (
     </div>
 );
 
-// --- Componente de Grupo Mensual Colapsable ---
 const MonthlyGroup: React.FC<{ 
     monthKey: string; 
     trabajos: Trabajo[]; 
@@ -159,7 +158,6 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
     const tabLabelsRef = useRef<{ [key: string]: HTMLButtonElement | null }>({});
     const headerRef = useRef<HTMLDivElement>(null);
 
-    // Medición dinámica del encabezado
     useLayoutEffect(() => {
         const updateHeight = () => {
             if (headerRef.current) {
@@ -269,7 +267,6 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
             );
         }
 
-        // --- Lógica Especial para Pestaña de FINALIZADO ---
         if (status === JobStatus.Finalizado && tabJobs.length > 0) {
             const recentJobs = tabJobs.slice(0, 5);
             const archivedJobs = tabJobs.slice(5);
@@ -351,7 +348,6 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
                 }
             `}</style>
             
-            {/* Encabezado animado con margen negativo para expansión total */}
             <div 
                 ref={headerRef}
                 className={`w-full bg-taller-light dark:bg-taller-dark transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] z-30 flex-shrink-0 ${headerVisible ? 'opacity-100 translate-y-0' : 'opacity-0 pointer-events-none'}`}
@@ -369,7 +365,6 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
                 </div>
             </div>
 
-            {/* Contenedor de listas: utiliza flex-1 para expandirse dinámicamente */}
             <div className="flex-1 w-full overflow-hidden relative" onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
                 <div 
                     className="flex h-full transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] will-change-transform" 
@@ -390,7 +385,16 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
                 </div>
             </div>
 
-            {isCreateModalOpen && <CrearTrabajoModal onClose={() => setIsCreateModalOpen(false)} onSuccess={() => { setIsCreateModalOpen(false); onDataRefresh(); }} onDataRefresh={onDataRefresh} clientes={clientes} />}
+            <Suspense fallback={null}>
+                {isCreateModalOpen && (
+                    <CrearTrabajoModal 
+                        onClose={() => setIsCreateModalOpen(false)} 
+                        onSuccess={() => { setIsCreateModalOpen(false); onDataRefresh(); }} 
+                        onDataRefresh={onDataRefresh} 
+                        clientes={clientes} 
+                    />
+                )}
+            </Suspense>
         </div>
     );
 };
