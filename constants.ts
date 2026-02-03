@@ -1,3 +1,4 @@
+
 export const MAINTENANCE_TYPES = {
     FLUIDS: [
         { key: 'oil', label: 'Aceite de Motor', keywords: ['aceite motor', 'cambio aceite', '5w30', '10w40', '5w40', 'semisintetico', 'sintetico', 'elaion', 'total', 'shell', 'motul'] },
@@ -26,7 +27,19 @@ export const ALL_MAINTENANCE_OPTS = [
     ...MAINTENANCE_TYPES.OTHERS
 ];
 
-// Aplicar el tema único azul oscuro corporativo
+// Gestiona la clase .dark en el documento basándose en preferencias
+export const applyThemeClass = () => {
+    const theme = localStorage.getItem('theme') || 'system';
+    const isDark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    
+    if (isDark) {
+        document.documentElement.classList.add('dark');
+    } else {
+        document.documentElement.classList.remove('dark');
+    }
+};
+
+// Aplicar el tema único azul oscuro corporativo (CSS Variables)
 export const applyAppTheme = () => {
     const root = document.documentElement;
 
@@ -37,6 +50,9 @@ export const applyAppTheme = () => {
     root.style.setProperty('--color-taller-light', '240 249 255');   // Sky 50
     root.style.setProperty('--color-taller-dark', '11 17 32');       // Navy Dark
     root.style.setProperty('--color-taller-gray', '100 116 139');    // Slate 500
+
+    // Asegura que la clase dark esté sincronizada
+    applyThemeClass();
 };
 
 export const applyFontSize = (size: 'small' | 'normal' | 'large') => {

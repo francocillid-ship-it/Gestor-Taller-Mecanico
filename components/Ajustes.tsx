@@ -22,7 +22,7 @@ import {
     ArrowTopRightOnSquareIcon
 } from '@heroicons/react/24/solid';
 import ChangePasswordModal from './ChangePasswordModal';
-import { applyAppTheme, applyFontSize } from '../constants';
+import { applyAppTheme, applyFontSize, applyThemeClass } from '../constants';
 
 interface AjustesProps {
     tallerInfo: TallerInfo;
@@ -90,7 +90,6 @@ const Ajustes: React.FC<AjustesProps> = ({ tallerInfo, onUpdateTallerInfo, onLog
     const [theme, setTheme] = useState<Theme>(() => (localStorage.getItem('theme') as Theme) || 'system');
     const [isChangePasswordModalOpen, setIsChangePasswordModalOpen] = useState(false);
     
-    // IA API Key State
     const [hasApiKey, setHasApiKey] = useState(false);
 
     useEffect(() => {
@@ -105,6 +104,19 @@ const Ajustes: React.FC<AjustesProps> = ({ tallerInfo, onUpdateTallerInfo, onLog
         await window.aistudio.openSelectKey();
         setHasApiKey(true);
     };
+
+    // Sincronización automática con el sistema cuando el tema es 'system'
+    useEffect(() => {
+        if (theme !== 'system') return;
+
+        const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+        const listener = () => applyThemeClass();
+        
+        mediaQuery.addEventListener('change', listener);
+        applyThemeClass(); // Asegura estado inicial correcto
+
+        return () => mediaQuery.removeEventListener('change', listener);
+    }, [theme]);
 
     useEffect(() => {
         onUpdateTallerInfoRef.current = onUpdateTallerInfo;
@@ -155,16 +167,10 @@ const Ajustes: React.FC<AjustesProps> = ({ tallerInfo, onUpdateTallerInfo, onLog
         setTheme(newTheme);
         if (newTheme === 'system') {
             localStorage.removeItem('theme');
-            if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
-                document.documentElement.classList.add('dark');
-            } else {
-                document.documentElement.classList.remove('dark');
-            }
         } else {
             localStorage.setItem('theme', newTheme);
-            if (newTheme === 'dark') document.documentElement.classList.add('dark');
-            else document.documentElement.classList.remove('dark');
         }
+        applyThemeClass();
     };
     
     const handleFontSizeChange = (size: 'small' | 'normal' | 'large') => {
@@ -205,8 +211,8 @@ const Ajustes: React.FC<AjustesProps> = ({ tallerInfo, onUpdateTallerInfo, onLog
             onClick={() => onClick(value)}
             className={`w-full flex flex-col items-center gap-2 rounded-md py-3 text-sm font-medium transition-colors ${
                 currentTheme === value
-                    ? 'bg-taller-primary text-white shadow'
-                    : 'text-taller-gray dark:text-gray-300 bg-taller-light dark:bg-gray-700 hover:bg-white dark:hover:bg-gray-600'
+                    ? 'bg-taller-primary text-white shadow-md'
+                    : 'text-taller-gray dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-100 dark:border-gray-600 hover:bg-gray-50'
             }`}
         >
             <Icon className="h-6 w-6" />
@@ -373,15 +379,16 @@ const Ajustes: React.FC<AjustesProps> = ({ tallerInfo, onUpdateTallerInfo, onLog
                         <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md transition-shadow hover:shadow-lg">
                             <h3 className="text-lg font-bold mb-4 flex items-center"><PaintBrushIcon className="h-6 w-6 mr-2 text-taller-primary"/>Apariencia de la App</h3>
                             <div className="space-y-8">
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                    <div>
-                                        <label className="block text-sm font-medium text-taller-gray dark:text-gray-400 mb-2">Modo Visual</label>
-                                        <div className="grid grid-cols-3 gap-2 rounded-lg bg-taller-light dark:bg-gray-900/50 p-1">
-                                            <ThemeButton value="light" currentTheme={theme} onClick={handleThemeChange} icon={SunIcon} label="Claro" />
-                                            <ThemeButton value="dark" currentTheme={theme} onClick={handleThemeChange} icon={MoonIcon} label="Oscuro" />
-                                            <ThemeButton value="system" currentTheme={theme} onClick={handleThemeChange} icon={ComputerDesktopIcon} label="Auto" />
-                                        </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-taller-gray dark:text-gray-400 mb-3">Modo Visual</label>
+                                    <div className="grid grid-cols-3 gap-3 bg-gray-50 dark:bg-gray-900/50 p-1.5 rounded-xl border dark:border-gray-700">
+                                        <ThemeButton value="light" currentTheme={theme} onClick={handleThemeChange} icon={SunIcon} label="Claro" />
+                                        <ThemeButton value="dark" currentTheme={theme} onClick={handleThemeChange} icon={MoonIcon} label="Oscuro" />
+                                        <ThemeButton value="system" currentTheme={theme} onClick={handleThemeChange} icon={ComputerDesktopIcon} label="Auto" />
                                     </div>
+                                    <p className="text-[10px] text-taller-gray dark:text-gray-500 mt-2 italic px-1">
+                                        * El modo 'Auto' sincroniza la aplicación con el tema configurado en los ajustes de tu dispositivo.
+                                    </p>
                                 </div>
 
                                 <div className="border-t dark:border-gray-700 pt-6">
