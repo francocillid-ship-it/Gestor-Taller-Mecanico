@@ -8,10 +8,18 @@ if (!rootElement) {
     throw new Error("Could not find root element to mount to");
 }
 
+// Registro del Service Worker para soporte de Notificaciones en Móvil/PWA
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js').catch(err => {
+            console.log('Error al registrar Service Worker:', err);
+        });
+    });
+}
+
 const root = ReactDOM.createRoot(rootElement);
 root.render(
     <React.StrictMode>
         <App />
     </React.StrictMode>
 );
-   

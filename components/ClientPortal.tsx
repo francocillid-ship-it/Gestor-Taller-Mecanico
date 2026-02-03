@@ -13,7 +13,8 @@ import {
     CheckCircleIcon,
     BellIcon,
     BellAlertIcon,
-    InformationCircleIcon
+    InformationCircleIcon,
+    ShareIcon
 } from '@heroicons/react/24/solid';
 import VehicleInfoCard from './VehicleInfoCard';
 import TrabajoListItem from './TrabajoListItem';
@@ -43,6 +44,15 @@ const ClientPortal: React.FC<ClientPortalProps> = ({ client, trabajos, onLogout,
     const [notificationsEnabled, setNotificationsEnabled] = useState(() => localStorage.getItem('notifications_enabled') === 'true');
     const [showInvitation, setShowInvitation] = useState(false);
 
+    // Helpers para detección de plataforma
+    const isIOS = useMemo(() => {
+        return /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
+    }, []);
+
+    const isStandalone = useMemo(() => {
+        return window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone;
+    }, []);
+
     useEffect(() => {
         localStorage.setItem('client_font_size', fontSize);
     }, [fontSize]);
@@ -55,7 +65,6 @@ const ClientPortal: React.FC<ClientPortalProps> = ({ client, trabajos, onLogout,
         const isEnabled = localStorage.getItem('notifications_enabled') === 'true';
         
         if (!isEnabled && !neverShowAgain) {
-            // Mostrar después de un pequeño delay para mejor UX
             const timer = setTimeout(() => setShowInvitation(true), 1500);
             return () => clearTimeout(timer);
         }
@@ -79,21 +88,54 @@ const ClientPortal: React.FC<ClientPortalProps> = ({ client, trabajos, onLogout,
         return `.portal-wrapper .text-sm { font-size: ${baseSize}rem !important; } .portal-wrapper .text-base { font-size: ${baseSize + 0.1}rem !important; }`;
     };
 
-    // --- Lógica de Notificaciones ---
+    // --- Lógica de Notificaciones Móvil ---
+    const sendLocalNotification = async (title: string, body: string) => {
+        if (!notificationsEnabled) return;
+
+        if ('serviceWorker' in navigator) {
+            try {
+                const registration = await navigator.serviceWorker.ready;
+                // Fix: cast to any to avoid TypeScript error as 'vibrate' may not be in all NotificationOptions definitions
+                registration.showNotification(title, {
+                    body,
+                    icon: "/favicon.svg",
+                    badge: "/favicon.svg",
+                    vibrate: [100, 50, 100],
+                } as any);
+            } catch (err) {
+                console.error("No se pudo mostrar la notificación vía Service Worker", err);
+            }
+        } else if ("Notification" in window && Notification.permission === "granted") {
+            new Notification(title, { body, icon: "/favicon.svg" });
+        }
+    };
+
     const requestNotificationPermission = async () => {
-        if (!("Notification" in window)) {
-            alert("Este navegador no soporta notificaciones de escritorio");
+        // En iOS, las notificaciones SOLO están disponibles si la app es añadida a la pantalla de inicio
+        if (isIOS && !isStandalone) {
+            alert("Para activar notificaciones en iPhone:\n\n1. Toca el botón 'Compartir' de tu navegador (el cuadrado con flecha).\n2. Selecciona 'Añadir a pantalla de inicio'.\n3. Abre la aplicación desde tu pantalla de inicio.");
             return false;
         }
 
-        const permission = await Notification.requestPermission();
-        if (permission === "granted") {
-            setNotificationsEnabled(true);
-            localStorage.setItem('notifications_enabled', 'true');
-            localStorage.removeItem('notifications_never_show');
-            return true;
-        } else {
-            alert("No se pudieron activar las notificaciones. Por favor, revisa los permisos de tu navegador.");
+        if (!("Notification" in window)) {
+            alert("Este dispositivo o navegador no soporta notificaciones nativas.");
+            return false;
+        }
+
+        try {
+            const permission = await Notification.requestPermission();
+            if (permission === "granted") {
+                setNotificationsEnabled(true);
+                localStorage.setItem('notifications_enabled', 'true');
+                localStorage.removeItem('notifications_never_show');
+                return true;
+            } else {
+                alert("Permiso denegado. Por favor, activa las notificaciones en los ajustes de tu navegador o dispositivo.");
+                return false;
+            }
+        } catch (error) {
+            console.error("Error solicitando permisos", error);
+            alert("Hubo un problema al intentar activar las notificaciones.");
             return false;
         }
     };
@@ -107,11 +149,10 @@ const ClientPortal: React.FC<ClientPortalProps> = ({ client, trabajos, onLogout,
         const success = await requestNotificationPermission();
         if (success) {
             setShowInvitation(false);
-            // Enviar una notificación de prueba
-            new Notification("¡Notificaciones Activas!", {
-                body: "Te avisaremos 30 días antes de que venza un mantenimiento.",
-                icon: "/favicon.svg"
-            });
+            // Notificación de prueba usando el Service Worker para asegurar compatibilidad
+            setTimeout(() => {
+                sendLocalNotification("¡Notificaciones Activas!", "Te avisaremos 30 días antes de que venza un mantenimiento.");
+            }, 500);
         }
     };
 
@@ -131,8 +172,6 @@ const ClientPortal: React.FC<ClientPortalProps> = ({ client, trabajos, onLogout,
             
             client.vehiculos.forEach(vehiculo => {
                 const vehicleJobs = trabajos.filter(t => t.vehiculoId === vehiculo.id && t.status === 'Finalizado');
-                
-                // Mantenimientos base a verificar
                 const checkConfigs = [
                     { key: 'oil', label: 'Aceite' },
                     { key: 'timing_belt', label: 'Distribución' },
@@ -145,8 +184,6 @@ const ClientPortal: React.FC<ClientPortalProps> = ({ client, trabajos, onLogout,
                     if (custom && !custom.enabled) return;
 
                     const intervalMonths = custom ? custom.months : 12;
-                    
-                    // Buscar último trabajo con este mantenimiento
                     const lastJob = vehicleJobs.find(t => 
                         t.partes.some(p => p.maintenanceType === config.key)
                     );
@@ -160,23 +197,18 @@ const ClientPortal: React.FC<ClientPortalProps> = ({ client, trabajos, onLogout,
                         const diffTime = nextDate.getTime() - today.getTime();
                         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-                        // Si falta menos de 30 días pero más de 0 (para no duplicar vencidos)
                         if (diffDays <= 30 && diffDays > 0) {
-                            upcomingItems.push(`${config.label} de ${vehiculo.marca} ${vehiculo.modelo}`);
+                            upcomingItems.push(`${config.label} (${vehiculo.marca} ${vehiculo.modelo})`);
                         }
                     }
                 });
             });
 
             if (upcomingItems.length > 0) {
-                new Notification("Mantenimiento Próximo", {
-                    body: `Es momento de agendar: ${upcomingItems.join(', ')}. Evita roturas y mantén la garantía.`,
-                    icon: "/favicon.svg"
-                });
+                sendLocalNotification("Mantenimiento Próximo", `Es momento de agendar: ${upcomingItems.join(', ')}.`);
             }
         };
 
-        // Solo verificamos una vez al cargar si están activas
         checkUpcomingMaintenance();
     }, [notificationsEnabled, client.vehiculos, trabajos]);
 
@@ -197,12 +229,24 @@ const ClientPortal: React.FC<ClientPortalProps> = ({ client, trabajos, onLogout,
                                 <p className="text-sm text-taller-gray dark:text-gray-400 mb-6">
                                     Activa las notificaciones para recibir recordatorios 30 días antes de que venza el mantenimiento de tus vehículos.
                                 </p>
+                                
+                                {isIOS && !isStandalone ? (
+                                    <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-xl border border-blue-100 dark:border-blue-800 mb-6">
+                                        <p className="text-xs font-semibold text-taller-primary dark:text-blue-300 flex items-center gap-2 justify-center mb-2">
+                                            <ShareIcon className="h-4 w-4" /> REQUERIDO PARA IPHONE
+                                        </p>
+                                        <p className="text-[10px] text-taller-gray dark:text-gray-400">
+                                            Toca "Compartir" y luego "Añadir a pantalla de inicio" para habilitar las alertas.
+                                        </p>
+                                    </div>
+                                ) : null}
+
                                 <div className="space-y-3">
                                     <button 
                                         onClick={handleEnableNotifications}
                                         className="w-full py-3 bg-taller-primary text-white rounded-xl font-bold shadow-lg shadow-taller-primary/20 hover:bg-taller-secondary transition-all active:scale-95"
                                     >
-                                        Sí, activar
+                                        {(isIOS && !isStandalone) ? 'Ver Instrucciones' : 'Sí, activar'}
                                     </button>
                                     <div className="grid grid-cols-2 gap-3">
                                         <button 
@@ -215,7 +259,7 @@ const ClientPortal: React.FC<ClientPortalProps> = ({ client, trabajos, onLogout,
                                             onClick={() => handleDismissInvitation(true)}
                                             className="py-2 text-sm font-semibold text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10 rounded-lg transition-colors"
                                         >
-                                            No volver a mostrar
+                                            Ocultar siempre
                                         </button>
                                     </div>
                                 </div>

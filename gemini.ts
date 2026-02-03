@@ -1,5 +1,7 @@
 
 import type { Vehiculo } from './types';
+// Best practice: always use top-level import for GoogleGenAI
+import { GoogleGenAI, Type } from "@google/genai";
 
 export type VehiculoData = Partial<Omit<Vehiculo, 'id' | 'año' | 'maintenance_config'> & { año: string }>;
 
@@ -55,8 +57,7 @@ const calculateYearFromPatente = (patente: string): string | null => {
 
 
 export const recognizeVehicleDataFromImage = async (base64Image: string): Promise<VehiculoData> => {
-    // Dynamic import of GenAI SDK
-    const { GoogleGenAI, Type } = await import("@google/genai");
+    // Initializing GenAI with API key from environment
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
     const imagePart = {
@@ -90,6 +91,7 @@ export const recognizeVehicleDataFromImage = async (base64Image: string): Promis
             }
         });
 
+        // Use .text property to access content
         const jsonString = response.text?.trim();
         if (!jsonString) return {};
         
