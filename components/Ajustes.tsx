@@ -103,7 +103,6 @@ const Ajustes: React.FC<AjustesProps> = ({ tallerInfo, onUpdateTallerInfo, onLog
 
     const handleSelectKey = async () => {
         await window.aistudio.openSelectKey();
-        // Asumimos éxito tras abrir el diálogo según las guías
         setHasApiKey(true);
     };
 
@@ -119,7 +118,7 @@ const Ajustes: React.FC<AjustesProps> = ({ tallerInfo, onUpdateTallerInfo, onLog
         }
         applyAppTheme();
         if (tallerInfo.fontSize) applyFontSize(tallerInfo.fontSize as any);
-    }, [tallerInfo]); 
+    }, [tallerInfo, lastSavedData]); 
 
     useEffect(() => {
         if (isFirstRender.current) {
@@ -298,55 +297,6 @@ const Ajustes: React.FC<AjustesProps> = ({ tallerInfo, onUpdateTallerInfo, onLog
                 </div>
                 
                 <form className="space-y-8 px-4 md:px-0" onSubmit={(e) => e.preventDefault()}>
-                    {shouldShow(['ia', 'gemini', 'clave', 'api', 'scanner', 'escaner']) && (
-                        <div className="bg-gradient-to-br from-blue-50 to-white dark:from-gray-800 dark:to-gray-900 p-6 rounded-xl shadow-md border-2 border-blue-100 dark:border-blue-900/30 transition-all">
-                            <div className="flex items-center justify-between mb-4">
-                                <h3 className="text-lg font-bold flex items-center text-blue-900 dark:text-blue-100">
-                                    <SparklesIcon className="h-6 w-6 mr-2 text-taller-primary animate-pulse"/>
-                                    Inteligencia Artificial (Gemini)
-                                </h3>
-                                {hasApiKey ? (
-                                    <span className="flex items-center gap-1 text-[10px] font-bold text-green-600 bg-green-50 dark:bg-green-900/20 px-2 py-1 rounded-full uppercase tracking-wider">
-                                        <CheckCircleIcon className="h-3 w-3" /> Activo
-                                    </span>
-                                ) : (
-                                    <span className="flex items-center gap-1 text-[10px] font-bold text-red-600 bg-red-50 dark:bg-red-900/20 px-2 py-1 rounded-full uppercase tracking-wider">
-                                        <ExclamationTriangleIcon className="h-3 w-3" /> Requiere Configuración
-                                    </span>
-                                )}
-                            </div>
-                            
-                            <p className="text-sm text-taller-gray dark:text-gray-400 mb-6">
-                                Configura tu clave de Gemini para habilitar el <strong>Escaner de Cédula Verde</strong> y el reconocimiento automático de datos de vehículos.
-                            </p>
-
-                            <div className="flex flex-col sm:flex-row gap-4">
-                                <button 
-                                    type="button"
-                                    onClick={handleSelectKey}
-                                    className="flex-1 flex items-center justify-center gap-2 py-3 px-4 bg-taller-primary text-white rounded-xl font-bold shadow-lg shadow-taller-primary/20 hover:bg-taller-secondary transition-all active:scale-95"
-                                >
-                                    <KeyIcon className="h-5 w-5" />
-                                    {hasApiKey ? 'Actualizar Clave API' : 'Configurar Clave API'}
-                                </button>
-                                
-                                <a 
-                                    href="https://ai.google.dev/gemini-api/docs/billing" 
-                                    target="_blank" 
-                                    rel="noopener noreferrer"
-                                    className="flex-1 flex items-center justify-center gap-2 py-3 px-4 bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 text-taller-gray dark:text-gray-300 rounded-xl font-bold hover:bg-gray-50 dark:hover:bg-gray-700 transition-all"
-                                >
-                                    <ArrowTopRightOnSquareIcon className="h-5 w-5" />
-                                    Obtener Clave Gemini
-                                </a>
-                            </div>
-
-                            <p className="mt-4 text-[10px] text-center text-taller-gray opacity-60">
-                                Nota: Se requiere una clave API de un proyecto de Google Cloud con facturación activa.
-                            </p>
-                        </div>
-                    )}
-
                     {shouldShow(['datos', 'nombre', 'telefono', 'direccion', 'cuit', 'logo']) && (
                         <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md transition-shadow hover:shadow-lg">
                             <h3 className="text-lg font-bold mb-6 flex items-center"><BuildingOffice2Icon className="h-6 w-6 mr-2 text-taller-primary"/>Datos del Taller</h3>
@@ -447,6 +397,55 @@ const Ajustes: React.FC<AjustesProps> = ({ tallerInfo, onUpdateTallerInfo, onLog
                                     </div>
                                 </div>
                             </div>
+                        </div>
+                    )}
+
+                    {shouldShow(['ia', 'gemini', 'clave', 'api', 'scanner', 'escaner']) && (
+                        <div className="bg-gradient-to-br from-indigo-50 to-white dark:from-gray-800 dark:to-gray-900 p-6 rounded-xl shadow-md border-2 border-indigo-100 dark:border-indigo-900/30 transition-all">
+                            <div className="flex items-center justify-between mb-4">
+                                <h3 className="text-lg font-bold flex items-center text-indigo-900 dark:text-indigo-100">
+                                    <SparklesIcon className="h-6 w-6 mr-2 text-indigo-600 animate-pulse"/>
+                                    Inteligencia Artificial (Gemini)
+                                </h3>
+                                {hasApiKey ? (
+                                    <span className="flex items-center gap-1 text-[10px] font-bold text-green-600 bg-green-50 dark:bg-green-900/20 px-2 py-1 rounded-full uppercase tracking-wider">
+                                        <CheckCircleIcon className="h-3 w-3" /> Activo
+                                    </span>
+                                ) : (
+                                    <span className="flex items-center gap-1 text-[10px] font-bold text-red-600 bg-red-50 dark:bg-red-900/20 px-2 py-1 rounded-full uppercase tracking-wider">
+                                        <ExclamationTriangleIcon className="h-3 w-3" /> Pendiente
+                                    </span>
+                                )}
+                            </div>
+                            
+                            <p className="text-sm text-taller-gray dark:text-gray-400 mb-6">
+                                La IA permite el <strong>Escaner de Cédulas</strong> para cargar vehículos automáticamente. Para activarla, selecciona tu propia clave de API.
+                            </p>
+
+                            <div className="flex flex-col sm:flex-row gap-4">
+                                <button 
+                                    type="button"
+                                    onClick={handleSelectKey}
+                                    className="flex-1 flex items-center justify-center gap-2 py-3 px-4 bg-indigo-600 text-white rounded-xl font-bold shadow-lg shadow-indigo-600/20 hover:bg-indigo-700 transition-all active:scale-95"
+                                >
+                                    <KeyIcon className="h-5 w-5" />
+                                    {hasApiKey ? 'Actualizar Clave API' : 'Configurar Clave API'}
+                                </button>
+                                
+                                <a 
+                                    href="https://ai.google.dev/gemini-api/docs/billing" 
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    className="flex-1 flex items-center justify-center gap-2 py-3 px-4 bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 text-taller-gray dark:text-gray-300 rounded-xl font-bold hover:bg-gray-50 dark:hover:bg-gray-700 transition-all"
+                                >
+                                    <ArrowTopRightOnSquareIcon className="h-5 w-5" />
+                                    Obtener Clave Gemini
+                                </a>
+                            </div>
+
+                            <p className="mt-4 text-[10px] text-center text-taller-gray opacity-60">
+                                Por seguridad, la clave se gestiona directamente a través del selector de Google AI Studio.
+                            </p>
                         </div>
                     )}
                 </form>
