@@ -19,7 +19,8 @@ import {
     MagnifyingGlassPlusIcon, 
     ArrowPathIcon,
     SparklesIcon,
-    ArrowTopRightOnSquareIcon
+    ArrowTopRightOnSquareIcon,
+    LockClosedIcon
 } from '@heroicons/react/24/solid';
 import ChangePasswordModal from './ChangePasswordModal';
 import { applyAppTheme, applyFontSize, applyThemeClass } from '../constants';
@@ -426,32 +427,53 @@ const Ajustes: React.FC<AjustesProps> = ({ tallerInfo, onUpdateTallerInfo, onLog
                             </div>
                             
                             <p className="text-sm text-taller-gray dark:text-gray-400 mb-6">
-                                La IA permite el <strong>Escaner de Cédulas</strong> para cargar vehículos automáticamente. Para activarla, selecciona tu propia clave de API.
+                                La IA permite el <strong>Escáner de Cédulas</strong> para cargar vehículos automáticamente. Configura tu llave para activar estas funciones.
                             </p>
 
-                            <div className="flex flex-col sm:flex-row gap-4">
-                                <button 
-                                    type="button"
-                                    onClick={handleSelectKey}
-                                    className="flex-1 flex items-center justify-center gap-2 py-3 px-4 bg-indigo-600 text-white rounded-xl font-bold shadow-lg shadow-indigo-600/20 hover:bg-indigo-700 transition-all active:scale-95"
-                                >
-                                    <KeyIcon className="h-5 w-5" />
-                                    {hasApiKey ? 'Actualizar Clave API' : 'Configurar Clave API'}
-                                </button>
-                                
-                                <a 
-                                    href="https://ai.google.dev/gemini-api/docs/billing" 
-                                    target="_blank" 
-                                    rel="noopener noreferrer"
-                                    className="flex-1 flex items-center justify-center gap-2 py-3 px-4 bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 text-taller-gray dark:text-gray-300 rounded-xl font-bold hover:bg-gray-50 dark:hover:bg-gray-700 transition-all"
-                                >
-                                    <ArrowTopRightOnSquareIcon className="h-5 w-5" />
-                                    Obtener Clave Gemini
-                                </a>
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="block text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase mb-2 ml-1">Clave de API de Gemini</label>
+                                    <div className="relative group">
+                                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                            <LockClosedIcon className="h-5 w-5 text-gray-400" />
+                                        </div>
+                                        <input 
+                                            type="password"
+                                            readOnly
+                                            value={hasApiKey ? "••••••••••••••••••••••••••••••••" : ""}
+                                            placeholder="Clave no configurada..."
+                                            onClick={handleSelectKey}
+                                            className="block w-full pl-10 pr-32 py-3 bg-white dark:bg-gray-700 border-2 border-indigo-100 dark:border-indigo-900/50 rounded-xl shadow-sm focus:outline-none cursor-pointer hover:border-indigo-300 dark:hover:border-indigo-700 transition-colors text-sm"
+                                        />
+                                        <div className="absolute inset-y-0 right-0 flex items-center pr-2">
+                                            <button 
+                                                type="button"
+                                                onClick={handleSelectKey}
+                                                className="flex items-center gap-1.5 px-4 py-1.5 bg-indigo-600 text-white rounded-lg text-xs font-bold shadow-md hover:bg-indigo-700 transition-all active:scale-95"
+                                            >
+                                                <KeyIcon className="h-3.5 w-3.5" />
+                                                {hasApiKey ? 'Cambiar' : 'Configurar'}
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="flex items-center justify-center pt-2">
+                                    <a 
+                                        href="https://aistudio.google.com/app/apikey" 
+                                        target="_blank" 
+                                        rel="noopener noreferrer"
+                                        className="flex items-center gap-2 text-sm font-bold text-indigo-600 dark:text-indigo-400 hover:underline transition-all"
+                                    >
+                                        <ArrowTopRightOnSquareIcon className="h-5 w-5" />
+                                        Obtener Clave en Google AI Studio
+                                    </a>
+                                </div>
                             </div>
 
-                            <p className="mt-4 text-[10px] text-center text-taller-gray opacity-60">
-                                Por seguridad, la clave se gestiona directamente a través del selector de Google AI Studio.
+                            <p className="mt-6 text-[10px] text-center text-taller-gray opacity-60 leading-relaxed">
+                                Por seguridad, la llave se gestiona de forma cifrada a través de tu cuenta de Google. <br/>
+                                Nunca compartas tu clave de API con terceros.
                             </p>
                         </div>
                     )}
