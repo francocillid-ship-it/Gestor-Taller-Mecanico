@@ -231,16 +231,21 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
     const activeIndex = VIEW_ORDER.indexOf(view);
 
     return (
-        <div className="flex h-full w-full bg-taller-light dark:bg-taller-dark text-taller-dark dark:text-taller-light overflow-hidden fixed inset-0">
+        <div className="flex h-dvh w-full bg-taller-light dark:bg-taller-dark text-taller-dark dark:text-taller-light overflow-hidden fixed inset-0">
             <style>{`
-                body, html, #root { overflow: hidden !important; position: fixed; width: 100%; height: 100%; height: 100dvh; }
+                body, html, #root { 
+                    overflow: hidden !important; 
+                    position: fixed; 
+                    width: 100%; 
+                    height: 100dvh;
+                    touch-action: none; 
+                }
                 .main-view-slot { 
                     width: 25%; 
                     height: 100%; 
                     flex-shrink: 0;
                     overflow: hidden;
                     position: relative;
-                    /* Blindaje de foco: previene que el navegador mueva el contenedor al hacer focus */
                     contain: content;
                 }
                 .views-container {
@@ -249,12 +254,16 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
                     width: 400%;
                     will-change: transform;
                     transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
-                    /* Importante: evita que gestos laterales accidentales muevan la UI */
+                    /* Bloqueo total de desplazamiento horizontal manual */
                     touch-action: pan-y;
+                }
+                /* Hack para prevenir que Safari desplace el viewport al enfocar inputs */
+                input, textarea, select {
+                    font-size: 16px !important; /* Previene auto-zoom en iOS */
                 }
             `}</style>
 
-            <aside className="hidden md:flex md:flex-col w-64 bg-white dark:bg-gray-800 shadow-lg shrink-0 border-r dark:border-gray-700 z-[60]">
+            <aside className="hidden md:flex md:flex-col w-64 bg-white dark:bg-gray-800 shadow-lg shrink-0 border-r dark:border-gray-700 z-[90]">
                 <div className="h-20 flex items-center justify-center border-b dark:border-gray-700 p-4">
                     {tallerInfo.logoUrl ? <img src={tallerInfo.logoUrl} alt="Logo" className="max-h-full object-contain"/> : <WrenchScrewdriverIcon className="h-10 w-10 text-taller-primary" />}
                 </div>
@@ -269,15 +278,13 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
             </aside>
 
             <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden relative">
-                <div className="flex-shrink-0 w-full z-[50] overflow-hidden bg-white dark:bg-gray-800 border-b dark:border-gray-700">
-                    <Header 
-                        tallerName={tallerInfo.nombre} 
-                        logoUrl={tallerInfo.logoUrl}
-                        showMenuButton={false}
-                        searchQuery={searchQuery}
-                        onSearchChange={setSearchQuery}
-                    />
-                </div>
+                <Header 
+                    tallerName={tallerInfo.nombre} 
+                    logoUrl={tallerInfo.logoUrl}
+                    showMenuButton={false}
+                    searchQuery={searchQuery}
+                    onSearchChange={setSearchQuery}
+                />
                 
                 <div className="flex-1 w-full overflow-hidden relative bg-taller-light dark:bg-taller-dark">
                     {loading ? (
@@ -339,8 +346,8 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
                     )}
                 </div>
 
-                <nav className="md:hidden bg-white dark:bg-gray-800 border-t dark:border-gray-700 flex-shrink-0 z-[60] h-20 overflow-hidden relative">
-                    <div className="flex justify-around items-center h-full w-full">
+                <nav className="md:hidden bg-white dark:bg-gray-800 border-t dark:border-gray-700 flex-shrink-0 z-[100] pb-[env(safe-area-inset-bottom)] relative">
+                    <div className="flex justify-around items-center h-16 md:h-20 w-full">
                         {navItems.map((item) => (
                             <button key={item.id} onClick={() => handleNavigate(item.id as View)} className={`relative flex flex-col items-center justify-center w-full h-full transition-colors duration-200 ${view === item.id ? 'text-taller-primary' : 'text-taller-gray dark:text-gray-400'}`}>
                                 <item.icon className="h-6 w-6" />
