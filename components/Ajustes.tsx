@@ -425,10 +425,10 @@ const Ajustes: React.FC<AjustesProps> = ({ tallerInfo, onUpdateTallerInfo, onLog
                                 <div>
                                     <label htmlFor="gemini-key" className="block text-sm font-medium text-taller-gray dark:text-gray-400 mb-1">Clave de API</label>
                                     <input 
-                                        type="password"
+                                        type="text"
                                         id="gemini-key"
-                                        placeholder="Pega tu clave aquí..."
-                                        value={hasApiKey ? "••••••••••••••••••••••••••••••••" : ""}
+                                        placeholder="Pulsa para configurar tu clave..."
+                                        value={hasApiKey ? "Clave configurada correctamente" : ""}
                                         onClick={handleSelectKey}
                                         readOnly
                                         className="block w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:ring-2 focus:ring-taller-primary outline-none cursor-pointer"
