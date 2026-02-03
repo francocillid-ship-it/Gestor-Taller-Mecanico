@@ -39,21 +39,24 @@
         --color-taller-gray: 100 116 139;
       }
 
-      html, body, #root {
-        height: 100%;
-        width: 100%;
+      html, body {
+        height: 100dvh;
         margin: 0;
         padding: 0;
         overflow: hidden; 
         overscroll-behavior: none; 
-        -webkit-overflow-scrolling: touch;
-        position: fixed;
-        /* Asegura que el fondo sea consistente con el tema para iOS */
         background-color: rgb(var(--color-taller-light));
       }
 
-      html.dark, html.dark body, html.dark #root {
+      html.dark, html.dark body {
         background-color: rgb(var(--color-taller-dark));
+      }
+
+      #root {
+        height: 100%;
+        width: 100%;
+        display: flex;
+        flex-direction: column;
       }
 
       /* Previene el desplazamiento horizontal accidental en móviles */

@@ -231,14 +231,11 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
     const activeIndex = VIEW_ORDER.indexOf(view);
 
     return (
-        <div className="fixed inset-0 flex flex-col bg-taller-light dark:bg-taller-dark text-taller-dark dark:text-taller-light overflow-hidden">
+        <div className="fixed inset-0 flex flex-col bg-taller-light dark:bg-taller-dark text-taller-dark dark:text-taller-light overflow-hidden h-full h-[100dvh]">
             <style>{`
-                body, html, #root { 
+                html, body { 
+                    height: 100dvh;
                     overflow: hidden !important; 
-                    position: fixed; 
-                    width: 100%; 
-                    height: 100%;
-                    touch-action: none; 
                 }
                 .main-view-slot { 
                     width: 25%; 
@@ -344,7 +341,7 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
                     )}
                 </div>
 
-                <nav className="md:hidden bg-white dark:bg-gray-800 border-t dark:border-gray-700 flex-shrink-0 z-[100] relative">
+                <nav className="md:hidden bg-white dark:bg-gray-800 border-t dark:border-gray-700 flex-shrink-0 z-[100] pb-[env(safe-area-inset-bottom)] relative transition-colors">
                     <div className="flex justify-around items-center h-16 w-full px-2">
                         {navItems.map((item) => (
                             <button key={item.id} onClick={() => handleNavigate(item.id as View)} className={`relative flex flex-col items-center justify-center w-full h-full transition-colors duration-200 ${view === item.id ? 'text-taller-primary' : 'text-taller-gray dark:text-gray-400'}`}>
@@ -354,8 +351,6 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
                             </button>
                         ))}
                     </div>
-                    {/* El espacio extra para el Home Indicator de iOS */}
-                    <div className="h-[env(safe-area-inset-bottom)] w-full bg-white dark:bg-gray-800"></div>
                 </nav>
             </div>
         </div>
