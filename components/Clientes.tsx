@@ -321,9 +321,9 @@ const Clientes: React.FC<ClientesProps> = ({ clientes, trabajos, onDataRefresh, 
                 const fullName = `${cliente.nombre} ${cliente.apellido || ''}`.toLowerCase();
                 const nameMatch = fullName.includes(lowercasedQuery);
                 const vehicleMatch = cliente.vehiculos.some(v => 
-                    v.marca.toLowerCase().includes(lowercasedQuery) ||
-                    v.modelo.toLowerCase().includes(lowercasedQuery) ||
-                    v.matricula.toLowerCase().includes(lowercasedQuery)
+                    (v.marca?.toLowerCase() || '').includes(lowercasedQuery) ||
+                    (v.modelo?.toLowerCase() || '').includes(lowercasedQuery) ||
+                    (v.matricula?.toLowerCase() || '').includes(lowercasedQuery)
                 );
                 return nameMatch || vehicleMatch;
             });

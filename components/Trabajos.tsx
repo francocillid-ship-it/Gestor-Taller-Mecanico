@@ -223,7 +223,13 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
             const c = clientes.find(cl => cl.id === t.clienteId);
             const v = c?.vehiculos.find(ve => ve.id === t.vehiculoId);
             const qb = t.quickBudgetData;
-            return t.descripcion.toLowerCase().includes(q) || `${c?.nombre} ${c?.apellido}`.toLowerCase().includes(q) || `${v?.marca} ${v?.modelo} ${v?.matricula}`.toLowerCase().includes(q) || (qb && `${qb.nombre} ${qb.marca} ${qb.modelo}`.toLowerCase().includes(q));
+            
+            const descMatch = (t.descripcion?.toLowerCase() || '').includes(q);
+            const clientMatch = `${c?.nombre || ''} ${c?.apellido || ''}`.toLowerCase().includes(q);
+            const vehicleMatch = `${v?.marca || ''} ${v?.modelo || ''} ${v?.matricula || ''}`.toLowerCase().includes(q);
+            const quickMatch = qb ? `${qb.nombre} ${qb.marca} ${qb.modelo}`.toLowerCase().includes(q) : false;
+
+            return descMatch || clientMatch || vehicleMatch || quickMatch;
         });
     }, [trabajos, searchQuery, clientes]);
 
