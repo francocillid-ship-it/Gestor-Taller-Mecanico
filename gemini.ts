@@ -6,6 +6,7 @@ import { GoogleGenAI, Type } from "@google/genai";
 export type VehiculoData = Partial<Omit<Vehiculo, 'id' | 'año' | 'maintenance_config'> & { año: string }>;
 
 export const isGeminiAvailable = (): boolean => {
+    // La clave puede estar en el proceso o haber sido seleccionada en el estudio
     return !!process.env.API_KEY;
 };
 
@@ -58,6 +59,7 @@ const calculateYearFromPatente = (patente: string): string | null => {
 
 export const recognizeVehicleDataFromImage = async (base64Image: string): Promise<VehiculoData> => {
     // Initializing GenAI with API key from environment
+    // Se crea la instancia justo antes de usarla para asegurar que tiene la clave más reciente
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
     const imagePart = {
@@ -91,7 +93,6 @@ export const recognizeVehicleDataFromImage = async (base64Image: string): Promis
             }
         });
 
-        // Use .text property to access content
         const jsonString = response.text?.trim();
         if (!jsonString) return {};
         
@@ -120,8 +121,14 @@ export const recognizeVehicleDataFromImage = async (base64Image: string): Promis
         }
 
         return cleanData;
-    } catch (error) {
+    } catch (error: any) {
         console.error("Error al llamar a la API de Gemini:", error);
+        
+        if (error.message?.includes("Requested entity was not found")) {
+            // Error común si la clave no es válida o el proyecto no tiene habilitada la API
+            throw new Error("Clave API no válida o expirada. Por favor, vuelva a configurarla en Ajustes.");
+        }
+        
         throw new Error("No se pudo analizar la imagen. Inténtelo de nuevo con mejor iluminación.");
     }
 };

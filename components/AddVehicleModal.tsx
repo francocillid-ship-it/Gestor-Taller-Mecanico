@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { supabase } from '../supabaseClient';
-import { XMarkIcon, CameraIcon } from '@heroicons/react/24/solid';
+import { XMarkIcon, CameraIcon, SparklesIcon } from '@heroicons/react/24/solid';
 import { isGeminiAvailable, VehiculoData } from '../gemini';
 import CameraRecognitionModal from './CameraRecognitionModal';
 import type { Vehiculo } from '../types';
@@ -22,11 +22,17 @@ const AddVehicleModal: React.FC<AddVehicleModalProps> = ({ onClose, onSuccess, c
     const [error, setError] = useState('');
     const [isCameraModalOpen, setIsCameraModalOpen] = useState(false);
     const [isVisible, setIsVisible] = useState(false);
-    const geminiEnabled = isGeminiAvailable();
+    
+    // Check dynamic availability
+    const [geminiEnabled, setGeminiEnabled] = useState(isGeminiAvailable());
 
     useEffect(() => {
         requestAnimationFrame(() => setIsVisible(true));
     }, []);
+
+    useEffect(() => {
+        setGeminiEnabled(isGeminiAvailable());
+    }, [isVisible]);
 
     const handleClose = () => {
         setIsVisible(false);
@@ -49,7 +55,6 @@ const AddVehicleModal: React.FC<AddVehicleModalProps> = ({ onClose, onSuccess, c
         }
 
         try {
-            // We use .select().single() to return the created object immediately
             const { data, error: vehiculoError } = await supabase
                 .from('vehiculos')
                 .insert({ 
@@ -64,7 +69,6 @@ const AddVehicleModal: React.FC<AddVehicleModalProps> = ({ onClose, onSuccess, c
 
             if (vehiculoError) throw vehiculoError;
 
-            // Animate close before success
             setIsVisible(false);
             setTimeout(() => onSuccess(data as Vehiculo), 300);
         } catch (err: any) {
@@ -98,7 +102,6 @@ const AddVehicleModal: React.FC<AddVehicleModalProps> = ({ onClose, onSuccess, c
             <div 
                 className={`bg-white dark:bg-gray-800 w-full h-[100dvh] sm:h-auto sm:max-h-[90vh] sm:max-w-lg sm:rounded-xl shadow-2xl flex flex-col overflow-hidden relative z-10 transform transition-all duration-300 ease-out ${isVisible ? 'translate-y-0 opacity-100 sm:scale-100' : 'translate-y-full opacity-0 sm:translate-y-0 sm:scale-95'}`}
             >
-                {/* Header */}
                 <div className="flex justify-between items-center p-4 border-b dark:border-gray-700 bg-white dark:bg-gray-800 flex-shrink-0">
                     <h2 className="text-xl font-bold text-taller-dark dark:text-taller-light">Agregar Vehículo</h2>
                     <button onClick={handleClose} className="p-2 -mr-2 text-taller-gray dark:text-gray-400 hover:text-taller-dark dark:hover:text-white rounded-full hover:bg-gray-100 dark:hover:bg-gray-700">
@@ -106,15 +109,18 @@ const AddVehicleModal: React.FC<AddVehicleModalProps> = ({ onClose, onSuccess, c
                     </button>
                 </div>
                 
-                {/* Body */}
                 <div className="flex-1 overflow-y-auto p-4 space-y-4 overscroll-contain">
                      <form id="vehicle-form" onSubmit={handleSubmit} className="space-y-4 pb-24 sm:pb-0">
                         <div className="flex flex-col gap-2 sm:flex-row sm:justify-between sm:items-center border-b dark:border-gray-600 pb-2 pt-2">
                              <h3 className="text-md font-semibold text-taller-dark dark:text-taller-light">Datos del Vehículo</h3>
-                             {geminiEnabled && (
+                             {geminiEnabled ? (
                                 <button type="button" onClick={() => setIsCameraModalOpen(true)} className="flex-shrink-0 self-end sm:self-center flex items-center gap-2 px-3 py-1 text-sm font-semibold text-taller-secondary bg-blue-50 border border-taller-secondary/50 rounded-lg shadow-sm hover:bg-blue-100 dark:text-blue-300 dark:bg-blue-900/30 dark:border-blue-500/50 dark:hover:bg-blue-900/50">
                                     <CameraIcon className="h-4 w-4" /> Escanear Cédula
                                 </button>
+                            ) : (
+                                <span className="text-[10px] text-taller-gray italic flex items-center gap-1 self-end sm:self-center">
+                                    <SparklesIcon className="h-3 w-3 text-taller-primary" /> IA no configurada en Ajustes
+                                </span>
                             )}
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -139,7 +145,6 @@ const AddVehicleModal: React.FC<AddVehicleModalProps> = ({ onClose, onSuccess, c
                      </form>
                 </div>
                 
-                {/* Footer */}
                 <div className="border-t dark:border-gray-700 p-4 bg-white dark:bg-gray-800 flex gap-3 shrink-0 z-10 safe-area-bottom">
                     <button type="button" onClick={handleClose} className="flex-1 justify-center py-3 px-4 border border-gray-300 dark:border-gray-500 rounded-xl text-sm font-bold text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors">
                         Cancelar

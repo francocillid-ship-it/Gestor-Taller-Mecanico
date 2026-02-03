@@ -1,7 +1,8 @@
+
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { supabase } from '../supabaseClient';
-import { XMarkIcon, TrashIcon, ChevronDownIcon, PlusIcon, CameraIcon, UserIcon, PhoneIcon, EnvelopeIcon, CheckIcon } from '@heroicons/react/24/solid';
+import { XMarkIcon, TrashIcon, ChevronDownIcon, PlusIcon, CameraIcon, UserIcon, PhoneIcon, EnvelopeIcon, CheckIcon, SparklesIcon } from '@heroicons/react/24/solid';
 import type { Cliente, Vehiculo } from '../types';
 import { isGeminiAvailable, VehiculoData } from '../gemini';
 import CameraRecognitionModal from './CameraRecognitionModal';
@@ -29,7 +30,9 @@ const CrearClienteModal: React.FC<CrearClienteModalProps> = ({ onClose, onSucces
     const [isCameraModalOpen, setIsCameraModalOpen] = useState(false);
     const [scanningVehicleIndex, setScanningVehicleIndex] = useState<number | null>(null);
     const [isVisible, setIsVisible] = useState(false);
-    const geminiEnabled = isGeminiAvailable();
+    
+    // Check dynamic availability
+    const [geminiEnabled, setGeminiEnabled] = useState(isGeminiAvailable());
 
     const isEditMode = Boolean(clienteToEdit);
 
@@ -50,6 +53,11 @@ const CrearClienteModal: React.FC<CrearClienteModalProps> = ({ onClose, onSucces
         }
         requestAnimationFrame(() => setIsVisible(true));
     }, [clienteToEdit]);
+
+    // Refresh availability when modal opens or state changes
+    useEffect(() => {
+        setGeminiEnabled(isGeminiAvailable());
+    }, [isVisible]);
 
     const handleClose = () => {
         setIsVisible(false);
@@ -82,11 +90,8 @@ const CrearClienteModal: React.FC<CrearClienteModalProps> = ({ onClose, onSucces
         if (!clienteToEdit) return;
         setIsDeleting(true);
         try {
-            // Eliminar vehículos asociados manualmente
             await supabase.from('vehiculos').delete().eq('cliente_id', clienteToEdit.id);
-            // Eliminar trabajos asociados
             await supabase.from('trabajos').delete().eq('cliente_id', clienteToEdit.id);
-            // Eliminar cliente
             const { error } = await supabase.from('clientes').delete().eq('id', clienteToEdit.id);
             if (error) throw error;
             onSuccess();
@@ -230,8 +235,14 @@ const CrearClienteModal: React.FC<CrearClienteModalProps> = ({ onClose, onSucces
                                         
                                         <div className={`p-4 space-y-4 bg-inherit ${expandedVehicleIdx === idx ? 'block' : 'hidden'}`}>
                                             <div className="flex justify-end">
-                                                {geminiEnabled && (
-                                                    <button type="button" onClick={() => { setScanningVehicleIndex(idx); setIsCameraModalOpen(true); }} className="text-xs font-bold text-blue-600 flex items-center gap-1 border border-blue-200 px-2 py-1 rounded"><CameraIcon className="h-3 w-3"/> Escanear Cédula</button>
+                                                {geminiEnabled ? (
+                                                    <button type="button" onClick={() => { setScanningVehicleIndex(idx); setIsCameraModalOpen(true); }} className="text-xs font-bold text-blue-600 flex items-center gap-1 border border-blue-200 px-2 py-1 rounded bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 transition-colors">
+                                                        <CameraIcon className="h-3 w-3"/> Escanear Cédula
+                                                    </button>
+                                                ) : (
+                                                    <span className="text-[10px] text-taller-gray italic flex items-center gap-1">
+                                                        <SparklesIcon className="h-3 w-3 text-taller-primary" /> IA no configurada en Ajustes
+                                                    </span>
                                                 )}
                                             </div>
                                             <div className="grid grid-cols-2 gap-3">
