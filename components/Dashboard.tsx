@@ -581,7 +581,7 @@ const Dashboard: React.FC<DashboardProps> = ({ clientes, trabajos, gastos, onDat
     );
 
     return (
-        <div className="space-y-6 sm:space-y-8 pb-16">
+        <div className="space-y-6 sm:space-y-8">
             <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
                 <h2 className="text-2xl font-bold text-taller-dark dark:text-taller-light">Resumen</h2>
                 <div className="w-full md:w-auto">

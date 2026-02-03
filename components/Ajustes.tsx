@@ -19,8 +19,7 @@ import {
     MagnifyingGlassPlusIcon, 
     ArrowPathIcon,
     SparklesIcon,
-    ArrowTopRightOnSquareIcon,
-    LockClosedIcon
+    ArrowTopRightOnSquareIcon
 } from '@heroicons/react/24/solid';
 import ChangePasswordModal from './ChangePasswordModal';
 import { applyAppTheme, applyFontSize, applyThemeClass } from '../constants';
@@ -409,72 +408,48 @@ const Ajustes: React.FC<AjustesProps> = ({ tallerInfo, onUpdateTallerInfo, onLog
                     )}
 
                     {shouldShow(['ia', 'gemini', 'clave', 'api', 'scanner', 'escaner']) && (
-                        <div className="bg-gradient-to-br from-indigo-50 to-white dark:from-gray-800 dark:to-gray-900 p-6 rounded-xl shadow-md border-2 border-indigo-100 dark:border-indigo-900/30 transition-all">
-                            <div className="flex items-center justify-between mb-4">
-                                <h3 className="text-lg font-bold flex items-center text-indigo-900 dark:text-indigo-100">
-                                    <SparklesIcon className="h-6 w-6 mr-2 text-indigo-600 animate-pulse"/>
+                        <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md border dark:border-gray-700 transition-all">
+                            <div className="flex items-center justify-between mb-6">
+                                <h3 className="text-lg font-bold flex items-center">
+                                    <SparklesIcon className="h-6 w-6 mr-2 text-taller-primary"/>
                                     Inteligencia Artificial (Gemini)
                                 </h3>
-                                {hasApiKey ? (
-                                    <span className="flex items-center gap-1 text-[10px] font-bold text-green-600 bg-green-50 dark:bg-green-900/20 px-2 py-1 rounded-full uppercase tracking-wider">
+                                {hasApiKey && (
+                                    <span className="flex items-center gap-1 text-[10px] font-bold text-green-600 bg-green-50 dark:bg-green-900/20 px-2 py-1 rounded-full uppercase">
                                         <CheckCircleIcon className="h-3 w-3" /> Activo
-                                    </span>
-                                ) : (
-                                    <span className="flex items-center gap-1 text-[10px] font-bold text-red-600 bg-red-50 dark:bg-red-900/20 px-2 py-1 rounded-full uppercase tracking-wider">
-                                        <ExclamationTriangleIcon className="h-3 w-3" /> Pendiente
                                     </span>
                                 )}
                             </div>
-                            
-                            <p className="text-sm text-taller-gray dark:text-gray-400 mb-6">
-                                La IA permite el <strong>Escáner de Cédulas</strong> para cargar vehículos automáticamente. Configura tu llave para activar estas funciones.
-                            </p>
 
                             <div className="space-y-4">
                                 <div>
-                                    <label className="block text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase mb-2 ml-1">Clave de API de Gemini</label>
-                                    <div className="relative group">
-                                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                            <LockClosedIcon className="h-5 w-5 text-gray-400" />
-                                        </div>
-                                        <input 
-                                            type="password"
-                                            readOnly
-                                            value={hasApiKey ? "••••••••••••••••••••••••••••••••" : ""}
-                                            placeholder="Clave no configurada..."
-                                            onClick={handleSelectKey}
-                                            className="block w-full pl-10 pr-32 py-3 bg-white dark:bg-gray-700 border-2 border-indigo-100 dark:border-indigo-900/50 rounded-xl shadow-sm focus:outline-none cursor-pointer hover:border-indigo-300 dark:hover:border-indigo-700 transition-colors text-sm"
-                                        />
-                                        <div className="absolute inset-y-0 right-0 flex items-center pr-2">
-                                            <button 
-                                                type="button"
-                                                onClick={handleSelectKey}
-                                                className="flex items-center gap-1.5 px-4 py-1.5 bg-indigo-600 text-white rounded-lg text-xs font-bold shadow-md hover:bg-indigo-700 transition-all active:scale-95"
-                                            >
-                                                <KeyIcon className="h-3.5 w-3.5" />
-                                                {hasApiKey ? 'Cambiar' : 'Configurar'}
-                                            </button>
-                                        </div>
-                                    </div>
+                                    <label htmlFor="gemini-key" className="block text-sm font-medium text-taller-gray dark:text-gray-400 mb-1">Clave de API</label>
+                                    <input 
+                                        type="password"
+                                        id="gemini-key"
+                                        placeholder="Pega tu clave aquí..."
+                                        value={hasApiKey ? "••••••••••••••••••••••••••••••••" : ""}
+                                        onClick={handleSelectKey}
+                                        readOnly
+                                        className="block w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:ring-2 focus:ring-taller-primary outline-none cursor-pointer"
+                                    />
+                                    <p className="mt-2 text-xs text-taller-gray dark:text-gray-500">
+                                        La clave permite el escaneo automático de cédulas.
+                                    </p>
                                 </div>
 
-                                <div className="flex items-center justify-center pt-2">
+                                <div className="pt-2 border-t dark:border-gray-700">
                                     <a 
                                         href="https://aistudio.google.com/app/apikey" 
                                         target="_blank" 
                                         rel="noopener noreferrer"
-                                        className="flex items-center gap-2 text-sm font-bold text-indigo-600 dark:text-indigo-400 hover:underline transition-all"
+                                        className="inline-flex items-center gap-2 text-sm font-bold text-taller-primary hover:underline transition-colors"
                                     >
-                                        <ArrowTopRightOnSquareIcon className="h-5 w-5" />
-                                        Obtener Clave en Google AI Studio
+                                        <ArrowTopRightOnSquareIcon className="h-4 w-4" />
+                                        Obtener clave en Google AI Studio
                                     </a>
                                 </div>
                             </div>
-
-                            <p className="mt-6 text-[10px] text-center text-taller-gray opacity-60 leading-relaxed">
-                                Por seguridad, la llave se gestiona de forma cifrada a través de tu cuenta de Google. <br/>
-                                Nunca compartas tu clave de API con terceros.
-                            </p>
                         </div>
                     )}
                 </form>

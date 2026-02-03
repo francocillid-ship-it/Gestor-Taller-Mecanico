@@ -231,19 +231,14 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
     const activeIndex = VIEW_ORDER.indexOf(view);
 
     return (
-        <div className="fixed inset-0 flex flex-col bg-taller-light dark:bg-taller-dark text-taller-dark dark:text-taller-light overflow-hidden h-full h-[100dvh]">
+        <div className="flex h-[100dvh] w-full bg-taller-light dark:bg-taller-dark text-taller-dark dark:text-taller-light overflow-hidden">
             <style>{`
-                html, body { 
-                    height: 100dvh;
-                    overflow: hidden !important; 
-                }
                 .main-view-slot { 
                     width: 25%; 
                     height: 100%; 
                     flex-shrink: 0;
                     overflow: hidden;
                     position: relative;
-                    contain: content;
                 }
                 .views-container {
                     display: flex;
@@ -251,7 +246,6 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
                     width: 400%;
                     will-change: transform;
                     transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
-                    touch-action: pan-y;
                 }
                 input, textarea, select {
                     font-size: 16px !important; 
@@ -281,9 +275,9 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
                     onSearchChange={setSearchQuery}
                 />
                 
-                <div className="flex-1 w-full overflow-hidden relative bg-taller-light dark:bg-taller-dark">
+                <main className="flex-1 w-full overflow-hidden relative bg-taller-light dark:bg-taller-dark">
                     {loading ? (
-                        <div className="absolute inset-0 flex items-center justify-center bg-taller-light dark:bg-taller-dark z-[40]">
+                        <div className="absolute inset-0 flex items-center justify-center z-[40]">
                             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-taller-primary"></div>
                         </div>
                     ) : (
@@ -295,8 +289,8 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
                         >
                             <Suspense fallback={<ViewLoading />}>
                                 <div className="main-view-slot" style={{ pointerEvents: view === 'dashboard' ? 'auto' : 'none' }}>
-                                    <div className="h-full overflow-y-auto overscroll-none px-4 py-4 md:px-6 md:py-6 scrollbar-hide">
-                                        <div className="max-w-7xl mx-auto min-h-full pb-32">
+                                    <div className="h-full overflow-y-auto px-4 py-6 md:px-8 scrollbar-hide overscroll-none">
+                                        <div className="max-w-6xl mx-auto min-h-full pb-8">
                                             <Dashboard clientes={clientes} trabajos={trabajos} gastos={gastos} onDataRefresh={() => fetchData(false)} searchQuery={searchQuery} onNavigate={handleNavigate} />
                                         </div>
                                     </div>
@@ -317,16 +311,16 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
                                 </div>
 
                                 <div className="main-view-slot" style={{ pointerEvents: view === 'clientes' ? 'auto' : 'none' }}>
-                                    <div className="h-full overflow-y-auto overscroll-none px-4 py-4 md:px-6 md:py-6 scrollbar-hide">
-                                        <div className="max-w-7xl mx-auto min-h-full pb-32">
+                                    <div className="h-full overflow-y-auto px-4 py-6 md:px-8 scrollbar-hide overscroll-none">
+                                        <div className="max-w-6xl mx-auto min-h-full pb-8">
                                             <Clientes clientes={clientes} trabajos={trabajos} onDataRefresh={() => fetchData(false)} searchQuery={searchQuery} onNavigate={handleNavigate} />
                                         </div>
                                     </div>
                                 </div>
 
                                 <div className="main-view-slot" style={{ pointerEvents: view === 'ajustes' ? 'auto' : 'none' }}>
-                                    <div className="h-full overflow-y-auto overscroll-none px-4 py-4 md:px-6 md:py-6 scrollbar-hide">
-                                        <div className="max-w-7xl mx-auto min-h-full pb-32">
+                                    <div className="h-full overflow-y-auto px-4 py-6 md:px-8 scrollbar-hide overscroll-none">
+                                        <div className="max-w-4xl mx-auto min-h-full pb-8">
                                             <Ajustes tallerInfo={tallerInfo} onUpdateTallerInfo={async (newInfo) => {
                                                 const { data: { user } } = await supabase.auth.getUser();
                                                 if (user) await supabase.from('taller_info').upsert({ taller_id: user.id, ...newInfo, updated_at: new Date().toISOString() });
@@ -339,9 +333,9 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
                             </Suspense>
                         </div>
                     )}
-                </div>
+                </main>
 
-                <nav className="md:hidden bg-white dark:bg-gray-800 border-t dark:border-gray-700 flex-shrink-0 z-[100] pb-[env(safe-area-inset-bottom)] relative transition-colors">
+                <nav className="md:hidden bg-white dark:bg-gray-800 border-t dark:border-gray-700 flex-shrink-0 z-[100] pb-[env(safe-area-inset-bottom)]">
                     <div className="flex justify-around items-center h-16 w-full px-2">
                         {navItems.map((item) => (
                             <button key={item.id} onClick={() => handleNavigate(item.id as View)} className={`relative flex flex-col items-center justify-center w-full h-full transition-colors duration-200 ${view === item.id ? 'text-taller-primary' : 'text-taller-gray dark:text-gray-400'}`}>

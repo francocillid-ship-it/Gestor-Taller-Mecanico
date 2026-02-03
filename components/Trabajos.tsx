@@ -262,7 +262,7 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
                     )}
                     <div className="flex-1 flex flex-col">
                         {calendarFiltered.length > 0 ? (
-                            <div className="space-y-4 pb-40">
+                            <div className="space-y-4 pb-8">
                                 {calendarFiltered.map(t => (
                                     <JobCard key={t.id} trabajo={t} cliente={clientes.find(c => c.id === t.clienteId)} vehiculo={clientes.find(c => c.id === t.clienteId)?.vehiculos.find(v => v.id === t.vehiculoId)} onUpdateStatus={onUpdateStatus} tallerInfo={tallerInfo} clientes={clientes} onDataRefresh={onDataRefresh} isHighlighted={t.id === initialJobId} />
                                 ))}
@@ -288,7 +288,7 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
             const sortedMonthKeys = Object.keys(groupedByMonth).sort((a, b) => b.localeCompare(a));
 
             return (
-                <div className="flex flex-col min-h-full pb-40">
+                <div className="flex flex-col min-h-full pb-8">
                     <div className="mb-8">
                         <div className="flex items-center gap-2 mb-4 px-1">
                             <div className="p-1.5 bg-green-50 dark:bg-green-900/30 rounded text-green-600 dark:text-green-400">
@@ -332,7 +332,7 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
         if (tabJobs.length === 0) return <EmptyState />;
 
         return (
-            <div className="space-y-4 pb-40">
+            <div className="space-y-4 pb-8">
                 {tabJobs.map(t => (
                     <JobCard key={t.id} trabajo={t} cliente={clientes.find(c => c.id === t.clienteId)} vehiculo={clientes.find(c => c.id === t.clienteId)?.vehiculos.find(v => v.id === t.vehiculoId)} onUpdateStatus={onUpdateStatus} tallerInfo={tallerInfo} clientes={clientes} onDataRefresh={onDataRefresh} isHighlighted={t.id === initialJobId} />
                 ))}
@@ -351,7 +351,6 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
                     flex-shrink: 0;
                     overflow: hidden;
                     position: relative;
-                    contain: content;
                 }
                 .tabs-sliding-container {
                     display: flex;
@@ -359,7 +358,6 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
                     width: 400%;
                     will-change: transform;
                     transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
-                    touch-action: pan-y;
                 }
             `}</style>
             
@@ -370,7 +368,7 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
                     marginTop: headerVisible ? 0 : -headerHeight,
                 }}
             >
-                <div className="p-4 pt-5 pb-3 w-full"><button type="button" onClick={() => setIsCreateModalOpen(true)} className="w-full flex items-center justify-center gap-2 py-3.5 px-4 bg-taller-primary text-white font-extrabold rounded-xl shadow-lg shadow-taller-primary/20 active:scale-95 transition-all"><PlusIcon className="h-5 w-5" /><span className="uppercase tracking-wider text-xs">Nuevo Presupuesto</span></button></div>
+                <div className="max-w-3xl mx-auto p-4 pt-5 pb-3 w-full"><button type="button" onClick={() => setIsCreateModalOpen(true)} className="w-full flex items-center justify-center gap-2 py-3.5 px-4 bg-taller-primary text-white font-extrabold rounded-xl shadow-lg shadow-taller-primary/20 active:scale-95 transition-all"><PlusIcon className="h-5 w-5" /><span className="uppercase tracking-wider text-xs">Nuevo Presupuesto</span></button></div>
                 <div className="flex border-b dark:border-gray-700 bg-taller-light dark:bg-taller-dark overflow-x-auto no-scrollbar w-full">
                     <div className="flex min-w-full px-4 sm:justify-center gap-1">
                         {statusOrder.map((status) => (
@@ -389,8 +387,8 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
                 >
                     {statusOrder.map((status) => (
                         <div key={status} className="inner-tab-slot" style={{ pointerEvents: activeTab === status ? 'auto' : 'none' }}>
-                            <div onScroll={(e) => handleVerticalScroll(e, status)} className="h-full overflow-y-auto px-4 pt-0 scrollbar-hide overscroll-none">
-                                <div className="max-w-3xl mx-auto min-h-full w-full overflow-x-hidden pt-4 flex flex-col">
+                            <div onScroll={(e) => handleVerticalScroll(e, status)} className="h-full overflow-y-auto px-4 py-4 scrollbar-hide overscroll-none">
+                                <div className="max-w-3xl mx-auto min-h-full w-full overflow-x-hidden flex flex-col">
                                     {renderTabContent(status)}
                                 </div>
                             </div>
