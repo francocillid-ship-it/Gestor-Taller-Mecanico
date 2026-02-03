@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useCallback, lazy, Suspense } from 'react';
+import React, { useState, useEffect, useCallback, lazy, Suspense, useRef } from 'react';
 import { supabase } from '../supabaseClient';
 import type { Cliente, Trabajo, Gasto, JobStatus, TallerInfo } from '../types';
 import { JobStatus as JobStatusEnum } from '../types';
@@ -55,6 +55,58 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
     const [searchQuery, setSearchQuery] = useState('');
     const [targetJobStatus, setTargetJobStatus] = useState<JobStatus | undefined>(undefined);
     const [targetJobId, setTargetJobId] = useState<string | undefined>(undefined);
+    
+    // Ref para evitar redirecciones infinitas o no deseadas durante la escritura
+    const lastAutoRouteRef = useRef<string>('');
+
+    // --- SEARCH AUTO-ROUTER LOGIC ---
+    useEffect(() => {
+        const q = searchQuery.toLowerCase().trim();
+        if (q.length < 2) {
+            lastAutoRouteRef.current = '';
+            return;
+        }
+
+        // Si ya auto-ruteamos para esta búsqueda exacta, no lo hacemos de nuevo para no molestar al usuario
+        if (lastAutoRouteRef.current === q) return;
+
+        const checkMatchesInView = (targetView: View): boolean => {
+            if (targetView === 'clientes') {
+                return clientes.some(c => 
+                    (c.nombre || '').toLowerCase().includes(q) || 
+                    (c.apellido || '').toLowerCase().includes(q) ||
+                    (c.vehiculos || []).some(v => (v.matricula || '').toLowerCase().includes(q))
+                );
+            }
+            if (targetView === 'trabajos') {
+                return trabajos.some(t => {
+                    const c = clientes.find(cl => cl.id === t.clienteId);
+                    const v = c?.vehiculos.find(ve => ve.id === t.vehiculoId);
+                    return (t.descripcion || '').toLowerCase().includes(q) || 
+                           (c?.nombre || '').toLowerCase().includes(q) ||
+                           (v?.matricula || '').toLowerCase().includes(q);
+                });
+            }
+            if (targetView === 'dashboard') {
+                return gastos.some(g => (g.descripcion || '').toLowerCase().includes(q));
+            }
+            return false;
+        };
+
+        // Lógica de redirección:
+        // Si no hay resultados en la sección actual pero sí en Clientes o Trabajos, saltamos allí.
+        const currentMatches = checkMatchesInView(view);
+        
+        if (!currentMatches) {
+            if (checkMatchesInView('clientes')) {
+                lastAutoRouteRef.current = q;
+                setView('clientes');
+            } else if (checkMatchesInView('trabajos')) {
+                lastAutoRouteRef.current = q;
+                setView('trabajos');
+            }
+        }
+    }, [searchQuery, clientes, trabajos, gastos, view]);
 
     const fetchData = useCallback(async (showLoader = true) => {
         if (showLoader) setLoading(true);

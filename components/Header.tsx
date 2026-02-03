@@ -1,5 +1,5 @@
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { MagnifyingGlassIcon, Bars3Icon, XMarkIcon } from '@heroicons/react/24/outline';
 
 interface HeaderProps {
@@ -17,15 +17,21 @@ const Header: React.FC<HeaderProps> = ({ tallerName, logoUrl, onMenuClick, showM
 
     const handleOpenSearch = () => {
         setIsSearchExpanded(true);
-        // Mover el focus aquí directamente dentro del evento de click.
-        // El setTimeout pequeño permite que React actualice el DOM (quitando pointer-events-none)
-        // pero se mantiene dentro del contexto de interacción del usuario para que el teclado móvil se abra.
-        setTimeout(() => {
-            if (mobileInputRef.current) {
-                mobileInputRef.current.focus();
-            }
-        }, 50);
     };
+
+    // Usamos un useEffect para el foco. En móviles, el foco debe ocurrir lo más cerca posible del evento de touch/click.
+    // Al separar la expansión del foco, el navegador a veces bloquea el teclado.
+    // Al usar este efecto con la dependencia de isSearchExpanded, el input ya está en el DOM visible cuando pedimos el foco.
+    useEffect(() => {
+        if (isSearchExpanded && mobileInputRef.current) {
+            mobileInputRef.current.focus();
+            // Reforzamos para navegadores más estrictos
+            const timer = setTimeout(() => {
+                mobileInputRef.current?.focus();
+            }, 10);
+            return () => clearTimeout(timer);
+        }
+    }, [isSearchExpanded]);
 
     const handleCloseSearch = () => {
         setIsSearchExpanded(false);
