@@ -67,7 +67,6 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
             return;
         }
 
-        // Si ya auto-ruteamos para esta búsqueda exacta, no lo hacemos de nuevo para no molestar al usuario
         if (lastAutoRouteRef.current === q) return;
 
         const checkMatchesInView = (targetView: View): boolean => {
@@ -93,8 +92,6 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
             return false;
         };
 
-        // Lógica de redirección:
-        // Si no hay resultados en la sección actual pero sí en Clientes o Trabajos, saltamos allí.
         const currentMatches = checkMatchesInView(view);
         
         if (!currentMatches) {
@@ -236,13 +233,24 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
     return (
         <div className="flex h-full w-full bg-taller-light dark:bg-taller-dark text-taller-dark dark:text-taller-light overflow-hidden fixed inset-0">
             <style>{`
-                body, html, #root { overflow: hidden !important; position: fixed; width: 100%; height: 100%; }
+                body, html, #root { overflow: hidden !important; position: fixed; width: 100%; height: 100%; height: 100dvh; }
                 .main-view-slot { 
                     width: 25%; 
                     height: 100%; 
                     flex-shrink: 0;
                     overflow: hidden;
                     position: relative;
+                    /* Blindaje de foco: previene que el navegador mueva el contenedor al hacer focus */
+                    contain: content;
+                }
+                .views-container {
+                    display: flex;
+                    height: 100%;
+                    width: 400%;
+                    will-change: transform;
+                    transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+                    /* Importante: evita que gestos laterales accidentales muevan la UI */
+                    touch-action: pan-y;
                 }
             `}</style>
 
@@ -278,15 +286,14 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
                         </div>
                     ) : (
                         <div 
-                            className="flex h-full transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] will-change-transform"
+                            className="views-container"
                             style={{ 
-                                width: '400%',
                                 transform: `translate3d(-${activeIndex * 25}%, 0, 0)`
                             }}
                         >
                             <Suspense fallback={<ViewLoading />}>
                                 <div className="main-view-slot" style={{ pointerEvents: view === 'dashboard' ? 'auto' : 'none' }}>
-                                    <div className="h-full overflow-y-auto overscroll-none px-4 py-4 md:px-6 md:py-6">
+                                    <div className="h-full overflow-y-auto overscroll-none px-4 py-4 md:px-6 md:py-6 scrollbar-hide">
                                         <div className="max-w-7xl mx-auto min-h-full pb-32">
                                             <Dashboard clientes={clientes} trabajos={trabajos} gastos={gastos} onDataRefresh={() => fetchData(false)} searchQuery={searchQuery} onNavigate={handleNavigate} />
                                         </div>
@@ -308,7 +315,7 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
                                 </div>
 
                                 <div className="main-view-slot" style={{ pointerEvents: view === 'clientes' ? 'auto' : 'none' }}>
-                                    <div className="h-full overflow-y-auto overscroll-none px-4 py-4 md:px-6 md:py-6">
+                                    <div className="h-full overflow-y-auto overscroll-none px-4 py-4 md:px-6 md:py-6 scrollbar-hide">
                                         <div className="max-w-7xl mx-auto min-h-full pb-32">
                                             <Clientes clientes={clientes} trabajos={trabajos} onDataRefresh={() => fetchData(false)} searchQuery={searchQuery} onNavigate={handleNavigate} />
                                         </div>
@@ -316,7 +323,7 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
                                 </div>
 
                                 <div className="main-view-slot" style={{ pointerEvents: view === 'ajustes' ? 'auto' : 'none' }}>
-                                    <div className="h-full overflow-y-auto overscroll-none px-4 py-4 md:px-6 md:py-6">
+                                    <div className="h-full overflow-y-auto overscroll-none px-4 py-4 md:px-6 md:py-6 scrollbar-hide">
                                         <div className="max-w-7xl mx-auto min-h-full pb-32">
                                             <Ajustes tallerInfo={tallerInfo} onUpdateTallerInfo={async (newInfo) => {
                                                 const { data: { user } } = await supabase.auth.getUser();

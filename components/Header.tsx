@@ -34,6 +34,7 @@ const Header: React.FC<HeaderProps> = ({ tallerName, logoUrl, onMenuClick, showM
     }, [isSearchExpanded]);
 
     const handleCloseSearch = () => {
+        onSearchChange(''); // Vacía el campo al cancelar
         setIsSearchExpanded(false);
     };
 

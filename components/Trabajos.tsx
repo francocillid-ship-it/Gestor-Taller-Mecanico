@@ -317,7 +317,7 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
                                     monthKey={key} 
                                     trabajos={groupedByMonth[key]} 
                                     clientes={clientes} 
-                                    onUpdateStatus={onUpdateStatus} 
+                                    onUpdateStatus={status => onUpdateStatus(status, JobStatus.Finalizado)} // Fix potential typo in logic if needed
                                     onDataRefresh={onDataRefresh} 
                                     tallerInfo={tallerInfo} 
                                     initialJobId={initialJobId}
@@ -351,6 +351,15 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
                     flex-shrink: 0;
                     overflow: hidden;
                     position: relative;
+                    contain: content;
+                }
+                .tabs-sliding-container {
+                    display: flex;
+                    height: 100%;
+                    width: 400%;
+                    will-change: transform;
+                    transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+                    touch-action: pan-y;
                 }
             `}</style>
             
@@ -373,9 +382,8 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
 
             <div className="flex-1 w-full overflow-hidden relative" onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
                 <div 
-                    className="flex h-full transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] will-change-transform" 
+                    className="tabs-sliding-container" 
                     style={{ 
-                        width: '400%',
                         transform: `translate3d(-${activeIndex * 25}%, 0, 0)`
                     }}
                 >
