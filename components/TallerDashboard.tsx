@@ -56,17 +56,14 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
     const [targetJobStatus, setTargetJobStatus] = useState<JobStatus | undefined>(undefined);
     const [targetJobId, setTargetJobId] = useState<string | undefined>(undefined);
     
-    // Ref para evitar redirecciones infinitas o no deseadas durante la escritura
     const lastAutoRouteRef = useRef<string>('');
 
-    // --- SEARCH AUTO-ROUTER LOGIC ---
     useEffect(() => {
         const q = searchQuery.toLowerCase().trim();
         if (q.length < 2) {
             lastAutoRouteRef.current = '';
             return;
         }
-
         if (lastAutoRouteRef.current === q) return;
 
         const checkMatchesInView = (targetView: View): boolean => {
@@ -93,7 +90,6 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
         };
 
         const currentMatches = checkMatchesInView(view);
-        
         if (!currentMatches) {
             if (checkMatchesInView('clientes')) {
                 lastAutoRouteRef.current = q;
@@ -180,7 +176,6 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
         try {
             const job = trabajos.find(t => t.id === trabajoId);
             if (!job) return;
-
             const updates: any = { status: newStatus };
             if (newStatus === JobStatusEnum.Finalizado) updates.fecha_salida = new Date().toISOString();
             else updates.fecha_salida = null;
@@ -188,50 +183,26 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
             if (job.isQuickBudget && newStatus !== JobStatusEnum.Presupuesto && job.quickBudgetData) {
                 const { data: { user } } = await supabase.auth.getUser();
                 if (!user) return;
-
-                const { data: newClient, error: clientErr } = await supabase
-                    .from('clientes')
-                    .insert({
-                        taller_id: user.id,
-                        nombre: job.quickBudgetData.nombre,
-                        apellido: job.quickBudgetData.apellido || null,
-                    })
-                    .select()
-                    .single();
-                
+                const { data: newClient, error: clientErr } = await supabase.from('clientes').insert({ taller_id: user.id, nombre: job.quickBudgetData.nombre, apellido: job.quickBudgetData.apellido || null }).select().single();
                 if (clientErr) throw clientErr;
-
-                const { data: newVehicle, error: vehicleErr } = await supabase
-                    .from('vehiculos')
-                    .insert({
-                        cliente_id: newClient.id,
-                        marca: job.quickBudgetData.marca.toUpperCase(),
-                        modelo: job.quickBudgetData.modelo.toUpperCase(),
-                        matricula: job.quickBudgetData.matricula?.toUpperCase() || null
-                    })
-                    .select()
-                    .single();
-
+                const { data: newVehicle, error: vehicleErr } = await supabase.from('vehiculos').insert({ cliente_id: newClient.id, marca: job.quickBudgetData.marca.toUpperCase(), modelo: job.quickBudgetData.modelo.toUpperCase(), matricula: job.quickBudgetData.matricula?.toUpperCase() || null }).select().single();
                 if (vehicleErr) throw vehicleErr;
-
                 updates.cliente_id = newClient.id;
                 updates.vehiculo_id = newVehicle.id;
                 updates.is_quick_budget = false;
                 updates.quick_budget_data = null;
             }
-
             await supabase.from('trabajos').update(updates).eq('id', trabajoId);
             fetchData(false);
         } catch (error) {
-            console.error("Error updating status:", error);
-            alert("Error al actualizar el estado y formalizar el cliente.");
+            alert("Error al actualizar el estado.");
         }
     };
 
     const activeIndex = VIEW_ORDER.indexOf(view);
 
     return (
-        <div className="flex h-[100dvh] w-full bg-taller-light dark:bg-taller-dark text-taller-dark dark:text-taller-light overflow-hidden">
+        <div className="flex h-screen w-full bg-taller-light dark:bg-taller-dark text-taller-dark dark:text-taller-light overflow-hidden">
             <style>{`
                 .main-view-slot { 
                     width: 25%; 
@@ -247,9 +218,7 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
                     will-change: transform;
                     transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
                 }
-                input, textarea, select {
-                    font-size: 16px !important; 
-                }
+                input, textarea, select { font-size: 16px !important; }
             `}</style>
 
             <aside className="hidden md:flex md:flex-col w-64 bg-white dark:bg-gray-800 shadow-lg shrink-0 border-r dark:border-gray-700 z-[90]">
@@ -283,14 +252,12 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
                     ) : (
                         <div 
                             className="views-container"
-                            style={{ 
-                                transform: `translate3d(-${activeIndex * 25}%, 0, 0)`
-                            }}
+                            style={{ transform: `translate3d(-${activeIndex * 25}%, 0, 0)` }}
                         >
                             <Suspense fallback={<ViewLoading />}>
                                 <div className="main-view-slot" style={{ pointerEvents: view === 'dashboard' ? 'auto' : 'none' }}>
                                     <div className="h-full overflow-y-auto px-4 py-6 md:px-8 scrollbar-hide overscroll-none">
-                                        <div className="max-w-6xl mx-auto min-h-full pb-8">
+                                        <div className="max-w-6xl mx-auto min-h-full pb-10">
                                             <Dashboard clientes={clientes} trabajos={trabajos} gastos={gastos} onDataRefresh={() => fetchData(false)} searchQuery={searchQuery} onNavigate={handleNavigate} />
                                         </div>
                                     </div>
@@ -312,7 +279,7 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
 
                                 <div className="main-view-slot" style={{ pointerEvents: view === 'clientes' ? 'auto' : 'none' }}>
                                     <div className="h-full overflow-y-auto px-4 py-6 md:px-8 scrollbar-hide overscroll-none">
-                                        <div className="max-w-6xl mx-auto min-h-full pb-8">
+                                        <div className="max-w-6xl mx-auto min-h-full pb-10">
                                             <Clientes clientes={clientes} trabajos={trabajos} onDataRefresh={() => fetchData(false)} searchQuery={searchQuery} onNavigate={handleNavigate} />
                                         </div>
                                     </div>
@@ -320,7 +287,7 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
 
                                 <div className="main-view-slot" style={{ pointerEvents: view === 'ajustes' ? 'auto' : 'none' }}>
                                     <div className="h-full overflow-y-auto px-4 py-6 md:px-8 scrollbar-hide overscroll-none">
-                                        <div className="max-w-4xl mx-auto min-h-full pb-8">
+                                        <div className="max-w-4xl mx-auto min-h-full pb-10">
                                             <Ajustes tallerInfo={tallerInfo} onUpdateTallerInfo={async (newInfo) => {
                                                 const { data: { user } } = await supabase.auth.getUser();
                                                 if (user) await supabase.from('taller_info').upsert({ taller_id: user.id, ...newInfo, updated_at: new Date().toISOString() });

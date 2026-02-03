@@ -96,16 +96,12 @@ const Ajustes: React.FC<AjustesProps> = ({ tallerInfo, onUpdateTallerInfo, onLog
     const [geminiKey, setGeminiKey] = useState(() => localStorage.getItem('gemini_api_key') || '');
     const [showKey, setShowKey] = useState(false);
 
-    // Sincronización automática con el sistema cuando el tema es 'system'
     useEffect(() => {
         if (theme !== 'system') return;
-
         const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
         const listener = () => applyThemeClass();
-        
         mediaQuery.addEventListener('change', listener);
         applyThemeClass(); 
-
         return () => mediaQuery.removeEventListener('change', listener);
     }, [theme]);
 
@@ -128,7 +124,6 @@ const Ajustes: React.FC<AjustesProps> = ({ tallerInfo, onUpdateTallerInfo, onLog
             isFirstRender.current = false;
             return;
         }
-
         const currentDataStr = JSON.stringify(formData);
         if (currentDataStr === lastSavedData) return;
 
@@ -144,7 +139,6 @@ const Ajustes: React.FC<AjustesProps> = ({ tallerInfo, onUpdateTallerInfo, onLog
                 if (statusTimeoutRef.current) clearTimeout(statusTimeoutRef.current);
                 statusTimeoutRef.current = setTimeout(() => setSaveStatus('idle'), 2000);
             } catch (error) {
-                console.error("Autosave error:", error);
                 setSaveStatus('error');
             }
         }, 1000);
@@ -156,11 +150,8 @@ const Ajustes: React.FC<AjustesProps> = ({ tallerInfo, onUpdateTallerInfo, onLog
 
     const handleThemeChange = (newTheme: Theme) => {
         setTheme(newTheme);
-        if (newTheme === 'system') {
-            localStorage.removeItem('theme');
-        } else {
-            localStorage.setItem('theme', newTheme);
-        }
+        if (newTheme === 'system') localStorage.removeItem('theme');
+        else localStorage.setItem('theme', newTheme);
         applyThemeClass();
     };
     
@@ -189,7 +180,6 @@ const Ajustes: React.FC<AjustesProps> = ({ tallerInfo, onUpdateTallerInfo, onLog
             const { data } = supabase.storage.from('logos').getPublicUrl(filePath);
             setFormData(prev => ({ ...prev, logoUrl: data.publicUrl }));
         } catch (error) {
-            console.error('Error uploading logo:', error);
             alert('Error al subir el logo.');
         } finally {
             setIsUploading(false);
@@ -217,7 +207,7 @@ const Ajustes: React.FC<AjustesProps> = ({ tallerInfo, onUpdateTallerInfo, onLog
     };
 
     const handleKeyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const val = e.target.value;
+        const val = e.target.value.trim();
         setGeminiKey(val);
         localStorage.setItem('gemini_api_key', val);
     };
@@ -294,7 +284,7 @@ const Ajustes: React.FC<AjustesProps> = ({ tallerInfo, onUpdateTallerInfo, onLog
     return (
         <>
             <FloatingStatus status={saveStatus} />
-            <div className="space-y-8 pb-32 max-w-5xl mx-auto">
+            <div className="space-y-8 pb-12 max-w-5xl mx-auto">
                 <div className="flex justify-between items-center px-4 md:px-0">
                     <h2 className="text-2xl font-bold text-taller-dark dark:text-taller-light">Ajustes del Taller</h2>
                 </div>
@@ -438,8 +428,8 @@ const Ajustes: React.FC<AjustesProps> = ({ tallerInfo, onUpdateTallerInfo, onLog
                                             {showKey ? <EyeSlashIcon className="h-5 w-5" /> : <EyeIcon className="h-5 w-5" />}
                                         </button>
                                     </div>
-                                    <p className="mt-2 text-xs text-taller-gray dark:text-gray-500">
-                                        Esta clave es necesaria para el escaneo automático de cédulas. Los datos se guardan localmente en este dispositivo.
+                                    <p className="mt-2 text-[10px] text-taller-gray dark:text-gray-500">
+                                        Esta clave habilita el escaneo automático de cédulas. Los datos se guardan localmente en tu navegador.
                                     </p>
                                 </div>
 
@@ -460,7 +450,7 @@ const Ajustes: React.FC<AjustesProps> = ({ tallerInfo, onUpdateTallerInfo, onLog
                 </form>
 
                 {shouldShow(['cuenta', 'salir']) && (
-                    <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md mt-8 mx-4 md:mx-0">
+                    <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md mx-4 md:mx-0">
                         <div className="flex flex-wrap gap-4">
                             <button onClick={() => setIsChangePasswordModalOpen(true)} className="flex-1 justify-center flex items-center space-x-2 px-4 py-2 text-sm font-medium text-taller-secondary bg-blue-100 rounded-lg dark:bg-blue-900/50 dark:text-blue-300"><KeyIcon className="h-5 w-5" /><span>Contraseña</span></button>
                             <button onClick={onLogout} className="flex-1 justify-center flex items-center space-x-2 px-4 py-2 text-sm font-medium text-red-700 bg-red-100 rounded-lg dark:bg-red-900/50 dark:text-red-300"><ArrowRightOnRectangleIcon className="h-5 w-5" /><span>Salir</span></button>
