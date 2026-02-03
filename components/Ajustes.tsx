@@ -19,7 +19,9 @@ import {
     MagnifyingGlassPlusIcon, 
     ArrowPathIcon,
     SparklesIcon,
-    ArrowTopRightOnSquareIcon
+    ArrowTopRightOnSquareIcon,
+    EyeIcon,
+    EyeSlashIcon
 } from '@heroicons/react/24/solid';
 import ChangePasswordModal from './ChangePasswordModal';
 import { applyAppTheme, applyFontSize, applyThemeClass } from '../constants';
@@ -90,20 +92,9 @@ const Ajustes: React.FC<AjustesProps> = ({ tallerInfo, onUpdateTallerInfo, onLog
     const [theme, setTheme] = useState<Theme>(() => (localStorage.getItem('theme') as Theme) || 'system');
     const [isChangePasswordModalOpen, setIsChangePasswordModalOpen] = useState(false);
     
-    const [hasApiKey, setHasApiKey] = useState(false);
-
-    useEffect(() => {
-        const checkApiKey = async () => {
-            const result = await window.aistudio.hasSelectedApiKey();
-            setHasApiKey(result);
-        };
-        checkApiKey();
-    }, []);
-
-    const handleSelectKey = async () => {
-        await window.aistudio.openSelectKey();
-        setHasApiKey(true);
-    };
+    // IA State
+    const [geminiKey, setGeminiKey] = useState(() => localStorage.getItem('gemini_api_key') || '');
+    const [showKey, setShowKey] = useState(false);
 
     // Sincronización automática con el sistema cuando el tema es 'system'
     useEffect(() => {
@@ -113,7 +104,7 @@ const Ajustes: React.FC<AjustesProps> = ({ tallerInfo, onUpdateTallerInfo, onLog
         const listener = () => applyThemeClass();
         
         mediaQuery.addEventListener('change', listener);
-        applyThemeClass(); // Asegura estado inicial correcto
+        applyThemeClass(); 
 
         return () => mediaQuery.removeEventListener('change', listener);
     }, [theme]);
@@ -223,6 +214,12 @@ const Ajustes: React.FC<AjustesProps> = ({ tallerInfo, onUpdateTallerInfo, onLog
     const shouldShow = (keywords: string[]) => {
         if (!searchQuery) return true;
         return keywords.some(k => k.toLowerCase().includes(searchQuery.toLowerCase()));
+    };
+
+    const handleKeyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const val = e.target.value;
+        setGeminiKey(val);
+        localStorage.setItem('gemini_api_key', val);
     };
 
     const PdfPreview = () => {
@@ -414,9 +411,9 @@ const Ajustes: React.FC<AjustesProps> = ({ tallerInfo, onUpdateTallerInfo, onLog
                                     <SparklesIcon className="h-6 w-6 mr-2 text-taller-primary"/>
                                     Inteligencia Artificial (Gemini)
                                 </h3>
-                                {hasApiKey && (
+                                {geminiKey && (
                                     <span className="flex items-center gap-1 text-[10px] font-bold text-green-600 bg-green-50 dark:bg-green-900/20 px-2 py-1 rounded-full uppercase">
-                                        <CheckCircleIcon className="h-3 w-3" /> Activo
+                                        <CheckCircleIcon className="h-3 w-3" /> Configurada
                                     </span>
                                 )}
                             </div>
@@ -424,17 +421,25 @@ const Ajustes: React.FC<AjustesProps> = ({ tallerInfo, onUpdateTallerInfo, onLog
                             <div className="space-y-4">
                                 <div>
                                     <label htmlFor="gemini-key" className="block text-sm font-medium text-taller-gray dark:text-gray-400 mb-1">Clave de API</label>
-                                    <input 
-                                        type="text"
-                                        id="gemini-key"
-                                        placeholder="Pulsa para configurar tu clave..."
-                                        value={hasApiKey ? "Clave configurada correctamente" : ""}
-                                        onClick={handleSelectKey}
-                                        readOnly
-                                        className="block w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:ring-2 focus:ring-taller-primary outline-none cursor-pointer"
-                                    />
+                                    <div className="relative">
+                                        <input 
+                                            type={showKey ? "text" : "password"}
+                                            id="gemini-key"
+                                            placeholder="Pega tu clave de Google Gemini aquí..."
+                                            value={geminiKey}
+                                            onChange={handleKeyChange}
+                                            className="block w-full pl-4 pr-12 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:ring-2 focus:ring-taller-primary outline-none transition-all"
+                                        />
+                                        <button 
+                                            type="button"
+                                            onClick={() => setShowKey(!showKey)}
+                                            className="absolute right-3 top-3 text-gray-400 hover:text-taller-primary transition-colors"
+                                        >
+                                            {showKey ? <EyeSlashIcon className="h-5 w-5" /> : <EyeIcon className="h-5 w-5" />}
+                                        </button>
+                                    </div>
                                     <p className="mt-2 text-xs text-taller-gray dark:text-gray-500">
-                                        La clave permite el escaneo automático de cédulas.
+                                        Esta clave es necesaria para el escaneo automático de cédulas. Los datos se guardan localmente en este dispositivo.
                                     </p>
                                 </div>
 
@@ -443,10 +448,10 @@ const Ajustes: React.FC<AjustesProps> = ({ tallerInfo, onUpdateTallerInfo, onLog
                                         href="https://aistudio.google.com/app/apikey" 
                                         target="_blank" 
                                         rel="noopener noreferrer"
-                                        className="inline-flex items-center gap-2 text-sm font-bold text-taller-primary hover:underline transition-colors"
+                                        className="inline-flex items-center gap-2 text-sm font-bold text-taller-primary hover:text-taller-secondary transition-colors group"
                                     >
-                                        <ArrowTopRightOnSquareIcon className="h-4 w-4" />
-                                        Obtener clave en Google AI Studio
+                                        <ArrowTopRightOnSquareIcon className="h-4 w-4 transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+                                        Obtener clave gratuita en Google AI Studio
                                     </a>
                                 </div>
                             </div>

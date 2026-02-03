@@ -5,9 +5,12 @@ import { GoogleGenAI, Type } from "@google/genai";
 
 export type VehiculoData = Partial<Omit<Vehiculo, 'id' | 'año' | 'maintenance_config'> & { año: string }>;
 
+export const getGeminiApiKey = (): string | undefined => {
+    return localStorage.getItem('gemini_api_key') || process.env.API_KEY;
+};
+
 export const isGeminiAvailable = (): boolean => {
-    // La clave puede estar en el proceso o haber sido seleccionada en el estudio
-    return !!process.env.API_KEY;
+    return !!getGeminiApiKey();
 };
 
 const calculateYearFromPatente = (patente: string): string | null => {
@@ -58,9 +61,13 @@ const calculateYearFromPatente = (patente: string): string | null => {
 
 
 export const recognizeVehicleDataFromImage = async (base64Image: string): Promise<VehiculoData> => {
-    // Initializing GenAI with API key from environment
-    // Se crea la instancia justo antes de usarla para asegurar que tiene la clave más reciente
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    const apiKey = getGeminiApiKey();
+    if (!apiKey) {
+        throw new Error("No se ha configurado ninguna clave API de Gemini en Ajustes.");
+    }
+
+    // Initializing GenAI with API key
+    const ai = new GoogleGenAI({ apiKey });
 
     const imagePart = {
         inlineData: {
@@ -124,11 +131,10 @@ export const recognizeVehicleDataFromImage = async (base64Image: string): Promis
     } catch (error: any) {
         console.error("Error al llamar a la API de Gemini:", error);
         
-        if (error.message?.includes("Requested entity was not found")) {
-            // Error común si la clave no es válida o el proyecto no tiene habilitada la API
-            throw new Error("Clave API no válida o expirada. Por favor, vuelva a configurarla en Ajustes.");
+        if (error.message?.includes("API_KEY_INVALID") || error.message?.includes("not found")) {
+            throw new Error("Clave API no válida. Por favor, revísala en la sección de Ajustes.");
         }
         
-        throw new Error("No se pudo analizar la imagen. Inténtelo de nuevo con mejor iluminación.");
+        throw new Error("No se pudo analizar la imagen. Inténtelo de nuevo con mejor iluminación o verifique su conexión.");
     }
 };
