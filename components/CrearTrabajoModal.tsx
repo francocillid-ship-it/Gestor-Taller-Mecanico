@@ -639,7 +639,7 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
                                 return (
                                     <React.Fragment key={p._id}>
                                         <div
-                                            ref={el => itemRefs.current[idx] = el}
+                                            ref={el => { itemRefs.current[idx] = el }}
                                             className={`flex items-center gap-2 p-2 rounded-lg shadow-sm bg-white dark:bg-gray-700 border dark:border-gray-600 transition-opacity duration-200 ${exitingItemIds.has(p._id) ? 'opacity-0 scale-95' : ''
                                                 } ${isBeingDragged
                                                     ? 'opacity-0' // Ocultamos el elemento real, se muestra el clon

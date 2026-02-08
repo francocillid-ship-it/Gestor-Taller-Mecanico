@@ -42,14 +42,15 @@
       --color-taller-dark: 11 17 32;
       --color-taller-gray: 100 116 139;
 
-      /* Dinámico: 24px extra en navegador para evitar que la barra de Safari tape botones, 0px en PWA */
-      --browser-extra-bottom: 24px;
+      /* Por defecto (PWA/Standalone): 0px extra */
+      --browser-extra-bottom: 0px;
       --safe-bottom: calc(env(safe-area-inset-bottom) + var(--browser-extra-bottom));
     }
 
-    @media (display-mode: standalone) {
+    /* Solo en navegador (no standalone): agregamos 24px extra para la barra de Safari */
+    @media not all and (display-mode: standalone) {
       :root {
-        --browser-extra-bottom: 0px;
+        --browser-extra-bottom: 24px;
       }
     }
 

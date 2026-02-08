@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import type { Gasto } from '../types';
+import { type Gasto, GastoCategoria } from '../types';
 import { XMarkIcon, PlusCircleIcon, DocumentArrowUpIcon, ArrowPathIcon } from '@heroicons/react/24/solid';
 import { recognizeGastoDataFromFile } from '../gemini';
 
@@ -118,7 +118,7 @@ const AddGastoModal: React.FC<AddGastoModalProps> = ({ onClose, onAddGasto }) =>
                         descripcion: `${descripcion} (${gastoDate.toLocaleString('es-ES', { month: 'long' })})`,
                         monto: numericValue,
                         fecha: gastoDate.toISOString(),
-                        categoria,
+                        categoria: categoria as GastoCategoria,
                         esFijo
                     });
                 }
@@ -127,7 +127,7 @@ const AddGastoModal: React.FC<AddGastoModalProps> = ({ onClose, onAddGasto }) =>
                     descripcion,
                     monto: numericValue,
                     fecha: new Date().toISOString(),
-                    categoria,
+                    categoria: categoria as GastoCategoria,
                     esFijo
                 });
             }
