@@ -52,8 +52,8 @@
       --color-taller-dark: 11 17 32;
       --color-taller-gray: 100 116 139;
 
-      /* Restauramos el safe area nativo del dispositivo (solo lo necesario para no tapar iconos) */
-      --safe-bottom: env(safe-area-inset-bottom);
+      /* Fijamos 20px de padding inferior por inconsistencias con env(safe-area-inset-bottom) */
+      --safe-bottom: 20px;
     }
 
     html,
