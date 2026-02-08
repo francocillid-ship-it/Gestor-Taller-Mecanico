@@ -388,7 +388,15 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout, user }) => 
                             className="views-container"
                             style={{ transform: `translate3d(-${activeIndex * 20}%, 0, 0)` }}
                         >
-                            <Suspense fallback={<ViewLoading />}>
+                            <Suspense fallback={
+                                <div className="main-view-slot">
+                                    <div className="h-full overflow-y-auto px-4 py-6 md:px-8 scrollbar-hide overscroll-none">
+                                        <div className="max-w-6xl mx-auto min-h-full pb-10">
+                                            <DashboardSkeleton />
+                                        </div>
+                                    </div>
+                                </div>
+                            }>
                                 <div className="main-view-slot" style={{ pointerEvents: view === 'dashboard' ? 'auto' : 'none' }}>
                                     <div className="h-full overflow-y-auto px-4 py-6 md:px-8 scrollbar-hide overscroll-none">
                                         <div className="max-w-6xl mx-auto min-h-full pb-10">
@@ -396,7 +404,6 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout, user }) => 
                                         </div>
                                     </div>
                                 </div>
-
                                 <div className="main-view-slot" style={{ pointerEvents: view === 'trabajos' ? 'auto' : 'none' }}>
                                     <Trabajos
                                         trabajos={trabajos}
@@ -410,7 +417,6 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout, user }) => 
                                         isActive={view === 'trabajos'}
                                     />
                                 </div>
-
                                 <div className="main-view-slot" style={{ pointerEvents: view === 'clientes' ? 'auto' : 'none' }}>
                                     <div className="h-full overflow-y-auto px-4 py-6 md:px-8 scrollbar-hide overscroll-none">
                                         <div className="max-w-6xl mx-auto min-h-full pb-10">
@@ -418,20 +424,13 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout, user }) => 
                                         </div>
                                     </div>
                                 </div>
-
                                 <div className="main-view-slot" style={{ pointerEvents: view === 'finanzas' ? 'auto' : 'none' }}>
                                     <div className="h-full overflow-y-auto px-4 py-6 md:px-8 scrollbar-hide overscroll-none">
                                         <div className="max-w-6xl mx-auto min-h-full pb-10">
-                                            <Finanzas
-                                                clientes={clientes}
-                                                trabajos={trabajos}
-                                                gastos={gastos}
-                                                onDataRefresh={() => fetchData(false)}
-                                            />
+                                            <Finanzas clientes={clientes} trabajos={trabajos} gastos={gastos} onDataRefresh={() => fetchData(false)} />
                                         </div>
                                     </div>
                                 </div>
-
                                 <div className="main-view-slot" style={{ pointerEvents: view === 'ajustes' ? 'auto' : 'none' }}>
                                     <div className="h-full overflow-y-auto px-4 py-6 md:px-8 scrollbar-hide overscroll-none">
                                         <div className="max-w-4xl mx-auto min-h-full pb-10">
