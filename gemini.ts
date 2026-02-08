@@ -12,7 +12,7 @@ export type GastoData = {
 };
 
 export const getGeminiApiKey = (): string | undefined => {
-    return localStorage.getItem('gemini_api_key') || process.env.API_KEY;
+    return localStorage.getItem('gemini_api_key') || (import.meta as any).env?.VITE_GEMINI_API_KEY;
 };
 
 export const isGeminiAvailable = (): boolean => {
