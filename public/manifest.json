@@ -2,7 +2,7 @@
   "name": "Mi Taller",
   "short_name": "Mi Taller",
   "description": "Gestión profesional de trabajos, presupuestos y clientes para talleres mecánicos.",
-  "start_url": "./",
+  "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#1e3a8a",
