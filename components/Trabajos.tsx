@@ -15,7 +15,7 @@ interface TrabajosProps {
     tallerInfo: TallerInfo;
     searchQuery: string;
     initialTab?: JobStatus;
-    initialJobId?: string; 
+    initialJobId?: string;
     isActive?: boolean;
 }
 
@@ -63,11 +63,11 @@ const CalendarWidget: React.FC<{ trabajos: Trabajo[]; onSelectDate: (date: Date 
     return (
         <div className="bg-white dark:bg-gray-800 rounded-xl p-3 border dark:border-gray-700 shadow-sm mb-4 flex-shrink-0">
             <div className="flex justify-between items-center mb-4 px-1">
-                <button type="button" onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1))}><ChevronLeftIcon className="h-4 w-4"/></button>
+                <button type="button" onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1))}><ChevronLeftIcon className="h-4 w-4" /></button>
                 <span className="text-sm font-bold capitalize">{currentMonth.toLocaleString('es-ES', { month: 'long', year: 'numeric' })}</span>
-                <button type="button" onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1))}><ChevronRightIcon className="h-4 w-4"/></button>
+                <button type="button" onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1))}><ChevronRightIcon className="h-4 w-4" /></button>
             </div>
-            <div className="grid grid-cols-7 gap-1 text-center mb-2">{['D','L','M','M','J','V','S'].map(d => <span key={d} className="text-[10px] font-bold text-gray-400">{d}</span>)}</div>
+            <div className="grid grid-cols-7 gap-1 text-center mb-2">{['D', 'L', 'M', 'M', 'J', 'V', 'S'].map(d => <span key={d} className="text-[10px] font-bold text-gray-400">{d}</span>)}</div>
             <div className="grid grid-cols-7 gap-1">{renderDays()}</div>
         </div>
     );
@@ -80,10 +80,10 @@ const EmptyState: React.FC = () => (
     </div>
 );
 
-const MonthlyGroup: React.FC<{ 
-    monthKey: string; 
-    trabajos: Trabajo[]; 
-    clientes: Cliente[]; 
+const MonthlyGroup: React.FC<{
+    monthKey: string;
+    trabajos: Trabajo[];
+    clientes: Cliente[];
     onUpdateStatus: (id: string, s: JobStatus) => void;
     onDataRefresh: () => void;
     tallerInfo: TallerInfo;
@@ -106,7 +106,7 @@ const MonthlyGroup: React.FC<{
 
     return (
         <div className="mb-3 border dark:border-gray-700 rounded-xl overflow-hidden bg-white dark:bg-gray-800 shadow-sm transition-all duration-300">
-            <button 
+            <button
                 onClick={() => setIsOpen(!isOpen)}
                 className="w-full flex items-center justify-between p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors z-10 relative"
             >
@@ -152,7 +152,7 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
     const [headerVisible, setHeaderVisible] = useState(true);
     const [headerHeight, setHeaderHeight] = useState(0);
     const [selectedDate, setSelectedDate] = useState<Date | null>(null);
-    
+
     const lastScrollTops = useRef<{ [key: string]: number }>({});
     const touchStart = useRef({ x: 0, y: 0 });
     const tabLabelsRef = useRef<{ [key: string]: HTMLButtonElement | null }>({});
@@ -174,12 +174,12 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
         };
     }, []);
 
-    useEffect(() => { 
+    useEffect(() => {
         if (initialTab) {
             setActiveTab(initialTab);
         }
     }, [initialTab]);
-    
+
     useEffect(() => {
         if (isActive) {
             const btn = tabLabelsRef.current[activeTab];
@@ -223,7 +223,7 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
             const c = clientes.find(cl => cl.id === t.clienteId);
             const v = c?.vehiculos.find(ve => ve.id === t.vehiculoId);
             const qb = t.quickBudgetData;
-            
+
             const descMatch = (t.descripcion?.toLowerCase() || '').includes(q);
             const clientMatch = `${c?.nombre || ''} ${c?.apellido || ''}`.toLowerCase().includes(q);
             const vehicleMatch = `${v?.marca || ''} ${v?.modelo || ''} ${v?.matricula || ''}`.toLowerCase().includes(q);
@@ -241,18 +241,18 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
                 const dateB = new Date(b.fechaSalida || b.fechaEntrada).getTime();
                 return dateB - dateA;
             });
-        
+
         if (status === JobStatus.Programado) {
             const scheduled = tabJobs.filter(t => t.fechaProgramada);
             const pending = tabJobs.filter(t => !t.fechaProgramada);
             const calendarFiltered = selectedDate ? scheduled.filter(t => new Date(t.fechaProgramada!).toLocaleDateString() === selectedDate.toLocaleDateString()) : scheduled;
-            
+
             return (
                 <div className="flex flex-col min-h-full">
                     <CalendarWidget trabajos={scheduled} selectedDate={selectedDate} onSelectDate={setSelectedDate} />
                     {pending.length > 0 && (
                         <div className="bg-red-50 dark:bg-red-900/10 p-4 rounded-xl border border-red-100 dark:border-red-900/30 mb-6 flex-shrink-0">
-                            <h4 className="text-[10px] font-black text-red-600 dark:text-red-400 uppercase tracking-widest mb-4 flex items-center gap-2"><ExclamationCircleIcon className="h-4 w-4"/> Pendientes de Turno ({pending.length})</h4>
+                            <h4 className="text-[10px] font-black text-red-600 dark:text-red-400 uppercase tracking-widest mb-4 flex items-center gap-2"><ExclamationCircleIcon className="h-4 w-4" /> Pendientes de Turno ({pending.length})</h4>
                             <div className="space-y-4">
                                 {pending.map(t => (
                                     <JobCard key={t.id} trabajo={t} cliente={clientes.find(c => c.id === t.clienteId)} vehiculo={clientes.find(c => c.id === t.clienteId)?.vehiculos.find(v => v.id === t.vehiculoId)} onUpdateStatus={onUpdateStatus} tallerInfo={tallerInfo} clientes={clientes} onDataRefresh={onDataRefresh} isHighlighted={t.id === initialJobId} />
@@ -312,14 +312,14 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
                                 <h4 className="text-[10px] font-black text-taller-gray uppercase tracking-[0.2em]">Historial Mensual</h4>
                             </div>
                             {sortedMonthKeys.map(key => (
-                                <MonthlyGroup 
-                                    key={key} 
-                                    monthKey={key} 
-                                    trabajos={groupedByMonth[key]} 
-                                    clientes={clientes} 
+                                <MonthlyGroup
+                                    key={key}
+                                    monthKey={key}
+                                    trabajos={groupedByMonth[key]}
+                                    clientes={clientes}
                                     onUpdateStatus={status => onUpdateStatus(status, JobStatus.Finalizado)} // Fix potential typo in logic if needed
-                                    onDataRefresh={onDataRefresh} 
-                                    tallerInfo={tallerInfo} 
+                                    onDataRefresh={onDataRefresh}
+                                    tallerInfo={tallerInfo}
                                     initialJobId={initialJobId}
                                 />
                             ))}
@@ -359,17 +359,36 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
                     will-change: transform;
                     transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
                 }
+                @media (min-width: 1024px) {
+                    .tabs-sliding-container {
+                        transform: none !important;
+                        width: 100% !important;
+                        display: grid !important;
+                        grid-template-columns: repeat(4, 1fr) !important;
+                        gap: 1.5rem;
+                        padding: 0 1.5rem;
+                    }
+                    .inner-tab-slot {
+                        width: 100% !important;
+                        pointer-events: auto !important;
+                        border-right: 1px solid rgba(156, 163, 175, 0.1);
+                        padding-right: 0.75rem;
+                    }
+                    .inner-tab-slot:last-child {
+                        border-right: none;
+                    }
+                }
             `}</style>
-            
-            <div 
+
+            <div
                 ref={headerRef}
                 className={`w-full bg-taller-light dark:bg-taller-dark transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] z-30 flex-shrink-0 ${headerVisible ? 'opacity-100 translate-y-0' : 'opacity-0 pointer-events-none'}`}
-                style={{ 
+                style={{
                     marginTop: headerVisible ? 0 : -headerHeight,
                 }}
             >
                 <div className="max-w-3xl mx-auto p-4 pt-5 pb-3 w-full"><button type="button" onClick={() => setIsCreateModalOpen(true)} className="w-full flex items-center justify-center gap-2 py-3.5 px-4 bg-taller-primary text-white font-extrabold rounded-xl shadow-lg shadow-taller-primary/20 active:scale-95 transition-all"><PlusIcon className="h-5 w-5" /><span className="uppercase tracking-wider text-xs">Nuevo Presupuesto</span></button></div>
-                <div className="flex border-b dark:border-gray-700 bg-taller-light dark:bg-taller-dark overflow-x-auto no-scrollbar w-full">
+                <div className="flex border-b dark:border-gray-700 bg-taller-light dark:bg-taller-dark overflow-x-auto no-scrollbar w-full lg:hidden">
                     <div className="flex min-w-full px-4 sm:justify-center gap-1">
                         {statusOrder.map((status) => (
                             <button key={status} ref={el => tabLabelsRef.current[status] = el} type="button" onClick={() => setActiveTab(status)} className={`flex-none min-w-[85px] py-4 px-2 text-[10px] font-black uppercase tracking-widest text-center transition-colors relative whitespace-nowrap ${activeTab === status ? 'text-taller-primary dark:text-blue-400' : 'text-gray-400 dark:text-gray-600'}`}>{status}{activeTab === status && <div className="absolute bottom-0 left-0 right-0 h-1 bg-taller-primary rounded-t-full"></div>}</button>
@@ -379,16 +398,20 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
             </div>
 
             <div className="flex-1 w-full overflow-hidden relative" onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
-                <div 
-                    className="tabs-sliding-container" 
-                    style={{ 
+                <div
+                    className="tabs-sliding-container"
+                    style={{
                         transform: `translate3d(-${activeIndex * 25}%, 0, 0)`
                     }}
                 >
                     {statusOrder.map((status) => (
-                        <div key={status} className="inner-tab-slot" style={{ pointerEvents: activeTab === status ? 'auto' : 'none' }}>
-                            <div onScroll={(e) => handleVerticalScroll(e, status)} className="h-full overflow-y-auto px-4 py-4 scrollbar-hide overscroll-none">
-                                <div className="max-w-3xl mx-auto min-h-full w-full overflow-x-hidden flex flex-col">
+                        <div key={status} className="inner-tab-slot" style={{ pointerEvents: (activeTab === status) ? 'auto' : 'none' }}>
+                            <div onScroll={(e) => handleVerticalScroll(e, status)} className="h-full overflow-y-auto px-4 py-4 lg:px-0 lg:py-6 scrollbar-hide overscroll-none">
+                                <div className="hidden lg:flex items-center gap-2 mb-6 px-1">
+                                    <h3 className="text-xs font-black uppercase tracking-[0.2em] text-taller-primary dark:text-blue-400">{status}</h3>
+                                    <div className="h-px flex-1 bg-gray-200 dark:bg-gray-700"></div>
+                                </div>
+                                <div className="max-w-3xl lg:max-w-none mx-auto min-h-full w-full overflow-x-hidden flex flex-col">
                                     {renderTabContent(status)}
                                 </div>
                             </div>
@@ -399,11 +422,11 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
 
             <Suspense fallback={null}>
                 {isCreateModalOpen && (
-                    <CrearTrabajoModal 
-                        onClose={() => setIsCreateModalOpen(false)} 
-                        onSuccess={() => { setIsCreateModalOpen(false); onDataRefresh(); }} 
-                        onDataRefresh={onDataRefresh} 
-                        clientes={clientes} 
+                    <CrearTrabajoModal
+                        onClose={() => setIsCreateModalOpen(false)}
+                        onSuccess={() => { setIsCreateModalOpen(false); onDataRefresh(); }}
+                        onDataRefresh={onDataRefresh}
+                        clientes={clientes}
                     />
                 )}
             </Suspense>

@@ -1,11 +1,11 @@
 
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import type { Cliente, Trabajo, TallerInfo, Vehiculo } from '../types';
-import { 
-    WrenchScrewdriverIcon, 
-    BookOpenIcon, 
-    ClockIcon, 
-    Cog6ToothIcon, 
+import {
+    WrenchScrewdriverIcon,
+    BookOpenIcon,
+    ClockIcon,
+    Cog6ToothIcon,
     XMarkIcon,
     ArrowRightOnRectangleIcon,
     KeyIcon,
@@ -39,7 +39,7 @@ const ClientPortal: React.FC<ClientPortalProps> = ({ client, trabajos, onLogout,
     const [isSettingsVisible, setIsSettingsVisible] = useState(false);
     const [isChangePasswordModalOpen, setIsChangePasswordModalOpen] = useState(false);
     const [fontSize, setFontSize] = useState<FontSize>(() => (localStorage.getItem('client_font_size') as FontSize) || 'normal');
-    
+
     // --- Push Notifications State ---
     const [notificationsEnabled, setNotificationsEnabled] = useState(() => localStorage.getItem('notifications_enabled') === 'true');
     const [showInvitation, setShowInvitation] = useState(false);
@@ -59,11 +59,11 @@ const ClientPortal: React.FC<ClientPortalProps> = ({ client, trabajos, onLogout,
 
     useEffect(() => {
         applyAppTheme();
-        
+
         // Verificar si debemos mostrar la invitación de notificaciones
         const neverShowAgain = localStorage.getItem('notifications_never_show') === 'true';
         const isEnabled = localStorage.getItem('notifications_enabled') === 'true';
-        
+
         if (!isEnabled && !neverShowAgain) {
             const timer = setTimeout(() => setShowInvitation(true), 1500);
             return () => clearTimeout(timer);
@@ -169,7 +169,7 @@ const ClientPortal: React.FC<ClientPortalProps> = ({ client, trabajos, onLogout,
 
         const checkUpcomingMaintenance = () => {
             const upcomingItems: string[] = [];
-            
+
             client.vehiculos.forEach(vehiculo => {
                 const vehicleJobs = trabajos.filter(t => t.vehiculoId === vehiculo.id && t.status === 'Finalizado');
                 const checkConfigs = [
@@ -184,7 +184,7 @@ const ClientPortal: React.FC<ClientPortalProps> = ({ client, trabajos, onLogout,
                     if (custom && !custom.enabled) return;
 
                     const intervalMonths = custom ? custom.months : 12;
-                    const lastJob = vehicleJobs.find(t => 
+                    const lastJob = vehicleJobs.find(t =>
                         t.partes.some(p => p.maintenanceType === config.key)
                     );
 
@@ -192,7 +192,7 @@ const ClientPortal: React.FC<ClientPortalProps> = ({ client, trabajos, onLogout,
                         const date = new Date(lastJob.fechaSalida || lastJob.fechaEntrada);
                         const nextDate = new Date(date);
                         nextDate.setMonth(nextDate.getMonth() + intervalMonths);
-                        
+
                         const today = new Date();
                         const diffTime = nextDate.getTime() - today.getTime();
                         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
@@ -216,7 +216,7 @@ const ClientPortal: React.FC<ClientPortalProps> = ({ client, trabajos, onLogout,
         <>
             <style>{getFontStyles()}</style>
             <div className="portal-wrapper h-[100dvh] w-full bg-taller-light dark:bg-taller-dark text-taller-dark dark:text-taller-light transition-all duration-200 flex flex-col overflow-hidden relative">
-                
+
                 {/* --- MODAL INVITACIÓN NOTIFICACIONES --- */}
                 {showInvitation && (
                     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
@@ -229,7 +229,7 @@ const ClientPortal: React.FC<ClientPortalProps> = ({ client, trabajos, onLogout,
                                 <p className="text-sm text-taller-gray dark:text-gray-400 mb-6">
                                     Activa las notificaciones para recibir recordatorios 30 días antes de que venza el mantenimiento de tus vehículos.
                                 </p>
-                                
+
                                 {isIOS && !isStandalone ? (
                                     <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-xl border border-blue-100 dark:border-blue-800 mb-6">
                                         <p className="text-xs font-semibold text-taller-primary dark:text-blue-300 flex items-center gap-2 justify-center mb-2">
@@ -242,20 +242,20 @@ const ClientPortal: React.FC<ClientPortalProps> = ({ client, trabajos, onLogout,
                                 ) : null}
 
                                 <div className="space-y-3">
-                                    <button 
+                                    <button
                                         onClick={handleEnableNotifications}
                                         className="w-full py-3 bg-taller-primary text-white rounded-xl font-bold shadow-lg shadow-taller-primary/20 hover:bg-taller-secondary transition-all active:scale-95"
                                     >
                                         {(isIOS && !isStandalone) ? 'Ver Instrucciones' : 'Sí, activar'}
                                     </button>
                                     <div className="grid grid-cols-2 gap-3">
-                                        <button 
+                                        <button
                                             onClick={() => handleDismissInvitation(false)}
                                             className="py-2 text-sm font-semibold text-taller-gray hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
                                         >
                                             Más tarde
                                         </button>
-                                        <button 
+                                        <button
                                             onClick={() => handleDismissInvitation(true)}
                                             className="py-2 text-sm font-semibold text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10 rounded-lg transition-colors"
                                         >
@@ -279,7 +279,7 @@ const ClientPortal: React.FC<ClientPortalProps> = ({ client, trabajos, onLogout,
                         </button>
                     </div>
                 </header>
-                
+
                 <main className="flex-1 overflow-y-auto overscroll-contain">
                     <div className="max-w-7xl mx-auto px-4 py-8">
                         <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-4">
@@ -287,13 +287,13 @@ const ClientPortal: React.FC<ClientPortalProps> = ({ client, trabajos, onLogout,
                                 <h2 className="text-3xl font-bold">Hola, {client.nombre}</h2>
                                 <p className="text-taller-gray dark:text-gray-400 mt-1">Bienvenido a su historial mecánico digital.</p>
                             </div>
-                            
+
                             {notificationsEnabled ? (
                                 <div className="flex items-center gap-2 px-3 py-1.5 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 rounded-full text-xs font-bold border border-green-200 dark:border-green-800/30 animate-in fade-in slide-in-from-right-4 duration-500">
                                     <BellIcon className="h-4 w-4" /> Notificaciones Activas
                                 </div>
                             ) : (
-                                <button 
+                                <button
                                     onClick={handleEnableNotifications}
                                     className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 dark:bg-blue-900/20 text-taller-primary dark:text-blue-400 rounded-full text-xs font-bold border border-blue-200 dark:border-blue-800/30 hover:bg-blue-100 transition-all"
                                 >
@@ -305,13 +305,13 @@ const ClientPortal: React.FC<ClientPortalProps> = ({ client, trabajos, onLogout,
                         <section className="mb-10 space-y-4">
                             <h3 className="text-xl font-bold mb-4">Sus Vehículos</h3>
                             {client.vehiculos.map(vehiculo => (
-                                <VehicleInfoCard 
-                                    key={vehiculo.id} 
-                                    vehiculo={vehiculo} 
+                                <VehicleInfoCard
+                                    key={vehiculo.id}
+                                    vehiculo={vehiculo}
                                     cliente={client}
                                     tallerInfo={tallerInfo}
-                                    trabajos={trabajos.filter(t => t.vehiculoId === vehiculo.id)} 
-                                    onViewHistory={() => openHistorialModal(trabajos.filter(t => t.vehiculoId === vehiculo.id), `Historial ${vehiculo.marca} ${vehiculo.modelo}`)} 
+                                    trabajos={trabajos.filter(t => t.vehiculoId === vehiculo.id)}
+                                    onViewHistory={() => openHistorialModal(trabajos.filter(t => t.vehiculoId === vehiculo.id), `Historial ${vehiculo.marca} ${vehiculo.modelo}`)}
                                 />
                             ))}
                         </section>
@@ -346,7 +346,7 @@ const ClientPortal: React.FC<ClientPortalProps> = ({ client, trabajos, onLogout,
                                 <button onClick={closeSettings} className="p-1"><XMarkIcon className="h-6 w-6" /></button>
                             </div>
                             <div className="flex-1 p-6 space-y-8 overflow-y-auto">
-                                
+
                                 {/* Notificaciones Toggle */}
                                 <div>
                                     <label className="block text-sm font-bold text-gray-400 uppercase tracking-wider mb-4 flex items-center gap-2"><BellIcon className="h-4 w-4" /> Avisos y Alertas</label>
@@ -355,7 +355,7 @@ const ClientPortal: React.FC<ClientPortalProps> = ({ client, trabajos, onLogout,
                                             <p className="text-sm font-bold">Alertas de Service</p>
                                             <p className="text-[10px] text-taller-gray">Avisar 30 días antes</p>
                                         </div>
-                                        <button 
+                                        <button
                                             onClick={notificationsEnabled ? disableNotifications : handleEnableNotifications}
                                             className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${notificationsEnabled ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'}`}
                                         >

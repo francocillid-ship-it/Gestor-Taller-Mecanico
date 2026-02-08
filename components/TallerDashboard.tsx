@@ -55,7 +55,7 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
     const [searchQuery, setSearchQuery] = useState('');
     const [targetJobStatus, setTargetJobStatus] = useState<JobStatus | undefined>(undefined);
     const [targetJobId, setTargetJobId] = useState<string | undefined>(undefined);
-    
+
     const lastAutoRouteRef = useRef<string>('');
 
     useEffect(() => {
@@ -68,8 +68,8 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
 
         const checkMatchesInView = (targetView: View): boolean => {
             if (targetView === 'clientes') {
-                return clientes.some(c => 
-                    (c.nombre || '').toLowerCase().includes(q) || 
+                return clientes.some(c =>
+                    (c.nombre || '').toLowerCase().includes(q) ||
                     (c.apellido || '').toLowerCase().includes(q) ||
                     (c.vehiculos || []).some(v => (v.matricula || '').toLowerCase().includes(q))
                 );
@@ -78,9 +78,9 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
                 return trabajos.some(t => {
                     const c = clientes.find(cl => cl.id === t.clienteId);
                     const v = c?.vehiculos.find(ve => ve.id === t.vehiculoId);
-                    return (t.descripcion || '').toLowerCase().includes(q) || 
-                           (c?.nombre || '').toLowerCase().includes(q) ||
-                           (v?.matricula || '').toLowerCase().includes(q);
+                    return (t.descripcion || '').toLowerCase().includes(q) ||
+                        (c?.nombre || '').toLowerCase().includes(q) ||
+                        (v?.matricula || '').toLowerCase().includes(q);
                 });
             }
             if (targetView === 'dashboard') {
@@ -131,7 +131,7 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
 
             const { data: trabajosData } = await supabase.from('trabajos').select('*').eq('taller_id', user.id);
             if (trabajosData) {
-                 setTrabajos(trabajosData.map(t => ({
+                setTrabajos(trabajosData.map(t => ({
                     id: t.id,
                     tallerId: t.taller_id,
                     clienteId: t.cliente_id,
@@ -202,7 +202,7 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
     const activeIndex = VIEW_ORDER.indexOf(view);
 
     return (
-        <div className="flex h-screen w-full bg-taller-light dark:bg-taller-dark text-taller-dark dark:text-taller-light overflow-hidden">
+        <div className="flex h-[100dvh] w-full bg-taller-light dark:bg-taller-dark text-taller-dark dark:text-taller-light overflow-hidden">
             <style>{`
                 .main-view-slot { 
                     width: 25%; 
@@ -223,7 +223,7 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
 
             <aside className="hidden md:flex md:flex-col w-64 bg-white dark:bg-gray-800 shadow-lg shrink-0 border-r dark:border-gray-700 z-[90]">
                 <div className="h-20 flex items-center justify-center border-b dark:border-gray-700 p-4">
-                    {tallerInfo.logoUrl ? <img src={tallerInfo.logoUrl} alt="Logo" className="max-h-full object-contain"/> : <WrenchScrewdriverIcon className="h-10 w-10 text-taller-primary" />}
+                    {tallerInfo.logoUrl ? <img src={tallerInfo.logoUrl} alt="Logo" className="max-h-full object-contain" /> : <WrenchScrewdriverIcon className="h-10 w-10 text-taller-primary" />}
                 </div>
                 <nav className="flex-1 px-4 py-6 space-y-2">
                     {navItems.map((item) => (
@@ -236,21 +236,21 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
             </aside>
 
             <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden relative">
-                <Header 
-                    tallerName={tallerInfo.nombre} 
+                <Header
+                    tallerName={tallerInfo.nombre}
                     logoUrl={tallerInfo.logoUrl}
                     showMenuButton={false}
                     searchQuery={searchQuery}
                     onSearchChange={setSearchQuery}
                 />
-                
+
                 <main className="flex-1 w-full overflow-hidden relative bg-taller-light dark:bg-taller-dark">
                     {loading ? (
                         <div className="absolute inset-0 flex items-center justify-center z-[40]">
                             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-taller-primary"></div>
                         </div>
                     ) : (
-                        <div 
+                        <div
                             className="views-container"
                             style={{ transform: `translate3d(-${activeIndex * 25}%, 0, 0)` }}
                         >
@@ -262,18 +262,18 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
                                         </div>
                                     </div>
                                 </div>
-                                
+
                                 <div className="main-view-slot" style={{ pointerEvents: view === 'trabajos' ? 'auto' : 'none' }}>
-                                    <Trabajos 
-                                        trabajos={trabajos} 
-                                        clientes={clientes} 
-                                        onUpdateStatus={handleUpdateStatus} 
-                                        onDataRefresh={() => fetchData(false)} 
-                                        tallerInfo={tallerInfo} 
-                                        searchQuery={searchQuery} 
-                                        initialTab={targetJobStatus} 
-                                        initialJobId={targetJobId} 
-                                        isActive={view === 'trabajos'} 
+                                    <Trabajos
+                                        trabajos={trabajos}
+                                        clientes={clientes}
+                                        onUpdateStatus={handleUpdateStatus}
+                                        onDataRefresh={() => fetchData(false)}
+                                        tallerInfo={tallerInfo}
+                                        searchQuery={searchQuery}
+                                        initialTab={targetJobStatus}
+                                        initialJobId={targetJobId}
+                                        isActive={view === 'trabajos'}
                                     />
                                 </div>
 
@@ -302,7 +302,7 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout }) => {
                     )}
                 </main>
 
-                <nav className="md:hidden bg-white dark:bg-gray-800 border-t dark:border-gray-700 flex-shrink-0 z-[100] pb-[env(safe-area-inset-bottom)]">
+                <nav className="md:hidden bg-white dark:bg-gray-800 border-t dark:border-gray-700 flex-shrink-0 z-[100]" style={{ paddingBottom: 'var(--safe-bottom)' }}>
                     <div className="flex justify-around items-center h-16 w-full px-2">
                         {navItems.map((item) => (
                             <button key={item.id} onClick={() => handleNavigate(item.id as View)} className={`relative flex flex-col items-center justify-center w-full h-full transition-colors duration-200 ${view === item.id ? 'text-taller-primary' : 'text-taller-gray dark:text-gray-400'}`}>

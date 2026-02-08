@@ -22,7 +22,7 @@ const AddVehicleModal: React.FC<AddVehicleModalProps> = ({ onClose, onSuccess, c
     const [error, setError] = useState('');
     const [isCameraModalOpen, setIsCameraModalOpen] = useState(false);
     const [isVisible, setIsVisible] = useState(false);
-    
+
     // Check dynamic availability
     const [geminiEnabled, setGeminiEnabled] = useState(isGeminiAvailable());
 
@@ -57,12 +57,12 @@ const AddVehicleModal: React.FC<AddVehicleModalProps> = ({ onClose, onSuccess, c
         try {
             const { data, error: vehiculoError } = await supabase
                 .from('vehiculos')
-                .insert({ 
-                    cliente_id: clienteId, 
-                    marca: marca.toUpperCase(), 
-                    modelo: modelo.toUpperCase(), 
-                    año: yearNumber, 
-                    matricula: matricula.toUpperCase() 
+                .insert({
+                    cliente_id: clienteId,
+                    marca: marca.toUpperCase(),
+                    modelo: modelo.toUpperCase(),
+                    año: yearNumber,
+                    matricula: matricula.toUpperCase()
                 })
                 .select()
                 .single();
@@ -76,7 +76,7 @@ const AddVehicleModal: React.FC<AddVehicleModalProps> = ({ onClose, onSuccess, c
             setIsSubmitting(false);
         }
     };
-    
+
     const handleDataRecognized = (data: VehiculoData) => {
         if (data.marca) setMarca(data.marca.toUpperCase());
         if (data.modelo) setModelo(data.modelo.toUpperCase());
@@ -87,19 +87,19 @@ const AddVehicleModal: React.FC<AddVehicleModalProps> = ({ onClose, onSuccess, c
 
     const submitForm = () => {
         const form = document.getElementById('vehicle-form') as HTMLFormElement;
-        if(form) {
-            if(form.requestSubmit) form.requestSubmit();
+        if (form) {
+            if (form.requestSubmit) form.requestSubmit();
             else form.submit();
         }
     };
 
     const modalContent = (
         <div className="fixed inset-0 z-[100] flex justify-center items-end sm:items-center sm:p-4">
-             <div 
-                className={`fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-300 ease-out ${isVisible ? 'opacity-100' : 'opacity-0'}`} 
+            <div
+                className={`fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-300 ease-out ${isVisible ? 'opacity-100' : 'opacity-0'}`}
                 onClick={handleClose}
             />
-            <div 
+            <div
                 className={`bg-white dark:bg-gray-800 w-full h-[100dvh] sm:h-auto sm:max-h-[90vh] sm:max-w-lg sm:rounded-xl shadow-2xl flex flex-col overflow-hidden relative z-10 transform transition-all duration-300 ease-out ${isVisible ? 'translate-y-0 opacity-100 sm:scale-100' : 'translate-y-full opacity-0 sm:translate-y-0 sm:scale-95'}`}
             >
                 <div className="flex justify-between items-center p-4 border-b dark:border-gray-700 bg-white dark:bg-gray-800 flex-shrink-0">
@@ -108,12 +108,12 @@ const AddVehicleModal: React.FC<AddVehicleModalProps> = ({ onClose, onSuccess, c
                         <XMarkIcon className="h-6 w-6" />
                     </button>
                 </div>
-                
+
                 <div className="flex-1 overflow-y-auto p-4 space-y-4 overscroll-contain">
-                     <form id="vehicle-form" onSubmit={handleSubmit} className="space-y-4 pb-24 sm:pb-0">
+                    <form id="vehicle-form" onSubmit={handleSubmit} className="space-y-4 pb-24 sm:pb-0">
                         <div className="flex flex-col gap-2 sm:flex-row sm:justify-between sm:items-center border-b dark:border-gray-600 pb-2 pt-2">
-                             <h3 className="text-md font-semibold text-taller-dark dark:text-taller-light">Datos del Vehículo</h3>
-                             {geminiEnabled ? (
+                            <h3 className="text-md font-semibold text-taller-dark dark:text-taller-light">Datos del Vehículo</h3>
+                            {geminiEnabled ? (
                                 <button type="button" onClick={() => setIsCameraModalOpen(true)} className="flex-shrink-0 self-end sm:self-center flex items-center gap-2 px-3 py-1 text-sm font-semibold text-taller-secondary bg-blue-50 border border-taller-secondary/50 rounded-lg shadow-sm hover:bg-blue-100 dark:text-blue-300 dark:bg-blue-900/30 dark:border-blue-500/50 dark:hover:bg-blue-900/50">
                                     <CameraIcon className="h-4 w-4" /> Escanear Cédula
                                 </button>
@@ -142,9 +142,9 @@ const AddVehicleModal: React.FC<AddVehicleModalProps> = ({ onClose, onSuccess, c
                             </div>
                         </div>
                         {error && <p className="text-sm text-red-600">{error}</p>}
-                     </form>
+                    </form>
                 </div>
-                
+
                 <div className="border-t dark:border-gray-700 p-4 bg-white dark:bg-gray-800 flex gap-3 shrink-0 z-10 safe-area-bottom">
                     <button type="button" onClick={handleClose} className="flex-1 justify-center py-3 px-4 border border-gray-300 dark:border-gray-500 rounded-xl text-sm font-bold text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors">
                         Cancelar
@@ -166,9 +166,9 @@ const AddVehicleModal: React.FC<AddVehicleModalProps> = ({ onClose, onSuccess, c
                     onDataRecognized={handleDataRecognized}
                 />
             )}
-             <style>{`
+            <style>{`
                 .safe-area-bottom {
-                    padding-bottom: calc(env(safe-area-inset-bottom) + 32px);
+                    padding-bottom: var(--safe-bottom);
                 }
                 @media (min-width: 640px) {
                     .safe-area-bottom {
