@@ -31,7 +31,7 @@ export const ALL_MAINTENANCE_OPTS = [
 export const applyThemeClass = () => {
     const theme = localStorage.getItem('theme') || 'system';
     const isDark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
-    
+
     if (isDark) {
         document.documentElement.classList.add('dark');
     } else {
@@ -57,6 +57,7 @@ export const applyAppTheme = () => {
 
 export const applyFontSize = (size: 'small' | 'normal' | 'large') => {
     const root = document.documentElement;
+    localStorage.setItem('fontSizePreference', size); // Persistir preferencia
     switch (size) {
         case 'small':
             root.style.fontSize = '14px';

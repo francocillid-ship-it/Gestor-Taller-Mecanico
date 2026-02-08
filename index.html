@@ -10,10 +10,20 @@
   <!-- Script de detección de tema inmediato para evitar parpadeo -->
   <script>
     (function () {
+      // Tema (Oscuro/Claro)
       const theme = localStorage.getItem('theme') || 'system';
       const isDark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
       if (isDark) document.documentElement.classList.add('dark');
       else document.documentElement.classList.remove('dark');
+
+      // Tamaño de Fuente (Sin saltos visuales)
+      const savedFontSize = localStorage.getItem('fontSizePreference');
+      if (savedFontSize) {
+        let sizepx = '16px';
+        if (savedFontSize === 'small') sizepx = '14px';
+        else if (savedFontSize === 'large') sizepx = '18px';
+        document.documentElement.style.fontSize = sizepx;
+      }
     })();
   </script>
 
