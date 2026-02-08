@@ -11,7 +11,8 @@ if (!rootElement) {
 // Registro del Service Worker para soporte de Notificaciones en Móvil/PWA
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js').catch(err => {
+        const swUrl = `${import.meta.env.BASE_URL}sw.js`;
+        navigator.serviceWorker.register(swUrl).catch(err => {
             console.log('Error al registrar Service Worker:', err);
         });
     });
