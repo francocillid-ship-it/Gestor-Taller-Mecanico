@@ -409,8 +409,7 @@ const Finanzas: React.FC<FinanzasProps> = ({ clientes, trabajos, gastos, onDataR
     }, [trabajos, gastos]);
 
     const handleAddGasto = async (newGastos: Omit<Gasto, 'id'>[]) => {
-        const { data: { session } } = await supabase.auth.getSession();
-        const user = session?.user;
+        const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
 
         const { error } = await supabase.from('gastos').insert(
@@ -429,8 +428,7 @@ const Finanzas: React.FC<FinanzasProps> = ({ clientes, trabajos, gastos, onDataR
     };
 
     const handleUpdateGasto = async (updatedGasto: Gasto) => {
-        const { data: { session } } = await supabase.auth.getSession();
-        const user = session?.user;
+        const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
 
         const { error } = await supabase
