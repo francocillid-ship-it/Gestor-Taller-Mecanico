@@ -15,8 +15,8 @@ self.addEventListener('push', (event) => {
   const title = data.title || 'Aviso de Mi Taller';
   const options = {
     body: data.body || 'Tienes un nuevo mensaje.',
-    icon: '/favicon.svg',
-    badge: '/favicon.svg',
+    icon: 'favicon.svg',
+    badge: 'favicon.svg',
     data: data.url
   };
 
@@ -30,7 +30,7 @@ self.addEventListener('notificationclick', (event) => {
       if (clientList.length > 0) {
         return clientList[0].focus();
       }
-      return clients.openWindow('/');
+      return clients.openWindow('./');
     })
   );
 });
