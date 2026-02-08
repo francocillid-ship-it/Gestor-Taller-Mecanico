@@ -52,9 +52,8 @@
       --color-taller-dark: 11 17 32;
       --color-taller-gray: 100 116 139;
 
-      /* Siempre 0px extra, confiamos solo en env(safe-area-inset-bottom) */
-      --browser-extra-bottom: 0px;
-      --safe-bottom: calc(env(safe-area-inset-bottom) + var(--browser-extra-bottom));
+      /* Eliminamos safe area inset por pedido del usuario */
+      --safe-bottom: 0px;
     }
 
     html,
