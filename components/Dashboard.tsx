@@ -27,13 +27,13 @@ interface StatCardProps {
 }
 
 const StatCard: React.FC<StatCardProps> = ({ title, value, icon, color, onClick, onNavigate }) => (
-    <div 
+    <div
         onClick={onClick || onNavigate}
         className={`bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-xl shadow-md flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:space-x-4 h-full transform-gpu transition-all duration-300 ease-out select-none will-change-transform ${(onClick || onNavigate) ? 'cursor-pointer hover:shadow-lg hover:scale-[1.02] active:scale-[0.96]' : ''}`}
     >
         <div className={`p-2 sm:p-3 rounded-full ${color} shrink-0 shadow-sm`}>
-            {React.isValidElement(icon) 
-                ? React.cloneElement(icon as React.ReactElement<any>, { className: "h-5 w-5 sm:h-6 sm:w-6 text-white" }) 
+            {React.isValidElement(icon)
+                ? React.cloneElement(icon as React.ReactElement<any>, { className: "h-5 w-5 sm:h-6 sm:w-6 text-white" })
                 : icon
             }
         </div>
@@ -59,18 +59,18 @@ interface TransactionItem {
 }
 
 // Selector de meses usando Portales para evitar recortes por overflow
-const MonthPickerPortal = ({ 
-    isOpen, 
-    onClose, 
-    availableMonths, 
-    activePeriod, 
+const MonthPickerPortal = ({
+    isOpen,
+    onClose,
+    availableMonths,
+    activePeriod,
     onSelect,
-    anchorRect 
-}: { 
-    isOpen: boolean, 
-    onClose: () => void, 
-    availableMonths: { label: string, value: string }[], 
-    activePeriod: Period, 
+    anchorRect
+}: {
+    isOpen: boolean,
+    onClose: () => void,
+    availableMonths: { label: string, value: string }[],
+    activePeriod: Period,
     onSelect: (p: Period) => void,
     anchorRect: DOMRect | null
 }) => {
@@ -80,20 +80,29 @@ const MonthPickerPortal = ({
         <div className="fixed inset-0 z-[200] flex items-center justify-center sm:block">
             {/* Overlay */}
             <div className="fixed inset-0 bg-black/40 backdrop-blur-sm transition-opacity animate-in fade-in duration-300" onClick={onClose} />
-            
+
             {/* Contenedor del Menú */}
-            <div 
-                className="relative w-[90%] max-w-sm sm:absolute bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border dark:border-gray-700 overflow-hidden animate-in zoom-in-95 fade-in duration-200"
-                style={anchorRect && window.innerWidth > 640 ? {
-                    bottom: window.innerHeight - anchorRect.top + 8,
-                    left: Math.min(anchorRect.left, window.innerWidth - 240)
-                } : {}}
+            <div
+                className="relative w-[95%] max-w-[280px] sm:absolute bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border dark:border-gray-700 overflow-hidden animate-in zoom-in-95 fade-in duration-200"
+                style={anchorRect && window.innerWidth > 640 ? (() => {
+                    const spaceAbove = anchorRect.top;
+                    const spaceBelow = window.innerHeight - anchorRect.bottom;
+                    const menuHeight = 320; // Aproximación (py-3 header + sm:max-h-64 + py-1)
+
+                    const showBelow = spaceBelow > spaceAbove || spaceAbove < menuHeight;
+
+                    return {
+                        top: showBelow ? anchorRect.bottom + 8 : 'auto',
+                        bottom: showBelow ? 'auto' : window.innerHeight - anchorRect.top + 8,
+                        left: Math.max(16, Math.min(anchorRect.left, window.innerWidth - 296)) // 280 (width) + 16 (padding)
+                    };
+                })() : {}}
             >
                 <div className="flex items-center justify-between px-4 py-3 border-b dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50">
                     <span className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Seleccionar Mes</span>
-                    <button onClick={onClose} className="p-1 text-gray-400 hover:text-gray-600"><XMarkIcon className="h-5 w-5"/></button>
+                    <button onClick={onClose} className="p-1 text-gray-400 hover:text-gray-600"><XMarkIcon className="h-5 w-5" /></button>
                 </div>
-                
+
                 <div className="max-h-[60vh] sm:max-h-64 overflow-y-auto py-1">
                     {availableMonths.length > 0 ? (
                         availableMonths.map(m => (
@@ -118,12 +127,12 @@ const MonthPickerPortal = ({
     );
 };
 
-const FilterControls = ({ 
-    activePeriod, 
-    setPeriodFn, 
-    availableMonths 
-}: { 
-    activePeriod: Period, 
+const FilterControls = ({
+    activePeriod,
+    setPeriodFn,
+    availableMonths
+}: {
+    activePeriod: Period,
     setPeriodFn: (p: Period) => void,
     availableMonths: { label: string, value: string }[]
 }) => {
@@ -152,11 +161,10 @@ const FilterControls = ({
                 <button
                     key={p.value}
                     onClick={() => setPeriodFn(p.value)}
-                    className={`flex-shrink-0 px-4 py-2 text-xs sm:text-sm font-medium rounded-full transition-all border whitespace-nowrap ${
-                        activePeriod === p.value 
-                        ? 'bg-taller-primary text-white border-taller-primary shadow-md transform-gpu scale-105' 
+                    className={`flex-shrink-0 px-4 py-2 text-xs sm:text-sm font-medium rounded-full transition-all border whitespace-nowrap ${activePeriod === p.value
+                        ? 'bg-taller-primary text-white border-taller-primary shadow-md transform-gpu scale-105'
                         : 'bg-white dark:bg-gray-800 text-taller-gray dark:text-gray-300 border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700'
-                    }`}
+                        }`}
                 >
                     {p.label}
                 </button>
@@ -173,22 +181,21 @@ const FilterControls = ({
             <button
                 ref={buttonRef}
                 onClick={handleOpenMenu}
-                className={`flex-shrink-0 flex items-center gap-1.5 px-4 py-2 text-xs sm:text-sm font-medium rounded-full transition-all border whitespace-nowrap ${
-                    isMenuOpen
+                className={`flex-shrink-0 flex items-center gap-1.5 px-4 py-2 text-xs sm:text-sm font-medium rounded-full transition-all border whitespace-nowrap ${isMenuOpen
                     ? 'bg-gray-100 dark:bg-gray-700 border-taller-primary text-taller-primary'
                     : 'bg-white dark:bg-gray-800 text-taller-gray dark:text-gray-300 border-gray-200 dark:border-gray-600 hover:bg-gray-50'
-                }`}
+                    }`}
             >
                 <CalendarIcon className="h-4 w-4" />
                 <span>Seleccionar Mes</span>
                 <ChevronDownIcon className={`h-3 w-3 transition-transform ${isMenuOpen ? 'rotate-180' : ''}`} />
             </button>
 
-            <MonthPickerPortal 
-                isOpen={isMenuOpen} 
-                onClose={() => setIsMenuOpen(false)} 
-                availableMonths={availableMonths} 
-                activePeriod={activePeriod} 
+            <MonthPickerPortal
+                isOpen={isMenuOpen}
+                onClose={() => setIsMenuOpen(false)}
+                availableMonths={availableMonths}
+                activePeriod={activePeriod}
                 onSelect={setPeriodFn}
                 anchorRect={rect}
             />
@@ -207,8 +214,8 @@ interface FinancialDetailOverlayProps {
     availableMonths: { label: string, value: string }[];
 }
 
-const FinancialDetailOverlay: React.FC<FinancialDetailOverlayProps> = ({ 
-    detailView, onClose, period, setPeriod, data, gananciasNetasDisplay, onItemClick, availableMonths 
+const FinancialDetailOverlay: React.FC<FinancialDetailOverlayProps> = ({
+    detailView, onClose, period, setPeriod, data, gananciasNetasDisplay, onItemClick, availableMonths
 }) => {
     const [isFilterVisible, setIsFilterVisible] = useState(true);
     const [isVisible, setIsVisible] = useState(false);
@@ -258,7 +265,7 @@ const FinancialDetailOverlay: React.FC<FinancialDetailOverlayProps> = ({
     return createPortal(
         <>
             <div className={`fixed inset-0 z-[99] bg-black/30 backdrop-blur-sm transition-opacity duration-500 ease-in-out ${isVisible ? 'opacity-100' : 'opacity-0'}`} onClick={handleClose} aria-hidden="true" />
-            <div 
+            <div
                 className={`fixed inset-0 z-[100] bg-taller-light dark:bg-taller-dark flex flex-col shadow-2xl transition-transform duration-500 will-change-transform ${isVisible ? 'translate-y-0' : 'translate-y-full'}`}
                 style={{ transitionTimingFunction: 'cubic-bezier(0.32, 0.72, 0, 1)' }}
             >
@@ -284,7 +291,7 @@ const FinancialDetailOverlay: React.FC<FinancialDetailOverlayProps> = ({
                     </div>
 
                     <div className="space-y-3 pb-24">
-                         {data.transactions.length > 0 ? (
+                        {data.transactions.length > 0 ? (
                             data.transactions.map((t, index) => (
                                 <div key={t.id} onClick={() => onItemClick(t)} className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm flex items-center justify-between border-l-4 border-transparent hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer active:scale-[0.98] transition-all duration-300 animate-slide-in-bottom fill-mode-backwards group" style={{ borderLeftColor: t.type === 'income' ? '#22c55e' : '#ef4444', animationDelay: `${index * 50}ms` }}>
                                     <div className="flex items-center gap-3">
@@ -292,7 +299,7 @@ const FinancialDetailOverlay: React.FC<FinancialDetailOverlayProps> = ({
                                         <div>
                                             <p className="font-bold text-taller-dark dark:text-taller-light text-sm flex items-center gap-1">{t.description}<ArrowTopRightOnSquareIcon className="h-3 w-3 text-gray-300 opacity-0 group-hover:opacity-100 transition-opacity" /></p>
                                             <p className="text-xs text-taller-gray dark:text-gray-400">{t.subtext}</p>
-                                            <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">{t.date.toLocaleDateString('es-ES')} {t.date.toLocaleTimeString([], { hour: '2-digit', minute:'2-digit' })}</p>
+                                            <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">{t.date.toLocaleDateString('es-ES')} {t.date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
                                         </div>
                                     </div>
                                     <div className="text-right">
@@ -301,9 +308,9 @@ const FinancialDetailOverlay: React.FC<FinancialDetailOverlayProps> = ({
                                     </div>
                                 </div>
                             ))
-                         ) : (
-                             <div className="text-center py-10 text-taller-gray dark:text-gray-400"><ScaleIcon className="h-12 w-12 mx-auto mb-2 opacity-20" /><p>No hay movimientos en este periodo.</p></div>
-                         )}
+                        ) : (
+                            <div className="text-center py-10 text-taller-gray dark:text-gray-400"><ScaleIcon className="h-12 w-12 mx-auto mb-2 opacity-20" /><p>No hay movimientos en este periodo.</p></div>
+                        )}
                     </div>
                 </div>
             </div>
@@ -319,7 +326,7 @@ const Dashboard: React.FC<DashboardProps> = ({ clientes, trabajos, gastos, onDat
     const [confirmingDeleteGastoId, setConfirmingDeleteGastoId] = useState<string | null>(null);
     const [isLastMonthExpanded, setIsLastMonthExpanded] = useState(false);
     const [detailView, setDetailView] = useState<DetailType>(null);
-    
+
     const gastosSectionRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
@@ -331,7 +338,7 @@ const Dashboard: React.FC<DashboardProps> = ({ clientes, trabajos, gastos, onDat
     // Calcular meses disponibles con registros reales
     const availableMonths = useMemo(() => {
         const months = new Set<string>();
-        
+
         gastos.forEach(g => {
             const d = new Date(g.fecha);
             months.add(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
@@ -354,7 +361,7 @@ const Dashboard: React.FC<DashboardProps> = ({ clientes, trabajos, gastos, onDat
                 value: m
             }));
     }, [gastos, trabajos]);
-    
+
     const getPeriodDates = (selectedPeriod: Period) => {
         const now = new Date();
         let startDate = new Date();
@@ -398,8 +405,8 @@ const Dashboard: React.FC<DashboardProps> = ({ clientes, trabajos, gastos, onDat
         const totalGastos = filteredGastos.reduce((sum, g) => sum + g.monto, 0);
 
         let ingresosTotales = 0;
-        let gananciaManoDeObraReal = 0; 
-        
+        let gananciaManoDeObraReal = 0;
+
         const trabajosFinalizados = trabajos.filter(t => {
             if (t.status !== JobStatus.Finalizado) return false;
             const finishDate = t.fechaSalida ? new Date(t.fechaSalida) : new Date(t.fechaEntrada);
@@ -471,10 +478,10 @@ const Dashboard: React.FC<DashboardProps> = ({ clientes, trabajos, gastos, onDat
         if (error) console.error("Error updating expense:", error);
         else { onDataRefresh(); setGastoToEdit(null); }
     };
-    
+
     const handleDeleteGasto = async (gastoId: string) => {
         const { error } = await supabase.from('gastos').delete().eq('id', gastoId);
-        if(error) console.error("Error deleting expense:", error);
+        if (error) console.error("Error deleting expense:", error);
         else onDataRefresh();
         setConfirmingDeleteGastoId(null);
     };
@@ -553,10 +560,10 @@ const Dashboard: React.FC<DashboardProps> = ({ clientes, trabajos, gastos, onDat
             });
         }
         if (detailView === 'gastos' || detailView === 'balance' || detailView === 'ganancias') {
-             gastos.forEach(g => {
+            gastos.forEach(g => {
                 const date = new Date(g.fecha);
                 if (date >= startDate && date <= endDate) transactions.push({ id: g.id, referenceId: g.id, date: date, amount: g.monto, description: g.descripcion, subtext: 'Gasto registrado', type: 'expense' });
-             });
+            });
         }
         transactions.sort((a, b) => b.date.getTime() - a.date.getTime());
         const total = transactions.reduce((sum, t) => t.type === 'income' ? sum + t.amount : sum - t.amount, 0);
@@ -574,7 +581,7 @@ const Dashboard: React.FC<DashboardProps> = ({ clientes, trabajos, gastos, onDat
                 {confirmingDeleteGastoId === gasto.id ? (
                     <div className="flex items-center gap-2"><span className="text-sm font-medium text-red-600 hidden sm:inline">¿Seguro?</span><button onClick={() => handleDeleteGasto(gasto.id)} className="px-2 py-1 text-xs font-bold text-white bg-red-600 rounded hover:bg-red-700">Sí</button><button onClick={() => setConfirmingDeleteGastoId(null)} className="px-2 py-1 text-xs font-medium text-gray-700 bg-gray-200 dark:bg-gray-600 dark:text-gray-200 dark:hover:bg-gray-500 rounded">No</button></div>
                 ) : (
-                    <div className="flex gap-1"><button onClick={() => setGastoToEdit(gasto)} className="text-taller-gray dark:text-gray-400 hover:text-taller-secondary dark:hover:text-white p-1 bg-gray-100 dark:bg-gray-700 sm:bg-transparent sm:dark:bg-transparent rounded"><PencilIcon className="h-4 w-4"/></button><button onClick={() => setConfirmingDeleteGastoId(gasto.id)} className="text-taller-gray dark:text-gray-400 hover:text-red-600 dark:hover:text-red-500 p-1 bg-gray-100 dark:bg-gray-700 sm:bg-transparent sm:dark:bg-transparent rounded"><TrashIcon className="h-4 w-4"/></button></div>
+                    <div className="flex gap-1"><button onClick={() => setGastoToEdit(gasto)} className="text-taller-gray dark:text-gray-400 hover:text-taller-secondary dark:hover:text-white p-1 bg-gray-100 dark:bg-gray-700 sm:bg-transparent sm:dark:bg-transparent rounded"><PencilIcon className="h-4 w-4" /></button><button onClick={() => setConfirmingDeleteGastoId(gasto.id)} className="text-taller-gray dark:text-gray-400 hover:text-red-600 dark:hover:text-red-500 p-1 bg-gray-100 dark:bg-gray-700 sm:bg-transparent sm:dark:bg-transparent rounded"><TrashIcon className="h-4 w-4" /></button></div>
                 )}
             </div>
         </div>
@@ -588,7 +595,7 @@ const Dashboard: React.FC<DashboardProps> = ({ clientes, trabajos, gastos, onDat
                     <FilterControls activePeriod={period} setPeriodFn={setPeriod} availableMonths={availableMonths} />
                 </div>
             </div>
-            
+
             <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6">
                 <StatCard title="Ingresos Totales" value={stats.ingresosTotales} icon={<CurrencyDollarIcon />} color="bg-blue-500" onClick={() => setDetailView('ingresos')} />
                 <StatCard title="Ganancia" value={stats.gananciasNetas} icon={<ChartPieIcon />} color="bg-green-500" onClick={() => setDetailView('ganancias')} />
@@ -601,7 +608,7 @@ const Dashboard: React.FC<DashboardProps> = ({ clientes, trabajos, gastos, onDat
             <div ref={gastosSectionRef} className="bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-xl shadow-md scroll-mt-24">
                 <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 gap-4">
                     <h3 className="text-lg font-bold text-taller-dark dark:text-taller-light">Gastos Recientes</h3>
-                    <button onClick={() => setIsAddGastoModalOpen(true)} className="flex items-center justify-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-taller-primary rounded-lg shadow-md hover:bg-taller-secondary transition-colors"><PlusIcon className="h-5 w-5"/> Añadir Gasto</button>
+                    <button onClick={() => setIsAddGastoModalOpen(true)} className="flex items-center justify-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-taller-primary rounded-lg shadow-md hover:bg-taller-secondary transition-colors"><PlusIcon className="h-5 w-5" /> Añadir Gasto</button>
                 </div>
                 <div className="space-y-2">
                     {groupedGastos.thisMonth.length > 0 ? groupedGastos.thisMonth.map(renderGastoRow) : !searchQuery && <p className="text-center text-sm text-taller-gray dark:text-gray-400 py-2">No hay gastos registrados este mes.</p>}
@@ -615,9 +622,15 @@ const Dashboard: React.FC<DashboardProps> = ({ clientes, trabajos, gastos, onDat
                 </div>
             </div>
 
-            {isAddGastoModalOpen && <AddGastoModal onClose={() => setIsAddGastoModalOpen(false)} onAddGasto={handleAddGasto} />}
-            {gastoToEdit && <EditGastoModal gasto={gastoToEdit} onClose={() => setGastoToEdit(null)} onUpdateGasto={handleUpdateGasto} />}
-            
+            {isAddGastoModalOpen && createPortal(
+                <AddGastoModal onClose={() => setIsAddGastoModalOpen(false)} onAddGasto={handleAddGasto} />,
+                document.body
+            )}
+            {gastoToEdit && createPortal(
+                <EditGastoModal gasto={gastoToEdit} onClose={() => setGastoToEdit(null)} onUpdateGasto={handleUpdateGasto} />,
+                document.body
+            )}
+
             {detailView && (
                 <FinancialDetailOverlay
                     detailView={detailView}

@@ -12,12 +12,12 @@ export interface Parte {
     nombre: string;
     cantidad: number;
     precioUnitario: number;
-    fecha?: string; 
+    fecha?: string;
     isCategory?: boolean;
     isService?: boolean;
-    maintenanceType?: string; 
-    paymentType?: 'items' | 'labor'; 
-    clientPaidDirectly?: boolean; 
+    maintenanceType?: string;
+    paymentType?: 'items' | 'labor';
+    clientPaidDirectly?: boolean;
 }
 
 export interface Pago {
@@ -37,7 +37,7 @@ export interface Trabajo {
     status: JobStatus;
     fechaEntrada: string;
     fechaSalida?: string;
-    fechaProgramada?: string; 
+    fechaProgramada?: string;
     kilometraje?: number;
     notaAdicional?: string;
     // Campos para Presupuesto Rápido
@@ -82,11 +82,24 @@ export interface Cliente {
     vehiculos: Vehiculo[];
 }
 
+export enum GastoCategoria {
+    Sueldos = 'Sueldos',
+    Alquiler = 'Alquiler',
+    Impuestos = 'Impuestos',
+    Servicios = 'Servicios',
+    Repuestos = 'Repuestos',
+    Herramientas = 'Herramientas',
+    Marketing = 'Marketing',
+    Otros = 'Otros'
+}
+
 export interface Gasto {
     id: string;
     fecha: string;
     descripcion: string;
     monto: number;
+    categoria: GastoCategoria;
+    esFijo: boolean;
 }
 
 export interface TallerInfo {

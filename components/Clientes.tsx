@@ -37,12 +37,12 @@ const ClientCard: React.FC<ClientCardProps> = ({ cliente, trabajos, onEdit, onCo
     const [sendingAccess, setSendingAccess] = useState(false);
     const clientTrabajos = trabajos.filter(t => t.clienteId === cliente.id);
     const cardRef = useRef<HTMLDivElement>(null);
-    
+
     useEffect(() => {
         if (forceExpand) {
             setIsExpanded(true);
         } else {
-             setIsExpanded(false);
+            setIsExpanded(false);
         }
     }, [forceExpand]);
 
@@ -82,7 +82,7 @@ const ClientCard: React.FC<ClientCardProps> = ({ cliente, trabajos, onEdit, onCo
         if (!confirmSend) return;
 
         setSendingAccess(true);
-        
+
         const tempSupabase = createClient(supabaseUrl, supabaseKey, {
             auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false }
         });
@@ -115,7 +115,7 @@ const ClientCard: React.FC<ClientCardProps> = ({ cliente, trabajos, onEdit, onCo
                         email: cliente.email,
                         telefono: cliente.telefono
                     });
-                    
+
                     if (!insertError) {
                         await supabase.from('vehiculos').update({ cliente_id: newAuthId }).eq('cliente_id', cliente.id);
                         await supabase.from('trabajos').update({ cliente_id: newAuthId }).eq('cliente_id', cliente.id);
@@ -143,13 +143,13 @@ const ClientCard: React.FC<ClientCardProps> = ({ cliente, trabajos, onEdit, onCo
                     });
                 } catch (shareError) {
                     if ((shareError as any).name !== 'AbortError') {
-                         await navigator.clipboard.writeText(messageBody);
-                         alert("Enlace y datos de acceso copiados al portapapeles.");
+                        await navigator.clipboard.writeText(messageBody);
+                        alert("Enlace y datos de acceso copiados al portapapeles.");
                     }
                 }
             } else {
-                 await navigator.clipboard.writeText(messageBody);
-                 alert("Datos de acceso copiados al portapapeles. Puedes pegarlo en WhatsApp.");
+                await navigator.clipboard.writeText(messageBody);
+                alert("Datos de acceso copiados al portapapeles. Puedes pegarlo en WhatsApp.");
             }
 
         } catch (error: any) {
@@ -177,7 +177,7 @@ const ClientCard: React.FC<ClientCardProps> = ({ cliente, trabajos, onEdit, onCo
                     <ChevronDownIcon className={`h-6 w-6 text-taller-gray dark:text-gray-400 transform transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`} />
                 </div>
             </button>
-            
+
             <div className={`grid transition-[grid-template-rows] duration-300 ease-in-out ${isExpanded ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>
                 <div className="overflow-hidden">
                     <div className="p-4 border-t dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
@@ -185,21 +185,21 @@ const ClientCard: React.FC<ClientCardProps> = ({ cliente, trabajos, onEdit, onCo
                             <div>
                                 <h4 className="font-semibold mb-2 text-taller-dark dark:text-taller-light">Información de Contacto</h4>
                                 <div className="space-y-2 text-sm text-taller-dark dark:text-gray-300">
-                                    <p className="flex items-center"><PhoneIcon className="h-4 w-4 mr-2 text-taller-gray dark:text-gray-400"/> {cliente.telefono}</p>
+                                    <p className="flex items-center"><PhoneIcon className="h-4 w-4 mr-2 text-taller-gray dark:text-gray-400" /> {cliente.telefono}</p>
                                     <div className="flex flex-wrap items-center justify-between gap-2 group">
                                         <p className="flex items-center break-all">
-                                            <EnvelopeIcon className="h-4 w-4 mr-2 text-taller-gray dark:text-gray-400 flex-shrink-0"/> 
+                                            <EnvelopeIcon className="h-4 w-4 mr-2 text-taller-gray dark:text-gray-400 flex-shrink-0" />
                                             {cliente.email || 'Sin email registrado'}
                                         </p>
                                         {cliente.email && (
-                                            <button 
+                                            <button
                                                 onClick={handleSendAccess}
                                                 disabled={sendingAccess}
                                                 className="flex-shrink-0 flex items-center gap-1 text-xs font-bold text-white bg-green-500 hover:bg-green-600 px-3 py-1.5 rounded-full transition-all shadow-sm ml-auto sm:ml-0 disabled:opacity-50"
                                                 title="Enviar enlace de acceso automático"
                                             >
                                                 {sendingAccess ? (
-                                                    <span className="flex items-center gap-1"><ArrowPathIcon className="h-3 w-3 animate-spin"/> Generando...</span>
+                                                    <span className="flex items-center gap-1"><ArrowPathIcon className="h-3 w-3 flex-shrink-0 animate-spin" /> Generando...</span>
                                                 ) : (
                                                     <>
                                                         <KeyIcon className="h-3.5 w-3.5" />
@@ -225,7 +225,7 @@ const ClientCard: React.FC<ClientCardProps> = ({ cliente, trabajos, onEdit, onCo
                                     {cliente.vehiculos.map(v => (
                                         <div key={v.id} className="flex justify-between items-center bg-white dark:bg-gray-700 p-2 rounded border dark:border-gray-600">
                                             <p><strong>{v.marca} {v.modelo} {v.año ? `(${v.año})` : ''}</strong> - {v.matricula}</p>
-                                            <button 
+                                            <button
                                                 onClick={(e) => { e.stopPropagation(); onConfigVehicle(v); }}
                                                 className="text-taller-gray hover:text-taller-primary dark:text-gray-400 dark:hover:text-white p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
                                                 title="Configurar intervalos de mantenimiento"
@@ -237,14 +237,14 @@ const ClientCard: React.FC<ClientCardProps> = ({ cliente, trabajos, onEdit, onCo
                                 </div>
                             </div>
                         </div>
-                        
+
                         <h4 className="font-semibold mb-2 text-taller-dark dark:text-taller-light">Historial de Trabajos</h4>
                         <div className="space-y-2">
                             {clientTrabajos.length > 0 ? clientTrabajos.map(trabajo => {
                                 const vehiculo = cliente.vehiculos.find(v => v.id === trabajo.vehiculoId);
                                 return (
-                                    <button 
-                                        key={trabajo.id} 
+                                    <button
+                                        key={trabajo.id}
                                         onClick={() => onNavigate('trabajos', trabajo.status, trabajo.id)}
                                         className="w-full text-left p-3 bg-white dark:bg-gray-700 rounded-md border dark:border-gray-600 flex justify-between items-center hover:border-taller-primary hover:shadow-sm transition-all group active:scale-[0.99]"
                                     >
@@ -263,20 +263,20 @@ const ClientCard: React.FC<ClientCardProps> = ({ cliente, trabajos, onEdit, onCo
                                 )
                             }) : <p className="text-sm text-taller-gray dark:text-gray-400">No hay trabajos registrados.</p>}
                         </div>
-                        
+
                         <div className="mt-6 flex gap-3 w-full">
                             <button
                                 onClick={(e) => { e.stopPropagation(); onCreateJob(cliente.id); }}
                                 className="flex-1 flex items-center justify-center gap-2 px-3 py-2 text-sm font-semibold text-white bg-taller-primary rounded-lg shadow-sm hover:bg-taller-secondary transition-colors"
                             >
-                                <CurrencyDollarIcon className="h-4 w-4"/>
+                                <CurrencyDollarIcon className="h-4 w-4" />
                                 Crear Presupuesto
                             </button>
                             <button
                                 onClick={(e) => { e.stopPropagation(); onEdit(cliente); }}
                                 className="flex-1 flex items-center justify-center gap-2 px-3 py-2 text-sm font-semibold text-taller-secondary bg-blue-50 border border-taller-secondary/50 rounded-lg shadow-sm hover:bg-blue-100 dark:text-blue-300 dark:bg-blue-900/30 dark:border-blue-500/50 dark:hover:bg-blue-900/50 transition-colors"
                             >
-                                <PencilIcon className="h-4 w-4"/>
+                                <PencilIcon className="h-4 w-4" />
                                 Editar Datos
                             </button>
                         </div>
@@ -315,12 +315,12 @@ const Clientes: React.FC<ClientesProps> = ({ clientes, trabajos, onDataRefresh, 
     const filteredClientes = useMemo(() => {
         let result = clientes;
         const lowercasedQuery = searchQuery.toLowerCase();
-        
+
         if (lowercasedQuery) {
             result = clientes.filter(cliente => {
                 const fullName = `${cliente.nombre} ${cliente.apellido || ''}`.toLowerCase();
                 const nameMatch = fullName.includes(lowercasedQuery);
-                const vehicleMatch = cliente.vehiculos.some(v => 
+                const vehicleMatch = cliente.vehiculos.some(v =>
                     (v.marca?.toLowerCase() || '').includes(lowercasedQuery) ||
                     (v.modelo?.toLowerCase() || '').includes(lowercasedQuery) ||
                     (v.matricula?.toLowerCase() || '').includes(lowercasedQuery)
@@ -341,11 +341,11 @@ const Clientes: React.FC<ClientesProps> = ({ clientes, trabajos, onDataRefresh, 
             <div className="flex flex-col gap-4 sm:flex-row sm:justify-between sm:items-center">
                 <h2 className="text-2xl font-bold text-taller-dark dark:text-taller-light">Gestión de Clientes</h2>
                 <div className="flex flex-col sm:flex-row gap-3">
-                     <button
+                    <button
                         onClick={() => setIsCreateModalOpen(true)}
                         className="flex items-center justify-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-taller-primary rounded-lg shadow-md hover:bg-taller-secondary focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-taller-primary transition-colors"
                     >
-                        <UserPlusIcon className="h-5 w-5"/>
+                        <UserPlusIcon className="h-5 w-5" />
                         Nuevo Cliente
                     </button>
                 </div>
@@ -353,15 +353,15 @@ const Clientes: React.FC<ClientesProps> = ({ clientes, trabajos, onDataRefresh, 
             <div className="space-y-4">
                 {filteredClientes.length > 0 ? (
                     filteredClientes.map(cliente => (
-                        <ClientCard 
-                            key={cliente.id} 
-                            cliente={cliente} 
-                            trabajos={trabajos} 
-                            onEdit={handleEditClick} 
+                        <ClientCard
+                            key={cliente.id}
+                            cliente={cliente}
+                            trabajos={trabajos}
+                            onEdit={handleEditClick}
                             onConfigVehicle={setVehicleToConfig}
                             onAddVehicle={setClientToAddVehicle}
                             onCreateJob={setClientForNewJob}
-                            forceExpand={searchQuery.length > 0} 
+                            forceExpand={searchQuery.length > 0}
                             onDataRefresh={onDataRefresh}
                             onNavigate={onNavigate}
                         />
@@ -384,7 +384,7 @@ const Clientes: React.FC<ClientesProps> = ({ clientes, trabajos, onDataRefresh, 
                 )}
 
                 {vehicleToConfig && (
-                    <MaintenanceConfigModal 
+                    <MaintenanceConfigModal
                         vehiculo={vehicleToConfig}
                         onClose={() => setVehicleToConfig(null)}
                         onSuccess={() => {

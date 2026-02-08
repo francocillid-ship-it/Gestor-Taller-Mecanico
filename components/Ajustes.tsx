@@ -3,20 +3,20 @@ import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import type { TallerInfo } from '../types';
 import { supabase } from '../supabaseClient';
-import { 
-    BuildingOffice2Icon, 
-    PhotoIcon, 
-    ArrowUpOnSquareIcon, 
-    PaintBrushIcon, 
-    SunIcon, 
-    MoonIcon, 
-    ComputerDesktopIcon, 
-    DocumentTextIcon, 
-    CheckCircleIcon, 
-    ExclamationTriangleIcon, 
-    KeyIcon, 
-    ArrowRightOnRectangleIcon, 
-    MagnifyingGlassPlusIcon, 
+import {
+    BuildingOffice2Icon,
+    PhotoIcon,
+    ArrowUpOnSquareIcon,
+    PaintBrushIcon,
+    SunIcon,
+    MoonIcon,
+    ComputerDesktopIcon,
+    DocumentTextIcon,
+    CheckCircleIcon,
+    ExclamationTriangleIcon,
+    KeyIcon,
+    ArrowRightOnRectangleIcon,
+    MagnifyingGlassPlusIcon,
     ArrowPathIcon,
     SparklesIcon,
     ArrowTopRightOnSquareIcon,
@@ -37,25 +37,25 @@ type Theme = 'light' | 'dark' | 'system';
 type SaveStatus = 'idle' | 'saving' | 'saved' | 'error';
 
 const HEADER_COLORS = [
-    { name: 'Gris Ejecutivo', value: '#334155', bg: 'bg-slate-700' }, 
-    { name: 'Azul Marino', value: '#1e3a8a', bg: 'bg-blue-900' },     
-    { name: 'Verde Bosque', value: '#14532d', bg: 'bg-green-900' },   
-    { name: 'Borggoña', value: '#7f1d1d', bg: 'bg-red-900' },         
-    { name: 'Carbón', value: '#18181b', bg: 'bg-zinc-900' },          
-    { name: 'Bronce', value: '#78350f', bg: 'bg-amber-900' },         
+    { name: 'Gris Ejecutivo', value: '#334155', bg: 'bg-slate-700' },
+    { name: 'Azul Marino', value: '#1e3a8a', bg: 'bg-blue-900' },
+    { name: 'Verde Bosque', value: '#14532d', bg: 'bg-green-900' },
+    { name: 'Borggoña', value: '#7f1d1d', bg: 'bg-red-900' },
+    { name: 'Carbón', value: '#18181b', bg: 'bg-zinc-900' },
+    { name: 'Bronce', value: '#78350f', bg: 'bg-amber-900' },
 ];
 
 const FloatingStatus = ({ status }: { status: SaveStatus }) => {
     if (status === 'idle') return null;
 
     const baseClasses = "fixed top-24 right-4 md:top-24 md:right-8 z-[9999] flex items-center gap-2 px-4 py-2 rounded-full shadow-xl font-bold text-sm transition-all duration-300 transform translate-y-0 opacity-100 animate-in slide-in-from-top-4 fade-in border border-white/20 backdrop-blur-sm";
-    
+
     let content = null;
 
     if (status === 'saving') {
         content = (
             <div className={`${baseClasses} bg-blue-600/90 text-white shadow-blue-500/30`}>
-                <ArrowPathIcon className="h-4 w-4 animate-spin" />
+                <ArrowPathIcon className="h-4 w-4 flex-shrink-0 animate-spin" />
                 <span>Guardando...</span>
             </div>
         );
@@ -91,7 +91,7 @@ const Ajustes: React.FC<AjustesProps> = ({ tallerInfo, onUpdateTallerInfo, onLog
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [theme, setTheme] = useState<Theme>(() => (localStorage.getItem('theme') as Theme) || 'system');
     const [isChangePasswordModalOpen, setIsChangePasswordModalOpen] = useState(false);
-    
+
     // IA State
     const [geminiKey, setGeminiKey] = useState(() => localStorage.getItem('gemini_api_key') || '');
     const [showKey, setShowKey] = useState(false);
@@ -101,7 +101,7 @@ const Ajustes: React.FC<AjustesProps> = ({ tallerInfo, onUpdateTallerInfo, onLog
         const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
         const listener = () => applyThemeClass();
         mediaQuery.addEventListener('change', listener);
-        applyThemeClass(); 
+        applyThemeClass();
         return () => mediaQuery.removeEventListener('change', listener);
     }, [theme]);
 
@@ -117,7 +117,7 @@ const Ajustes: React.FC<AjustesProps> = ({ tallerInfo, onUpdateTallerInfo, onLog
         }
         applyAppTheme();
         if (tallerInfo.fontSize) applyFontSize(tallerInfo.fontSize as any);
-    }, [tallerInfo, lastSavedData]); 
+    }, [tallerInfo, lastSavedData]);
 
     useEffect(() => {
         if (isFirstRender.current) {
@@ -146,7 +146,7 @@ const Ajustes: React.FC<AjustesProps> = ({ tallerInfo, onUpdateTallerInfo, onLog
         return () => {
             if (timeoutRef.current) clearTimeout(timeoutRef.current);
         };
-    }, [formData, lastSavedData]); 
+    }, [formData, lastSavedData]);
 
     const handleThemeChange = (newTheme: Theme) => {
         setTheme(newTheme);
@@ -154,7 +154,7 @@ const Ajustes: React.FC<AjustesProps> = ({ tallerInfo, onUpdateTallerInfo, onLog
         else localStorage.setItem('theme', newTheme);
         applyThemeClass();
     };
-    
+
     const handleFontSizeChange = (size: 'small' | 'normal' | 'large') => {
         applyFontSize(size);
         setFormData(prev => ({ ...prev, fontSize: size }));
@@ -185,16 +185,15 @@ const Ajustes: React.FC<AjustesProps> = ({ tallerInfo, onUpdateTallerInfo, onLog
             setIsUploading(false);
         }
     };
-    
+
     const ThemeButton = ({ value, currentTheme, onClick, icon: Icon, label }: { value: Theme, currentTheme: Theme, onClick: (theme: Theme) => void, icon: React.ElementType, label: string }) => (
         <button
             type="button"
             onClick={() => onClick(value)}
-            className={`w-full flex flex-col items-center gap-2 rounded-md py-3 text-sm font-medium transition-colors ${
-                currentTheme === value
+            className={`w-full flex flex-col items-center gap-2 rounded-md py-3 text-sm font-medium transition-colors ${currentTheme === value
                     ? 'bg-taller-primary text-white shadow-md'
                     : 'text-taller-gray dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-100 dark:border-gray-600 hover:bg-gray-50'
-            }`}
+                }`}
         >
             <Icon className="h-6 w-6" />
             <span>{label}</span>
@@ -217,7 +216,7 @@ const Ajustes: React.FC<AjustesProps> = ({ tallerInfo, onUpdateTallerInfo, onLog
         return (
             <div className="border border-gray-200 dark:border-gray-600 rounded-lg overflow-hidden shadow-lg bg-white w-full max-w-[300px] mx-auto aspect-[1/1.41] flex flex-col text-[6px] text-gray-800 relative select-none pointer-events-none">
                 <div style={{ backgroundColor: primaryColor }} className="w-full h-[15%] flex items-center px-2 text-white">
-                     {formData.showLogoOnPdf && formData.logoUrl && (
+                    {formData.showLogoOnPdf && formData.logoUrl && (
                         <div className="w-8 h-8 bg-white/20 mr-2 rounded flex items-center justify-center overflow-hidden">
                             <img src={formData.logoUrl} alt="logo" className="w-full h-full object-contain" />
                         </div>
@@ -260,7 +259,7 @@ const Ajustes: React.FC<AjustesProps> = ({ tallerInfo, onUpdateTallerInfo, onLog
                             </tr>
                         </tbody>
                     </table>
-                     <div className="mt-4 flex justify-end">
+                    <div className="mt-4 flex justify-end">
                         <div className="w-1/2 text-right space-y-0.5">
                             <div className="flex justify-between border-b border-gray-200 pb-0.5">
                                 <span>Subtotal:</span>
@@ -288,11 +287,11 @@ const Ajustes: React.FC<AjustesProps> = ({ tallerInfo, onUpdateTallerInfo, onLog
                 <div className="flex justify-between items-center px-4 md:px-0">
                     <h2 className="text-2xl font-bold text-taller-dark dark:text-taller-light">Ajustes del Taller</h2>
                 </div>
-                
+
                 <form className="space-y-8 px-4 md:px-0" onSubmit={(e) => e.preventDefault()}>
                     {shouldShow(['datos', 'nombre', 'telefono', 'direccion', 'cuit', 'logo']) && (
                         <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md transition-shadow hover:shadow-lg">
-                            <h3 className="text-lg font-bold mb-6 flex items-center"><BuildingOffice2Icon className="h-6 w-6 mr-2 text-taller-primary"/>Datos del Taller</h3>
+                            <h3 className="text-lg font-bold mb-6 flex items-center"><BuildingOffice2Icon className="h-6 w-6 mr-2 text-taller-primary" />Datos del Taller</h3>
                             <div className="space-y-4">
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                     <div className="md:col-span-1 flex flex-col items-center">
@@ -301,23 +300,23 @@ const Ajustes: React.FC<AjustesProps> = ({ tallerInfo, onUpdateTallerInfo, onLog
                                         <button type="button" onClick={() => fileInputRef.current?.click()} disabled={isUploading} className="relative w-32 h-32 bg-taller-light dark:bg-gray-700 rounded-full flex items-center justify-center text-taller-gray dark:text-gray-400 border-2 border-dashed dark:border-gray-600 hover:border-taller-primary transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-taller-primary">
                                             {isUploading && (
                                                 <div className="absolute inset-0 bg-white/70 dark:bg-gray-800/70 flex items-center justify-center rounded-full">
-                                                    <svg className="animate-spin h-8 w-8 text-taller-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                    <svg className="animate-spin h-8 w-8 flex-shrink-0 text-taller-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                                                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                                                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                                     </svg>
                                                 </div>
                                             )}
-                                            {formData.logoUrl ? <img src={formData.logoUrl} alt="Logo" className="w-full h-full object-cover rounded-full"/> : <PhotoIcon className="h-12 w-12"/>}
-                                            <div className="absolute -bottom-1 -right-1 p-1.5 bg-taller-primary rounded-full text-white shadow-md"><ArrowUpOnSquareIcon className="h-4 w-4"/></div>
+                                            {formData.logoUrl ? <img src={formData.logoUrl} alt="Logo" className="w-full h-full object-cover rounded-full" /> : <PhotoIcon className="h-12 w-12" />}
+                                            <div className="absolute -bottom-1 -right-1 p-1.5 bg-taller-primary rounded-full text-white shadow-md"><ArrowUpOnSquareIcon className="h-4 w-4" /></div>
                                         </button>
                                     </div>
                                     <div className="md:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-6">
-                                        <div><label htmlFor="nombre" className="block text-sm font-medium text-taller-gray dark:text-gray-400">Nombre</label><input type="text" id="nombre" name="nombre" value={formData.nombre} onChange={handleChange} className="mt-1 block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-taller-primary focus:border-taller-primary sm:text-sm" required/></div>
-                                        <div><label htmlFor="telefono" className="block text-sm font-medium text-taller-gray dark:text-gray-400">Teléfono</label><input type="tel" id="telefono" name="telefono" value={formData.telefono} onChange={handleChange} className="mt-1 block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-taller-primary focus:border-taller-primary sm:text-sm" required/></div>
-                                        <div className="sm:col-span-2"><label htmlFor="direccion" className="block text-sm font-medium text-taller-gray dark:text-gray-400">Dirección</label><input type="text" id="direccion" name="direccion" value={formData.direccion} onChange={handleChange} className="mt-1 block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-taller-primary focus:border-taller-primary sm:text-sm" required/></div>
+                                        <div><label htmlFor="nombre" className="block text-sm font-medium text-taller-gray dark:text-gray-400">Nombre</label><input type="text" id="nombre" name="nombre" value={formData.nombre} onChange={handleChange} className="mt-1 block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-taller-primary focus:border-taller-primary sm:text-sm" required /></div>
+                                        <div><label htmlFor="telefono" className="block text-sm font-medium text-taller-gray dark:text-gray-400">Teléfono</label><input type="tel" id="telefono" name="telefono" value={formData.telefono} onChange={handleChange} className="mt-1 block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-taller-primary focus:border-taller-primary sm:text-sm" required /></div>
+                                        <div className="sm:col-span-2"><label htmlFor="direccion" className="block text-sm font-medium text-taller-gray dark:text-gray-400">Dirección</label><input type="text" id="direccion" name="direccion" value={formData.direccion} onChange={handleChange} className="mt-1 block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-taller-primary focus:border-taller-primary sm:text-sm" required /></div>
                                         <div>
                                             <label htmlFor="cuit" className="block text-sm font-medium text-taller-gray dark:text-gray-400">CUIT</label>
-                                            <input type="text" id="cuit" name="cuit" value={formData.cuit} onChange={handleChange} className="mt-1 block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-taller-primary focus:border-taller-primary sm:text-sm" required/>
+                                            <input type="text" id="cuit" name="cuit" value={formData.cuit} onChange={handleChange} className="mt-1 block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-taller-primary focus:border-taller-primary sm:text-sm" required />
                                             <div className="flex items-center mt-3">
                                                 <input id="showCuitOnPdf" name="showCuitOnPdf" type="checkbox" checked={formData.showCuitOnPdf !== false} onChange={(e) => setFormData(prev => ({ ...prev, showCuitOnPdf: e.target.checked }))} className="h-4 w-4 text-taller-primary focus:ring-taller-primary border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700" />
                                                 <label htmlFor="showCuitOnPdf" className="ml-2 block text-sm text-taller-gray dark:text-gray-400">Mostrar en PDFs</label>
@@ -331,7 +330,7 @@ const Ajustes: React.FC<AjustesProps> = ({ tallerInfo, onUpdateTallerInfo, onLog
 
                     {shouldShow(['documentos', 'pdf', 'plantilla', 'logo', 'color', 'diseño']) && (
                         <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md transition-shadow hover:shadow-lg">
-                            <h3 className="text-lg font-bold mb-6 flex items-center"><DocumentTextIcon className="h-6 w-6 mr-2 text-taller-primary"/>Plantillas de Documentos</h3>
+                            <h3 className="text-lg font-bold mb-6 flex items-center"><DocumentTextIcon className="h-6 w-6 mr-2 text-taller-primary" />Plantillas de Documentos</h3>
                             <div className="flex flex-col lg:flex-row gap-8">
                                 <div className="flex-1 space-y-6">
                                     <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
@@ -361,10 +360,10 @@ const Ajustes: React.FC<AjustesProps> = ({ tallerInfo, onUpdateTallerInfo, onLog
                             </div>
                         </div>
                     )}
-                    
+
                     {shouldShow(['apariencia', 'tema', 'oscuro', 'claro', 'fuente', 'texto']) && (
                         <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md transition-shadow hover:shadow-lg">
-                            <h3 className="text-lg font-bold mb-4 flex items-center"><PaintBrushIcon className="h-6 w-6 mr-2 text-taller-primary"/>Apariencia de la App</h3>
+                            <h3 className="text-lg font-bold mb-4 flex items-center"><PaintBrushIcon className="h-6 w-6 mr-2 text-taller-primary" />Apariencia de la App</h3>
                             <div className="space-y-8">
                                 <div>
                                     <label className="block text-sm font-medium text-taller-gray dark:text-gray-400 mb-3">Modo Visual</label>
@@ -379,7 +378,7 @@ const Ajustes: React.FC<AjustesProps> = ({ tallerInfo, onUpdateTallerInfo, onLog
                                 </div>
 
                                 <div className="border-t dark:border-gray-700 pt-6">
-                                    <label className="block text-sm font-medium text-taller-gray dark:text-gray-400 mb-3 flex items-center gap-2"><MagnifyingGlassPlusIcon className="h-5 w-5"/> Tamaño de Fuente</label>
+                                    <label className="block text-sm font-medium text-taller-gray dark:text-gray-400 mb-3 flex items-center gap-2"><MagnifyingGlassPlusIcon className="h-5 w-5" /> Tamaño de Fuente</label>
                                     <div className="flex flex-col sm:flex-row gap-4">
                                         <div className="flex-1 bg-gray-50 dark:bg-gray-700/50 p-1 rounded-lg flex flex-wrap gap-1">
                                             {['small', 'normal', 'large'].map((opt) => (
@@ -398,7 +397,7 @@ const Ajustes: React.FC<AjustesProps> = ({ tallerInfo, onUpdateTallerInfo, onLog
                         <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md border dark:border-gray-700 transition-all">
                             <div className="flex items-center justify-between mb-6">
                                 <h3 className="text-lg font-bold flex items-center">
-                                    <SparklesIcon className="h-6 w-6 mr-2 text-taller-primary"/>
+                                    <SparklesIcon className="h-6 w-6 mr-2 text-taller-primary" />
                                     Inteligencia Artificial (Gemini)
                                 </h3>
                                 {geminiKey && (
@@ -412,7 +411,7 @@ const Ajustes: React.FC<AjustesProps> = ({ tallerInfo, onUpdateTallerInfo, onLog
                                 <div>
                                     <label htmlFor="gemini-key" className="block text-sm font-medium text-taller-gray dark:text-gray-400 mb-1">Clave de API</label>
                                     <div className="relative">
-                                        <input 
+                                        <input
                                             type={showKey ? "text" : "password"}
                                             id="gemini-key"
                                             placeholder="Pega tu clave de Google Gemini aquí..."
@@ -420,7 +419,7 @@ const Ajustes: React.FC<AjustesProps> = ({ tallerInfo, onUpdateTallerInfo, onLog
                                             onChange={handleKeyChange}
                                             className="block w-full pl-4 pr-12 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:ring-2 focus:ring-taller-primary outline-none transition-all"
                                         />
-                                        <button 
+                                        <button
                                             type="button"
                                             onClick={() => setShowKey(!showKey)}
                                             className="absolute right-3 top-3 text-gray-400 hover:text-taller-primary transition-colors"
@@ -434,9 +433,9 @@ const Ajustes: React.FC<AjustesProps> = ({ tallerInfo, onUpdateTallerInfo, onLog
                                 </div>
 
                                 <div className="pt-2 border-t dark:border-gray-700">
-                                    <a 
-                                        href="https://aistudio.google.com/app/apikey" 
-                                        target="_blank" 
+                                    <a
+                                        href="https://aistudio.google.com/app/apikey"
+                                        target="_blank"
                                         rel="noopener noreferrer"
                                         className="inline-flex items-center gap-2 text-sm font-bold text-taller-primary hover:text-taller-secondary transition-colors group"
                                     >

@@ -78,27 +78,27 @@ const CameraRecognitionModal: React.FC<CameraRecognitionModalProps> = ({ onClose
         };
 
         try {
-            const mediaStream = await navigator.mediaDevices.getUserMedia({ 
-                video: { 
+            const mediaStream = await navigator.mediaDevices.getUserMedia({
+                video: {
                     facingMode: 'environment',
                     width: { ideal: 1920 },
                     height: { ideal: 1080 }
-                } 
+                }
             });
-            
+
             streamRef.current = mediaStream;
             if (videoRef.current) {
                 videoRef.current.srcObject = mediaStream;
                 videoRef.current.onloadedmetadata = () => {
-                    if (videoRef.current) setVideoDimensions({ 
-                        width: videoRef.current.videoWidth, 
-                        height: videoRef.current.videoHeight 
+                    if (videoRef.current) setVideoDimensions({
+                        width: videoRef.current.videoWidth,
+                        height: videoRef.current.videoHeight
                     });
                 };
                 await videoRef.current.play();
-                
-                if (detector) { 
-                    animationFrameId.current = requestAnimationFrame(detectText); 
+
+                if (detector) {
+                    animationFrameId.current = requestAnimationFrame(detectText);
                 }
             }
         } catch (err: any) {
@@ -119,10 +119,10 @@ const CameraRecognitionModal: React.FC<CameraRecognitionModalProps> = ({ onClose
         }
         return () => stopCamera();
     }, [capturedImage, startCamera, stopCamera]);
-    
+
     const handleCapture = async () => {
         if (!videoRef.current || !canvasRef.current || !streamRef.current) return;
-        
+
         setIsLoading(true);
         setError(null);
 
@@ -133,26 +133,26 @@ const CameraRecognitionModal: React.FC<CameraRecognitionModalProps> = ({ onClose
         const canvas = canvasRef.current;
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
-        
+
         const context = canvas.getContext('2d');
         if (!context) {
             setError("Error al procesar la imagen.");
             setIsLoading(false);
             return;
         }
-        
+
         context.drawImage(video, 0, 0, video.videoWidth, video.videoHeight);
-        
+
         const imageDataUrl = canvas.toDataURL('image/jpeg', 0.9);
         setCapturedImage(imageDataUrl);
         stopCamera();
-        
+
         const base64Image = imageDataUrl.split(',')[1];
 
         try {
             const data = await recognizeVehicleDataFromImage(base64Image);
             if (Object.keys(data).length === 0) {
-                 setError("No se pudo reconocer ningún dato. Intente con una foto más clara y nítida.");
+                setError("No se pudo reconocer ningún dato. Intente con una foto más clara y nítida.");
             } else {
                 handleClose();
                 onDataRecognized(data);
@@ -163,7 +163,7 @@ const CameraRecognitionModal: React.FC<CameraRecognitionModalProps> = ({ onClose
             setIsLoading(false);
         }
     };
-    
+
     const handleRetry = () => {
         setCapturedImage(null);
         setError(null);
@@ -176,17 +176,17 @@ const CameraRecognitionModal: React.FC<CameraRecognitionModalProps> = ({ onClose
 
     return (
         <div className="fixed inset-0 z-[110] flex justify-center items-center">
-             <div 
-                className={`fixed inset-0 bg-black/75 transition-opacity duration-300 ease-out ${isVisible ? 'opacity-100' : 'opacity-0'}`} 
+            <div
+                className={`fixed inset-0 bg-black/75 transition-opacity duration-300 ease-out ${isVisible ? 'opacity-100' : 'opacity-0'}`}
                 onClick={handleClose}
             />
-            <div 
+            <div
                 className={`bg-white dark:bg-gray-800 rounded-lg shadow-xl p-4 w-full max-w-lg relative text-center z-10 transform transition-all duration-300 ease-out ${isVisible ? 'scale-100 opacity-100' : 'scale-95 opacity-0'}`}
             >
                 <button onClick={handleClose} className="absolute top-2 right-2 text-taller-gray dark:text-gray-400 hover:text-taller-dark dark:hover:text-white z-20 bg-white/50 dark:bg-black/50 rounded-full p-1">
                     <XMarkIcon className="h-6 w-6" />
                 </button>
-                
+
                 <h2 className="text-lg font-bold text-taller-dark dark:text-taller-light mb-2">Escanear Cédula</h2>
 
                 <div className="relative w-full aspect-video bg-black rounded-md overflow-hidden flex flex-col items-center justify-center">
@@ -205,7 +205,7 @@ const CameraRecognitionModal: React.FC<CameraRecognitionModalProps> = ({ onClose
                                         <p><strong>Android:</strong> Clic en los 3 puntos ⋮ &gt; Configuración &gt; Configuración de sitios &gt; Cámara &gt; Permitir.</p>
                                         <p><strong>iOS:</strong> Ajustes &gt; Safari &gt; Cámara &gt; Permitir.</p>
                                     </div>
-                                    <button 
+                                    <button
                                         onClick={startCamera}
                                         className="px-6 py-2 bg-taller-primary text-white font-bold rounded-lg hover:bg-taller-secondary transition-all"
                                     >
@@ -233,7 +233,7 @@ const CameraRecognitionModal: React.FC<CameraRecognitionModalProps> = ({ onClose
                                     )}
                                     {!streamRef.current && !error && (
                                         <div className="absolute inset-0 flex flex-col items-center justify-center text-white bg-black/40">
-                                            <ArrowPathIcon className="h-8 w-8 animate-spin mb-2" />
+                                            <ArrowPathIcon className="h-8 w-8 flex-shrink-0 animate-spin mb-2" />
                                             <p className="text-xs">Iniciando cámara...</p>
                                         </div>
                                     )}
@@ -243,21 +243,21 @@ const CameraRecognitionModal: React.FC<CameraRecognitionModalProps> = ({ onClose
                     )}
                     {isLoading && (
                         <div className="absolute inset-0 bg-black/70 flex flex-col justify-center items-center text-white z-30">
-                            <ArrowPathIcon className="h-10 w-10 animate-spin mb-2" />
+                            <ArrowPathIcon className="h-10 w-10 flex-shrink-0 animate-spin mb-2" />
                             <p className="font-bold">Analizando Cédula...</p>
                         </div>
                     )}
                 </div>
 
                 {error && <p className="text-xs font-bold text-red-500 mt-3 px-4">{error}</p>}
-                
+
                 <div className="mt-4 flex justify-center items-center h-16">
-                   {error && capturedImage ? (
-                         <button
+                    {error && capturedImage ? (
+                        <button
                             onClick={handleRetry}
                             className="flex items-center gap-2 px-6 py-2 text-sm font-bold text-white bg-taller-primary rounded-full shadow-lg hover:bg-taller-secondary transition-all"
                         >
-                            <ArrowPathIcon className="h-5 w-5"/> Reintentar Captura
+                            <ArrowPathIcon className="h-5 w-5" /> Reintentar Captura
                         </button>
                     ) : (!capturedImage && streamRef.current) ? (
                         <button

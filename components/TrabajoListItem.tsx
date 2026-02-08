@@ -62,9 +62,9 @@ const TrabajoListItem: React.FC<TrabajoListItemProps> = ({ trabajo, vehiculo, cl
             return () => clearTimeout(timer);
         }
     }, [isExpanded]);
-    
+
     const statusStyles = getStatusStyles(trabajo.status);
-    
+
     const totalPagado = trabajo.partes
         .filter(p => p.nombre === '__PAGO_REGISTRADO__')
         .reduce((sum, p) => sum + p.precioUnitario, 0);
@@ -150,7 +150,7 @@ const TrabajoListItem: React.FC<TrabajoListItemProps> = ({ trabajo, vehiculo, cl
                                     </li>
                                 )
                             ))}
-                            
+
                             {!hasServices && trabajo.costoManoDeObra ? (
                                 <li className="flex justify-between pt-2 border-t dark:border-gray-600 mt-2">
                                     <span>Mano de Obra</span>
@@ -158,7 +158,7 @@ const TrabajoListItem: React.FC<TrabajoListItemProps> = ({ trabajo, vehiculo, cl
                                 </li>
                             ) : null}
                         </ul>
-                        
+
                         {pagos.length > 0 && (
                             <div className="mt-3 pt-3 border-t dark:border-gray-700">
                                 <h5 className="font-semibold text-xs mb-2 text-taller-dark dark:text-taller-light">Historial de Pagos:</h5>
@@ -189,12 +189,12 @@ const TrabajoListItem: React.FC<TrabajoListItemProps> = ({ trabajo, vehiculo, cl
                         </div>
 
                         <div className="mt-4 flex justify-end">
-                            <button 
-                                onClick={handleGeneratePDF} 
-                                disabled={!tallerInfo || isGeneratingPdf} 
+                            <button
+                                onClick={handleGeneratePDF}
+                                disabled={!tallerInfo || isGeneratingPdf}
                                 className="flex items-center gap-2 px-3 py-1.5 text-sm font-semibold text-white bg-taller-secondary rounded-lg shadow-sm hover:bg-taller-primary disabled:opacity-50 disabled:cursor-not-allowed"
                             >
-                                {isGeneratingPdf ? <ArrowPathIcon className="h-4 w-4 animate-spin"/> : <PrinterIcon className="h-4 w-4"/>}
+                                {isGeneratingPdf ? <ArrowPathIcon className="h-4 w-4 flex-shrink-0 animate-spin" /> : <PrinterIcon className="h-4 w-4" />}
                                 {isGeneratingPdf ? 'Generando...' : 'Descargar PDF'}
                             </button>
                         </div>

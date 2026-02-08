@@ -3,6 +3,7 @@ import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { supabase } from './supabaseClient';
 import type { Session, User } from '@supabase/supabase-js';
 import type { Cliente, Trabajo, TallerInfo } from './types';
+import { WrenchScrewdriverIcon } from '@heroicons/react/24/solid';
 import { applyAppTheme } from './constants';
 
 // Lazy loading components
@@ -15,8 +16,31 @@ const SetInitialPassword = lazy(() => import('./components/SetInitialPassword'))
 type AuthAction = 'APP' | 'PASSWORD_RECOVERY' | 'SET_INITIAL_PASSWORD';
 
 const LoadingScreen = () => (
-    <div className="flex h-screen w-screen items-center justify-center bg-gray-50 dark:bg-gray-900">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-taller-primary"></div>
+    <div className="flex h-[100dvh] w-screen items-center justify-center bg-taller-light dark:bg-taller-dark transition-colors duration-500">
+        <div className="relative flex flex-col items-center">
+            {/* Círculo de pulso exterior */}
+            <div className="absolute h-32 w-32 flex-shrink-0 rounded-full bg-taller-primary/10 animate-ping opacity-20"></div>
+
+            <div className="relative h-20 w-20 flex-shrink-0 flex items-center justify-center">
+                {/* Spinner principal */}
+                <div className="absolute inset-0 border-4 border-taller-primary/20 rounded-full"></div>
+                <div className="absolute inset-0 border-4 border-taller-primary border-t-transparent rounded-full animate-spin"></div>
+                {/* Icono central */}
+                <WrenchScrewdriverIcon className="h-8 w-8 text-taller-primary animate-pulse" />
+            </div>
+
+            {/* Texto de carga */}
+            <div className="mt-8 flex flex-col items-center gap-1">
+                <span className="text-xs font-black text-taller-primary tracking-[0.3em] uppercase opacity-70">
+                    Sincronizando
+                </span>
+                <div className="flex gap-1">
+                    <div className="w-1 h-1 bg-taller-primary rounded-full animate-bounce [animation-delay:-0.3s]"></div>
+                    <div className="w-1 h-1 bg-taller-primary rounded-full animate-bounce [animation-delay:-0.15s]"></div>
+                    <div className="w-1 h-1 bg-taller-primary rounded-full animate-bounce"></div>
+                </div>
+            </div>
+        </div>
     </div>
 );
 
@@ -25,7 +49,7 @@ const App: React.FC = () => {
     const [user, setUser] = useState<User | null>(null);
     const [role, setRole] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
-    
+
     const [authAction, setAuthAction] = useState<AuthAction>('APP');
 
     const [clientData, setClientData] = useState<Cliente | null>(null);
@@ -37,32 +61,32 @@ const App: React.FC = () => {
         const processInitialParams = async () => {
             const hashParams = new URLSearchParams(window.location.hash.substring(1));
             const searchParams = new URLSearchParams(window.location.search);
-            
+
             const type = searchParams.get('type') || hashParams.get('type');
 
             if (type === 'recovery') {
                 setAuthAction('PASSWORD_RECOVERY');
             } else if (type === 'invite') {
-                 const email = searchParams.get('email');
-                 const password = searchParams.get('password');
-                 
-                 if (email && password) {
-                     const { data, error } = await supabase.auth.signInWithPassword({
-                         email,
-                         password
-                     });
-                     
-                     if (!error && data.session) {
-                         setAuthAction('SET_INITIAL_PASSWORD');
-                         window.history.replaceState(null, '', window.location.pathname);
-                     } else {
-                         console.error("Error en auto-login de invitación:", error?.message);
-                         setAuthAction('APP'); 
-                     }
-                 }
+                const email = searchParams.get('email');
+                const password = searchParams.get('password');
+
+                if (email && password) {
+                    const { data, error } = await supabase.auth.signInWithPassword({
+                        email,
+                        password
+                    });
+
+                    if (!error && data.session) {
+                        setAuthAction('SET_INITIAL_PASSWORD');
+                        window.history.replaceState(null, '', window.location.pathname);
+                    } else {
+                        console.error("Error en auto-login de invitación:", error?.message);
+                        setAuthAction('APP');
+                    }
+                }
             }
         };
-        
+
         processInitialParams();
     }, []);
 
@@ -79,7 +103,7 @@ const App: React.FC = () => {
                 setRole(null);
                 setUser(null);
                 setClientData(null);
-                applyAppTheme(); 
+                applyAppTheme();
             }
         });
 
@@ -108,7 +132,7 @@ const App: React.FC = () => {
 
             const currentUser = session.user;
             const userRole = currentUser.user_metadata?.role || null;
-            
+
             setUser(currentUser);
             setRole(userRole);
 
@@ -125,10 +149,10 @@ const App: React.FC = () => {
                     if (clientError) {
                         throw clientError;
                     }
-                    
+
                     if (clientProfile) {
                         setClientData(clientProfile as any);
-                        
+
                         const { data: tallerInfoData, error: tallerInfoError } = await supabase
                             .from('taller_info')
                             .select('*')
@@ -136,7 +160,7 @@ const App: React.FC = () => {
                             .maybeSingle();
 
                         if (!tallerInfoError && tallerInfoData) {
-                             const info: TallerInfo = {
+                            const info: TallerInfo = {
                                 nombre: tallerInfoData.nombre || 'Taller Mecánico',
                                 telefono: tallerInfoData.telefono || '',
                                 direccion: tallerInfoData.direccion || '',
@@ -162,9 +186,9 @@ const App: React.FC = () => {
                             .select('*')
                             .eq('cliente_id', currentUser.id)
                             .order('fecha_entrada', { ascending: false });
-                        
+
                         if (trabajosError) throw trabajosError;
-                        
+
                         const finalTrabajos = (trabajosData || []).map(t => ({
                             id: t.id,
                             tallerId: t.taller_id,
@@ -192,14 +216,14 @@ const App: React.FC = () => {
                 setLoading(false);
             }
         };
-        
+
         processSession();
     }, [session, authAction]);
-    
+
     const handleLogout = async () => {
         await supabase.auth.signOut();
     };
-    
+
     const handleAuthSuccess = () => {
         window.history.replaceState(null, '', window.location.pathname);
         setAuthAction('APP');
@@ -218,13 +242,13 @@ const App: React.FC = () => {
             {authAction === 'PASSWORD_RECOVERY' && (
                 <ResetPassword onResetSuccess={handleAuthSuccess} />
             )}
-            
+
             {authAction === 'APP' && !session && (
                 <Login />
             )}
 
-            {authAction === 'APP' && session && role === 'taller' && (
-                <TallerDashboard onLogout={handleLogout} />
+            {authAction === 'APP' && session && role === 'taller' && user && (
+                <TallerDashboard onLogout={handleLogout} user={user} />
             )}
 
             {authAction === 'APP' && session && role === 'cliente' && clientData && (

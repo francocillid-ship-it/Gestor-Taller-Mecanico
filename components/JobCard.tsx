@@ -28,47 +28,47 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
     const [paymentAmount, setPaymentAmount] = useState('');
     const [paymentType, setPaymentType] = useState<'items' | 'labor'>('items');
     const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
-    
+
     const [isStatusMenuOpen, setIsStatusMenuOpen] = useState(false);
-    const [isMenuVisible, setIsMenuVisible] = useState(false); 
+    const [isMenuVisible, setIsMenuVisible] = useState(false);
     const [menuCoords, setMenuCoords] = useState<{ top?: number; bottom?: number; left: number; width: number; placement: 'top' | 'bottom' } | null>(null);
     const buttonRef = useRef<HTMLButtonElement>(null);
-    
+
     const [scheduleDate, setScheduleDate] = useState('');
     const [scheduleTime, setScheduleTime] = useState('');
     const [scheduleNote, setScheduleNote] = useState('');
     const [isSavingSchedule, setIsSavingSchedule] = useState(false);
-    
+
     const cardRef = useRef<HTMLDivElement>(null);
 
     const isProgramado = trabajo.status === JobStatusEnum.Programado;
     const needsScheduling = isProgramado && !trabajo.fechaProgramada;
-    
+
     const isCompactMode = compactMode === true;
     const isCollapsedInCompact = isCompactMode && !isExpanded;
 
-    const displayClientName = cliente 
-        ? `${cliente.nombre} ${cliente.apellido || ''}`.trim() 
+    const displayClientName = cliente
+        ? `${cliente.nombre} ${cliente.apellido || ''}`.trim()
         : (trabajo.quickBudgetData ? `${trabajo.quickBudgetData.nombre} ${trabajo.quickBudgetData.apellido || ''}`.trim() : 'Cliente no identificado');
 
-    const displayVehicleInfo = vehiculo 
-        ? `${vehiculo.marca} ${vehiculo.modelo} (${vehiculo.matricula})` 
+    const displayVehicleInfo = vehiculo
+        ? `${vehiculo.marca} ${vehiculo.modelo} (${vehiculo.matricula})`
         : (trabajo.quickBudgetData ? `${trabajo.quickBudgetData.marca} ${trabajo.quickBudgetData.modelo} ${trabajo.quickBudgetData.matricula ? `(${trabajo.quickBudgetData.matricula})` : ''}`.trim() : 'Vehículo no identificado');
 
-    const displayVehicleModelOnly = vehiculo 
-        ? vehiculo.modelo 
+    const displayVehicleModelOnly = vehiculo
+        ? vehiculo.modelo
         : (trabajo.quickBudgetData ? trabajo.quickBudgetData.modelo : 'Vehículo');
 
     useEffect(() => {
         if (trabajo) {
             const targetDate = trabajo.fechaProgramada ? new Date(trabajo.fechaProgramada) : null;
-            
+
             if (targetDate) {
                 const yyyy = targetDate.getFullYear();
                 const mm = String(targetDate.getMonth() + 1).padStart(2, '0');
                 const dd = String(targetDate.getDate()).padStart(2, '0');
                 setScheduleDate(`${yyyy}-${mm}-${dd}`);
-                
+
                 const hh = String(targetDate.getHours()).padStart(2, '0');
                 const min = String(targetDate.getMinutes()).padStart(2, '0');
                 setScheduleTime(`${hh}:${min}`);
@@ -125,11 +125,11 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
     }, [isStatusMenuOpen]);
 
     const handleCloseMenu = () => {
-        setIsMenuVisible(false); 
+        setIsMenuVisible(false);
         setTimeout(() => {
             setIsStatusMenuOpen(false);
             setMenuCoords(null);
-        }, 200); 
+        }, 200);
     };
 
     const toggleStatusMenu = (e: React.MouseEvent) => {
@@ -137,10 +137,10 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
         if (isStatusMenuOpen) {
             handleCloseMenu();
         } else {
-             if (buttonRef.current) {
+            if (buttonRef.current) {
                 const rect = buttonRef.current.getBoundingClientRect();
                 const spaceBelow = window.innerHeight - rect.bottom;
-                const menuHeight = 180; 
+                const menuHeight = 180;
 
                 const placement = spaceBelow < menuHeight ? 'top' : 'bottom';
 
@@ -148,7 +148,7 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
                     top: placement === 'bottom' ? rect.bottom + 4 : undefined,
                     bottom: placement === 'top' ? window.innerHeight - rect.top + 4 : undefined,
                     left: rect.left,
-                    width: rect.width, 
+                    width: rect.width,
                     placement
                 });
                 setIsStatusMenuOpen(true);
@@ -205,7 +205,7 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
         } : undefined);
 
         if (!pdfClient || !pdfVehiculo) return;
-        
+
         setIsGeneratingPdf(true);
         try {
             await generateClientPDF(trabajo, pdfClient as Cliente, pdfVehiculo as Vehiculo, tallerInfo);
@@ -216,7 +216,7 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
             setIsGeneratingPdf(false);
         }
     };
-    
+
     const handlePaymentAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const rawValue = e.target.value;
         const digits = rawValue.replace(/\D/g, '');
@@ -225,11 +225,11 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
             setPaymentAmount('');
             return;
         }
-        
+
         const numberValue = parseInt(digits, 10);
-        
-        const formattedValue = new Intl.NumberFormat('es-AR', { 
-            style: 'currency', 
+
+        const formattedValue = new Intl.NumberFormat('es-AR', {
+            style: 'currency',
             currency: 'ARS'
         }).format(numberValue / 100);
 
@@ -247,11 +247,11 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
             cantidad: 1,
             precioUnitario: amount,
             fecha: new Date().toISOString(),
-            paymentType: paymentType 
+            paymentType: paymentType
         };
 
         const updatedPartes = [...trabajo.partes, newPayment];
-        
+
         const { error } = await supabase
             .from('trabajos')
             .update({ partes: updatedPartes })
@@ -262,7 +262,7 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
         } else {
             onDataRefresh();
             setPaymentAmount('');
-            setPaymentType('items'); 
+            setPaymentType('items');
             setIsAddingPayment(false);
         }
     };
@@ -271,18 +271,18 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
         setIsSavingSchedule(true);
         try {
             if (!scheduleDate) {
-                 alert("Debes seleccionar una fecha.");
-                 setIsSavingSchedule(false);
-                 return;
+                alert("Debes seleccionar una fecha.");
+                setIsSavingSchedule(false);
+                return;
             }
-            
+
             const newDate = new Date(`${scheduleDate}T${scheduleTime || '00:00'}:00`);
-            
+
             const { error } = await supabase
                 .from('trabajos')
-                .update({ 
+                .update({
                     fecha_programada: newDate.toISOString(),
-                    nota_adicional: scheduleNote 
+                    nota_adicional: scheduleNote
                 })
                 .eq('id', trabajo.id);
 
@@ -295,20 +295,20 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
             setIsSavingSchedule(false);
         }
     };
-    
+
     const formatCurrency = (val: number | undefined) => {
         if (val === undefined || isNaN(val)) return '$ 0,00';
         return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(val);
     };
-    
+
     const hasServices = realParts.some(p => p.isService);
-    
+
     let displayTime = '';
     let displayDate = '';
     if (trabajo.fechaProgramada) {
         const dateObj = new Date(trabajo.fechaProgramada);
         displayDate = dateObj.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit' });
-        displayTime = dateObj.toLocaleTimeString('es-ES', {hour: '2-digit', minute:'2-digit', hour12: false});
+        displayTime = dateObj.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', hour12: false });
     }
 
     const containerClasses = `
@@ -316,13 +316,12 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
         bg-white dark:bg-gray-800
         rounded-lg
         transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]
-        ${isCompactMode 
-            ? (isExpanded 
-                ? 'col-span-2 shadow-lg ring-2 ring-taller-primary/20 z-10' 
-                : 'col-span-1 shadow-sm hover:shadow-md cursor-pointer active:scale-[0.98] border border-gray-200 dark:border-gray-700 min-h-[80px]') 
-            : `shadow-md border-l-4 ${
-                needsScheduling 
-                ? 'border-red-500 ring-2 ring-red-100 dark:ring-red-900/20' 
+        ${isCompactMode
+            ? (isExpanded
+                ? 'col-span-2 shadow-lg ring-2 ring-taller-primary/20 z-10'
+                : 'col-span-1 shadow-sm hover:shadow-md cursor-pointer active:scale-[0.98] border border-gray-200 dark:border-gray-700 min-h-[80px]')
+            : `shadow-md border-l-4 ${needsScheduling
+                ? 'border-red-500 ring-2 ring-red-100 dark:ring-red-900/20'
                 : (isHighlighted ? 'border-taller-primary ring-2 ring-taller-primary/50' : 'border-taller-secondary/50 dark:border-taller-secondary')
             }`
         }
@@ -341,13 +340,13 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
                     animation: pulse-once 0.3s ease-out;
                 }
             `}</style>
-            <div 
-                ref={cardRef} 
+            <div
+                ref={cardRef}
                 className={containerClasses}
                 onClick={isCollapsedInCompact ? () => setIsExpanded(true) : undefined}
             >
                 <div className={`p-3 ${isCollapsedInCompact ? 'flex flex-col justify-between h-full' : ''}`}>
-                    <div 
+                    <div
                         className={`flex justify-between items-start ${!isCollapsedInCompact ? 'cursor-pointer select-none' : ''}`}
                         onClick={(e) => {
                             if (!isCollapsedInCompact) {
@@ -367,7 +366,7 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
                                     </span>
                                 )}
                             </div>
-                            
+
                             <p className={`text-taller-gray dark:text-gray-400 truncate transition-all duration-300 ${isCollapsedInCompact ? 'text-[10px] mt-0.5' : 'text-xs'}`}>
                                 {isCollapsedInCompact ? displayVehicleModelOnly : displayVehicleInfo}
                             </p>
@@ -400,34 +399,34 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
                         </div>
                     )}
                 </div>
-                
+
                 <div className={`grid transition-[grid-template-rows] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] ${(!isCompactMode && isExpanded) || (isCompactMode && isExpanded) ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>
                     <div className="overflow-hidden">
                         <div className="p-3 border-t dark:border-gray-700">
-                            
+
                             {isProgramado && (
                                 <div className={`mb-4 p-3 rounded-lg border dark:border-gray-600 ${needsScheduling ? 'bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-800' : 'bg-gray-50 dark:bg-gray-700/30'}`}>
                                     <div className="flex justify-between items-center mb-2">
                                         <h4 className={`font-semibold text-xs flex items-center gap-1 ${needsScheduling ? 'text-red-700 dark:text-red-300' : 'text-taller-dark dark:text-taller-light'}`}>
-                                            <CalendarIcon className="h-3.5 w-3.5"/> 
+                                            <CalendarIcon className="h-3.5 w-3.5" />
                                             {needsScheduling ? '⚠️ Asignar Fecha del Turno' : 'Agenda del Turno'}
                                         </h4>
                                     </div>
                                     <div className="flex flex-wrap gap-2 mb-2">
                                         <div className="flex-1 min-w-[130px]">
                                             <label className="block text-[10px] text-gray-500 dark:text-gray-400 mb-0.5 truncate">Fecha</label>
-                                            <input 
-                                                type="date" 
-                                                value={scheduleDate} 
+                                            <input
+                                                type="date"
+                                                value={scheduleDate}
                                                 onChange={(e) => setScheduleDate(e.target.value)}
                                                 className="w-full h-8 text-xs px-2 py-1.5 rounded border dark:border-gray-600 bg-white dark:bg-gray-700 focus:ring-1 focus:ring-taller-primary focus:outline-none appearance-none"
                                             />
                                         </div>
                                         <div className="flex-1 min-w-[90px]">
                                             <label className="block text-[10px] text-gray-500 dark:text-gray-400 mb-0.5 truncate">Hora (Opcional)</label>
-                                            <input 
-                                                type="time" 
-                                                value={scheduleTime} 
+                                            <input
+                                                type="time"
+                                                value={scheduleTime}
                                                 onChange={(e) => setScheduleTime(e.target.value)}
                                                 className="w-full h-8 text-xs px-2 py-1.5 rounded border dark:border-gray-600 bg-white dark:bg-gray-700 focus:ring-1 focus:ring-taller-primary focus:outline-none appearance-none"
                                             />
@@ -444,12 +443,12 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
                                         />
                                     </div>
                                     <div className="flex justify-end">
-                                        <button 
+                                        <button
                                             onClick={handleSaveSchedule}
                                             disabled={isSavingSchedule}
                                             className={`flex items-center gap-1 px-3 py-1 text-xs font-semibold text-white rounded transition-colors disabled:opacity-50 ${needsScheduling ? 'bg-red-600 hover:bg-red-700' : 'bg-taller-primary hover:bg-taller-secondary'}`}
                                         >
-                                            {isSavingSchedule ? <ArrowPathIcon className="h-3 w-3 animate-spin"/> : <CheckIcon className="h-3 w-3"/>}
+                                            {isSavingSchedule ? <ArrowPathIcon className="h-3 w-3 flex-shrink-0 animate-spin" /> : <CheckIcon className="h-3 w-3" />}
                                             {needsScheduling ? 'Confirmar Fecha' : 'Actualizar Agenda'}
                                         </button>
                                     </div>
@@ -487,7 +486,7 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
                                         </li>
                                     );
                                 })}
-                                
+
                                 {!hasServices && trabajo.costoManoDeObra ? (
                                     <li className="flex justify-between pt-2 border-t dark:border-gray-600 mt-2">
                                         <span>Mano de Obra</span>
@@ -507,7 +506,7 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
                                     <span>Total a Cobrar</span>
                                     <span>{formatCurrency(totalA_Cobrar)}</span>
                                 </li>
-                                
+
                                 {(trabajo.status === JobStatusEnum.EnProceso || trabajo.status === JobStatusEnum.Finalizado) && (
                                     <>
                                         <div className="pt-2 mt-2 border-t dark:border-gray-600">
@@ -529,13 +528,13 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
                                                     <span>{formatCurrency(pagadoGeneral)}</span>
                                                 </li>
                                             )}
-                                            
+
                                             <li className="flex justify-between text-green-600 dark:text-green-500 font-semibold border-t dark:border-gray-700 border-dashed mt-1 pt-1">
                                                 <span>Total Pagado</span>
                                                 <span>{formatCurrency(totalPagado)}</span>
                                             </li>
                                         </div>
-                                        
+
                                         <li className="flex justify-between font-bold text-red-600 dark:text-red-500 mt-1">
                                             <span>Saldo Pendiente</span>
                                             <span>{formatCurrency(saldoPendiente)}</span>
@@ -567,7 +566,7 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
 
                             {(trabajo.status === JobStatusEnum.EnProceso || trabajo.status === JobStatusEnum.Finalizado) && (
                                 <div className="text-xs space-y-2 mt-4 bg-gray-50 dark:bg-gray-700/30 p-2 rounded-lg">
-                                {isAddingPayment ? (
+                                    {isAddingPayment ? (
                                         <div className="flex flex-col gap-2">
                                             <div className="flex gap-2">
                                                 <input
@@ -580,14 +579,14 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
                                                 />
                                             </div>
                                             <div className="flex gap-1 justify-between bg-white dark:bg-gray-800 p-1 rounded border dark:border-gray-600">
-                                                <button 
+                                                <button
                                                     onClick={() => setPaymentType('items')}
                                                     className={`flex-1 py-1 px-1 text-[10px] sm:text-xs rounded transition-colors flex items-center justify-center gap-1 ${paymentType === 'items' ? 'bg-blue-100 text-blue-700 font-bold border border-blue-200' : 'text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
                                                 >
                                                     <ArchiveBoxIcon className="h-3 w-3" />
                                                     Repuestos
                                                 </button>
-                                                <button 
+                                                <button
                                                     onClick={() => setPaymentType('labor')}
                                                     className={`flex-1 py-1 px-1 text-[10px] sm:text-xs rounded transition-colors flex items-center justify-center gap-1 ${paymentType === 'labor' ? 'bg-blue-100 text-blue-700 font-bold border border-blue-200' : 'text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
                                                 >
@@ -611,7 +610,7 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
                                 </div>
                             )}
                         </div>
-                        
+
                         <div className="bg-gray-50 dark:bg-gray-700/50 px-3 py-2 flex items-center justify-between rounded-b-lg">
                             <div className="relative">
                                 <button
@@ -625,7 +624,7 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
                             </div>
                             <div className="flex items-center space-x-2">
                                 <button onClick={handleGeneratePDF} disabled={isGeneratingPdf} className="p-1.5 text-taller-gray dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 disabled:opacity-50" title="Imprimir Presupuesto">
-                                    {isGeneratingPdf ? <ArrowPathIcon className="h-4 w-4 animate-spin"/> : <PrinterIcon className="h-4 w-4" />}
+                                    {isGeneratingPdf ? <ArrowPathIcon className="h-4 w-4 flex-shrink-0 animate-spin" /> : <PrinterIcon className="h-4 w-4" />}
                                 </button>
                                 <button onClick={() => setIsJobModalOpen(true)} className="p-1.5 text-taller-gray dark:text-gray-400 hover:text-taller-secondary dark:hover:text-white" title="Editar Trabajo">
                                     <PencilIcon className="h-4 w-4" />
@@ -635,16 +634,16 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
                     </div>
                 </div>
             </div>
-            
+
             {isStatusMenuOpen && menuCoords && createPortal(
                 <div className="fixed inset-0 z-[9999] flex flex-col" style={{ pointerEvents: 'none' }}>
-                    <div 
-                        className="fixed inset-0 bg-transparent" 
-                        style={{ pointerEvents: 'auto' }} 
+                    <div
+                        className="fixed inset-0 bg-transparent"
+                        style={{ pointerEvents: 'auto' }}
                         onClick={handleCloseMenu}
                     />
-                    
-                    <div 
+
+                    <div
                         className={`fixed bg-white dark:bg-gray-700 rounded-md shadow-lg border dark:border-gray-600 overflow-hidden transition-all duration-200 ease-out transform
                             ${isMenuVisible
                                 ? 'opacity-100 scale-100 translate-y-0'
@@ -652,11 +651,11 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
                             }
                             ${menuCoords.placement === 'bottom' ? 'origin-top' : 'origin-bottom'}
                         `}
-                        style={{ 
-                            top: menuCoords.top, 
-                            bottom: menuCoords.bottom, 
-                            left: menuCoords.left, 
-                            width: menuCoords.width, 
+                        style={{
+                            top: menuCoords.top,
+                            bottom: menuCoords.bottom,
+                            left: menuCoords.left,
+                            width: menuCoords.width,
                             pointerEvents: 'auto'
                         }}
                     >
@@ -667,11 +666,10 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
                                     onUpdateStatus(trabajo.id, status);
                                     handleCloseMenu();
                                 }}
-                                className={`block w-full text-left px-4 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-600 border-b dark:border-gray-600 last:border-0 ${
-                                    status === trabajo.status
+                                className={`block w-full text-left px-4 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-600 border-b dark:border-gray-600 last:border-0 ${status === trabajo.status
                                         ? 'font-bold text-taller-primary bg-blue-50 dark:bg-blue-600/30 dark:text-white'
                                         : 'text-taller-dark dark:text-gray-200'
-                                }`}
+                                    }`}
                             >
                                 {status}
                             </button>

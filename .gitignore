@@ -21,4 +21,5 @@ dist-ssr
 *.ntvs*
 *.njsproj
 *.sln
-*.sw?
+# node binaries
+node-v22.14.0-darwin-x64*
