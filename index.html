@@ -52,8 +52,8 @@
       --color-taller-dark: 11 17 32;
       --color-taller-gray: 100 116 139;
 
-      /* Eliminamos safe area inset por pedido del usuario */
-      --safe-bottom: 0px;
+      /* Restauramos el safe area nativo del dispositivo (solo lo necesario para no tapar iconos) */
+      --safe-bottom: env(safe-area-inset-bottom);
     }
 
     html,
