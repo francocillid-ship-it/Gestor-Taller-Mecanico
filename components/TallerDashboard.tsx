@@ -330,7 +330,7 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout, user }) => 
     const activeIndex = VIEW_ORDER.indexOf(view);
 
     return (
-        <div className="flex h-[100dvh] w-full bg-taller-light dark:bg-taller-dark text-taller-dark dark:text-taller-light overflow-hidden">
+        <div className="flex h-[var(--app-height)] w-full bg-taller-light dark:bg-taller-dark text-taller-dark dark:text-taller-light overflow-hidden">
             <style>{`
                 .main-view-slot { 
                     width: 20%; 

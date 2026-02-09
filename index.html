@@ -27,6 +27,30 @@
     })();
   </script>
 
+  <script>
+    (function () {
+      const root = document.documentElement;
+
+      const updateAppHeight = () => {
+        const viewport = window.visualViewport;
+        const height = viewport ? viewport.height : window.innerHeight;
+        root.style.setProperty('--app-height', `${Math.round(height)}px`);
+      };
+
+      updateAppHeight();
+      window.addEventListener('resize', updateAppHeight);
+      window.addEventListener('orientationchange', updateAppHeight);
+      window.addEventListener('pageshow', updateAppHeight);
+      document.addEventListener('visibilitychange', () => {
+        if (!document.hidden) updateAppHeight();
+      });
+
+      if (window.visualViewport) {
+        window.visualViewport.addEventListener('resize', updateAppHeight);
+      }
+    })();
+  </script>
+
   <!-- Iconos del sitio -->
   <link rel="icon" href="favicon.svg" type="image/svg+xml" />
   <link rel="icon" href="favicon.png" type="image/png" />
@@ -52,13 +76,14 @@
       --color-taller-dark: 11 17 32;
       --color-taller-gray: 100 116 139;
 
-      /* Fijamos 20px de padding inferior por inconsistencias con env(safe-area-inset-bottom) */
-      --safe-bottom: 20px;
+      --app-height: 100dvh;
+      --safe-bottom-extra: 8px;
+      --safe-bottom: calc(env(safe-area-inset-bottom, 0px) + var(--safe-bottom-extra));
     }
 
     html,
     body {
-      height: 100dvh;
+      height: var(--app-height, 100dvh);
       width: 100%;
       margin: 0;
       padding: 0;

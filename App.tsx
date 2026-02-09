@@ -16,7 +16,7 @@ const SetInitialPassword = lazy(() => import('./components/SetInitialPassword'))
 type AuthAction = 'APP' | 'PASSWORD_RECOVERY' | 'SET_INITIAL_PASSWORD';
 
 const LoadingScreen = () => (
-    <div className="flex h-[100dvh] w-screen items-center justify-center bg-taller-light dark:bg-taller-dark transition-colors duration-500">
+    <div className="flex h-[var(--app-height)] w-screen items-center justify-center bg-taller-light dark:bg-taller-dark transition-colors duration-500">
         <div className="relative flex flex-col items-center">
             {/* Círculo de pulso exterior */}
             <div className="absolute h-32 w-32 flex-shrink-0 rounded-full bg-taller-primary/10 animate-ping opacity-20"></div>
