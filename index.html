@@ -32,6 +32,14 @@
       const root = document.documentElement;
       let lastWidth = window.innerWidth;
 
+      const updateStandaloneClass = () => {
+        const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+        root.classList.toggle('standalone', !!isStandalone);
+        if (document.body) {
+          document.body.classList.toggle('standalone', !!isStandalone);
+        }
+      };
+
       const updateAppHeight = () => {
         const height = window.innerHeight;
         root.style.setProperty('--app-height', `${Math.round(height)}px`);
@@ -44,6 +52,7 @@
         }
       };
 
+      updateStandaloneClass();
       updateAppHeight();
       window.addEventListener('resize', handleResize);
       window.addEventListener('orientationchange', () => {
@@ -53,6 +62,11 @@
       document.addEventListener('visibilitychange', () => {
         if (!document.hidden) updateAppHeight();
       });
+      document.addEventListener('DOMContentLoaded', updateStandaloneClass);
+      const displayMode = window.matchMedia('(display-mode: standalone)');
+      if (displayMode.addEventListener) {
+        displayMode.addEventListener('change', updateStandaloneClass);
+      }
     })();
   </script>
 
@@ -84,6 +98,16 @@
       --app-height: 100svh;
     }
 
+    html.standalone {
+      --app-height: 100dvh;
+    }
+
+    html.standalone,
+    html.standalone body {
+      height: 100dvh;
+      min-height: 100dvh;
+    }
+
     html,
     body {
       height: var(--app-height, 100svh);
@@ -107,6 +131,24 @@
       width: 100%;
       display: flex;
       flex-direction: column;
+    }
+
+    html.standalone #root {
+      height: 100dvh;
+      min-height: 100dvh;
+    }
+
+    @media (max-width: 767px) {
+      html.standalone .dashboard-bottom-nav {
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+      }
+
+      html.standalone .dashboard-scroll {
+        padding-bottom: calc(84px + 1.5rem);
+      }
     }
 
     /* Previene el desplazamiento horizontal accidental en móviles */

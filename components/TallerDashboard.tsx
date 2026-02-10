@@ -378,7 +378,7 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout, user }) => 
 
                 <main className="flex-1 w-full overflow-hidden relative bg-taller-light dark:bg-taller-dark">
                     {loading ? (
-                        <div className="h-full overflow-y-auto px-4 py-6 md:px-8 scrollbar-hide overscroll-none">
+                        <div className="h-full overflow-y-auto px-4 py-6 md:px-8 scrollbar-hide overscroll-none dashboard-scroll">
                             <div className="max-w-6xl mx-auto min-h-full pb-10">
                                 <DashboardSkeleton />
                             </div>
@@ -390,7 +390,7 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout, user }) => 
                         >
                             <Suspense fallback={
                                 <div className="main-view-slot">
-                                    <div className="h-full overflow-y-auto px-4 py-6 md:px-8 scrollbar-hide overscroll-none">
+                                    <div className="h-full overflow-y-auto px-4 py-6 md:px-8 scrollbar-hide overscroll-none dashboard-scroll">
                                         <div className="max-w-6xl mx-auto min-h-full pb-10">
                                             <DashboardSkeleton />
                                         </div>
@@ -398,7 +398,7 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout, user }) => 
                                 </div>
                             }>
                                 <div className="main-view-slot" style={{ pointerEvents: view === 'dashboard' ? 'auto' : 'none' }}>
-                                    <div className="h-full overflow-y-auto px-4 py-6 md:px-8 scrollbar-hide overscroll-none">
+                                    <div className="h-full overflow-y-auto px-4 py-6 md:px-8 scrollbar-hide overscroll-none dashboard-scroll">
                                         <div className="max-w-6xl mx-auto min-h-full pb-10">
                                             <Dashboard clientes={clientes} trabajos={trabajos} gastos={gastos} onDataRefresh={() => fetchData(false)} searchQuery={searchQuery} onNavigate={handleNavigate} />
                                         </div>
@@ -418,21 +418,21 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout, user }) => 
                                     />
                                 </div>
                                 <div className="main-view-slot" style={{ pointerEvents: view === 'clientes' ? 'auto' : 'none' }}>
-                                    <div className="h-full overflow-y-auto px-4 py-6 md:px-8 scrollbar-hide overscroll-none">
+                                    <div className="h-full overflow-y-auto px-4 py-6 md:px-8 scrollbar-hide overscroll-none dashboard-scroll">
                                         <div className="max-w-6xl mx-auto min-h-full pb-10">
                                             <Clientes clientes={clientes} trabajos={trabajos} onDataRefresh={() => fetchData(false)} searchQuery={searchQuery} onNavigate={handleNavigate} />
                                         </div>
                                     </div>
                                 </div>
                                 <div className="main-view-slot" style={{ pointerEvents: view === 'finanzas' ? 'auto' : 'none' }}>
-                                    <div className="h-full overflow-y-auto px-4 py-6 md:px-8 scrollbar-hide overscroll-none">
+                                    <div className="h-full overflow-y-auto px-4 py-6 md:px-8 scrollbar-hide overscroll-none dashboard-scroll">
                                         <div className="max-w-6xl mx-auto min-h-full pb-10">
                                             <Finanzas clientes={clientes} trabajos={trabajos} gastos={gastos} onDataRefresh={() => fetchData(false)} />
                                         </div>
                                     </div>
                                 </div>
                                 <div className="main-view-slot" style={{ pointerEvents: view === 'ajustes' ? 'auto' : 'none' }}>
-                                    <div className="h-full overflow-y-auto px-4 py-6 md:px-8 scrollbar-hide overscroll-none">
+                                    <div className="h-full overflow-y-auto px-4 py-6 md:px-8 scrollbar-hide overscroll-none dashboard-scroll">
                                         <div className="max-w-4xl mx-auto min-h-full pb-10">
                                             <Ajustes tallerInfo={tallerInfo} onUpdateTallerInfo={handleUpdateTallerInfo} onLogout={onLogout} searchQuery={searchQuery} />
                                         </div>
@@ -443,7 +443,7 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout, user }) => 
                     )}
                 </main>
 
-                <nav className="md:hidden bg-white dark:bg-gray-800 border-t dark:border-gray-700 flex-shrink-0 z-[100] pb-5">
+                <nav className="md:hidden bg-white dark:bg-gray-800 border-t dark:border-gray-700 flex-shrink-0 z-[100] pb-5 dashboard-bottom-nav">
                     <div className="flex justify-around items-center h-16 w-full px-2">
                         {navItems.map((item) => (
                             <button

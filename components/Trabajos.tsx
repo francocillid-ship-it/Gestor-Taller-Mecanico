@@ -391,7 +391,7 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
                 <div className="flex border-b dark:border-gray-700 bg-taller-light dark:bg-taller-dark overflow-x-auto no-scrollbar w-full lg:hidden">
                     <div className="flex min-w-full px-4 sm:justify-center gap-1">
                         {statusOrder.map((status) => (
-                            <button key={status} ref={el => tabLabelsRef.current[status] = el} type="button" onClick={() => setActiveTab(status)} className={`flex-none min-w-[85px] py-4 px-2 text-[10px] font-black uppercase tracking-widest text-center transition-colors relative whitespace-nowrap ${activeTab === status ? 'text-taller-primary dark:text-blue-400' : 'text-gray-400 dark:text-gray-600'}`}>{status}{activeTab === status && <div className="absolute bottom-0 left-0 right-0 h-1 bg-taller-primary rounded-t-full"></div>}</button>
+                            <button key={status} ref={(el: HTMLButtonElement | null) => { tabLabelsRef.current[status] = el; }} type="button" onClick={() => setActiveTab(status)} className={`flex-none min-w-[85px] py-4 px-2 text-[10px] font-black uppercase tracking-widest text-center transition-colors relative whitespace-nowrap ${activeTab === status ? 'text-taller-primary dark:text-blue-400' : 'text-gray-400 dark:text-gray-600'}`}>{status}{activeTab === status && <div className="absolute bottom-0 left-0 right-0 h-1 bg-taller-primary rounded-t-full"></div>}</button>
                         ))}
                     </div>
                 </div>
@@ -406,7 +406,7 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
                 >
                     {statusOrder.map((status) => (
                         <div key={status} className="inner-tab-slot" style={{ pointerEvents: (activeTab === status) ? 'auto' : 'none' }}>
-                            <div onScroll={(e) => handleVerticalScroll(e, status)} className="h-full overflow-y-auto px-4 py-4 lg:px-0 lg:py-6 scrollbar-hide overscroll-none">
+                            <div onScroll={(e) => handleVerticalScroll(e, status)} className="h-full overflow-y-auto px-4 py-4 lg:px-0 lg:py-6 scrollbar-hide overscroll-none dashboard-scroll">
                                 <div className="hidden lg:flex items-center gap-2 mb-6 px-1">
                                     <h3 className="text-xs font-black uppercase tracking-[0.2em] text-taller-primary dark:text-blue-400">{status}</h3>
                                     <div className="h-px flex-1 bg-gray-200 dark:bg-gray-700"></div>
