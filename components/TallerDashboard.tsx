@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect, useCallback, lazy, Suspense, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { supabase } from '../supabaseClient';
 import type { Cliente, Trabajo, Gasto, TallerInfo, UserRole } from '../types';
 import { JobStatus as JobStatusEnum } from '../types';
@@ -74,8 +75,32 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout, user }) => 
     const [searchQuery, setSearchQuery] = useState('');
     const [targetJobStatus, setTargetJobStatus] = useState<JobStatusEnum | undefined>(undefined);
     const [targetJobId, setTargetJobId] = useState<string | undefined>(undefined);
+    const [isStandalone, setIsStandalone] = useState(false);
 
     const lastAutoRouteRef = useRef<string>('');
+
+    useEffect(() => {
+        const getStandalone = () => window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone;
+        const updateStandalone = () => setIsStandalone(getStandalone());
+
+        updateStandalone();
+        const mql = window.matchMedia('(display-mode: standalone)');
+        if (mql.addEventListener) {
+            mql.addEventListener('change', updateStandalone);
+        } else if (mql.addListener) {
+            mql.addListener(updateStandalone);
+        }
+        window.addEventListener('pageshow', updateStandalone);
+
+        return () => {
+            if (mql.removeEventListener) {
+                mql.removeEventListener('change', updateStandalone);
+            } else if (mql.removeListener) {
+                mql.removeListener(updateStandalone);
+            }
+            window.removeEventListener('pageshow', updateStandalone);
+        };
+    }, []);
 
     useEffect(() => {
         const q = searchQuery.toLowerCase().trim();
@@ -328,9 +353,26 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout, user }) => 
     };
 
     const activeIndex = VIEW_ORDER.indexOf(view);
+    const bottomNav = (
+        <nav className="md:hidden bg-white dark:bg-gray-800 border-t dark:border-gray-700 flex-shrink-0 z-[100] pb-5 dashboard-bottom-nav">
+            <div className="flex justify-around items-center h-16 w-full px-2">
+                {navItems.map((item) => (
+                    <button
+                        key={item.id}
+                        onClick={() => handleNavigate(item.id as View)}
+                        className={`relative flex flex-col items-center justify-center w-full h-full transition-colors duration-200 ${view === item.id ? 'text-taller-primary' : 'text-taller-gray dark:text-gray-400'}`}
+                    >
+                        <item.icon className="h-6 w-6" />
+                        <span className="text-[10px] mt-1 font-medium">{item.label}</span>
+                        {view === item.id && <span className="absolute top-0 w-8 h-1 bg-taller-primary rounded-b-lg"></span>}
+                    </button>
+                ))}
+            </div>
+        </nav>
+    );
 
     return (
-        <div className="flex h-[var(--app-height)] w-full bg-taller-light dark:bg-taller-dark text-taller-dark dark:text-taller-light overflow-hidden">
+        <div className="flex h-[var(--app-height)] w-full bg-taller-light dark:bg-taller-dark text-taller-dark dark:text-taller-light overflow-hidden app-shell">
             <style>{`
                 .main-view-slot { 
                     width: 20%; 
@@ -443,21 +485,7 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout, user }) => 
                     )}
                 </main>
 
-                <nav className="md:hidden bg-white dark:bg-gray-800 border-t dark:border-gray-700 flex-shrink-0 z-[100] pb-5 dashboard-bottom-nav">
-                    <div className="flex justify-around items-center h-16 w-full px-2">
-                        {navItems.map((item) => (
-                            <button
-                                key={item.id}
-                                onClick={() => handleNavigate(item.id as View)}
-                                className={`relative flex flex-col items-center justify-center w-full h-full transition-colors duration-200 ${view === item.id ? 'text-taller-primary' : 'text-taller-gray dark:text-gray-400'}`}
-                            >
-                                <item.icon className="h-6 w-6" />
-                                <span className="text-[10px] mt-1 font-medium">{item.label}</span>
-                                {view === item.id && <span className="absolute top-0 w-8 h-1 bg-taller-primary rounded-b-lg"></span>}
-                            </button>
-                        ))}
-                    </div>
-                </nav>
+                {isStandalone ? createPortal(bottomNav, document.body) : bottomNav}
             </div>
         </div>
     );

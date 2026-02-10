@@ -53,6 +53,11 @@
       };
 
       const updateAppHeight = () => {
+        if (isStandaloneMode()) {
+          root.style.removeProperty('--app-height');
+          lastWidth = window.innerWidth;
+          return;
+        }
         const height = getAppHeight();
         root.style.setProperty('--app-height', `${height}px`);
         lastWidth = window.innerWidth;
@@ -200,6 +205,11 @@
     }
 
     @media (display-mode: standalone) and (max-width: 767px) {
+      .app-shell {
+        height: 100dvh !important;
+        min-height: 100dvh !important;
+      }
+
       .dashboard-bottom-nav {
         position: fixed;
         left: 0;
@@ -209,6 +219,15 @@
 
       .dashboard-scroll {
         padding-bottom: calc(84px + 1.5rem);
+      }
+    }
+
+    @supports (-webkit-touch-callout: none) {
+      @media (display-mode: standalone) {
+        .app-shell {
+          height: -webkit-fill-available !important;
+          min-height: -webkit-fill-available !important;
+        }
       }
     }
 
