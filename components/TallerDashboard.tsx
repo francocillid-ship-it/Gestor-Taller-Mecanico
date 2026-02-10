@@ -372,7 +372,7 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout, user }) => 
     );
 
     return (
-        <div className="flex h-[var(--app-height)] w-full bg-taller-light dark:bg-taller-dark text-taller-dark dark:text-taller-light overflow-hidden app-shell">
+        <div className="flex app-height w-full bg-taller-light dark:bg-taller-dark text-taller-dark dark:text-taller-light overflow-hidden app-shell">
             <style>{`
                 .main-view-slot { 
                     width: 20%; 

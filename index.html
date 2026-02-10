@@ -45,18 +45,18 @@
       };
 
       const getAppHeight = () => {
-        const isStandalone = isStandaloneMode();
-        if (isStandalone && window.visualViewport && window.visualViewport.height) {
-          return Math.round(window.visualViewport.height);
-        }
+        const heights = [];
+        if (window.innerHeight) heights.push(window.innerHeight);
+        if (document.documentElement.clientHeight) heights.push(document.documentElement.clientHeight);
         if (window.visualViewport && window.visualViewport.height) {
-          return Math.round(window.visualViewport.height);
+          heights.push(window.visualViewport.height);
         }
-        return Math.round(window.innerHeight || document.documentElement.clientHeight || 0);
+        return Math.max(...heights.map(h => Math.round(h)));
       };
 
       const updateAppHeight = () => {
         const height = getAppHeight();
+        if (!height) return;
         root.style.setProperty('--app-height', `${height}px`);
         lastWidth = window.innerWidth;
       };
@@ -101,6 +101,8 @@
         if (!isStandaloneMode()) return;
         setTimeout(refreshLayout, 200);
         setTimeout(refreshLayout, 600);
+        setTimeout(refreshLayout, 1200);
+        setTimeout(refreshLayout, 2000);
       };
 
       window.addEventListener('pageshow', () => {
@@ -159,12 +161,13 @@
     html.standalone,
     html.standalone body {
       height: var(--app-height, 100dvh);
-      min-height: var(--app-height, 100dvh);
+      min-height: 100dvh;
     }
 
     html,
     body {
-      height: var(--app-height, 100svh);
+      height: var(--app-height, 100dvh);
+      min-height: 100dvh;
       width: 100%;
       margin: 0;
       padding: 0;
@@ -182,6 +185,7 @@
 
     #root {
       height: 100%;
+      min-height: 100dvh;
       width: 100%;
       display: flex;
       flex-direction: column;
@@ -197,7 +201,19 @@
       html.standalone body,
       html.standalone #root {
         height: var(--app-height, -webkit-fill-available);
-        min-height: var(--app-height, -webkit-fill-available);
+        min-height: -webkit-fill-available;
+      }
+    }
+
+    .app-height {
+      height: var(--app-height, 100dvh);
+      min-height: 100dvh;
+    }
+
+    @media (max-width: 767px) {
+      .app-height-mobile {
+        height: var(--app-height, 100dvh);
+        min-height: 100dvh;
       }
     }
 
@@ -217,8 +233,8 @@
 
     @media (display-mode: standalone) {
       .app-shell {
-        height: var(--app-height, 100dvh) !important;
-        min-height: var(--app-height, 100dvh) !important;
+        height: max(var(--app-height, 100dvh), 100dvh) !important;
+        min-height: 100dvh !important;
       }
     }
 
@@ -240,9 +256,17 @@
     @supports (-webkit-touch-callout: none) {
       @media (display-mode: standalone) {
         .app-shell {
-          height: var(--app-height, -webkit-fill-available) !important;
-          min-height: var(--app-height, -webkit-fill-available) !important;
+          height: max(var(--app-height, -webkit-fill-available), -webkit-fill-available) !important;
+          min-height: -webkit-fill-available !important;
         }
+      }
+    }
+
+    @supports (-webkit-touch-callout: none) {
+      .app-height,
+      .app-height-mobile {
+        height: var(--app-height, -webkit-fill-available);
+        min-height: -webkit-fill-available;
       }
     }
 

@@ -215,7 +215,7 @@ const ClientPortal: React.FC<ClientPortalProps> = ({ client, trabajos, onLogout,
     return (
         <>
             <style>{getFontStyles()}</style>
-            <div className="portal-wrapper h-[var(--app-height)] w-full bg-taller-light dark:bg-taller-dark text-taller-dark dark:text-taller-light transition-all duration-200 flex flex-col overflow-hidden relative">
+            <div className="portal-wrapper app-height w-full bg-taller-light dark:bg-taller-dark text-taller-dark dark:text-taller-light transition-all duration-200 flex flex-col overflow-hidden relative">
 
                 {/* --- MODAL INVITACIÓN NOTIFICACIONES --- */}
                 {showInvitation && (
