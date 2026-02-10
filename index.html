@@ -45,10 +45,23 @@
       };
 
       const getAppHeight = () => {
+        const heights = [];
+        if (window.innerHeight) heights.push(window.innerHeight);
+        if (document.documentElement.clientHeight) heights.push(document.documentElement.clientHeight);
         if (window.visualViewport && window.visualViewport.height) {
-          return Math.round(window.visualViewport.height);
+          heights.push(window.visualViewport.height);
         }
-        return Math.round(window.innerHeight || document.documentElement.clientHeight || 0);
+        const base = Math.max(...heights.map(h => Math.round(h)));
+        if (isStandaloneMode()) {
+          const screenMax = Math.max(
+            Math.round(window.screen?.height || 0),
+            Math.round(window.screen?.availHeight || 0)
+          );
+          if (screenMax && base < Math.round(screenMax * 0.9)) {
+            return screenMax;
+          }
+        }
+        return base;
       };
 
       const updateAppHeight = () => {
@@ -147,7 +160,7 @@
       --color-taller-dark: 11 17 32;
       --color-taller-gray: 100 116 139;
 
-      --app-height: 100svh;
+      --app-height: 100dvh;
       --safe-bottom: env(safe-area-inset-bottom, 0px);
     }
 
@@ -172,7 +185,7 @@
     }
 
     #root {
-      height: var(--app-height, 100dvh);
+      height: max(var(--app-height, 100dvh), 100dvh);
       min-height: 100dvh;
       width: 100%;
       display: flex;
@@ -187,13 +200,13 @@
     }
 
     .app-height {
-      height: var(--app-height, 100dvh);
+      height: max(var(--app-height, 100dvh), 100dvh);
       min-height: 100dvh;
     }
 
     @media (max-width: 767px) {
       .app-height-mobile {
-        height: var(--app-height, 100dvh);
+        height: max(var(--app-height, 100dvh), 100dvh);
         min-height: 100dvh;
       }
     }

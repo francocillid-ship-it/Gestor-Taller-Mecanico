@@ -45,7 +45,7 @@ const ResetPassword: React.FC<ResetPasswordProps> = ({ onResetSuccess }) => {
     };
 
     return (
-        <div className="flex items-center justify-center min-h-screen bg-gray-100 dark:bg-taller-dark">
+        <div className="flex items-center justify-center app-height bg-gray-100 dark:bg-taller-dark">
             <div className="relative w-full max-w-md p-8 space-y-6 bg-white dark:bg-gray-800 rounded-2xl shadow-lg text-center">
                 <div className="flex justify-center">
                     <KeyIcon className="h-16 w-16 text-taller-primary"/>
