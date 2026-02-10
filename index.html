@@ -30,24 +30,29 @@
   <script>
     (function () {
       const root = document.documentElement;
+      let lastWidth = window.innerWidth;
 
       const updateAppHeight = () => {
-        const viewport = window.visualViewport;
-        const height = viewport ? viewport.height : window.innerHeight;
+        const height = window.innerHeight;
         root.style.setProperty('--app-height', `${Math.round(height)}px`);
+        lastWidth = window.innerWidth;
+      };
+
+      const handleResize = () => {
+        if (window.innerWidth !== lastWidth) {
+          updateAppHeight();
+        }
       };
 
       updateAppHeight();
-      window.addEventListener('resize', updateAppHeight);
-      window.addEventListener('orientationchange', updateAppHeight);
+      window.addEventListener('resize', handleResize);
+      window.addEventListener('orientationchange', () => {
+        setTimeout(updateAppHeight, 50);
+      });
       window.addEventListener('pageshow', updateAppHeight);
       document.addEventListener('visibilitychange', () => {
         if (!document.hidden) updateAppHeight();
       });
-
-      if (window.visualViewport) {
-        window.visualViewport.addEventListener('resize', updateAppHeight);
-      }
     })();
   </script>
 
@@ -76,12 +81,12 @@
       --color-taller-dark: 11 17 32;
       --color-taller-gray: 100 116 139;
 
-      --app-height: 100dvh;
+      --app-height: 100svh;
     }
 
     html,
     body {
-      height: var(--app-height, 100dvh);
+      height: var(--app-height, 100svh);
       width: 100%;
       margin: 0;
       padding: 0;
