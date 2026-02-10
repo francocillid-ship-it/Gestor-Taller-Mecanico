@@ -45,19 +45,14 @@
       };
 
       const getAppHeight = () => {
-        const heights = [window.innerHeight, document.documentElement.clientHeight];
+        const isStandalone = isStandaloneMode();
+        if (isStandalone && window.visualViewport && window.visualViewport.height) {
+          return Math.round(window.visualViewport.height);
+        }
         if (window.visualViewport && window.visualViewport.height) {
-          heights.push(window.visualViewport.height);
+          return Math.round(window.visualViewport.height);
         }
-        const base = Math.max(...heights.map(h => Math.round(h)));
-        const screenMax = Math.max(
-          Math.round(window.screen?.height || 0),
-          Math.round(window.screen?.availHeight || 0)
-        );
-        if (screenMax && base < Math.round(screenMax * 0.9)) {
-          return screenMax;
-        }
-        return base;
+        return Math.round(window.innerHeight || document.documentElement.clientHeight || 0);
       };
 
       const updateAppHeight = () => {
@@ -144,6 +139,7 @@
       --color-taller-gray: 100 116 139;
 
       --app-height: 100svh;
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
     }
 
     html.standalone {
@@ -201,10 +197,11 @@
         left: 0;
         right: 0;
         bottom: 0;
+        padding-bottom: var(--safe-bottom);
       }
 
       html.standalone .dashboard-scroll {
-        padding-bottom: calc(84px + 1.5rem);
+        padding-bottom: calc(84px + 1.5rem + var(--safe-bottom));
       }
     }
 
@@ -222,10 +219,11 @@
         left: 0;
         right: 0;
         bottom: 0;
+        padding-bottom: var(--safe-bottom);
       }
 
       .dashboard-scroll {
-        padding-bottom: calc(84px + 1.5rem);
+        padding-bottom: calc(84px + 1.5rem + var(--safe-bottom));
       }
     }
 
