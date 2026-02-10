@@ -45,13 +45,10 @@
       };
 
       const getAppHeight = () => {
-        const heights = [];
-        if (window.innerHeight) heights.push(window.innerHeight);
-        if (document.documentElement.clientHeight) heights.push(document.documentElement.clientHeight);
         if (window.visualViewport && window.visualViewport.height) {
-          heights.push(window.visualViewport.height);
+          return Math.round(window.visualViewport.height);
         }
-        return Math.max(...heights.map(h => Math.round(h)));
+        return Math.round(window.innerHeight || document.documentElement.clientHeight || 0);
       };
 
       const updateAppHeight = () => {
@@ -154,24 +151,15 @@
       --safe-bottom: env(safe-area-inset-bottom, 0px);
     }
 
-    html.standalone {
-      --app-height: 100dvh;
-    }
-
-    html.standalone,
-    html.standalone body {
-      height: var(--app-height, 100dvh);
-      min-height: 100dvh;
-    }
-
     html,
     body {
-      height: var(--app-height, 100dvh);
+      height: auto;
       min-height: 100dvh;
       width: 100%;
       margin: 0;
       padding: 0;
-      overflow: hidden;
+      overflow-x: hidden;
+      overflow-y: auto;
       overscroll-behavior: none;
       background-color: rgb(var(--color-taller-light));
       -webkit-font-smoothing: antialiased;
@@ -184,22 +172,15 @@
     }
 
     #root {
-      height: 100%;
+      height: var(--app-height, 100dvh);
       min-height: 100dvh;
       width: 100%;
       display: flex;
       flex-direction: column;
     }
 
-    html.standalone #root {
-      height: 100%;
-      min-height: 100%;
-    }
-
     @supports (-webkit-touch-callout: none) {
-      html.standalone,
-      html.standalone body,
-      html.standalone #root {
+      #root {
         height: var(--app-height, -webkit-fill-available);
         min-height: -webkit-fill-available;
       }
