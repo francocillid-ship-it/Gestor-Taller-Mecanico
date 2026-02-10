@@ -211,7 +211,7 @@ const MaintenanceConfigModal: React.FC<MaintenanceConfigModalProps> = ({ vehicul
                 </div>
 
                 {/* Footer */}
-                <div className="border-t dark:border-gray-700 p-4 bg-white dark:bg-gray-800 flex gap-3 shrink-0 z-10 safe-area-bottom">
+                <div className="border-t dark:border-gray-700 p-4 pb-5 bg-white dark:bg-gray-800 flex gap-3 shrink-0 z-10">
                     <button type="button" onClick={handleClose} className="flex-1 justify-center py-3 px-4 border border-gray-300 dark:border-gray-500 rounded-xl text-sm font-bold text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors">
                         Cancelar
                     </button>
@@ -234,14 +234,6 @@ const MaintenanceConfigModal: React.FC<MaintenanceConfigModalProps> = ({ vehicul
                 }
                 .no-spinner {
                     -moz-appearance: textfield;
-                }
-                .safe-area-bottom {
-                    padding-bottom: var(--safe-bottom);
-                }
-                @media (min-width: 640px) {
-                    .safe-area-bottom {
-                        padding-bottom: 1rem;
-                    }
                 }
             `}</style>
         </>,

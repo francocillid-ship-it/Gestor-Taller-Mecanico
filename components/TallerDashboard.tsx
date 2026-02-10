@@ -443,7 +443,7 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout, user }) => 
                     )}
                 </main>
 
-                <nav className="md:hidden bg-white dark:bg-gray-800 border-t dark:border-gray-700 flex-shrink-0 z-[100]" style={{ paddingBottom: 'var(--safe-bottom)' }}>
+                <nav className="md:hidden bg-white dark:bg-gray-800 border-t dark:border-gray-700 flex-shrink-0 z-[100] pb-5">
                     <div className="flex justify-around items-center h-16 w-full px-2">
                         {navItems.map((item) => (
                             <button
