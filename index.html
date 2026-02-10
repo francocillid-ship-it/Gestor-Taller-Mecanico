@@ -49,15 +49,18 @@
         if (window.visualViewport && window.visualViewport.height) {
           heights.push(window.visualViewport.height);
         }
-        return Math.max(...heights.map(h => Math.round(h)));
+        const base = Math.max(...heights.map(h => Math.round(h)));
+        const screenMax = Math.max(
+          Math.round(window.screen?.height || 0),
+          Math.round(window.screen?.availHeight || 0)
+        );
+        if (screenMax && base < Math.round(screenMax * 0.9)) {
+          return screenMax;
+        }
+        return base;
       };
 
       const updateAppHeight = () => {
-        if (isStandaloneMode()) {
-          root.style.removeProperty('--app-height');
-          lastWidth = window.innerWidth;
-          return;
-        }
         const height = getAppHeight();
         root.style.setProperty('--app-height', `${height}px`);
         lastWidth = window.innerWidth;
@@ -100,6 +103,7 @@
         setTimeout(refreshLayout, 80);
       });
       window.addEventListener('pageshow', refreshLayout);
+      window.addEventListener('focus', refreshLayout);
       document.addEventListener('visibilitychange', () => {
         if (!document.hidden) refreshLayout();
       });
@@ -204,11 +208,14 @@
       }
     }
 
-    @media (display-mode: standalone) and (max-width: 767px) {
+    @media (display-mode: standalone) {
       .app-shell {
-        height: 100dvh !important;
-        min-height: 100dvh !important;
+        height: var(--app-height, 100dvh) !important;
+        min-height: var(--app-height, 100dvh) !important;
       }
+    }
+
+    @media (display-mode: standalone) and (max-width: 767px) {
 
       .dashboard-bottom-nav {
         position: fixed;
@@ -225,8 +232,8 @@
     @supports (-webkit-touch-callout: none) {
       @media (display-mode: standalone) {
         .app-shell {
-          height: -webkit-fill-available !important;
-          min-height: -webkit-fill-available !important;
+          height: var(--app-height, -webkit-fill-available) !important;
+          min-height: var(--app-height, -webkit-fill-available) !important;
         }
       }
     }
