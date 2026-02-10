@@ -97,7 +97,17 @@
       window.addEventListener('orientationchange', () => {
         setTimeout(refreshLayout, 80);
       });
-      window.addEventListener('pageshow', refreshLayout);
+      const scheduleStandaloneRefresh = () => {
+        if (!isStandaloneMode()) return;
+        setTimeout(refreshLayout, 200);
+        setTimeout(refreshLayout, 600);
+      };
+
+      window.addEventListener('pageshow', () => {
+        refreshLayout();
+        scheduleStandaloneRefresh();
+      });
+      window.addEventListener('load', scheduleStandaloneRefresh);
       window.addEventListener('focus', refreshLayout);
       document.addEventListener('visibilitychange', () => {
         if (!document.hidden) refreshLayout();
