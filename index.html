@@ -44,6 +44,29 @@
         }
       };
 
+      const ensureDebugOverlay = () => {
+        if (document.getElementById('viewport-debug')) return;
+        const el = document.createElement('div');
+        el.id = 'viewport-debug';
+        document.body.appendChild(el);
+      };
+
+      const updateDebugOverlay = () => {
+        ensureDebugOverlay();
+        const el = document.getElementById('viewport-debug');
+        if (!el) return;
+        const rootStyles = getComputedStyle(root);
+        const appHeight = rootStyles.getPropertyValue('--app-height').trim();
+        const vvHeight = window.visualViewport ? Math.round(window.visualViewport.height) : null;
+        const vvScale = window.visualViewport ? window.visualViewport.scale : null;
+        const inner = Math.round(window.innerHeight || 0);
+        const client = Math.round(document.documentElement.clientHeight || 0);
+        const screenH = Math.round(window.screen?.height || 0);
+        const availH = Math.round(window.screen?.availHeight || 0);
+        const standalone = isStandaloneMode() ? 'yes' : 'no';
+        el.textContent = `standalone: ${standalone} | inner: ${inner} | client: ${client} | vv: ${vvHeight ?? 'n/a'} | scale: ${vvScale ?? 'n/a'} | app: ${appHeight} | screen: ${screenH} | avail: ${availH}`;
+      };
+
       const getAppHeight = () => {
         const heights = [];
         if (window.innerHeight) heights.push(window.innerHeight);
@@ -69,6 +92,7 @@
         if (!height) return;
         root.style.setProperty('--app-height', `${height}px`);
         lastWidth = window.innerWidth;
+        updateDebugOverlay();
       };
 
       const refreshLayout = () => {
@@ -257,11 +281,26 @@
     }
 
     @supports (-webkit-touch-callout: none) {
-      .app-height,
-      .app-height-mobile {
-        height: var(--app-height, -webkit-fill-available);
-        min-height: -webkit-fill-available;
-      }
+    .app-height,
+    .app-height-mobile {
+      height: var(--app-height, -webkit-fill-available);
+      min-height: -webkit-fill-available;
+    }
+  }
+
+    #viewport-debug {
+      position: fixed;
+      left: 8px;
+      right: 8px;
+      bottom: 8px;
+      z-index: 9999;
+      padding: 8px 10px;
+      border-radius: 10px;
+      background: rgba(0, 0, 0, 0.72);
+      color: #fff;
+      font: 12px/1.2 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      pointer-events: none;
+      letter-spacing: 0.2px;
     }
 
     /* Previene el desplazamiento horizontal accidental en móviles */
