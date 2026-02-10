@@ -32,40 +32,79 @@
       const root = document.documentElement;
       let lastWidth = window.innerWidth;
 
+      const isStandaloneMode = () => {
+        return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone || root.classList.contains('standalone');
+      };
+
       const updateStandaloneClass = () => {
-        const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+        const isStandalone = isStandaloneMode();
         root.classList.toggle('standalone', !!isStandalone);
         if (document.body) {
           document.body.classList.toggle('standalone', !!isStandalone);
         }
       };
 
+      const getAppHeight = () => {
+        const heights = [window.innerHeight, document.documentElement.clientHeight];
+        if (window.visualViewport && window.visualViewport.height) {
+          heights.push(window.visualViewport.height);
+        }
+        return Math.max(...heights.map(h => Math.round(h)));
+      };
+
       const updateAppHeight = () => {
-        const height = window.innerHeight;
-        root.style.setProperty('--app-height', `${Math.round(height)}px`);
+        const height = getAppHeight();
+        root.style.setProperty('--app-height', `${height}px`);
         lastWidth = window.innerWidth;
       };
 
+      const refreshLayout = () => {
+        updateStandaloneClass();
+        updateAppHeight();
+        requestAnimationFrame(() => {
+          updateStandaloneClass();
+          updateAppHeight();
+        });
+        setTimeout(() => {
+          updateStandaloneClass();
+          updateAppHeight();
+        }, 120);
+        setTimeout(() => {
+          updateStandaloneClass();
+          updateAppHeight();
+        }, 320);
+        setTimeout(() => {
+          updateStandaloneClass();
+          updateAppHeight();
+        }, 800);
+      };
+
       const handleResize = () => {
+        if (isStandaloneMode()) {
+          updateAppHeight();
+          return;
+        }
         if (window.innerWidth !== lastWidth) {
           updateAppHeight();
         }
       };
 
-      updateStandaloneClass();
-      updateAppHeight();
+      refreshLayout();
       window.addEventListener('resize', handleResize);
       window.addEventListener('orientationchange', () => {
-        setTimeout(updateAppHeight, 50);
+        setTimeout(refreshLayout, 80);
       });
-      window.addEventListener('pageshow', updateAppHeight);
+      window.addEventListener('pageshow', refreshLayout);
       document.addEventListener('visibilitychange', () => {
-        if (!document.hidden) updateAppHeight();
+        if (!document.hidden) refreshLayout();
       });
-      document.addEventListener('DOMContentLoaded', updateStandaloneClass);
+      document.addEventListener('DOMContentLoaded', refreshLayout);
       const displayMode = window.matchMedia('(display-mode: standalone)');
       if (displayMode.addEventListener) {
-        displayMode.addEventListener('change', updateStandaloneClass);
+        displayMode.addEventListener('change', refreshLayout);
+      }
+      if (window.visualViewport) {
+        window.visualViewport.addEventListener('resize', refreshLayout);
       }
     })();
   </script>
@@ -104,8 +143,8 @@
 
     html.standalone,
     html.standalone body {
-      height: 100dvh;
-      min-height: 100dvh;
+      height: var(--app-height, 100dvh);
+      min-height: var(--app-height, 100dvh);
     }
 
     html,
@@ -134,8 +173,17 @@
     }
 
     html.standalone #root {
-      height: 100dvh;
-      min-height: 100dvh;
+      height: 100%;
+      min-height: 100%;
+    }
+
+    @supports (-webkit-touch-callout: none) {
+      html.standalone,
+      html.standalone body,
+      html.standalone #root {
+        height: var(--app-height, -webkit-fill-available);
+        min-height: var(--app-height, -webkit-fill-available);
+      }
     }
 
     @media (max-width: 767px) {
@@ -147,6 +195,19 @@
       }
 
       html.standalone .dashboard-scroll {
+        padding-bottom: calc(84px + 1.5rem);
+      }
+    }
+
+    @media (display-mode: standalone) and (max-width: 767px) {
+      .dashboard-bottom-nav {
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+      }
+
+      .dashboard-scroll {
         padding-bottom: calc(84px + 1.5rem);
       }
     }
