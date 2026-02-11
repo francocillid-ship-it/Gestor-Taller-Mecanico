@@ -30,10 +30,9 @@
   <script>
     (function () {
       const root = document.documentElement;
-      let lastWidth = window.innerWidth;
 
       const isStandaloneMode = () => {
-        return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone || root.classList.contains('standalone');
+        return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
       };
 
       const updateStandaloneClass = () => {
@@ -44,117 +43,24 @@
         }
       };
 
-      const ensureDebugOverlay = () => {
-        if (document.getElementById('viewport-debug')) return;
-        const el = document.createElement('div');
-        el.id = 'viewport-debug';
-        document.body.appendChild(el);
-      };
-
-      const updateDebugOverlay = () => {
-        ensureDebugOverlay();
-        const el = document.getElementById('viewport-debug');
-        if (!el) return;
-        const rootStyles = getComputedStyle(root);
-        const appHeight = rootStyles.getPropertyValue('--app-height').trim();
-        const vvHeight = window.visualViewport ? Math.round(window.visualViewport.height) : null;
-        const vvScale = window.visualViewport ? window.visualViewport.scale : null;
-        const inner = Math.round(window.innerHeight || 0);
-        const client = Math.round(document.documentElement.clientHeight || 0);
-        const screenH = Math.round(window.screen?.height || 0);
-        const availH = Math.round(window.screen?.availHeight || 0);
-        const standalone = isStandaloneMode() ? 'yes' : 'no';
-        el.textContent = `standalone: ${standalone} | inner: ${inner} | client: ${client} | vv: ${vvHeight ?? 'n/a'} | scale: ${vvScale ?? 'n/a'} | app: ${appHeight} | screen: ${screenH} | avail: ${availH}`;
-      };
-
-      const getAppHeight = () => {
-        const heights = [];
-        if (window.innerHeight) heights.push(window.innerHeight);
-        if (document.documentElement.clientHeight) heights.push(document.documentElement.clientHeight);
-        if (window.visualViewport && window.visualViewport.height) {
-          heights.push(window.visualViewport.height);
-        }
-        const base = Math.max(...heights.map(h => Math.round(h)));
-        if (isStandaloneMode()) {
-          const screenMax = Math.max(
-            Math.round(window.screen?.height || 0),
-            Math.round(window.screen?.availHeight || 0)
-          );
-          if (screenMax && base < Math.round(screenMax * 0.9)) {
-            return screenMax;
-          }
-        }
-        return base;
-      };
-
-      const updateAppHeight = () => {
-        const height = getAppHeight();
-        if (!height) return;
-        root.style.setProperty('--app-height', `${height}px`);
-        lastWidth = window.innerWidth;
-        updateDebugOverlay();
+      const setAppHeight = () => {
+        root.style.setProperty('--app-height', `${window.innerHeight}px`);
       };
 
       const refreshLayout = () => {
         updateStandaloneClass();
-        updateAppHeight();
-        requestAnimationFrame(() => {
-          updateStandaloneClass();
-          updateAppHeight();
-        });
-        setTimeout(() => {
-          updateStandaloneClass();
-          updateAppHeight();
-        }, 120);
-        setTimeout(() => {
-          updateStandaloneClass();
-          updateAppHeight();
-        }, 320);
-        setTimeout(() => {
-          updateStandaloneClass();
-          updateAppHeight();
-        }, 800);
-      };
-
-      const handleResize = () => {
-        if (isStandaloneMode()) {
-          updateAppHeight();
-          return;
-        }
-        if (window.innerWidth !== lastWidth) {
-          updateAppHeight();
-        }
+        setAppHeight();
       };
 
       refreshLayout();
-      window.addEventListener('resize', handleResize);
-      window.addEventListener('orientationchange', () => {
-        setTimeout(refreshLayout, 80);
-      });
-      const scheduleStandaloneRefresh = () => {
-        if (!isStandaloneMode()) return;
-        setTimeout(refreshLayout, 200);
-        setTimeout(refreshLayout, 600);
-        setTimeout(refreshLayout, 1200);
-        setTimeout(refreshLayout, 2000);
-      };
-
-      window.addEventListener('pageshow', () => {
-        refreshLayout();
-        scheduleStandaloneRefresh();
-      });
-      window.addEventListener('load', scheduleStandaloneRefresh);
-      window.addEventListener('focus', refreshLayout);
+      window.addEventListener('resize', setAppHeight);
+      window.addEventListener('orientationchange', refreshLayout);
+      window.addEventListener('pageshow', refreshLayout);
       document.addEventListener('visibilitychange', () => {
         if (!document.hidden) refreshLayout();
       });
-      document.addEventListener('DOMContentLoaded', refreshLayout);
-      const displayMode = window.matchMedia('(display-mode: standalone)');
-      if (displayMode.addEventListener) {
-        displayMode.addEventListener('change', refreshLayout);
-      }
       if (window.visualViewport) {
-        window.visualViewport.addEventListener('resize', refreshLayout);
+        window.visualViewport.addEventListener('resize', setAppHeight);
       }
     })();
   </script>
@@ -188,10 +94,16 @@
       --safe-bottom: env(safe-area-inset-bottom, 0px);
     }
 
+    @supports not (height: 100dvh) {
+      :root {
+        --app-height: 100vh;
+      }
+    }
+
     html,
     body {
-      height: auto;
-      min-height: 100dvh;
+      height: 100%;
+      min-height: var(--app-height);
       width: 100%;
       margin: 0;
       padding: 0;
@@ -209,29 +121,19 @@
     }
 
     #root {
-      height: max(var(--app-height, 100dvh), 100dvh);
-      min-height: 100dvh;
+      min-height: var(--app-height);
       width: 100%;
       display: flex;
       flex-direction: column;
     }
 
-    @supports (-webkit-touch-callout: none) {
-      #root {
-        height: var(--app-height, -webkit-fill-available);
-        min-height: -webkit-fill-available;
-      }
-    }
-
     .app-height {
-      height: max(var(--app-height, 100dvh), 100dvh);
-      min-height: 100dvh;
+      min-height: var(--app-height);
     }
 
     @media (max-width: 767px) {
       .app-height-mobile {
-        height: max(var(--app-height, 100dvh), 100dvh);
-        min-height: 100dvh;
+        min-height: var(--app-height);
       }
     }
 
@@ -251,8 +153,7 @@
 
     @media (display-mode: standalone) {
       .app-shell {
-        height: max(var(--app-height, 100dvh), 100dvh) !important;
-        min-height: 100dvh !important;
+        min-height: var(--app-height) !important;
       }
     }
 
@@ -271,37 +172,6 @@
       }
     }
 
-    @supports (-webkit-touch-callout: none) {
-      @media (display-mode: standalone) {
-        .app-shell {
-          height: max(var(--app-height, -webkit-fill-available), -webkit-fill-available) !important;
-          min-height: -webkit-fill-available !important;
-        }
-      }
-    }
-
-    @supports (-webkit-touch-callout: none) {
-    .app-height,
-    .app-height-mobile {
-      height: var(--app-height, -webkit-fill-available);
-      min-height: -webkit-fill-available;
-    }
-  }
-
-    #viewport-debug {
-      position: fixed;
-      left: 8px;
-      right: 8px;
-      bottom: 8px;
-      z-index: 9999;
-      padding: 8px 10px;
-      border-radius: 10px;
-      background: rgba(0, 0, 0, 0.72);
-      color: #fff;
-      font: 12px/1.2 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-      pointer-events: none;
-      letter-spacing: 0.2px;
-    }
 
     /* Previene el desplazamiento horizontal accidental en móviles */
     .no-horizontal-shake {
