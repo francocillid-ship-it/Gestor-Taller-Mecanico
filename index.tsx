@@ -4,13 +4,26 @@ import ReactDOM from 'react-dom/client';
 import App from './App';
 
 const setRealViewportHeight = () => {
-    const vh = window.innerHeight;
-    document.documentElement.style.setProperty('--real-vh', `${vh}px`);
+    const viewportHeight = window.visualViewport?.height ?? window.innerHeight;
+    const vh = Math.round(viewportHeight || 0);
+    if (vh > 0) {
+        document.documentElement.style.setProperty('--real-vh', `${vh}px`);
+    }
 };
 
 const initViewportFix = () => {
     setRealViewportHeight();
     window.addEventListener('resize', setRealViewportHeight);
+    window.addEventListener('orientationchange', setRealViewportHeight);
+    window.addEventListener('pageshow', setRealViewportHeight);
+    document.addEventListener('visibilitychange', () => {
+        if (!document.hidden) setRealViewportHeight();
+    });
+    if (window.visualViewport) {
+        window.visualViewport.addEventListener('resize', setRealViewportHeight);
+    }
+    requestAnimationFrame(setRealViewportHeight);
+    requestAnimationFrame(() => requestAnimationFrame(setRealViewportHeight));
     setTimeout(setRealViewportHeight, 50);
     setTimeout(setRealViewportHeight, 150);
     setTimeout(setRealViewportHeight, 300);
@@ -18,6 +31,9 @@ const initViewportFix = () => {
 
 if (typeof window !== 'undefined') {
     window.addEventListener('load', initViewportFix);
+    if (document.readyState !== 'loading') {
+        initViewportFix();
+    }
 }
 
 const rootElement = document.getElementById('root');

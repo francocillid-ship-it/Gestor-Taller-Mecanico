@@ -7,6 +7,29 @@
     content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <title>Mi Taller</title>
 
+  <script>
+    (function () {
+      if (typeof window === 'undefined') return;
+      const root = document.documentElement;
+      const getViewportHeight = () => {
+        if (window.visualViewport && window.visualViewport.height) {
+          return Math.round(window.visualViewport.height);
+        }
+        return Math.round(window.innerHeight || 0);
+      };
+      const setRealViewportHeight = () => {
+        const vh = getViewportHeight();
+        if (vh > 0) {
+          root.style.setProperty('--real-vh', `${vh}px`);
+        }
+      };
+      setRealViewportHeight();
+      if (window.visualViewport) {
+        window.visualViewport.addEventListener('resize', setRealViewportHeight);
+      }
+    })();
+  </script>
+
   <!-- Script de detección de tema inmediato para evitar parpadeo -->
   <script>
     (function () {
@@ -82,7 +105,7 @@
 
     html,
     body {
-      height: 100%;
+      height: var(--real-vh);
       min-height: var(--real-vh);
       width: 100%;
       margin: 0;
@@ -101,6 +124,7 @@
     }
 
     #root {
+      height: var(--real-vh);
       min-height: var(--real-vh);
       width: 100%;
       display: flex;
@@ -108,11 +132,13 @@
     }
 
     .app-height {
+      height: var(--real-vh);
       min-height: var(--real-vh);
     }
 
     @media (max-width: 767px) {
       .app-height-mobile {
+        height: var(--real-vh);
         min-height: var(--real-vh);
       }
     }
@@ -133,8 +159,14 @@
 
     @media (display-mode: standalone) {
       .app-shell {
+        height: var(--real-vh) !important;
         min-height: var(--real-vh) !important;
       }
+    }
+
+    html.standalone #root {
+      height: calc(var(--real-vh) + var(--safe-bottom));
+      min-height: calc(var(--real-vh) + var(--safe-bottom));
     }
 
     @media (display-mode: standalone) and (max-width: 767px) {
