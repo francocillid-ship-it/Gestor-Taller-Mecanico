@@ -4,8 +4,11 @@ import ReactDOM from 'react-dom/client';
 import App from './App';
 
 const KEYBOARD_THRESHOLD = 100;
+const HEIGHT_JITTER_TOLERANCE = 8;
 let lastStableHeight = 0;
 let keyboardOpen = false;
+let rotationFreezeUntil = 0;
+let intervalId: number | null = null;
 
 const isTextInput = (target: EventTarget | null) => {
     if (!(target instanceof HTMLElement)) return false;
@@ -14,12 +17,26 @@ const isTextInput = (target: EventTarget | null) => {
     return target.isContentEditable;
 };
 
+const getViewportHeight = () => {
+    if (window.visualViewport) {
+        return window.visualViewport.height + window.visualViewport.offsetTop;
+    }
+    return window.innerHeight;
+};
+
 const setRealViewportHeight = () => {
-    const viewportHeight = window.visualViewport?.height ?? window.innerHeight;
+    const viewportHeight = getViewportHeight();
     const vh = Math.round(viewportHeight || 0);
     if (vh <= 0) return;
 
+    if (Date.now() < rotationFreezeUntil) {
+        return;
+    }
+
     if (!keyboardOpen) {
+        if (lastStableHeight !== 0 && Math.abs(vh - lastStableHeight) <= HEIGHT_JITTER_TOLERANCE) {
+            return;
+        }
         lastStableHeight = vh;
         document.documentElement.style.setProperty('--real-vh', `${vh}px`);
         return;
@@ -54,7 +71,10 @@ const isIOSStandalone = () => {
 const initViewportFix = () => {
     setRealViewportHeight();
     window.addEventListener('resize', setRealViewportHeight);
-    window.addEventListener('orientationchange', setRealViewportHeight);
+    window.addEventListener('orientationchange', () => {
+        rotationFreezeUntil = Date.now() + 500;
+        setTimeout(setRealViewportHeight, 550);
+    });
     window.addEventListener('pageshow', setRealViewportHeight);
     document.addEventListener('visibilitychange', () => {
         if (!document.hidden) setRealViewportHeight();
@@ -81,7 +101,8 @@ const initViewportFix = () => {
     setTimeout(setRealViewportHeight, 300);
 
     if (isIOSStandalone()) {
-        setInterval(setRealViewportHeight, 5000);
+        if (intervalId) window.clearInterval(intervalId);
+        intervalId = window.setInterval(setRealViewportHeight, 8000);
     }
 };
 
