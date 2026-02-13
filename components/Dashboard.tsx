@@ -269,7 +269,7 @@ const FinancialDetailOverlay: React.FC<FinancialDetailOverlayProps> = ({
                 className={`fixed inset-0 z-[100] bg-taller-light dark:bg-taller-dark flex flex-col shadow-2xl transition-transform duration-500 will-change-transform ${isVisible ? 'translate-y-0' : 'translate-y-full'}`}
                 style={{ transitionTimingFunction: 'cubic-bezier(0.32, 0.72, 0, 1)' }}
             >
-                <div className="bg-white dark:bg-gray-800 shadow-sm flex-shrink-0 pt-[env(safe-area-inset-top)] border-b dark:border-gray-700 z-20 relative">
+                <div className="bg-white dark:bg-gray-800 shadow-sm flex-shrink-0 border-b dark:border-gray-700 z-20 relative">
                     <div className="flex items-center justify-between p-4">
                         <button onClick={handleClose} className="p-2 -ml-2 text-taller-gray dark:text-gray-400 hover:text-taller-dark dark:hover:text-white rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"><ArrowLeftIcon className="h-6 w-6" /></button>
                         <h2 className="text-lg font-bold text-taller-dark dark:text-taller-light">{titleMap[detailView]}</h2>

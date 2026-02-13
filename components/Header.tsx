@@ -36,7 +36,7 @@ const Header: React.FC<HeaderProps> = ({ tallerName, logoUrl, onMenuClick, showM
     return (
         <header className="relative bg-white dark:bg-gray-800 shadow-md dark:shadow-none dark:border-b dark:border-gray-700 z-[70] flex-shrink-0">
             {/* El padding superior maneja el área segura para iPhone */}
-            <div className="pt-[env(safe-area-inset-top)] md:pt-0">
+            <div className="md:pt-0">
                 <div className="h-16 md:h-20 flex items-center justify-between px-4 md:px-6">
                     {/* --- Left Side: Logo & Menu --- */}
                     <div className="flex items-center gap-2 md:gap-4 z-0 flex-1 min-w-0 mr-2">
@@ -89,7 +89,7 @@ const Header: React.FC<HeaderProps> = ({ tallerName, logoUrl, onMenuClick, showM
 
             {/* --- Mobile Search Overlay --- */}
             <div className={`
-                md:hidden absolute inset-0 z-[80] bg-white dark:bg-gray-800 flex items-center px-4 pt-[env(safe-area-inset-top)]
+                md:hidden absolute inset-0 z-[80] bg-white dark:bg-gray-800 flex items-center px-4
                 transition-all duration-300 ease-out origin-right
                 ${isSearchExpanded ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-10 pointer-events-none'}
             `}>

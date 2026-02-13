@@ -11,6 +11,12 @@ const setRealViewportHeight = () => {
     }
 };
 
+const isIOSStandalone = () => {
+    const isIOS = /iP(ad|hone|od)/.test(navigator.userAgent || '');
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone;
+    return isIOS && isStandalone;
+};
+
 const initViewportFix = () => {
     setRealViewportHeight();
     window.addEventListener('resize', setRealViewportHeight);
@@ -27,6 +33,10 @@ const initViewportFix = () => {
     setTimeout(setRealViewportHeight, 50);
     setTimeout(setRealViewportHeight, 150);
     setTimeout(setRealViewportHeight, 300);
+
+    if (isIOSStandalone()) {
+        setInterval(setRealViewportHeight, 5000);
+    }
 };
 
 if (typeof window !== 'undefined') {

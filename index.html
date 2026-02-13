@@ -100,6 +100,12 @@
       --color-taller-gray: 100 116 139;
 
       --real-vh: 100%;
+      --safe-top: 0px;
+      --safe-bottom: 0px;
+    }
+
+    html.standalone {
+      --safe-top: env(safe-area-inset-top, 0px);
       --safe-bottom: env(safe-area-inset-bottom, 0px);
     }
 
@@ -110,6 +116,7 @@
       width: 100%;
       margin: 0;
       padding: 0;
+      box-sizing: border-box;
       overflow-x: hidden;
       overflow-y: auto;
       overscroll-behavior: none;
@@ -129,17 +136,18 @@
       width: 100%;
       display: flex;
       flex-direction: column;
+      box-sizing: border-box;
     }
 
     .app-height {
-      height: var(--real-vh);
-      min-height: var(--real-vh);
+      height: 100%;
+      min-height: 100%;
     }
 
     @media (max-width: 767px) {
       .app-height-mobile {
-        height: var(--real-vh);
-        min-height: var(--real-vh);
+        height: 100%;
+        min-height: 100%;
       }
     }
 
@@ -159,14 +167,14 @@
 
     @media (display-mode: standalone) {
       .app-shell {
-        height: var(--real-vh) !important;
-        min-height: var(--real-vh) !important;
+        height: 100% !important;
+        min-height: 100% !important;
       }
     }
 
     html.standalone #root {
-      height: calc(var(--real-vh) + var(--safe-bottom));
-      min-height: calc(var(--real-vh) + var(--safe-bottom));
+      padding-top: var(--safe-top);
+      padding-bottom: var(--safe-bottom);
     }
 
     @media (display-mode: standalone) and (max-width: 767px) {
