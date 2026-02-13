@@ -38,6 +38,15 @@ const ClientCard: React.FC<ClientCardProps> = ({ cliente, trabajos, onEdit, onCo
     const clientTrabajos = trabajos.filter(t => t.clienteId === cliente.id);
     const cardRef = useRef<HTMLDivElement>(null);
 
+    const generateTempPassword = () => {
+        const charset = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+        let result = '';
+        for (let i = 0; i < 10; i += 1) {
+            result += charset[Math.floor(Math.random() * charset.length)];
+        }
+        return result;
+    };
+
     useEffect(() => {
         if (forceExpand) {
             setIsExpanded(true);
@@ -78,7 +87,7 @@ const ClientCard: React.FC<ClientCardProps> = ({ cliente, trabajos, onEdit, onCo
             return;
         }
 
-        const confirmSend = window.confirm(`¿Generar acceso para ${cliente.nombre}?\n\nSe creará una contraseña temporal automática y se incluirá en el enlace.`);
+        const confirmSend = window.confirm(`¿Compartir acceso para ${cliente.nombre}?\n\nSe enviará el enlace de acceso al portal.`);
         if (!confirmSend) return;
 
         setSendingAccess(true);
@@ -87,14 +96,26 @@ const ClientCard: React.FC<ClientCardProps> = ({ cliente, trabajos, onEdit, onCo
             auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false }
         });
 
-        const tempPassword = Math.random().toString(36).slice(-8) + 'Aa1!';
+        let tempPassword = '';
         let shareUrl = '';
         let messageBody = '';
 
         try {
+            const { data: clientAuthData, error: clientAuthError } = await supabase
+                .from('clientes')
+                .select('temp_password')
+                .eq('id', cliente.id)
+                .maybeSingle();
+
+            if (clientAuthError) throw clientAuthError;
+
+            tempPassword = clientAuthData?.temp_password || '';
+
+            const generatedPassword = tempPassword || generateTempPassword();
+
             const { data: authData, error: signUpError } = await tempSupabase.auth.signUp({
                 email: cliente.email,
-                password: tempPassword,
+                password: generatedPassword,
                 options: {
                     data: {
                         role: 'cliente',
@@ -105,15 +126,17 @@ const ClientCard: React.FC<ClientCardProps> = ({ cliente, trabajos, onEdit, onCo
 
             if (authData.user) {
                 const newAuthId = authData.user.id;
+                tempPassword = generatedPassword;
 
                 if (newAuthId !== cliente.id) {
                     const { error: insertError } = await supabase.from('clientes').insert({
                         id: newAuthId,
-                        taller_id: cliente.taller_id,
+                        taller_id: (cliente as any).taller_id,
                         nombre: cliente.nombre,
                         apellido: cliente.apellido,
                         email: cliente.email,
-                        telefono: cliente.telefono
+                        telefono: cliente.telefono,
+                        temp_password: tempPassword
                     });
 
                     if (!insertError) {
@@ -122,14 +145,22 @@ const ClientCard: React.FC<ClientCardProps> = ({ cliente, trabajos, onEdit, onCo
                         await supabase.from('clientes').delete().eq('id', cliente.id);
                         onDataRefresh();
                     }
+                } else {
+                    await supabase
+                        .from('clientes')
+                        .update({ temp_password: tempPassword })
+                        .eq('id', cliente.id);
                 }
 
                 shareUrl = `${window.location.origin}/?type=invite&email=${encodeURIComponent(cliente.email)}&password=${encodeURIComponent(tempPassword)}`;
-                messageBody = `Hola ${cliente.nombre}, accede a tu historial de trabajos en nuestro taller.\n\nAcceso directo: ${shareUrl}\n\nUsuario: ${cliente.email}\nContraseña Temporal: ${tempPassword}\n\n(Se te pedirá cambiarla al ingresar por seguridad).`;
+                messageBody = `Hola ${cliente.nombre}, accede a tu portal del taller desde este enlace:\n\n${shareUrl}\n\nEmail: ${cliente.email}\n\nAl ingresar se te pedirá crear una nueva contraseña.`;
             } else {
                 if (signUpError?.message?.includes('already registered')) {
+                    if (!tempPassword) {
+                        throw new Error('El cliente ya tiene acceso. No se pudo recuperar la contraseña temporal.');
+                    }
                     shareUrl = `${window.location.origin}/?type=invite&email=${encodeURIComponent(cliente.email)}&password=${encodeURIComponent(tempPassword)}`;
-                    messageBody = `Hola ${cliente.nombre}, hemos generado una nueva invitación de acceso para ti.\n\nEnlace: ${shareUrl}\nUsuario: ${cliente.email}\nContraseña: ${tempPassword}`;
+                    messageBody = `Hola ${cliente.nombre}, accede a tu portal del taller desde este enlace:\n\n${shareUrl}\n\nEmail: ${cliente.email}\n\nAl ingresar se te pedirá crear una nueva contraseña.`;
                 } else {
                     throw signUpError || new Error("No se pudo generar el usuario.");
                 }

@@ -75,11 +75,13 @@ export interface Vehiculo {
 
 export interface Cliente {
     id: string;
+    taller_id?: string;
     nombre: string;
     apellido: string;
     email: string;
     telefono: string;
     vehiculos: Vehiculo[];
+    temp_password?: string;
 }
 
 export enum GastoCategoria {
