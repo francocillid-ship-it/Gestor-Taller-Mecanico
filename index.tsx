@@ -3,12 +3,46 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
 
+const KEYBOARD_THRESHOLD = 100;
+let lastStableHeight = 0;
+let keyboardOpen = false;
+
+const isTextInput = (target: EventTarget | null) => {
+    if (!(target instanceof HTMLElement)) return false;
+    const tag = target.tagName;
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return true;
+    return target.isContentEditable;
+};
+
 const setRealViewportHeight = () => {
     const viewportHeight = window.visualViewport?.height ?? window.innerHeight;
     const vh = Math.round(viewportHeight || 0);
-    if (vh > 0) {
+    if (vh <= 0) return;
+
+    if (!keyboardOpen) {
+        lastStableHeight = vh;
         document.documentElement.style.setProperty('--real-vh', `${vh}px`);
+        return;
     }
+
+    if (lastStableHeight === 0) {
+        lastStableHeight = vh;
+        document.documentElement.style.setProperty('--real-vh', `${vh}px`);
+        return;
+    }
+
+    if (vh >= lastStableHeight - 10) {
+        keyboardOpen = false;
+        lastStableHeight = vh;
+        document.documentElement.style.setProperty('--real-vh', `${vh}px`);
+        return;
+    }
+
+    if (vh < lastStableHeight - KEYBOARD_THRESHOLD) {
+        return;
+    }
+
+    document.documentElement.style.setProperty('--real-vh', `${vh}px`);
 };
 
 const isIOSStandalone = () => {
@@ -28,6 +62,18 @@ const initViewportFix = () => {
     if (window.visualViewport) {
         window.visualViewport.addEventListener('resize', setRealViewportHeight);
     }
+    document.addEventListener('focusin', (event) => {
+        if (isTextInput(event.target)) {
+            keyboardOpen = true;
+            setTimeout(setRealViewportHeight, 0);
+        }
+    });
+    document.addEventListener('focusout', (event) => {
+        if (isTextInput(event.target)) {
+            keyboardOpen = false;
+            setTimeout(setRealViewportHeight, 0);
+        }
+    });
     requestAnimationFrame(setRealViewportHeight);
     requestAnimationFrame(() => requestAnimationFrame(setRealViewportHeight));
     setTimeout(setRealViewportHeight, 50);
