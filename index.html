@@ -12,20 +12,14 @@
       if (typeof window === 'undefined') return;
       const root = document.documentElement;
       const getViewportHeight = () => {
-        if (window.visualViewport && window.visualViewport.height) {
-          return Math.round(window.visualViewport.height);
+        if (window.visualViewport) {
+          return Math.round(window.visualViewport.height + window.visualViewport.offsetTop);
         }
         return Math.round(window.innerHeight || 0);
       };
-      const setRealViewportHeight = () => {
-        const vh = getViewportHeight();
-        if (vh > 0) {
-          root.style.setProperty('--real-vh', `${vh}px`);
-        }
-      };
-      setRealViewportHeight();
-      if (window.visualViewport) {
-        window.visualViewport.addEventListener('resize', setRealViewportHeight);
+      const vh = getViewportHeight();
+      if (vh > 0) {
+        root.style.setProperty('--real-vh', `${vh}px`);
       }
     })();
   </script>
@@ -152,7 +146,7 @@
     }
 
     @media (max-width: 767px) {
-      html.standalone .dashboard-bottom-nav {
+      html.standalone[data-safe-area-ready="true"] .dashboard-bottom-nav {
         position: fixed;
         left: 0;
         right: 0;
@@ -160,7 +154,7 @@
         padding-bottom: var(--safe-bottom);
       }
 
-      html.standalone .dashboard-scroll {
+      html.standalone[data-safe-area-ready="true"] .dashboard-scroll {
         padding-bottom: calc(84px + 1.5rem + var(--safe-bottom));
       }
     }
@@ -176,20 +170,6 @@
       padding-top: var(--safe-top);
     }
 
-    @media (display-mode: standalone) and (max-width: 767px) {
-
-      .dashboard-bottom-nav {
-        position: fixed;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        padding-bottom: var(--safe-bottom);
-      }
-
-      .dashboard-scroll {
-        padding-bottom: calc(84px + 1.5rem + var(--safe-bottom));
-      }
-    }
 
 
     /* Previene el desplazamiento horizontal accidental en móviles */

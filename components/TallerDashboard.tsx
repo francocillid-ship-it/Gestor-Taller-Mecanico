@@ -31,6 +31,7 @@ interface TallerDashboardProps {
 }
 
 type View = 'dashboard' | 'trabajos' | 'clientes' | 'finanzas' | 'ajustes';
+type NavLayout = 'bottom' | 'rail' | 'sidebar';
 
 const VIEW_ORDER: View[] = ['dashboard', 'trabajos', 'clientes', 'finanzas', 'ajustes'];
 
@@ -52,6 +53,66 @@ const ViewLoading = () => (
         </div>
     </div>
 );
+
+const getNavLayout = (): NavLayout => {
+    if (typeof window === 'undefined') return 'bottom';
+    const isLandscape = window.matchMedia('(orientation: landscape)').matches || window.innerWidth > window.innerHeight;
+    const isCoarsePointer = window.matchMedia('(pointer: coarse)').matches;
+    const isCompactLandscape = isLandscape && isCoarsePointer && window.matchMedia('(max-width: 900px)').matches;
+    if (isCompactLandscape) return 'rail';
+    if (window.matchMedia('(min-width: 768px)').matches) return 'sidebar';
+    return 'bottom';
+};
+
+const useNavLayout = () => {
+    const [layout, setLayout] = useState<NavLayout>(getNavLayout);
+
+    useEffect(() => {
+        const updateLayout = () => setLayout(getNavLayout());
+        updateLayout();
+        window.addEventListener('resize', updateLayout);
+        window.addEventListener('orientationchange', updateLayout);
+        if (window.visualViewport) {
+            window.visualViewport.addEventListener('resize', updateLayout);
+        }
+        return () => {
+            window.removeEventListener('resize', updateLayout);
+            window.removeEventListener('orientationchange', updateLayout);
+            if (window.visualViewport) {
+                window.visualViewport.removeEventListener('resize', updateLayout);
+            }
+        };
+    }, []);
+
+    return layout;
+};
+
+const useSafeAreaReady = () => {
+    const [ready, setReady] = useState(() => document.documentElement.dataset.safeAreaReady === 'true');
+
+    useEffect(() => {
+        if (ready) return;
+        let rafId: number | null = null;
+        const handleReady = () => setReady(true);
+        const checkReady = () => {
+            if (document.documentElement.dataset.safeAreaReady === 'true') {
+                setReady(true);
+                return;
+            }
+            rafId = window.requestAnimationFrame(checkReady);
+        };
+        window.addEventListener('safeareaready', handleReady);
+        rafId = window.requestAnimationFrame(checkReady);
+        const fallback = window.setTimeout(() => setReady(true), 800);
+        return () => {
+            window.removeEventListener('safeareaready', handleReady);
+            if (rafId) window.cancelAnimationFrame(rafId);
+            window.clearTimeout(fallback);
+        };
+    }, [ready]);
+
+    return ready;
+};
 
 
 const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout, user }) => {
@@ -76,6 +137,8 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout, user }) => 
     const [targetJobStatus, setTargetJobStatus] = useState<JobStatusEnum | undefined>(undefined);
     const [targetJobId, setTargetJobId] = useState<string | undefined>(undefined);
     const [isStandalone, setIsStandalone] = useState(false);
+    const navLayout = useNavLayout();
+    const safeAreaReady = useSafeAreaReady();
 
     const lastAutoRouteRef = useRef<string>('');
 
@@ -353,8 +416,8 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout, user }) => 
     };
 
     const activeIndex = VIEW_ORDER.indexOf(view);
-    const bottomNav = (
-        <nav className="md:hidden bg-white dark:bg-gray-800 border-t dark:border-gray-700 flex-shrink-0 z-[100] pb-5 dashboard-bottom-nav">
+    const bottomNav = navLayout === 'bottom' && safeAreaReady ? (
+        <nav className="bg-white dark:bg-gray-800 border-t dark:border-gray-700 flex-shrink-0 z-[100] pb-5 dashboard-bottom-nav">
             <div className="flex justify-around items-center h-16 w-full px-2">
                 {navItems.map((item) => (
                     <button
@@ -369,7 +432,25 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout, user }) => 
                 ))}
             </div>
         </nav>
-    );
+    ) : null;
+
+    const navRail = navLayout === 'rail' ? (
+        <nav className="bg-white dark:bg-gray-800 border-r dark:border-gray-700 w-20 flex-shrink-0 z-[90]">
+            <div className="flex flex-col items-center gap-3 py-4">
+                {navItems.map((item) => (
+                    <button
+                        key={item.id}
+                        onClick={() => handleNavigate(item.id as View)}
+                        className={`relative flex flex-col items-center justify-center w-full px-2 py-2 transition-colors duration-200 ${view === item.id ? 'text-taller-primary' : 'text-taller-gray dark:text-gray-400'}`}
+                    >
+                        <item.icon className="h-6 w-6" />
+                        <span className="text-[10px] mt-1 font-medium text-center">{item.label}</span>
+                        {view === item.id && <span className="absolute top-0 w-8 h-1 bg-taller-primary rounded-b-lg"></span>}
+                    </button>
+                ))}
+            </div>
+        </nav>
+    ) : null;
 
     return (
         <div className="flex app-height w-full bg-taller-light dark:bg-taller-dark text-taller-dark dark:text-taller-light overflow-hidden app-shell">
@@ -391,7 +472,8 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout, user }) => 
                 input, textarea, select { font-size: 16px !important; }
             `}</style>
 
-            <aside className="hidden md:flex md:flex-col w-64 bg-white dark:bg-gray-800 shadow-lg shrink-0 border-r dark:border-gray-700 z-[90]">
+            {navLayout === 'sidebar' && (
+                <aside className="hidden md:flex md:flex-col w-64 bg-white dark:bg-gray-800 shadow-lg shrink-0 border-r dark:border-gray-700 z-[90]">
                 <div className="h-20 flex items-center justify-center border-b dark:border-gray-700 p-4">
                     {tallerInfo.logoUrl ? <img src={tallerInfo.logoUrl} alt="Logo" className="max-h-full object-contain" /> : <WrenchScrewdriverIcon className="h-10 w-10 text-taller-primary" />}
                 </div>
@@ -407,7 +489,10 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout, user }) => 
                         </button>
                     ))}
                 </nav>
-            </aside>
+                </aside>
+            )}
+
+            {navRail}
 
             <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden relative">
                 <Header
@@ -485,7 +570,7 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout, user }) => 
                     )}
                 </main>
 
-                {isStandalone ? createPortal(bottomNav, document.body) : bottomNav}
+                {bottomNav && (isStandalone ? createPortal(bottomNav, document.body) : bottomNav)}
             </div>
         </div>
     );
