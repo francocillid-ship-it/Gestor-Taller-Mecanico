@@ -109,12 +109,16 @@ const setRealViewportHeight = () => {
         }
         lastStableHeight = vh;
         document.documentElement.style.setProperty('--real-vh', `${vh}px`);
+        document.documentElement.style.setProperty('--app-dvh', `${vh}px`);
+        document.documentElement.style.setProperty('--app-svh', `${vh}px`);
         return;
     }
 
     if (lastStableHeight === 0) {
         lastStableHeight = vh;
         document.documentElement.style.setProperty('--real-vh', `${vh}px`);
+        document.documentElement.style.setProperty('--app-dvh', `${vh}px`);
+        document.documentElement.style.setProperty('--app-svh', `${vh}px`);
         return;
     }
 
@@ -122,6 +126,8 @@ const setRealViewportHeight = () => {
         keyboardOpen = false;
         lastStableHeight = vh;
         document.documentElement.style.setProperty('--real-vh', `${vh}px`);
+        document.documentElement.style.setProperty('--app-dvh', `${vh}px`);
+        document.documentElement.style.setProperty('--app-svh', `${vh}px`);
         return;
     }
 
@@ -130,6 +136,8 @@ const setRealViewportHeight = () => {
     }
 
     document.documentElement.style.setProperty('--real-vh', `${vh}px`);
+    document.documentElement.style.setProperty('--app-dvh', `${vh}px`);
+    document.documentElement.style.setProperty('--app-svh', `${vh}px`);
 };
 
 const isIOSStandalone = () => {
@@ -155,6 +163,9 @@ const initViewportFix = () => {
     window.addEventListener('resize', updateEnvironmentMetrics);
     window.addEventListener('orientationchange', () => {
         rotationFreezeUntil = Date.now() + 500;
+        safeAreaReady = false;
+        stableSafeAreaFrames = 0;
+        delete document.documentElement.dataset.safeAreaReady;
         setTimeout(updateEnvironmentMetrics, 550);
     });
     window.addEventListener('pageshow', updateEnvironmentMetrics);

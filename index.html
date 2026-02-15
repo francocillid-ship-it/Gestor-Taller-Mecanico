@@ -20,6 +20,8 @@
       const vh = getViewportHeight();
       if (vh > 0) {
         root.style.setProperty('--real-vh', `${vh}px`);
+        root.style.setProperty('--app-dvh', `${vh}px`);
+        root.style.setProperty('--app-svh', `${vh}px`);
       }
     })();
   </script>
@@ -94,8 +96,14 @@
       --color-taller-gray: 100 116 139;
 
       --real-vh: 100%;
+      --app-dvh: 100dvh;
+      --app-svh: 100svh;
+      --app-height: var(--app-dvh, var(--real-vh, 100vh));
+      --app-height-stable: var(--app-svh, var(--real-vh, 100vh));
       --safe-top: 0px;
       --safe-bottom: 0px;
+      --safe-right: 0px;
+      --safe-left: 0px;
     }
 
     html.standalone {
@@ -105,8 +113,8 @@
 
     html,
     body {
-      height: var(--real-vh);
-      min-height: var(--real-vh);
+      height: var(--app-height);
+      min-height: var(--app-height-stable);
       width: 100%;
       margin: 0;
       padding: 0;
@@ -125,8 +133,8 @@
     }
 
     #root {
-      height: var(--real-vh);
-      min-height: var(--real-vh);
+      height: var(--app-height);
+      min-height: var(--app-height-stable);
       width: 100%;
       display: flex;
       flex-direction: column;
@@ -146,7 +154,7 @@
     }
 
     @media (max-width: 767px) {
-      html.standalone[data-safe-area-ready="true"] .dashboard-bottom-nav {
+      html[data-safe-area-ready="true"] .dashboard-bottom-nav {
         position: fixed;
         left: 0;
         right: 0;
@@ -154,7 +162,7 @@
         padding-bottom: var(--safe-bottom);
       }
 
-      html.standalone[data-safe-area-ready="true"] .dashboard-scroll {
+      html[data-safe-area-ready="true"] .dashboard-scroll {
         padding-bottom: calc(84px + 1.5rem + var(--safe-bottom));
       }
     }
@@ -167,6 +175,14 @@
     }
 
     html.standalone #root {
+      padding-top: var(--safe-top);
+    }
+
+    html:not(.standalone) .safe-top-padding {
+      padding-top: var(--safe-top);
+    }
+
+    .safe-top-padding-portal {
       padding-top: var(--safe-top);
     }
 

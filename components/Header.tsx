@@ -34,7 +34,7 @@ const Header: React.FC<HeaderProps> = ({ tallerName, logoUrl, onMenuClick, showM
     };
 
     return (
-        <header className="relative bg-white dark:bg-gray-800 shadow-md dark:shadow-none dark:border-b dark:border-gray-700 z-[70] flex-shrink-0">
+        <header className="relative bg-white dark:bg-gray-800 shadow-md dark:shadow-none dark:border-b dark:border-gray-700 z-[70] flex-shrink-0 safe-top-padding">
             {/* El padding superior maneja el área segura para iPhone */}
             <div className="md:pt-0">
                 <div className="h-16 md:h-20 flex items-center justify-between px-4 md:px-6">
