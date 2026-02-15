@@ -8,6 +8,8 @@ const HEIGHT_JITTER_TOLERANCE = 8;
 const SAFE_AREA_TOLERANCE = 1;
 const SAFE_AREA_STABLE_FRAMES = 2;
 let lastStableHeight = 0;
+let maxViewportHeight = 0;
+let minViewportHeight = 0;
 let keyboardOpen = false;
 let rotationFreezeUntil = 0;
 let intervalId: number | null = null;
@@ -108,26 +110,35 @@ const setRealViewportHeight = () => {
             return;
         }
         lastStableHeight = vh;
+        maxViewportHeight = Math.max(maxViewportHeight, vh);
+        minViewportHeight = minViewportHeight === 0 ? vh : Math.min(minViewportHeight, vh);
         document.documentElement.style.setProperty('--real-vh', `${vh}px`);
         document.documentElement.style.setProperty('--app-dvh', `${vh}px`);
-        document.documentElement.style.setProperty('--app-svh', `${vh}px`);
+        document.documentElement.style.setProperty('--app-svh', `${minViewportHeight}px`);
+        document.documentElement.style.setProperty('--app-lvh', `${maxViewportHeight}px`);
         return;
     }
 
     if (lastStableHeight === 0) {
         lastStableHeight = vh;
+        maxViewportHeight = Math.max(maxViewportHeight, vh);
+        minViewportHeight = minViewportHeight === 0 ? vh : Math.min(minViewportHeight, vh);
         document.documentElement.style.setProperty('--real-vh', `${vh}px`);
         document.documentElement.style.setProperty('--app-dvh', `${vh}px`);
-        document.documentElement.style.setProperty('--app-svh', `${vh}px`);
+        document.documentElement.style.setProperty('--app-svh', `${minViewportHeight}px`);
+        document.documentElement.style.setProperty('--app-lvh', `${maxViewportHeight}px`);
         return;
     }
 
     if (vh >= lastStableHeight - 10) {
         keyboardOpen = false;
         lastStableHeight = vh;
+        maxViewportHeight = Math.max(maxViewportHeight, vh);
+        minViewportHeight = minViewportHeight === 0 ? vh : Math.min(minViewportHeight, vh);
         document.documentElement.style.setProperty('--real-vh', `${vh}px`);
         document.documentElement.style.setProperty('--app-dvh', `${vh}px`);
-        document.documentElement.style.setProperty('--app-svh', `${vh}px`);
+        document.documentElement.style.setProperty('--app-svh', `${minViewportHeight}px`);
+        document.documentElement.style.setProperty('--app-lvh', `${maxViewportHeight}px`);
         return;
     }
 
@@ -135,9 +146,12 @@ const setRealViewportHeight = () => {
         return;
     }
 
+    maxViewportHeight = Math.max(maxViewportHeight, vh);
+    minViewportHeight = minViewportHeight === 0 ? vh : Math.min(minViewportHeight, vh);
     document.documentElement.style.setProperty('--real-vh', `${vh}px`);
     document.documentElement.style.setProperty('--app-dvh', `${vh}px`);
-    document.documentElement.style.setProperty('--app-svh', `${vh}px`);
+    document.documentElement.style.setProperty('--app-svh', `${minViewportHeight}px`);
+    document.documentElement.style.setProperty('--app-lvh', `${maxViewportHeight}px`);
 };
 
 const isIOSStandalone = () => {
@@ -146,9 +160,14 @@ const isIOSStandalone = () => {
     return isIOS && isStandalone;
 };
 
+const forceLayoutReflow = () => {
+    void document.documentElement.offsetHeight;
+};
+
 const updateEnvironmentMetrics = () => {
     setRealViewportHeight();
     setSafeAreaInsets();
+    forceLayoutReflow();
 };
 
 const initViewportFix = () => {
@@ -163,6 +182,8 @@ const initViewportFix = () => {
     window.addEventListener('resize', updateEnvironmentMetrics);
     window.addEventListener('orientationchange', () => {
         rotationFreezeUntil = Date.now() + 500;
+        minViewportHeight = 0;
+        maxViewportHeight = 0;
         safeAreaReady = false;
         stableSafeAreaFrames = 0;
         delete document.documentElement.dataset.safeAreaReady;

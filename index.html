@@ -22,6 +22,7 @@
         root.style.setProperty('--real-vh', `${vh}px`);
         root.style.setProperty('--app-dvh', `${vh}px`);
         root.style.setProperty('--app-svh', `${vh}px`);
+        root.style.setProperty('--app-lvh', `${vh}px`);
       }
     })();
   </script>
@@ -29,13 +30,15 @@
   <!-- Script de detección de tema inmediato para evitar parpadeo -->
   <script>
     (function () {
-      // Tema (Oscuro/Claro)
       const theme = localStorage.getItem('theme') || 'system';
       const isDark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
       if (isDark) document.documentElement.classList.add('dark');
       else document.documentElement.classList.remove('dark');
 
-      // Tamaño de Fuente (Sin saltos visuales)
+      const themeColor = isDark ? '#0b1120' : '#f0f9ff';
+      const metaTheme = document.querySelector('meta[name="theme-color"]');
+      if (metaTheme) metaTheme.setAttribute('content', themeColor);
+
       const savedFontSize = localStorage.getItem('fontSizePreference');
       if (savedFontSize) {
         let sizepx = '16px';
@@ -79,7 +82,7 @@
 
   <!-- PWA Meta Tags -->
   <link rel="manifest" href="manifest.json" />
-  <meta name="theme-color" content="#1e3a8a">
+  <meta name="theme-color" content="#0b1120">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Mi Taller">
@@ -98,8 +101,9 @@
       --real-vh: 100%;
       --app-dvh: 100dvh;
       --app-svh: 100svh;
-      --app-height: var(--app-dvh, var(--real-vh, 100vh));
-      --app-height-stable: var(--app-svh, var(--real-vh, 100vh));
+      --app-lvh: 100lvh;
+      --app-height: var(--app-dvh, var(--real-vh, 100lvh));
+      --app-height-stable: var(--app-svh, var(--real-vh, 100lvh));
       --safe-top: 0px;
       --safe-bottom: 0px;
       --safe-right: 0px;
@@ -183,7 +187,7 @@
     }
 
     .safe-top-padding-portal {
-      padding-top: var(--safe-top);
+      padding-top: max(1rem, var(--safe-top));
     }
 
 

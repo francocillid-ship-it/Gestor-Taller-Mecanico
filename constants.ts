@@ -37,6 +37,27 @@ export const applyThemeClass = () => {
     } else {
         document.documentElement.classList.remove('dark');
     }
+
+    updateThemeColorMeta();
+};
+
+const THEME_COLOR_DARK = '#0b1120';
+const THEME_COLOR_LIGHT = '#f0f9ff';
+
+const resolveCssColor = (variableName: string, fallback: string) => {
+    const value = getComputedStyle(document.documentElement).getPropertyValue(variableName).trim();
+    if (!value) return fallback;
+    if (value.startsWith('#') || value.startsWith('rgb')) return value;
+    return `rgb(${value})`;
+};
+
+export const updateThemeColorMeta = () => {
+    const isDark = document.documentElement.classList.contains('dark');
+    const color = isDark
+        ? resolveCssColor('--color-taller-dark', THEME_COLOR_DARK)
+        : resolveCssColor('--color-taller-light', THEME_COLOR_LIGHT);
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.setAttribute('content', color);
 };
 
 // Aplicar el tema único azul oscuro corporativo (CSS Variables)
@@ -53,6 +74,7 @@ export const applyAppTheme = () => {
 
     // Asegura que la clase dark esté sincronizada
     applyThemeClass();
+    updateThemeColorMeta();
 };
 
 export const applyFontSize = (size: 'small' | 'normal' | 'large') => {

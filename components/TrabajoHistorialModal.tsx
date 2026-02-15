@@ -31,7 +31,7 @@ const TrabajoHistorialModal: React.FC<TrabajoHistorialModalProps> = ({ trabajos,
                 onClick={handleClose}
             />
             <div 
-                className={`bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-2xl max-h-[85vh] flex flex-col relative z-10 transform transition-all duration-300 ease-out ${isVisible ? 'scale-100 opacity-100 translate-y-0' : 'scale-95 opacity-0 translate-y-4 sm:translate-y-0'}`}
+                className={`bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-2xl max-h-[85svh] flex flex-col relative z-10 transform transition-all duration-300 ease-out ${isVisible ? 'scale-100 opacity-100 translate-y-0' : 'scale-95 opacity-0 translate-y-4 sm:translate-y-0'}`}
             >
                 <div className="flex justify-between items-center p-4 border-b dark:border-gray-700 flex-shrink-0">
                     <h2 className="text-xl font-bold text-taller-dark dark:text-taller-light">{title}</h2>

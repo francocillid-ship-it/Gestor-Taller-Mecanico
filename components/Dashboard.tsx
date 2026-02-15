@@ -103,7 +103,7 @@ const MonthPickerPortal = ({
                     <button onClick={onClose} className="p-1 text-gray-400 hover:text-gray-600"><XMarkIcon className="h-5 w-5" /></button>
                 </div>
 
-                <div className="max-h-[60vh] sm:max-h-64 overflow-y-auto py-1">
+                <div className="max-h-[60svh] sm:max-h-64 overflow-y-auto py-1">
                     {availableMonths.length > 0 ? (
                         availableMonths.map(m => (
                             <button

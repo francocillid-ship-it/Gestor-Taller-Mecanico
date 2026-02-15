@@ -137,7 +137,7 @@ const FinanceDetailOverlay = ({
                     </button>
                 </div>
 
-                <div className="p-8 space-y-8 max-h-[70vh] overflow-y-auto">
+                <div className="p-8 space-y-8 max-h-[70svh] overflow-y-auto">
                     {/* Comparación */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                         <div className="bg-gray-50 dark:bg-gray-800/50 p-6 rounded-3xl border border-gray-100 dark:border-gray-700">
