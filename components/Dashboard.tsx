@@ -83,7 +83,7 @@ const MonthPickerPortal = ({
 
             {/* Contenedor del Menú */}
             <div
-                className="relative w-[95%] max-w-[280px] sm:absolute bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border dark:border-gray-700 overflow-hidden animate-in zoom-in-95 fade-in duration-200"
+                className="relative w-[95%] max-w-[280px] sm:absolute bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border-none overflow-hidden animate-in zoom-in-95 fade-in duration-200"
                 style={anchorRect && window.innerWidth > 640 ? (() => {
                     const spaceAbove = anchorRect.top;
                     const spaceBelow = window.innerHeight - anchorRect.bottom;
@@ -98,7 +98,7 @@ const MonthPickerPortal = ({
                     };
                 })() : {}}
             >
-                <div className="flex items-center justify-between px-4 py-3 border-b dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50">
+                <div className="flex items-center justify-between px-4 py-3 border-none bg-gray-50 dark:bg-gray-900/50">
                     <span className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Seleccionar Mes</span>
                     <button onClick={onClose} className="p-1 text-gray-400 hover:text-gray-600"><XMarkIcon className="h-5 w-5" /></button>
                 </div>
@@ -112,7 +112,7 @@ const MonthPickerPortal = ({
                                     onSelect(m.value);
                                     onClose();
                                 }}
-                                className={`w-full text-left px-5 py-4 sm:py-3 text-sm hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors border-b last:border-0 dark:border-gray-700/50 capitalize ${activePeriod === m.value ? 'text-taller-primary font-bold bg-blue-50 dark:bg-blue-900/20' : 'text-taller-dark dark:text-taller-light'}`}
+                                className={`w-full text-left px-5 py-4 sm:py-3 text-sm hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors border-none capitalize ${activePeriod === m.value ? 'text-taller-primary font-bold bg-blue-50 dark:bg-blue-900/20' : 'text-taller-dark dark:text-taller-light'}`}
                             >
                                 {m.label}
                             </button>
@@ -163,7 +163,7 @@ const FilterControls = ({
                     onClick={() => setPeriodFn(p.value)}
                     className={`flex-shrink-0 px-4 py-2 text-xs sm:text-sm font-medium rounded-full transition-all border whitespace-nowrap ${activePeriod === p.value
                         ? 'bg-taller-primary text-white border-taller-primary shadow-md transform-gpu scale-105'
-                        : 'bg-white dark:bg-gray-800 text-taller-gray dark:text-gray-300 border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700'
+                        : 'bg-white dark:bg-gray-800 text-taller-gray dark:text-gray-300 border-none hover:bg-gray-50 dark:hover:bg-gray-700'
                         }`}
                 >
                     {p.label}
@@ -183,7 +183,7 @@ const FilterControls = ({
                 onClick={handleOpenMenu}
                 className={`flex-shrink-0 flex items-center gap-1.5 px-4 py-2 text-xs sm:text-sm font-medium rounded-full transition-all border whitespace-nowrap ${isMenuOpen
                     ? 'bg-gray-100 dark:bg-gray-700 border-taller-primary text-taller-primary'
-                    : 'bg-white dark:bg-gray-800 text-taller-gray dark:text-gray-300 border-gray-200 dark:border-gray-600 hover:bg-gray-50'
+                    : 'bg-white dark:bg-gray-800 text-taller-gray dark:text-gray-300 border-none hover:bg-gray-50'
                     }`}
             >
                 <CalendarIcon className="h-4 w-4" />
@@ -269,7 +269,7 @@ const FinancialDetailOverlay: React.FC<FinancialDetailOverlayProps> = ({
                 className={`fixed inset-0 z-[100] bg-taller-light dark:bg-taller-dark flex flex-col shadow-2xl transition-transform duration-500 will-change-transform ${isVisible ? 'translate-y-0' : 'translate-y-full'}`}
                 style={{ transitionTimingFunction: 'cubic-bezier(0.32, 0.72, 0, 1)' }}
             >
-                <div className="bg-white dark:bg-gray-800 shadow-sm flex-shrink-0 border-b dark:border-gray-700 z-20 relative safe-top-padding-portal">
+                <div className="bg-white dark:bg-gray-800 shadow-sm flex-shrink-0 border-none z-20 relative safe-top-padding-portal">
                     <div className="flex items-center justify-between p-4">
                         <button onClick={handleClose} className="p-2 -ml-2 text-taller-gray dark:text-gray-400 hover:text-taller-dark dark:hover:text-white rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"><ArrowLeftIcon className="h-6 w-6" /></button>
                         <h2 className="text-lg font-bold text-taller-dark dark:text-taller-light">{titleMap[detailView]}</h2>
@@ -284,7 +284,7 @@ const FinancialDetailOverlay: React.FC<FinancialDetailOverlayProps> = ({
                 </div>
 
                 <div ref={scrollContainerRef} onScroll={handleScroll} className="flex-1 overflow-y-auto px-4 pb-4 pt-2 space-y-4 overscroll-none">
-                    <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm text-center mt-2 border dark:border-gray-700 transform-gpu">
+                    <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm text-center mt-2 border-none transform-gpu">
                         <p className="text-sm text-taller-gray dark:text-gray-400 uppercase tracking-wide">Total del Periodo</p>
                         <p className={`text-4xl font-bold mt-2 ${data.total >= 0 ? 'text-taller-dark dark:text-taller-light' : 'text-red-600'}`}>{displayTotal}</p>
                         {isProfitView && <p className="text-xs text-taller-gray dark:text-gray-500 mt-2">* Cálculo: Mano de Obra + Sobrantes de Repuestos.</p>}
@@ -571,7 +571,7 @@ const Dashboard: React.FC<DashboardProps> = ({ clientes, trabajos, gastos, onDat
     }, [detailView, trabajos, gastos, clientes, period]);
 
     const renderGastoRow = (gasto: Gasto) => (
-        <div key={gasto.id} className="flex flex-col sm:flex-row sm:justify-between sm:items-center p-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 rounded-lg gap-2 border-b dark:border-gray-700 last:border-0 sm:border-0 transition-colors">
+        <div key={gasto.id} className="flex flex-col sm:flex-row sm:justify-between sm:items-center p-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 rounded-lg gap-2 border-none transition-colors">
             <div className="w-full sm:w-auto">
                 <p className="font-medium text-taller-dark dark:text-taller-light">{gasto.descripcion}</p>
                 <p className="text-sm text-taller-gray dark:text-gray-400">{new Date(gasto.fecha).toLocaleDateString('es-ES')}</p>
@@ -613,7 +613,7 @@ const Dashboard: React.FC<DashboardProps> = ({ clientes, trabajos, gastos, onDat
                 <div className="space-y-2">
                     {groupedGastos.thisMonth.length > 0 ? groupedGastos.thisMonth.map(renderGastoRow) : !searchQuery && <p className="text-center text-sm text-taller-gray dark:text-gray-400 py-2">No hay gastos registrados este mes.</p>}
                     {groupedGastos.lastMonth.length > 0 && !searchQuery && (
-                        <div className="mt-4 border-t dark:border-gray-700 pt-2">
+                        <div className="mt-4 border-none pt-2">
                             <button onClick={() => setIsLastMonthExpanded(!isLastMonthExpanded)} className="w-full flex items-center justify-between p-2 text-sm font-medium text-taller-gray dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50 rounded transition-colors"><span className="flex items-center gap-2"><CalendarIcon className="h-4 w-4" />Mes Pasado ({groupedGastos.lastMonth.length})</span><ChevronDownIcon className={`h-4 w-4 transform transition-transform duration-200 ${isLastMonthExpanded ? 'rotate-180' : ''}`} /></button>
                             <div className={`grid transition-[grid-template-rows] duration-300 ease-out ${isLastMonthExpanded ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}><div className="overflow-hidden"><div className="pt-2">{groupedGastos.lastMonth.map(renderGastoRow)}</div></div></div>
                         </div>

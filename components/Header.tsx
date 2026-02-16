@@ -23,7 +23,7 @@ const Header: React.FC<HeaderProps> = ({ tallerName, logoUrl, onMenuClick, showM
         if (isSearchExpanded && mobileInputRef.current) {
             const timer = setTimeout(() => {
                 mobileInputRef.current?.focus();
-            }, 150); 
+            }, 150);
             return () => clearTimeout(timer);
         }
     }, [isSearchExpanded]);
@@ -34,7 +34,7 @@ const Header: React.FC<HeaderProps> = ({ tallerName, logoUrl, onMenuClick, showM
     };
 
     return (
-        <header className="relative bg-white dark:bg-gray-800 shadow-md dark:shadow-none dark:border-b dark:border-gray-700 z-[70] flex-shrink-0 safe-top-padding">
+        <header className="relative bg-white dark:bg-gray-800 shadow-none dark:border-none z-[70] flex-shrink-0 safe-top-padding">
             {/* El padding superior maneja el área segura para iPhone */}
             <div className="md:pt-0">
                 <div className="h-16 md:h-20 flex items-center justify-between px-4 md:px-6">
@@ -45,13 +45,13 @@ const Header: React.FC<HeaderProps> = ({ tallerName, logoUrl, onMenuClick, showM
                                 <Bars3Icon className="h-6 w-6" />
                             </button>
                         )}
-                        
+
                         {logoUrl && (
                             <div className="md:hidden relative h-10 flex items-center max-w-full">
-                                <img 
-                                    src={logoUrl} 
-                                    alt={tallerName} 
-                                    className="h-full w-auto object-contain max-w-[40vw]" 
+                                <img
+                                    src={logoUrl}
+                                    alt={tallerName}
+                                    className="h-full w-auto object-contain max-w-[40vw]"
                                 />
                             </div>
                         )}
@@ -63,7 +63,7 @@ const Header: React.FC<HeaderProps> = ({ tallerName, logoUrl, onMenuClick, showM
 
                     {/* --- Right Side: Search Controls --- */}
                     <div className="flex items-center flex-shrink-0 z-0">
-                        <button 
+                        <button
                             onClick={handleOpenSearch}
                             className={`md:hidden p-2 text-gray-500 hover:text-taller-primary rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-opacity duration-200 ${isSearchExpanded ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
                             aria-label="Buscar"
@@ -106,15 +106,15 @@ const Header: React.FC<HeaderProps> = ({ tallerName, logoUrl, onMenuClick, showM
                         className="block w-full pl-10 pr-10 py-2 border border-gray-300 dark:border-gray-600 rounded-md leading-5 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 focus:outline-none focus:bg-white dark:focus:bg-gray-600 focus:ring-1 focus:ring-taller-primary sm:text-sm"
                     />
                     {searchQuery && (
-                        <button 
-                                onClick={() => onSearchChange('')}
-                                className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+                        <button
+                            onClick={() => onSearchChange('')}
+                            className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
                         >
-                                <XMarkIcon className="h-4 w-4" />
+                            <XMarkIcon className="h-4 w-4" />
                         </button>
                     )}
                 </div>
-                <button 
+                <button
                     onClick={handleCloseSearch}
                     className="ml-3 p-2 text-sm font-bold text-taller-primary hover:text-taller-secondary"
                 >

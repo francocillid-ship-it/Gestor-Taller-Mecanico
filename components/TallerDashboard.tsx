@@ -417,7 +417,7 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout, user }) => 
 
     const activeIndex = VIEW_ORDER.indexOf(view);
     const bottomNav = navLayout === 'bottom' && safeAreaReady ? (
-        <nav className="bg-white dark:bg-gray-800 border-t dark:border-gray-700 flex-shrink-0 z-[100] pb-5 dashboard-bottom-nav">
+        <nav className="bg-white dark:bg-gray-800 border-none flex-shrink-0 z-[100] pb-5 dashboard-bottom-nav">
             <div className="flex justify-around items-center h-16 w-full px-2">
                 {navItems.map((item) => (
                     <button
@@ -435,7 +435,7 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout, user }) => 
     ) : null;
 
     const navRail = navLayout === 'rail' ? (
-        <nav className="bg-white dark:bg-gray-800 border-r dark:border-gray-700 w-20 flex-shrink-0 z-[90]">
+        <nav className="bg-white dark:bg-gray-800 border-none w-20 flex-shrink-0 z-[90]">
             <div className="flex flex-col items-center gap-3 py-4">
                 {navItems.map((item) => (
                     <button
@@ -473,22 +473,22 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout, user }) => 
             `}</style>
 
             {navLayout === 'sidebar' && (
-                <aside className="hidden md:flex md:flex-col w-64 bg-white dark:bg-gray-800 shadow-lg shrink-0 border-r dark:border-gray-700 z-[90]">
-                <div className="h-20 flex items-center justify-center border-b dark:border-gray-700 p-4">
-                    {tallerInfo.logoUrl ? <img src={tallerInfo.logoUrl} alt="Logo" className="max-h-full object-contain" /> : <WrenchScrewdriverIcon className="h-10 w-10 text-taller-primary" />}
-                </div>
-                <nav className="flex-1 px-4 py-6 space-y-2">
-                    {navItems.map((item) => (
-                        <button
-                            key={item.id}
-                            onClick={() => handleNavigate(item.id as View)}
-                            className={`w-full flex items-center px-4 py-3 rounded-xl transition-all duration-200 ${view === item.id ? 'bg-taller-primary text-white shadow-lg shadow-taller-primary/20 scale-[1.02]' : 'text-taller-gray dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'}`}
-                        >
-                            <item.icon className="h-5 w-5 mr-3" />
-                            <span className="font-bold text-sm tracking-tight">{item.label}</span>
-                        </button>
-                    ))}
-                </nav>
+                <aside className="hidden md:flex md:flex-col w-64 bg-white dark:bg-gray-800 shadow-lg shrink-0 border-none z-[90]">
+                    <div className="h-20 flex items-center justify-center border-none p-4">
+                        {tallerInfo.logoUrl ? <img src={tallerInfo.logoUrl} alt="Logo" className="max-h-full object-contain" /> : <WrenchScrewdriverIcon className="h-10 w-10 text-taller-primary" />}
+                    </div>
+                    <nav className="flex-1 px-4 py-6 space-y-2">
+                        {navItems.map((item) => (
+                            <button
+                                key={item.id}
+                                onClick={() => handleNavigate(item.id as View)}
+                                className={`w-full flex items-center px-4 py-3 rounded-xl transition-all duration-200 ${view === item.id ? 'bg-taller-primary text-white shadow-lg shadow-taller-primary/20 scale-[1.02]' : 'text-taller-gray dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'}`}
+                            >
+                                <item.icon className="h-5 w-5 mr-3" />
+                                <span className="font-bold text-sm tracking-tight">{item.label}</span>
+                            </button>
+                        ))}
+                    </nav>
                 </aside>
             )}
 

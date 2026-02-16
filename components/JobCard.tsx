@@ -319,7 +319,7 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
         ${isCompactMode
             ? (isExpanded
                 ? 'col-span-2 shadow-lg ring-2 ring-taller-primary/20 z-10'
-                : 'col-span-1 shadow-sm hover:shadow-md cursor-pointer active:scale-[0.98] border border-gray-200 dark:border-gray-700 min-h-[80px]')
+                : 'col-span-1 shadow-sm hover:shadow-md cursor-pointer active:scale-[0.98] min-h-[80px]')
             : `shadow-md border-l-4 ${needsScheduling
                 ? 'border-red-500 ring-2 ring-red-100 dark:ring-red-900/20'
                 : (isHighlighted ? 'border-taller-primary ring-2 ring-taller-primary/50' : 'border-taller-secondary/50 dark:border-taller-secondary')
@@ -402,10 +402,10 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
 
                 <div className={`grid transition-[grid-template-rows] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] ${(!isCompactMode && isExpanded) || (isCompactMode && isExpanded) ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>
                     <div className="overflow-hidden">
-                        <div className="p-3 border-t dark:border-gray-700">
+                        <div className="p-3 border-none">
 
                             {isProgramado && (
-                                <div className={`mb-4 p-3 rounded-lg border dark:border-gray-600 ${needsScheduling ? 'bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-800' : 'bg-gray-50 dark:bg-gray-700/30'}`}>
+                                <div className={`mb-4 p-3 rounded-lg border-none ${needsScheduling ? 'bg-red-50 dark:bg-red-900/10' : 'bg-gray-50 dark:bg-gray-700/30'}`}>
                                     <div className="flex justify-between items-center mb-2">
                                         <h4 className={`font-semibold text-xs flex items-center gap-1 ${needsScheduling ? 'text-red-700 dark:text-red-300' : 'text-taller-dark dark:text-taller-light'}`}>
                                             <CalendarIcon className="h-3.5 w-3.5" />
@@ -488,13 +488,13 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
                                 })}
 
                                 {!hasServices && trabajo.costoManoDeObra ? (
-                                    <li className="flex justify-between pt-2 border-t dark:border-gray-600 mt-2">
+                                    <li className="flex justify-between pt-2 mt-2">
                                         <span>Mano de Obra</span>
                                         <span>{formatCurrency(trabajo.costoManoDeObra)}</span>
                                     </li>
                                 ) : null}
 
-                                <li className="flex justify-between text-gray-500 pt-2 border-t dark:border-gray-600 mt-2">
+                                <li className="flex justify-between text-gray-500 pt-2 mt-2">
                                     <span>Total Repuestos (Taller)</span>
                                     <span>{formatCurrency(costoRepuestos)}</span>
                                 </li>
@@ -502,14 +502,14 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
                                     <span>Total Mano de Obra</span>
                                     <span>{formatCurrency(costoManoDeObra)}</span>
                                 </li>
-                                <li className="flex justify-between font-bold text-taller-dark dark:text-white border-t dark:border-gray-600 pt-1 mt-1">
+                                <li className="flex justify-between font-bold text-taller-dark dark:text-white pt-1 mt-1">
                                     <span>Total a Cobrar</span>
                                     <span>{formatCurrency(totalA_Cobrar)}</span>
                                 </li>
 
                                 {(trabajo.status === JobStatusEnum.EnProceso || trabajo.status === JobStatusEnum.Finalizado) && (
                                     <>
-                                        <div className="pt-2 mt-2 border-t dark:border-gray-600">
+                                        <div className="pt-2 mt-2 border-none">
                                             {pagadoItems > 0 && (
                                                 <li className="flex justify-between text-green-600/80 dark:text-green-500/80">
                                                     <span>Pagado (Repuestos)</span>
@@ -529,7 +529,7 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
                                                 </li>
                                             )}
 
-                                            <li className="flex justify-between text-green-600 dark:text-green-500 font-semibold border-t dark:border-gray-700 border-dashed mt-1 pt-1">
+                                            <li className="flex justify-between text-green-600 dark:text-green-500 font-semibold mt-1 pt-1">
                                                 <span>Total Pagado</span>
                                                 <span>{formatCurrency(totalPagado)}</span>
                                             </li>
@@ -544,7 +544,7 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
                             </ul>
 
                             {(trabajo.status === JobStatusEnum.EnProceso || trabajo.status === JobStatusEnum.Finalizado) && pagos.length > 0 && (
-                                <div className="mt-3 pt-3 border-t dark:border-gray-700">
+                                <div className="mt-3 pt-3 border-none">
                                     <h5 className="font-semibold text-xs mb-2">Historial de Pagos:</h5>
                                     <ul className="text-xs space-y-1.5 text-taller-dark dark:text-gray-300">
                                         {pagos.map((pago, index) => (
@@ -644,7 +644,7 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
                     />
 
                     <div
-                        className={`fixed bg-white dark:bg-gray-700 rounded-md shadow-lg border dark:border-gray-600 overflow-hidden transition-all duration-200 ease-out transform
+                        className={`fixed bg-white dark:bg-gray-700 rounded-md shadow-lg border-none overflow-hidden transition-all duration-200 ease-out transform
                             ${isMenuVisible
                                 ? 'opacity-100 scale-100 translate-y-0'
                                 : `opacity-0 scale-95 ${menuCoords.placement === 'bottom' ? '-translate-y-2' : 'translate-y-2'}`
@@ -666,9 +666,9 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
                                     onUpdateStatus(trabajo.id, status);
                                     handleCloseMenu();
                                 }}
-                                className={`block w-full text-left px-4 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-600 border-b dark:border-gray-600 last:border-0 ${status === trabajo.status
-                                        ? 'font-bold text-taller-primary bg-blue-50 dark:bg-blue-600/30 dark:text-white'
-                                        : 'text-taller-dark dark:text-gray-200'
+                                className={`block w-full text-left px-4 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-600 border-none ${status === trabajo.status
+                                    ? 'font-bold text-taller-primary bg-blue-50 dark:bg-blue-600/30 dark:text-white'
+                                    : 'text-taller-dark dark:text-gray-200'
                                     }`}
                             >
                                 {status}
