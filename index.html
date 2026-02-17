@@ -123,8 +123,10 @@
 
       /* Standalone Mode Fallbacks */
       html.standalone {
-        --safe-top: max(env(safe-area-inset-top, 0px), 20px);
-        --safe-bottom: max(env(safe-area-inset-bottom, 0px), 16px);
+        --safe-top: max(env(safe-area-inset-top, 0px), 44px);
+        /* Combined 44px for Notch */
+        --safe-bottom: max(env(safe-area-inset-bottom, 0px), 34px);
+        /* 34px for Home Indicator */
       }
 
       html,
@@ -139,7 +141,8 @@
 
       body {
         overflow: hidden !important;
-        background-color: rgb(var(--color-taller-light));
+        background-color: #1f2936 !important;
+        /* Force dark background */
         -webkit-font-smoothing: antialiased;
         -webkit-tap-highlight-color: transparent;
       }
@@ -259,7 +262,7 @@
 
 </head>
 
-<body class="no-horizontal-shake">
+<body class="">
   <div id="root"></div>
   <script type="module" src="./index.tsx"></script>
 </body>

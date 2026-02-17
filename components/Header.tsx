@@ -36,7 +36,7 @@ const Header: React.FC<HeaderProps> = ({ tallerName, logoUrl, onMenuClick, showM
     return (
         <header
             className="sticky top-0 bg-white dark:bg-gray-800 shadow-none dark:border-none z-[70] flex-shrink-0"
-            style={{ paddingTop: 'max(var(--safe-top), 20px)' }}
+            style={{ paddingTop: 'var(--safe-top)' }}
         >
             {/* El padding superior maneja el área segura para iPhone */}
             <div className="md:pt-0">
