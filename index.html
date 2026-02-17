@@ -87,7 +87,7 @@
   <!-- PWA Meta Tags -->
   <link rel="manifest" href="manifest.json" />
   <!-- Theme Color for Android & PC -->
-  <meta name="theme-color" content="#1f2936">
+  <meta name="theme-color" content="#0b1120">
 
   <!-- iOS Meta Tags -->
   <meta name="mobile-web-app-capable" content="yes">
@@ -123,8 +123,8 @@
 
       /* Standalone Mode Fallbacks */
       html.standalone {
-        --safe-top: max(env(safe-area-inset-top, 0px), 44px);
-        /* Combined 44px for Notch */
+        --safe-top: max(env(safe-area-inset-top, 0px), 54px);
+        /* Increased for Dynamic Island */
         --safe-bottom: max(env(safe-area-inset-bottom, 0px), 34px);
         /* 34px for Home Indicator */
       }
@@ -141,14 +141,15 @@
 
       body {
         overflow: hidden !important;
-        background-color: #1f2936 !important;
+        background-color: #0b1120 !important;
+        /* Force app dark background */
         /* Force dark background */
         -webkit-font-smoothing: antialiased;
         -webkit-tap-highlight-color: transparent;
       }
 
       html.dark {
-        background-color: #1f2936;
+        background-color: #0b1120;
       }
 
       html.dark body {
