@@ -121,6 +121,12 @@
         --safe-left: env(safe-area-inset-left, 0px);
       }
 
+      /* Standalone Mode Fallbacks */
+      html.standalone {
+        --safe-top: max(env(safe-area-inset-top, 0px), 20px);
+        --safe-bottom: max(env(safe-area-inset-bottom, 0px), 16px);
+      }
+
       html,
       body {
         height: var(--app-height);
@@ -129,7 +135,7 @@
         margin: 0;
         padding: 0;
         box-sizing: border-box;
-        overflow: hidden;
+        overflow: hidden !important;
         overscroll-behavior: none;
         background-color: rgb(var(--color-taller-light));
         -webkit-font-smoothing: antialiased;
