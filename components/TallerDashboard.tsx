@@ -417,7 +417,7 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout, user }) => 
 
     const activeIndex = VIEW_ORDER.indexOf(view);
     const bottomNav = navLayout === 'bottom' && safeAreaReady ? (
-        <nav className="bg-white dark:bg-gray-800 border-none flex-shrink-0 z-[100] pb-5 dashboard-bottom-nav">
+        <nav className="bg-white dark:bg-[#1f2936] border-none flex-shrink-0 z-[100] dashboard-bottom-nav">
             <div className="flex justify-around items-center h-16 w-full px-2">
                 {navItems.map((item) => (
                     <button

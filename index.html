@@ -35,7 +35,7 @@
       if (isDark) document.documentElement.classList.add('dark');
       else document.documentElement.classList.remove('dark');
 
-      const themeColor = isDark ? '#0b1120' : '#f0f9ff';
+      const themeColor = isDark ? '#1f2936' : '#ffffff';
       const metaTheme = document.querySelector('meta[name="theme-color"]');
       if (metaTheme) metaTheme.setAttribute('content', themeColor);
 
@@ -83,7 +83,7 @@
   <!-- PWA Meta Tags -->
   <link rel="manifest" href="manifest.json" />
   <!-- Theme Color for Android & PC -->
-  <meta name="theme-color" content="#0b1120">
+  <meta name="theme-color" content="#1f2936">
 
   <!-- iOS Meta Tags -->
   <meta name="mobile-web-app-capable" content="yes">
@@ -168,6 +168,8 @@
         right: 0;
         bottom: 0;
         padding-bottom: var(--safe-bottom);
+        /* Eliminar padding-bottom extra si existe en otras clases para que sea consistente */
+        height: auto;
       }
 
       html[data-safe-area-ready="true"] .dashboard-scroll {
