@@ -129,8 +129,7 @@
         margin: 0;
         padding: 0;
         box-sizing: border-box;
-        overflow-x: hidden;
-        overflow-y: auto;
+        overflow: hidden;
         overscroll-behavior: none;
         background-color: rgb(var(--color-taller-light));
         -webkit-font-smoothing: antialiased;
@@ -167,17 +166,19 @@
       }
 
       @media (max-width: 767px) {
-        html[data-safe-area-ready="true"] .dashboard-bottom-nav {
+        .dashboard-bottom-nav {
           position: fixed;
           left: 0;
           right: 0;
           bottom: 0;
           padding-bottom: var(--safe-bottom);
-          /* Eliminar padding-bottom extra si existe en otras clases para que sea consistente */
           height: auto;
+          background-color: inherit;
+          /* Ensure it uses the nav's background */
+          z-index: 100;
         }
 
-        html[data-safe-area-ready="true"] .dashboard-scroll {
+        .dashboard-scroll {
           padding-bottom: calc(84px + 1.5rem + var(--safe-bottom));
         }
       }
