@@ -135,8 +135,10 @@
         margin: 0;
         padding: 0;
         box-sizing: border-box;
+      }
+
+      body {
         overflow: hidden !important;
-        overscroll-behavior: none;
         background-color: rgb(var(--color-taller-light));
         -webkit-font-smoothing: antialiased;
         -webkit-tap-highlight-color: transparent;
@@ -179,8 +181,6 @@
           bottom: 0;
           padding-bottom: var(--safe-bottom);
           height: auto;
-          background-color: inherit;
-          /* Ensure it uses the nav's background */
           z-index: 100;
         }
 

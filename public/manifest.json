@@ -4,6 +4,7 @@
   "description": "Gestión profesional de trabajos, presupuestos y clientes para talleres mecánicos.",
   "start_url": "./index.html",
   "display": "standalone",
+  "orientation": "portrait",
   "background_color": "#1f2936",
   "theme_color": "#1f2936",
   "icons": [
