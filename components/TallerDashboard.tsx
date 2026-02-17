@@ -88,28 +88,20 @@ const useNavLayout = () => {
 };
 
 const useSafeAreaReady = () => {
-    const [ready, setReady] = useState(() => document.documentElement.dataset.safeAreaReady === 'true');
+    // Ya que index.html establece data-safe-area-ready="true" de inmediato,
+    // podemos confiar en que estará listo al montar el componente.
+    const [ready, setReady] = useState(true);
 
     useEffect(() => {
-        if (ready) return;
-        let rafId: number | null = null;
-        const handleReady = () => setReady(true);
-        const checkReady = () => {
-            if (document.documentElement.dataset.safeAreaReady === 'true') {
-                setReady(true);
-                return;
-            }
-            rafId = window.requestAnimationFrame(checkReady);
-        };
-        window.addEventListener('safeareaready', handleReady);
-        rafId = window.requestAnimationFrame(checkReady);
-        const fallback = window.setTimeout(() => setReady(true), 800);
-        return () => {
-            window.removeEventListener('safeareaready', handleReady);
-            if (rafId) window.cancelAnimationFrame(rafId);
-            window.clearTimeout(fallback);
-        };
-    }, [ready]);
+        // Doble verificación por seguridad, pero debería ser true siempre
+        if (document.documentElement.dataset.safeAreaReady === 'true') {
+            setReady(true);
+        } else {
+            // Fallback ultra corto por si acaso
+            const timer = setTimeout(() => setReady(true), 50);
+            return () => clearTimeout(timer);
+        }
+    }, []);
 
     return ready;
 };

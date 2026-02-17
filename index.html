@@ -53,6 +53,10 @@
     (function () {
       const root = document.documentElement;
 
+      // Mark safe area as ready IMMEDIATELY
+      // We rely on CSS env() variables now, so we don't need to wait for JS measurement
+      root.dataset.safeAreaReady = 'true';
+
       const isStandaloneMode = () => {
         return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
       };
@@ -108,114 +112,112 @@
       --app-lvh: 100lvh;
       --app-height: var(--app-dvh, var(--real-vh, 100lvh));
       --app-height-stable: var(--app-svh, var(--real-vh, 100lvh));
-      --safe-top: 0px;
-      --safe-bottom: 0px;
-      --safe-right: 0px;
-      --safe-left: 0px;
-    }
 
-    html.standalone {
-      --safe-top: env(safe-area-inset-top, 0px);
-      --safe-bottom: env(safe-area-inset-bottom, 0px);
-    }
+      /* Safe Area Variables - NATIVE CSS ONLY */
+      html {
+        --safe-top: env(safe-area-inset-top, 0px);
+        --safe-right: env(safe-area-inset-right, 0px);
+        --safe-bottom: env(safe-area-inset-bottom, 0px);
+        --safe-left: env(safe-area-inset-left, 0px);
+      }
 
-    html,
-    body {
-      height: var(--app-height);
-      min-height: var(--app-height-stable);
-      width: 100%;
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-      overflow-x: hidden;
-      overflow-y: auto;
-      overscroll-behavior: none;
-      background-color: rgb(var(--color-taller-light));
-      -webkit-font-smoothing: antialiased;
-      -webkit-tap-highlight-color: transparent;
-    }
+      html,
+      body {
+        height: var(--app-height);
+        min-height: var(--app-height-stable);
+        width: 100%;
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+        overflow-x: hidden;
+        overflow-y: auto;
+        overscroll-behavior: none;
+        background-color: rgb(var(--color-taller-light));
+        -webkit-font-smoothing: antialiased;
+        -webkit-tap-highlight-color: transparent;
+      }
 
-    html.dark {
-      background-color: #1f2936;
-    }
+      html.dark {
+        background-color: #1f2936;
+      }
 
-    html.dark body {
-      background-color: rgb(var(--color-taller-dark));
-    }
+      html.dark body {
+        background-color: rgb(var(--color-taller-dark));
+      }
 
-    #root {
-      height: var(--app-height);
-      min-height: var(--app-height-stable);
-      width: 100%;
-      display: flex;
-      flex-direction: column;
-      box-sizing: border-box;
-    }
+      #root {
+        height: var(--app-height);
+        min-height: var(--app-height-stable);
+        width: 100%;
+        display: flex;
+        flex-direction: column;
+        box-sizing: border-box;
+      }
 
-    .app-height {
-      height: 100%;
-      min-height: 100%;
-    }
-
-    @media (max-width: 767px) {
-      .app-height-mobile {
+      .app-height {
         height: 100%;
         min-height: 100%;
       }
-    }
 
-    @media (max-width: 767px) {
-      html[data-safe-area-ready="true"] .dashboard-bottom-nav {
-        position: fixed;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        padding-bottom: var(--safe-bottom);
-        /* Eliminar padding-bottom extra si existe en otras clases para que sea consistente */
-        height: auto;
+      @media (max-width: 767px) {
+        .app-height-mobile {
+          height: 100%;
+          min-height: 100%;
+        }
       }
 
-      html[data-safe-area-ready="true"] .dashboard-scroll {
-        padding-bottom: calc(84px + 1.5rem + var(--safe-bottom));
+      @media (max-width: 767px) {
+        html[data-safe-area-ready="true"] .dashboard-bottom-nav {
+          position: fixed;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          padding-bottom: var(--safe-bottom);
+          /* Eliminar padding-bottom extra si existe en otras clases para que sea consistente */
+          height: auto;
+        }
+
+        html[data-safe-area-ready="true"] .dashboard-scroll {
+          padding-bottom: calc(84px + 1.5rem + var(--safe-bottom));
+        }
       }
-    }
 
-    @media (display-mode: standalone) {
-      .app-shell {
-        height: 100% !important;
-        min-height: 100% !important;
+      @media (display-mode: standalone) {
+        .app-shell {
+          height: 100% !important;
+          min-height: 100% !important;
+        }
       }
-    }
 
-    html.standalone #root {
-      padding-top: 0px;
-    }
+      html.standalone #root {
+        padding-top: 0px;
+      }
 
-    .safe-top-padding {
-      padding-top: var(--safe-top);
-    }
+      .safe-top-padding {
+        padding-top: var(--safe-top);
+      }
 
-    .safe-top-padding-portal {
-      padding-top: max(1rem, var(--safe-top));
-    }
-
+      .safe-top-padding-portal {
+        padding-top: max(1rem, var(--safe-top));
+      }
 
 
-    /* Previene el desplazamiento horizontal accidental en móviles */
-    .no-horizontal-shake {
-      touch-action: pan-y;
-      overflow-x: hidden;
-    }
 
-    /* Scrollbars ocultas pero funcional */
-    .scrollbar-hide::-webkit-scrollbar {
-      display: none;
-    }
+      /* Previene el desplazamiento horizontal accidental en móviles */
+      .no-horizontal-shake {
+        touch-action: pan-y;
+        overflow-x: hidden;
+      }
 
-    .scrollbar-hide {
-      -ms-overflow-style: none;
-      scrollbar-width: none;
-    }
+      /* Scrollbars ocultas pero funcional */
+      .scrollbar-hide::-webkit-scrollbar {
+        display: none;
+      }
+
+      .scrollbar-hide {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+      }
   </style>
   <script>
     tailwind.config = {
