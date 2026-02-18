@@ -161,7 +161,10 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
     useLayoutEffect(() => {
         const updateHeight = () => {
             if (headerRef.current) {
-                setHeaderHeight(headerRef.current.offsetHeight);
+                const height = headerRef.current.offsetHeight;
+                setHeaderHeight(height);
+                // Set CSS variable for children to use
+                headerRef.current.parentElement?.style.setProperty('--header-h', `${height}px`);
             }
         };
         const resizeObserver = new ResizeObserver(updateHeight);
@@ -390,12 +393,12 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
 
             <div
                 ref={headerRef}
-                className="w-full bg-taller-light dark:bg-taller-dark z-30 flex-shrink-0"
+                className="absolute top-0 left-0 right-0 bg-taller-light dark:bg-taller-dark z-30 flex-shrink-0"
                 style={{
-                    marginTop: -headerOffset,
-                    transform: `translateY(${headerOffset * 0.2}px)`, // Slight parallax or just for smoothness
+                    transform: `translateY(${-headerOffset}px)`,
                     opacity: 1 - (headerOffset / (headerHeight || 1)),
                     pointerEvents: headerOffset > headerHeight * 0.8 ? 'none' : 'auto',
+                    transition: 'transform 0.1s ease-out, opacity 0.1s ease-out' // Very short transition to smoothen jitter without adding lag
                 }}
             >
                 <div className="max-w-3xl mx-auto p-4 pt-5 pb-3 w-full"><button type="button" onClick={() => setIsCreateModalOpen(true)} className="w-full flex items-center justify-center gap-2 py-3.5 px-4 bg-taller-primary text-white font-extrabold rounded-xl shadow-lg shadow-taller-primary/20 active:scale-95 transition-all"><PlusIcon className="h-5 w-5" /><span className="uppercase tracking-wider text-xs">Nuevo Presupuesto</span></button></div>
@@ -417,7 +420,7 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
                 >
                     {statusOrder.map((status) => (
                         <div key={status} className="inner-tab-slot" style={{ pointerEvents: (activeTab === status) ? 'auto' : 'none' }}>
-                            <div onScroll={(e) => handleVerticalScroll(e, status)} className="h-full overflow-y-auto px-4 pt-4 lg:px-0 lg:pt-6 scrollbar-hide overscroll-none dashboard-scroll" style={{ WebkitOverflowScrolling: 'touch' }}>
+                            <div onScroll={(e) => handleVerticalScroll(e, status)} className="h-full overflow-y-auto px-4 lg:px-0 scrollbar-hide overscroll-none dashboard-scroll" style={{ WebkitOverflowScrolling: 'touch', paddingTop: 'var(--header-h)' }}>
                                 <div className="hidden lg:flex items-center gap-2 mb-6 px-1">
                                     <h3 className="text-xs font-black uppercase tracking-[0.2em] text-taller-primary dark:text-blue-400">{status}</h3>
                                     <div className="h-px flex-1 bg-gray-200 dark:bg-gray-700"></div>
