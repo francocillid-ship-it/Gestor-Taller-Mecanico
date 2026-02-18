@@ -149,7 +149,7 @@ const MonthlyGroup: React.FC<{
 const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus, onDataRefresh, tallerInfo, searchQuery, initialTab, initialJobId, isActive }) => {
     const [activeTab, setActiveTab] = useState<JobStatus>(initialTab || JobStatus.Presupuesto);
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-    const [headerVisible, setHeaderVisible] = useState(true);
+    const [headerOffset, setHeaderOffset] = useState(0); // 0 (visible) to headerHeight (hidden)
     const [headerHeight, setHeaderHeight] = useState(0);
     const [selectedDate, setSelectedDate] = useState<Date | null>(null);
 
@@ -190,7 +190,7 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
                     parent.scrollTo({ left: scrollTarget, behavior: 'smooth' });
                 }
             }
-            setHeaderVisible(true);
+            setHeaderOffset(0);
         }
     }, [activeTab, isActive]);
 
@@ -200,10 +200,18 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
         const st = el.scrollTop;
         const lastSt = lastScrollTops.current[status] || 0;
         const diff = st - lastSt;
-        if (st <= 5) setHeaderVisible(true);
-        else if (Math.abs(diff) > 3) setHeaderVisible(diff < 0);
+
+        if (st <= 0) {
+            setHeaderOffset(0);
+        } else {
+            setHeaderOffset(prev => {
+                const nextOffset = Math.max(0, Math.min(headerHeight, prev + diff));
+                return nextOffset;
+            });
+        }
+
         lastScrollTops.current[status] = st;
-    }, [activeTab]);
+    }, [activeTab, headerHeight]);
 
     const handleTouchStart = (e: React.TouchEvent) => touchStart.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
     const handleTouchEnd = (e: React.TouchEvent) => {
@@ -382,9 +390,12 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
 
             <div
                 ref={headerRef}
-                className={`w-full bg-taller-light dark:bg-taller-dark transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] z-30 flex-shrink-0 ${headerVisible ? 'opacity-100 translate-y-0' : 'opacity-0 pointer-events-none'}`}
+                className="w-full bg-taller-light dark:bg-taller-dark z-30 flex-shrink-0"
                 style={{
-                    marginTop: headerVisible ? 0 : -headerHeight,
+                    marginTop: -headerOffset,
+                    transform: `translateY(${headerOffset * 0.2}px)`, // Slight parallax or just for smoothness
+                    opacity: 1 - (headerOffset / (headerHeight || 1)),
+                    pointerEvents: headerOffset > headerHeight * 0.8 ? 'none' : 'auto',
                 }}
             >
                 <div className="max-w-3xl mx-auto p-4 pt-5 pb-3 w-full"><button type="button" onClick={() => setIsCreateModalOpen(true)} className="w-full flex items-center justify-center gap-2 py-3.5 px-4 bg-taller-primary text-white font-extrabold rounded-xl shadow-lg shadow-taller-primary/20 active:scale-95 transition-all"><PlusIcon className="h-5 w-5" /><span className="uppercase tracking-wider text-xs">Nuevo Presupuesto</span></button></div>
