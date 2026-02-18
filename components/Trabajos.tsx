@@ -149,7 +149,7 @@ const MonthlyGroup: React.FC<{
 const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus, onDataRefresh, tallerInfo, searchQuery, initialTab, initialJobId, isActive }) => {
     const [activeTab, setActiveTab] = useState<JobStatus>(initialTab || JobStatus.Presupuesto);
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-    const [headerOffset, setHeaderOffset] = useState(0); // 0 (visible) to headerHeight (hidden)
+    const headerOffsetRef = useRef(0); // Use ref to avoid re-renders during scroll
     const [headerHeight, setHeaderHeight] = useState(0);
     const [selectedDate, setSelectedDate] = useState<Date | null>(null);
 
@@ -165,6 +165,10 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
                 setHeaderHeight(height);
                 // Set CSS variable for children to use
                 headerRef.current.parentElement?.style.setProperty('--header-h', `${height}px`);
+
+                // Also ensure initial style is set correctly
+                headerRef.current.style.transform = `translateY(${-headerOffsetRef.current}px)`;
+                headerRef.current.style.opacity = (1 - (headerOffsetRef.current / (height || 1))).toString();
             }
         };
         const resizeObserver = new ResizeObserver(updateHeight);
@@ -193,27 +197,35 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
                     parent.scrollTo({ left: scrollTarget, behavior: 'smooth' });
                 }
             }
-            setHeaderOffset(0);
+            if (headerRef.current) {
+                headerOffsetRef.current = 0;
+                headerRef.current.style.transform = `translateY(0px)`;
+                headerRef.current.style.opacity = '1';
+                headerRef.current.style.marginTop = '0px';
+            }
         }
     }, [activeTab, isActive]);
 
     const handleVerticalScroll = useCallback((e: React.UIEvent<HTMLDivElement>, status: JobStatus) => {
-        if (status !== activeTab) return;
+        if (status !== activeTab || !headerRef.current) return;
         const el = e.currentTarget;
         const st = el.scrollTop;
         const lastSt = lastScrollTops.current[status] || 0;
         const diff = st - lastSt;
+        lastScrollTops.current[status] = st;
 
         if (st <= 0) {
-            setHeaderOffset(0);
+            headerOffsetRef.current = 0;
         } else {
-            setHeaderOffset(prev => {
-                const nextOffset = Math.max(0, Math.min(headerHeight, prev + diff));
-                return nextOffset;
-            });
+            headerOffsetRef.current = Math.max(0, Math.min(headerHeight, headerOffsetRef.current + diff));
         }
 
-        lastScrollTops.current[status] = st;
+        // Direct DOM manipulation for zero-latency updates
+        const offset = headerOffsetRef.current;
+        const header = headerRef.current;
+        header.style.transform = `translateY(${-offset}px)`;
+        header.style.opacity = (1 - (offset / (headerHeight || 1))).toString();
+        header.style.pointerEvents = offset > headerHeight * 0.8 ? 'none' : 'auto';
     }, [activeTab, headerHeight]);
 
     const handleTouchStart = (e: React.TouchEvent) => touchStart.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
@@ -395,10 +407,7 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
                 ref={headerRef}
                 className="absolute top-0 left-0 right-0 bg-taller-light dark:bg-taller-dark z-30 flex-shrink-0"
                 style={{
-                    transform: `translateY(${-headerOffset}px)`,
-                    opacity: 1 - (headerOffset / (headerHeight || 1)),
-                    pointerEvents: headerOffset > headerHeight * 0.8 ? 'none' : 'auto',
-                    transition: 'transform 0.1s ease-out, opacity 0.1s ease-out' // Very short transition to smoothen jitter without adding lag
+                    pointerEvents: 'auto',
                 }}
             >
                 <div className="max-w-3xl mx-auto p-4 pt-5 pb-3 w-full"><button type="button" onClick={() => setIsCreateModalOpen(true)} className="w-full flex items-center justify-center gap-2 py-3.5 px-4 bg-taller-primary text-white font-extrabold rounded-xl shadow-lg shadow-taller-primary/20 active:scale-95 transition-all"><PlusIcon className="h-5 w-5" /><span className="uppercase tracking-wider text-xs">Nuevo Presupuesto</span></button></div>

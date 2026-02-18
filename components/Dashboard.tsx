@@ -215,7 +215,7 @@ interface FinancialDetailOverlayProps {
 }
 
 const FinancialDetailOverlay: React.FC<FinancialDetailOverlayProps> = ({
-    detailView, onClose, period, setPeriod, data, gananciasNetasDisplay, onItemClick, availableMonths
+    detailView, onClose, period, setPeriod, data, gananciasNetasDisplay, onItemClick, availableMonths, onAddGasto
 }) => {
     const [isFilterVisible, setIsFilterVisible] = useState(true);
     const [isVisible, setIsVisible] = useState(false);
@@ -273,7 +273,18 @@ const FinancialDetailOverlay: React.FC<FinancialDetailOverlayProps> = ({
                     <div className="flex items-center justify-between p-4">
                         <button onClick={handleClose} className="p-2 -ml-2 text-taller-gray dark:text-gray-400 hover:text-taller-dark dark:hover:text-white rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"><ArrowLeftIcon className="h-6 w-6" /></button>
                         <h2 className="text-lg font-bold text-taller-dark dark:text-taller-light">{titleMap[detailView]}</h2>
-                        <div className="w-10"></div>
+                        <div className="flex items-center gap-2">
+                            {(detailView === 'gastos' || detailView === 'balance') && (
+                                <button
+                                    onClick={onAddGasto}
+                                    className="p-2 bg-taller-primary text-white rounded-full shadow-lg active:scale-95 transition-all"
+                                    title="Añadir Gasto"
+                                >
+                                    <PlusIcon className="h-5 w-5" />
+                                </button>
+                            )}
+                            <div className="w-2"></div>
+                        </div>
                     </div>
                 </div>
 
@@ -466,7 +477,14 @@ const Dashboard: React.FC<DashboardProps> = ({ clientes, trabajos, gastos, onDat
     const handleAddGasto = async (gastosToAdd: Omit<Gasto, 'id'>[]) => {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
-        const gastosConId = gastosToAdd.map(g => ({ ...g, taller_id: user.id }));
+        const gastosConId = gastosToAdd.map(g => ({
+            taller_id: user.id,
+            descripcion: g.descripcion,
+            monto: g.monto,
+            fecha: g.fecha,
+            categoria: g.categoria,
+            es_fijo: g.esFijo // Fix: Map camelCase to snake_case for DB
+        }));
         const { error } = await supabase.from('gastos').insert(gastosConId);
         if (error) console.error("Error adding expense:", error);
         else { onDataRefresh(); setIsAddGastoModalOpen(false); }
@@ -641,6 +659,7 @@ const Dashboard: React.FC<DashboardProps> = ({ clientes, trabajos, gastos, onDat
                     gananciasNetasDisplay={stats.gananciasNetas}
                     onItemClick={handleTransactionClick}
                     availableMonths={availableMonths}
+                    onAddGasto={() => setIsAddGastoModalOpen(true)}
                 />
             )}
         </div>
