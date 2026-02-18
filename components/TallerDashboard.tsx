@@ -499,7 +499,7 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout, user }) => 
                             {/* Dashboard */}
                             {visitedViews.has('dashboard') && (
                                 <div className="h-full w-full absolute inset-0" style={{ display: view === 'dashboard' ? 'block' : 'none' }}>
-                                    <Suspense fallback={<div className="h-full overflow-y-auto px-4 py-6 md:px-8 scrollbar-hide overscroll-none dashboard-scroll"><div className="max-w-6xl mx-auto min-h-full pb-10"><ViewSkeleton view="dashboard" /></div></div>}>
+                                    <Suspense fallback={<div className="h-full overflow-y-auto px-4 py-6 md:px-8 scrollbar-hide overscroll-none dashboard-scroll"><div className="max-w-6xl mx-auto min-h-full pb-10"><DashboardSkeleton /></div></div>}>
                                         <div className="h-full overflow-y-auto px-4 py-6 md:px-8 scrollbar-hide overscroll-none dashboard-scroll">
                                             <div className="max-w-6xl mx-auto min-h-full pb-10">
                                                 <Dashboard clientes={clientes} trabajos={trabajos} gastos={gastos} onDataRefresh={() => fetchData(false)} searchQuery={searchQuery} onNavigate={handleNavigate} />
