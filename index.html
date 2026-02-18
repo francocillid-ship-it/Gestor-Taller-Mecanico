@@ -139,16 +139,6 @@
       box-sizing: border-box;
     }
 
-    /* Standalone PWA: use dvh to fill the actual viewport */
-    @media (display-mode: standalone) {
-
-      html,
-      body {
-        height: 100dvh;
-        min-height: 100svh;
-      }
-    }
-
     body {
       overflow: hidden !important;
       background-color: var(--color-bg-app);
@@ -160,8 +150,8 @@
 
     html.dark {
       --color-bg-app: #0b1120;
-      /* Dark mode default */
-      background-color: #0b1120;
+      /* html background matches the nav bar / header color so edge gaps are invisible */
+      background-color: #1f2937;
     }
 
     html.dark body {
