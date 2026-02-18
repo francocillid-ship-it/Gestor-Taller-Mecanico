@@ -128,34 +128,12 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout, user }) => 
     const [searchQuery, setSearchQuery] = useState('');
     const [targetJobStatus, setTargetJobStatus] = useState<JobStatusEnum | undefined>(undefined);
     const [targetJobId, setTargetJobId] = useState<string | undefined>(undefined);
-    const [isStandalone, setIsStandalone] = useState(false);
+    // Removed isStandalone state - we now use a unified layout approach
     const navLayout = useNavLayout();
+    const lastAutoRouteRef = useRef<string>('');
     const safeAreaReady = useSafeAreaReady();
 
-    const lastAutoRouteRef = useRef<string>('');
 
-    useEffect(() => {
-        const getStandalone = () => window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone;
-        const updateStandalone = () => setIsStandalone(getStandalone());
-
-        updateStandalone();
-        const mql = window.matchMedia('(display-mode: standalone)');
-        if (mql.addEventListener) {
-            mql.addEventListener('change', updateStandalone);
-        } else if (mql.addListener) {
-            mql.addListener(updateStandalone);
-        }
-        window.addEventListener('pageshow', updateStandalone);
-
-        return () => {
-            if (mql.removeEventListener) {
-                mql.removeEventListener('change', updateStandalone);
-            } else if (mql.removeListener) {
-                mql.removeListener(updateStandalone);
-            }
-            window.removeEventListener('pageshow', updateStandalone);
-        };
-    }, []);
 
     useEffect(() => {
         const q = searchQuery.toLowerCase().trim();
@@ -409,7 +387,8 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout, user }) => 
 
     const activeIndex = VIEW_ORDER.indexOf(view);
     const bottomNav = navLayout === 'bottom' && safeAreaReady ? (
-        <nav className="bg-white dark:bg-taller-dark border-none flex-shrink-0 z-[100] dashboard-bottom-nav">
+        <nav className="fixed bottom-0 left-0 right-0 bg-white dark:bg-taller-dark border-t border-gray-100 dark:border-gray-800/50 flex-shrink-0 z-[100] pb-[var(--safe-bottom)] transition-all duration-300">
+
             <div className="flex justify-around items-center h-16 w-full px-2">
                 {navItems.map((item) => (
                     <button
@@ -562,7 +541,7 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout, user }) => 
                     )}
                 </main>
 
-                {bottomNav && (isStandalone ? createPortal(bottomNav, document.body) : bottomNav)}
+                {bottomNav}
             </div>
         </div>
     );

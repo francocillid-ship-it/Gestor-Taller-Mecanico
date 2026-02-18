@@ -105,6 +105,9 @@
       --color-taller-light: 240 249 255;
       --color-taller-dark: 11 17 32;
       --color-taller-gray: 100 116 139;
+      /* Dynamic App Background Color */
+      --color-bg-app: #f0f9ff;
+      /* Light mode default (match taller-light) */
 
       --real-vh: 100%;
       --app-dvh: 100dvh;
@@ -113,20 +116,26 @@
       --app-height: var(--app-dvh, var(--real-vh, 100lvh));
       --app-height-stable: var(--app-svh, var(--real-vh, 100lvh));
 
-      /* Safe Area Variables - NATIVE CSS ONLY */
+      /* Safe Area Variables - Unified */
       html {
-        --safe-top: env(safe-area-inset-top, 0px);
+        --safe-top: env(safe-area-inset-top, 20px);
         --safe-right: env(safe-area-inset-right, 0px);
-        --safe-bottom: env(safe-area-inset-bottom, 0px);
+        --safe-bottom: env(safe-area-inset-bottom, 20px);
         --safe-left: env(safe-area-inset-left, 0px);
+
+        /* Fallbacks for specific environments if needed */
+        /* Note: WebKit often returns 0 for env() immediately on load, then updates. 
+           We use a base min-height to prevent jumps if needed, or rely on JS to add a class */
       }
 
-      /* Standalone Mode Fallbacks */
+      /* Ensure standalone specific overrides are actually useful or remove if causing issues */
       html.standalone {
-        --safe-top: max(env(safe-area-inset-top, 0px), 54px);
-        /* Increased for Dynamic Island */
+        /* Native apps often have more specific safe areas, but env() should handle it. 
+            We can boost it if needed for specific UI elements */
+        --safe-top: max(env(safe-area-inset-top, 0px), 47px);
+        /* Dynamic Island area approx */
         --safe-bottom: max(env(safe-area-inset-bottom, 0px), 34px);
-        /* 34px for Home Indicator */
+        /* Home Indicator area */
       }
 
       html,
@@ -141,19 +150,21 @@
 
       body {
         overflow: hidden !important;
-        background-color: #0b1120 !important;
-        /* Force app dark background */
-        /* Force dark background */
+        background-color: var(--color-bg-app);
+        /* Use dynamic variable */
         -webkit-font-smoothing: antialiased;
         -webkit-tap-highlight-color: transparent;
+        transition: background-color 0.3s ease;
       }
 
       html.dark {
+        --color-bg-app: #0b1120;
+        /* Dark mode default */
         background-color: #0b1120;
       }
 
       html.dark body {
-        background-color: rgb(var(--color-taller-dark));
+        background-color: var(--color-bg-app);
       }
 
       #root {
