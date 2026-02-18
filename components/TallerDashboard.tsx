@@ -387,7 +387,7 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout, user }) => 
 
     const activeIndex = VIEW_ORDER.indexOf(view);
     const bottomNav = navLayout === 'bottom' && safeAreaReady ? (
-        <nav className="fixed bottom-0 left-0 right-0 bg-white dark:bg-taller-dark border-t border-gray-100 dark:border-gray-800/50 flex-shrink-0 z-[100] pb-[var(--safe-bottom)] transition-all duration-300">
+        <nav className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t border-gray-100 dark:border-gray-800/50 flex-shrink-0 z-[100] pb-[var(--safe-bottom)] transition-all duration-300">
 
             <div className="flex justify-around items-center h-16 w-full px-2">
                 {navItems.map((item) => (
@@ -398,7 +398,7 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout, user }) => 
                     >
                         <item.icon className="h-6 w-6" />
                         <span className="text-[10px] mt-1 font-medium">{item.label}</span>
-                        {view === item.id && <span className="absolute top-0 w-8 h-1 bg-taller-primary rounded-b-lg"></span>}
+                        {view === item.id && <span className="absolute top-0 left-0 right-0 h-[3px] bg-taller-primary rounded-b-lg"></span>}
                     </button>
                 ))}
             </div>

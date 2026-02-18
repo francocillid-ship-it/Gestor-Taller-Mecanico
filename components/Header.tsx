@@ -92,10 +92,12 @@ const Header: React.FC<HeaderProps> = ({ tallerName, logoUrl, onMenuClick, showM
 
             {/* --- Mobile Search Overlay --- */}
             <div className={`
-                md:hidden absolute inset-0 z-[80] bg-white dark:bg-gray-800 flex items-center px-4
+                md:hidden absolute left-0 right-0 bottom-0 z-[80] bg-white dark:bg-gray-800 flex items-center px-4
                 transition-all duration-300 ease-out origin-right
                 ${isSearchExpanded ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-10 pointer-events-none'}
-            `}>
+            `}
+                style={{ top: 'var(--safe-top)' }}
+            >
                 <div className="relative flex-grow">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                         <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" aria-hidden="true" />
@@ -103,6 +105,8 @@ const Header: React.FC<HeaderProps> = ({ tallerName, logoUrl, onMenuClick, showM
                     <input
                         ref={mobileInputRef}
                         type="text"
+                        inputMode="search"
+                        autoFocus={isSearchExpanded}
                         placeholder="Buscar..."
                         value={searchQuery}
                         onChange={(e) => onSearchChange(e.target.value)}
