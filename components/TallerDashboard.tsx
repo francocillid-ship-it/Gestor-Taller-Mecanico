@@ -16,7 +16,6 @@ import {
 import { applyAppTheme, applyFontSize } from '../constants';
 
 import DashboardSkeleton from './DashboardSkeleton';
-import ViewSkeleton from './ViewSkeleton';
 import type { User } from '@supabase/supabase-js';
 
 // Lazy loaded views
@@ -133,7 +132,6 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout, user }) => 
     const navLayout = useNavLayout();
     const lastAutoRouteRef = useRef<string>('');
     const safeAreaReady = useSafeAreaReady();
-    const [visitedViews, setVisitedViews] = useState<Set<View>>(() => new Set(['dashboard']));
 
 
 
@@ -388,17 +386,6 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout, user }) => 
     };
 
     const activeIndex = VIEW_ORDER.indexOf(view);
-
-    // Mark the current view as visited so it gets mounted
-    useEffect(() => {
-        setVisitedViews(prev => {
-            if (prev.has(view)) return prev;
-            const next = new Set(prev);
-            next.add(view);
-            return next;
-        });
-    }, [view]);
-
     const bottomNav = navLayout === 'bottom' && safeAreaReady ? (
         <nav className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t border-gray-100 dark:border-gray-800/50 flex-shrink-0 z-[100] pb-[var(--safe-bottom)] transition-all duration-300">
 
@@ -495,78 +482,62 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout, user }) => 
                             </div>
                         </div>
                     ) : (
-                        <>
-                            {/* Dashboard */}
-                            {visitedViews.has('dashboard') && (
-                                <div className="h-full w-full absolute inset-0" style={{ display: view === 'dashboard' ? 'block' : 'none' }}>
-                                    <Suspense fallback={<div className="h-full overflow-y-auto px-4 py-6 md:px-8 scrollbar-hide overscroll-none dashboard-scroll"><div className="max-w-6xl mx-auto min-h-full pb-10"><DashboardSkeleton /></div></div>}>
-                                        <div className="h-full overflow-y-auto px-4 py-6 md:px-8 scrollbar-hide overscroll-none dashboard-scroll">
-                                            <div className="max-w-6xl mx-auto min-h-full pb-10">
-                                                <Dashboard clientes={clientes} trabajos={trabajos} gastos={gastos} onDataRefresh={() => fetchData(false)} searchQuery={searchQuery} onNavigate={handleNavigate} />
-                                            </div>
+                        <div
+                            className="views-container"
+                            style={{ transform: `translate3d(-${activeIndex * 20}%, 0, 0)` }}
+                        >
+                            <Suspense fallback={
+                                <div className="main-view-slot">
+                                    <div className="h-full overflow-y-auto px-4 py-6 md:px-8 scrollbar-hide overscroll-none dashboard-scroll">
+                                        <div className="max-w-6xl mx-auto min-h-full pb-10">
+                                            <DashboardSkeleton />
                                         </div>
-                                    </Suspense>
+                                    </div>
                                 </div>
-                            )}
-
-                            {/* Trabajos */}
-                            {visitedViews.has('trabajos') && (
-                                <div className="h-full w-full absolute inset-0" style={{ display: view === 'trabajos' ? 'block' : 'none' }}>
-                                    <Suspense fallback={<div className="h-full overflow-y-auto px-4 py-6 md:px-8 scrollbar-hide overscroll-none dashboard-scroll"><div className="max-w-6xl mx-auto min-h-full pb-10"><ViewSkeleton view="trabajos" /></div></div>}>
-                                        <Trabajos
-                                            trabajos={trabajos}
-                                            clientes={clientes}
-                                            onUpdateStatus={handleUpdateStatus}
-                                            onDataRefresh={() => fetchData(false)}
-                                            tallerInfo={tallerInfo}
-                                            searchQuery={searchQuery}
-                                            initialTab={targetJobStatus}
-                                            initialJobId={targetJobId}
-                                            isActive={view === 'trabajos'}
-                                        />
-                                    </Suspense>
-                                </div>
-                            )}
-
-                            {/* Clientes */}
-                            {visitedViews.has('clientes') && (
-                                <div className="h-full w-full absolute inset-0" style={{ display: view === 'clientes' ? 'block' : 'none' }}>
-                                    <Suspense fallback={<div className="h-full overflow-y-auto px-4 py-6 md:px-8 scrollbar-hide overscroll-none dashboard-scroll"><div className="max-w-6xl mx-auto min-h-full pb-10"><ViewSkeleton view="clientes" /></div></div>}>
-                                        <div className="h-full overflow-y-auto px-4 py-6 md:px-8 scrollbar-hide overscroll-none dashboard-scroll">
-                                            <div className="max-w-6xl mx-auto min-h-full pb-10">
-                                                <Clientes clientes={clientes} trabajos={trabajos} onDataRefresh={() => fetchData(false)} searchQuery={searchQuery} onNavigate={handleNavigate} />
-                                            </div>
+                            }>
+                                <div className="main-view-slot" style={{ pointerEvents: view === 'dashboard' ? 'auto' : 'none' }}>
+                                    <div className="h-full overflow-y-auto px-4 py-6 md:px-8 scrollbar-hide overscroll-none dashboard-scroll">
+                                        <div className="max-w-6xl mx-auto min-h-full pb-10">
+                                            <Dashboard clientes={clientes} trabajos={trabajos} gastos={gastos} onDataRefresh={() => fetchData(false)} searchQuery={searchQuery} onNavigate={handleNavigate} />
                                         </div>
-                                    </Suspense>
+                                    </div>
                                 </div>
-                            )}
-
-                            {/* Finanzas */}
-                            {visitedViews.has('finanzas') && (
-                                <div className="h-full w-full absolute inset-0" style={{ display: view === 'finanzas' ? 'block' : 'none' }}>
-                                    <Suspense fallback={<div className="h-full overflow-y-auto px-4 py-6 md:px-8 scrollbar-hide overscroll-none dashboard-scroll"><div className="max-w-6xl mx-auto min-h-full pb-10"><ViewSkeleton view="finanzas" /></div></div>}>
-                                        <div className="h-full overflow-y-auto px-4 py-6 md:px-8 scrollbar-hide overscroll-none dashboard-scroll">
-                                            <div className="max-w-6xl mx-auto min-h-full pb-10">
-                                                <Finanzas clientes={clientes} trabajos={trabajos} gastos={gastos} onDataRefresh={() => fetchData(false)} />
-                                            </div>
+                                <div className="main-view-slot" style={{ pointerEvents: view === 'trabajos' ? 'auto' : 'none' }}>
+                                    <Trabajos
+                                        trabajos={trabajos}
+                                        clientes={clientes}
+                                        onUpdateStatus={handleUpdateStatus}
+                                        onDataRefresh={() => fetchData(false)}
+                                        tallerInfo={tallerInfo}
+                                        searchQuery={searchQuery}
+                                        initialTab={targetJobStatus}
+                                        initialJobId={targetJobId}
+                                        isActive={view === 'trabajos'}
+                                    />
+                                </div>
+                                <div className="main-view-slot" style={{ pointerEvents: view === 'clientes' ? 'auto' : 'none' }}>
+                                    <div className="h-full overflow-y-auto px-4 py-6 md:px-8 scrollbar-hide overscroll-none dashboard-scroll">
+                                        <div className="max-w-6xl mx-auto min-h-full pb-10">
+                                            <Clientes clientes={clientes} trabajos={trabajos} onDataRefresh={() => fetchData(false)} searchQuery={searchQuery} onNavigate={handleNavigate} />
                                         </div>
-                                    </Suspense>
+                                    </div>
                                 </div>
-                            )}
-
-                            {/* Ajustes */}
-                            {visitedViews.has('ajustes') && (
-                                <div className="h-full w-full absolute inset-0" style={{ display: view === 'ajustes' ? 'block' : 'none' }}>
-                                    <Suspense fallback={<div className="h-full overflow-y-auto px-4 py-6 md:px-8 scrollbar-hide overscroll-none dashboard-scroll"><div className="max-w-4xl mx-auto min-h-full pb-10"><ViewSkeleton view="ajustes" /></div></div>}>
-                                        <div className="h-full overflow-y-auto px-4 py-6 md:px-8 scrollbar-hide overscroll-none dashboard-scroll">
-                                            <div className="max-w-4xl mx-auto min-h-full pb-10">
-                                                <Ajustes tallerInfo={tallerInfo} onUpdateTallerInfo={handleUpdateTallerInfo} onLogout={onLogout} searchQuery={searchQuery} />
-                                            </div>
+                                <div className="main-view-slot" style={{ pointerEvents: view === 'finanzas' ? 'auto' : 'none' }}>
+                                    <div className="h-full overflow-y-auto px-4 py-6 md:px-8 scrollbar-hide overscroll-none dashboard-scroll">
+                                        <div className="max-w-6xl mx-auto min-h-full pb-10">
+                                            <Finanzas clientes={clientes} trabajos={trabajos} gastos={gastos} onDataRefresh={() => fetchData(false)} />
                                         </div>
-                                    </Suspense>
+                                    </div>
                                 </div>
-                            )}
-                        </>
+                                <div className="main-view-slot" style={{ pointerEvents: view === 'ajustes' ? 'auto' : 'none' }}>
+                                    <div className="h-full overflow-y-auto px-4 py-6 md:px-8 scrollbar-hide overscroll-none dashboard-scroll">
+                                        <div className="max-w-4xl mx-auto min-h-full pb-10">
+                                            <Ajustes tallerInfo={tallerInfo} onUpdateTallerInfo={handleUpdateTallerInfo} onLogout={onLogout} searchQuery={searchQuery} />
+                                        </div>
+                                    </div>
+                                </div>
+                            </Suspense>
+                        </div>
                     )}
                 </main>
 

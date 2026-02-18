@@ -139,6 +139,15 @@
       box-sizing: border-box;
     }
 
+    /* Standalone PWA: use dvh to fill the actual viewport */
+    @media (display-mode: standalone) {
+
+      html,
+      body {
+        height: 100dvh;
+        min-height: 100svh;
+      }
+    }
 
     body {
       overflow: hidden !important;
