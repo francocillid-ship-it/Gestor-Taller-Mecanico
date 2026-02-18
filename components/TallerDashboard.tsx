@@ -430,7 +430,7 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout, user }) => 
                     width: 20%; 
                     height: 100%; 
                     flex-shrink: 0;
-                    overflow: hidden;
+                    overflow: clip;
                     position: relative;
                 }
                 .views-container {

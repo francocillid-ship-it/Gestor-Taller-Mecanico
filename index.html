@@ -7,25 +7,8 @@
     content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <title>Mi Taller</title>
 
-  <script>
-    (function () {
-      if (typeof window === 'undefined') return;
-      const root = document.documentElement;
-      const getViewportHeight = () => {
-        if (window.visualViewport) {
-          return Math.round(window.visualViewport.height + window.visualViewport.offsetTop);
-        }
-        return Math.round(window.innerHeight || 0);
-      };
-      const vh = getViewportHeight();
-      if (vh > 0) {
-        root.style.setProperty('--real-vh', `${vh}px`);
-        root.style.setProperty('--app-dvh', `${vh}px`);
-        root.style.setProperty('--app-svh', `${vh}px`);
-        root.style.setProperty('--app-lvh', `${vh}px`);
-      }
-    })();
-  </script>
+
+
 
   <!-- Script de detección de tema inmediato para evitar parpadeo -->
   <script>
@@ -109,12 +92,6 @@
       --color-bg-app: #f0f9ff;
       /* Light mode default (match taller-light) */
 
-      --real-vh: 100%;
-      --app-dvh: 100dvh;
-      --app-svh: 100svh;
-      --app-lvh: 100lvh;
-      --app-height: 100dvh;
-      --app-height-stable: 100svh;
 
       /* Safe Area Variables - defined directly on :root */
       --safe-top: env(safe-area-inset-top, 0px);
@@ -132,9 +109,6 @@
     html,
     body {
       height: 100vh;
-      height: -webkit-fill-available;
-      min-height: 100vh;
-      min-height: -webkit-fill-available;
       width: 100%;
       margin: 0;
       padding: 0;
@@ -161,10 +135,7 @@
     }
 
     #root {
-      height: 100vh;
-      height: -webkit-fill-available;
-      min-height: 100vh;
-      min-height: -webkit-fill-available;
+      height: 100%;
       width: 100%;
       display: flex;
       flex-direction: column;
@@ -195,6 +166,8 @@
       }
 
       .dashboard-scroll {
+        -webkit-overflow-scrolling: touch;
+        overflow-y: auto !important;
         padding-bottom: calc(84px + 1.5rem + var(--safe-bottom));
       }
     }
