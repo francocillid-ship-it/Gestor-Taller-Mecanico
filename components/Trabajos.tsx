@@ -154,6 +154,7 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
     const [selectedDate, setSelectedDate] = useState<Date | null>(null);
 
     const lastScrollTops = useRef<{ [key: string]: number }>({});
+    const scrollAccum = useRef(0);
     const touchStart = useRef({ x: 0, y: 0 });
     const tabLabelsRef = useRef<{ [key: string]: HTMLButtonElement | null }>({});
     const headerRef = useRef<HTMLDivElement>(null);
@@ -200,8 +201,26 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
         const st = el.scrollTop;
         const lastSt = lastScrollTops.current[status] || 0;
         const diff = st - lastSt;
-        if (st <= 0) setHeaderVisible(true);
-        else if (Math.abs(diff) > 20) setHeaderVisible(diff < 0);
+
+        if (st <= 5) {
+            // At the top — always show header, reset accumulator
+            setHeaderVisible(true);
+            scrollAccum.current = 0;
+        } else {
+            // Track cumulative scroll direction
+            // Reset accumulator when direction changes
+            if ((diff > 0 && scrollAccum.current < 0) || (diff < 0 && scrollAccum.current > 0)) {
+                scrollAccum.current = 0;
+            }
+            scrollAccum.current += diff;
+
+            // Small threshold (8px) for responsive but not jittery behavior
+            if (scrollAccum.current > 8) {
+                setHeaderVisible(false);
+            } else if (scrollAccum.current < -8) {
+                setHeaderVisible(true);
+            }
+        }
         lastScrollTops.current[status] = st;
     }, [activeTab]);
 
