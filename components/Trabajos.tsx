@@ -200,8 +200,8 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
         const st = el.scrollTop;
         const lastSt = lastScrollTops.current[status] || 0;
         const diff = st - lastSt;
-        if (st <= 0) setHeaderVisible(true);
-        else if (Math.abs(diff) > 20) setHeaderVisible(diff < 0);
+        if (st <= 5) setHeaderVisible(true);
+        else if (Math.abs(diff) > 3) setHeaderVisible(diff < 0);
         lastScrollTops.current[status] = st;
     }, [activeTab]);
 
@@ -406,7 +406,7 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
                 >
                     {statusOrder.map((status) => (
                         <div key={status} className="inner-tab-slot" style={{ pointerEvents: (activeTab === status) ? 'auto' : 'none' }}>
-                            <div onScroll={(e) => handleVerticalScroll(e, status)} className="h-full overflow-y-auto px-4 py-4 lg:px-0 lg:py-6 scrollbar-hide overscroll-none dashboard-scroll" style={{ WebkitOverflowScrolling: 'touch' }}>
+                            <div onScroll={(e) => handleVerticalScroll(e, status)} className="h-full overflow-y-auto px-4 pt-4 lg:px-0 lg:pt-6 scrollbar-hide overscroll-none dashboard-scroll" style={{ WebkitOverflowScrolling: 'touch' }}>
                                 <div className="hidden lg:flex items-center gap-2 mb-6 px-1">
                                     <h3 className="text-xs font-black uppercase tracking-[0.2em] text-taller-primary dark:text-blue-400">{status}</h3>
                                     <div className="h-px flex-1 bg-gray-200 dark:bg-gray-700"></div>
