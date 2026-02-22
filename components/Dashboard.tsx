@@ -220,9 +220,7 @@ const FinancialDetailOverlay: React.FC<FinancialDetailOverlayProps> = ({
 }) => {
     const [isVisible, setIsVisible] = useState(false);
     const lastScrollTop = useRef(0);
-    const headerRef = useRef<HTMLDivElement>(null);
     const filterRef = useRef<HTMLDivElement>(null);
-    const overlayRef = useRef<HTMLDivElement>(null);
     const filterOffsetRef = useRef(0);
     const scrollContainerRef = useRef<HTMLDivElement>(null);
     const [filterHeight, setFilterHeight] = useState(0);
@@ -251,17 +249,13 @@ const FinancialDetailOverlay: React.FC<FinancialDetailOverlayProps> = ({
 
     useLayoutEffect(() => {
         const updateHeights = () => {
-            if (!headerRef.current || !filterRef.current || !overlayRef.current) return;
-            const headerH = headerRef.current.offsetHeight;
+            if (!filterRef.current) return;
             const filterH = filterRef.current.offsetHeight;
             setFilterHeight(filterH);
-            overlayRef.current.style.setProperty('--detail-header-h', `${headerH}px`);
-            overlayRef.current.style.setProperty('--detail-filter-h', `${filterH}px`);
             filterRef.current.style.transform = `translateY(${-filterOffsetRef.current}px)`;
             filterRef.current.style.opacity = (1 - (filterOffsetRef.current / (filterH || 1))).toString();
         };
         const resizeObserver = new ResizeObserver(updateHeights);
-        if (headerRef.current) resizeObserver.observe(headerRef.current);
         if (filterRef.current) resizeObserver.observe(filterRef.current);
         updateHeights();
         window.addEventListener('resize', updateHeights);
@@ -314,14 +308,10 @@ const FinancialDetailOverlay: React.FC<FinancialDetailOverlayProps> = ({
         <>
             <div className={`fixed inset-0 z-[199] bg-black/30 backdrop-blur-sm transition-opacity duration-500 ease-in-out ${isVisible ? 'opacity-100' : 'opacity-0'}`} onClick={handleClose} aria-hidden="true" />
             <div
-                ref={overlayRef}
                 className={`fixed inset-0 z-[200] bg-taller-light dark:bg-taller-dark flex flex-col shadow-2xl transition-transform duration-500 will-change-transform relative overflow-hidden ${isVisible ? 'translate-y-0' : 'translate-y-full'}`}
                 style={{ transitionTimingFunction: 'cubic-bezier(0.32, 0.72, 0, 1)' }}
             >
-                <div
-                    ref={headerRef}
-                    className="absolute top-0 left-0 right-0 bg-white dark:bg-gray-800 shadow-sm border-none z-30 safe-top-padding-portal"
-                >
+                <div className="bg-white dark:bg-gray-800 shadow-sm border-none z-30 safe-top-padding-portal flex-shrink-0">
                     <div className="flex items-center justify-between p-4">
                         <button onClick={handleClose} className="p-2 -ml-2 text-taller-gray dark:text-gray-400 hover:text-taller-dark dark:hover:text-white rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"><ArrowLeftIcon className="h-6 w-6" /></button>
                         <h2 className="text-lg font-bold text-taller-dark dark:text-taller-light">{titleMap[detailView]}</h2>
@@ -340,13 +330,15 @@ const FinancialDetailOverlay: React.FC<FinancialDetailOverlayProps> = ({
                     </div>
                 </div>
 
-                <div
-                    ref={filterRef}
-                    className="absolute left-0 right-0 bg-taller-light dark:bg-taller-dark z-20 transform-gpu"
-                    style={{ top: 'var(--detail-header-h)', willChange: 'transform, opacity' }}
-                >
-                    <div className="p-4 pb-2">
-                        <FilterControls activePeriod={period} setPeriodFn={setPeriod} availableMonths={availableMonths} />
+                <div className="relative flex-shrink-0 z-20" style={filterHeight ? { height: `${filterHeight}px` } : undefined}>
+                    <div
+                        ref={filterRef}
+                        className="absolute left-0 right-0 top-0 bg-taller-light dark:bg-taller-dark transform-gpu"
+                        style={{ willChange: 'transform, opacity' }}
+                    >
+                        <div className="p-4 pb-2">
+                            <FilterControls activePeriod={period} setPeriodFn={setPeriod} availableMonths={availableMonths} />
+                        </div>
                     </div>
                 </div>
 
@@ -354,7 +346,6 @@ const FinancialDetailOverlay: React.FC<FinancialDetailOverlayProps> = ({
                     ref={scrollContainerRef}
                     onScroll={handleScroll}
                     className="flex-1 min-h-0 overflow-y-auto px-4 pb-4 pt-2 space-y-4 overscroll-none"
-                    style={{ paddingTop: 'calc(var(--detail-header-h) + var(--detail-filter-h))' }}
                 >
                     <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm text-center mt-2 border-none transform-gpu">
                         <p className="text-sm text-taller-gray dark:text-gray-400 uppercase tracking-wide">Total del Periodo</p>
