@@ -1,5 +1,5 @@
 
-import React, { useMemo, useState, useEffect, useRef } from 'react';
+import React, { useMemo, useState, useEffect, useRef, useLayoutEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import type { Cliente, Trabajo, Gasto } from '../types';
 import { JobStatus } from '../types';
@@ -218,10 +218,14 @@ interface FinancialDetailOverlayProps {
 const FinancialDetailOverlay: React.FC<FinancialDetailOverlayProps> = ({
     detailView, onClose, period, setPeriod, data, gananciasNetasDisplay, onItemClick, availableMonths, onAddGasto
 }) => {
-    const [isFilterVisible, setIsFilterVisible] = useState(true);
     const [isVisible, setIsVisible] = useState(false);
     const lastScrollTop = useRef(0);
+    const headerRef = useRef<HTMLDivElement>(null);
+    const filterRef = useRef<HTMLDivElement>(null);
+    const overlayRef = useRef<HTMLDivElement>(null);
+    const filterOffsetRef = useRef(0);
     const scrollContainerRef = useRef<HTMLDivElement>(null);
+    const [filterHeight, setFilterHeight] = useState(0);
 
     useEffect(() => {
         requestAnimationFrame(() => {
@@ -231,6 +235,42 @@ const FinancialDetailOverlay: React.FC<FinancialDetailOverlayProps> = ({
         });
     }, []);
 
+    useEffect(() => {
+        if (!detailView) return;
+        lastScrollTop.current = 0;
+        filterOffsetRef.current = 0;
+        if (filterRef.current) {
+            filterRef.current.style.transform = 'translateY(0px)';
+            filterRef.current.style.opacity = '1';
+            filterRef.current.style.pointerEvents = 'auto';
+        }
+        if (scrollContainerRef.current) {
+            scrollContainerRef.current.scrollTop = 0;
+        }
+    }, [detailView]);
+
+    useLayoutEffect(() => {
+        const updateHeights = () => {
+            if (!headerRef.current || !filterRef.current || !overlayRef.current) return;
+            const headerH = headerRef.current.offsetHeight;
+            const filterH = filterRef.current.offsetHeight;
+            setFilterHeight(filterH);
+            overlayRef.current.style.setProperty('--detail-header-h', `${headerH}px`);
+            overlayRef.current.style.setProperty('--detail-filter-h', `${filterH}px`);
+            filterRef.current.style.transform = `translateY(${-filterOffsetRef.current}px)`;
+            filterRef.current.style.opacity = (1 - (filterOffsetRef.current / (filterH || 1))).toString();
+        };
+        const resizeObserver = new ResizeObserver(updateHeights);
+        if (headerRef.current) resizeObserver.observe(headerRef.current);
+        if (filterRef.current) resizeObserver.observe(filterRef.current);
+        updateHeights();
+        window.addEventListener('resize', updateHeights);
+        return () => {
+            resizeObserver.disconnect();
+            window.removeEventListener('resize', updateHeights);
+        };
+    }, []);
+
     const handleClose = () => {
         setIsVisible(false);
         setTimeout(() => {
@@ -238,18 +278,25 @@ const FinancialDetailOverlay: React.FC<FinancialDetailOverlayProps> = ({
         }, 500);
     };
 
-    const handleScroll = () => {
-        if (!scrollContainerRef.current) return;
-        const { scrollTop, scrollHeight, clientHeight } = scrollContainerRef.current;
-        if (scrollTop <= 0 || scrollTop + clientHeight >= scrollHeight) return;
+    const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
+        if (!filterRef.current) return;
+        const el = e.currentTarget;
+        const scrollTop = el.scrollTop;
         const diff = scrollTop - lastScrollTop.current;
         lastScrollTop.current = scrollTop;
-        if (Math.abs(diff) < 10) return;
-        const isNearBottom = scrollTop + clientHeight > scrollHeight - 100;
-        if (isNearBottom) return;
-        if (diff > 0 && scrollTop > 60 && isFilterVisible) setIsFilterVisible(false);
-        else if (diff < 0 && !isFilterVisible) setIsFilterVisible(true);
-    };
+
+        if (scrollTop <= 0) {
+            filterOffsetRef.current = 0;
+        } else {
+            filterOffsetRef.current = Math.max(0, Math.min(filterHeight, filterOffsetRef.current + diff));
+        }
+
+        const offset = filterOffsetRef.current;
+        const filter = filterRef.current;
+        filter.style.transform = `translateY(${-offset}px)`;
+        filter.style.opacity = (1 - (offset / (filterHeight || 1))).toString();
+        filter.style.pointerEvents = offset > filterHeight * 0.8 ? 'none' : 'auto';
+    }, [filterHeight]);
 
     if (!detailView) return null;
 
@@ -267,10 +314,14 @@ const FinancialDetailOverlay: React.FC<FinancialDetailOverlayProps> = ({
         <>
             <div className={`fixed inset-0 z-[99] bg-black/30 backdrop-blur-sm transition-opacity duration-500 ease-in-out ${isVisible ? 'opacity-100' : 'opacity-0'}`} onClick={handleClose} aria-hidden="true" />
             <div
-                className={`fixed inset-0 z-[100] bg-taller-light dark:bg-taller-dark flex flex-col shadow-2xl transition-transform duration-500 will-change-transform ${isVisible ? 'translate-y-0' : 'translate-y-full'}`}
+                ref={overlayRef}
+                className={`fixed inset-0 z-[100] bg-taller-light dark:bg-taller-dark flex flex-col shadow-2xl transition-transform duration-500 will-change-transform relative ${isVisible ? 'translate-y-0' : 'translate-y-full'}`}
                 style={{ transitionTimingFunction: 'cubic-bezier(0.32, 0.72, 0, 1)' }}
             >
-                <div className="bg-white dark:bg-gray-800 shadow-sm flex-shrink-0 border-none z-20 relative safe-top-padding-portal">
+                <div
+                    ref={headerRef}
+                    className="absolute top-0 left-0 right-0 bg-white dark:bg-gray-800 shadow-sm border-none z-30 safe-top-padding-portal"
+                >
                     <div className="flex items-center justify-between p-4">
                         <button onClick={handleClose} className="p-2 -ml-2 text-taller-gray dark:text-gray-400 hover:text-taller-dark dark:hover:text-white rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"><ArrowLeftIcon className="h-6 w-6" /></button>
                         <h2 className="text-lg font-bold text-taller-dark dark:text-taller-light">{titleMap[detailView]}</h2>
@@ -289,13 +340,22 @@ const FinancialDetailOverlay: React.FC<FinancialDetailOverlayProps> = ({
                     </div>
                 </div>
 
-                <div className={`bg-taller-light dark:bg-taller-dark z-10 flex-shrink-0 transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] overflow-hidden ${isFilterVisible ? 'max-h-[80px] opacity-100 translate-y-0' : 'max-h-0 opacity-0 -translate-y-4'}`}>
+                <div
+                    ref={filterRef}
+                    className="absolute left-0 right-0 bg-taller-light dark:bg-taller-dark z-20 transform-gpu"
+                    style={{ top: 'var(--detail-header-h)', willChange: 'transform, opacity' }}
+                >
                     <div className="p-4 pb-2">
                         <FilterControls activePeriod={period} setPeriodFn={setPeriod} availableMonths={availableMonths} />
                     </div>
                 </div>
 
-                <div ref={scrollContainerRef} onScroll={handleScroll} className="flex-1 overflow-y-auto px-4 pb-4 pt-2 space-y-4 overscroll-none">
+                <div
+                    ref={scrollContainerRef}
+                    onScroll={handleScroll}
+                    className="flex-1 overflow-y-auto px-4 pb-4 pt-2 space-y-4 overscroll-none"
+                    style={{ paddingTop: 'calc(var(--detail-header-h) + var(--detail-filter-h))' }}
+                >
                     <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm text-center mt-2 border-none transform-gpu">
                         <p className="text-sm text-taller-gray dark:text-gray-400 uppercase tracking-wide">Total del Periodo</p>
                         <p className={`text-4xl font-bold mt-2 ${data.total >= 0 ? 'text-taller-dark dark:text-taller-light' : 'text-red-600'}`}>{displayTotal}</p>
