@@ -306,10 +306,10 @@ const FinancialDetailOverlay: React.FC<FinancialDetailOverlayProps> = ({
 
     return createPortal(
         <>
-            <div className={`fixed inset-0 z-[199] bg-black/30 backdrop-blur-sm transition-opacity duration-500 ease-in-out ${isVisible ? 'opacity-100' : 'opacity-0'}`} onClick={handleClose} aria-hidden="true" />
+            <div className={`fixed inset-0 z-[9998] bg-black/30 backdrop-blur-sm transition-opacity duration-500 ease-in-out ${isVisible ? 'opacity-100' : 'opacity-0'}`} onClick={handleClose} aria-hidden="true" />
             <div
-                className={`fixed inset-0 z-[200] bg-taller-light dark:bg-taller-dark flex flex-col shadow-2xl transition-transform duration-500 will-change-transform relative overflow-hidden ${isVisible ? 'translate-y-0' : 'translate-y-full'}`}
-                style={{ transitionTimingFunction: 'cubic-bezier(0.32, 0.72, 0, 1)' }}
+                className={`fixed inset-0 z-[9999] bg-taller-light dark:bg-taller-dark flex flex-col shadow-2xl transition-transform duration-500 will-change-transform relative overflow-hidden h-[100svh] w-full ${isVisible ? 'translate-y-0' : 'translate-y-full'}`}
+                style={{ transitionTimingFunction: 'cubic-bezier(0.32, 0.72, 0, 1)', isolation: 'isolate' }}
             >
                 <div className="bg-white dark:bg-gray-800 shadow-sm border-none z-30 safe-top-padding-portal flex-shrink-0">
                     <div className="flex items-center justify-between p-4">
