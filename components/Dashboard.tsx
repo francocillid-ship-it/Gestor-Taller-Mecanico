@@ -220,10 +220,13 @@ const FinancialDetailOverlay: React.FC<FinancialDetailOverlayProps> = ({
 }) => {
     const [isVisible, setIsVisible] = useState(false);
     const scrollContainerRef = useRef<HTMLDivElement>(null);
+    const contentRef = useRef<HTMLDivElement>(null);
     const headerRef = useRef<HTMLDivElement>(null);
-    const headerOffsetRef = useRef(0);
+    const filterRef = useRef<HTMLDivElement>(null);
+    const filterOffsetRef = useRef(0);
     const lastScrollTop = useRef(0);
     const [headerHeight, setHeaderHeight] = useState(0);
+    const [filterHeight, setFilterHeight] = useState(0);
 
     useEffect(() => {
         requestAnimationFrame(() => {
@@ -233,17 +236,41 @@ const FinancialDetailOverlay: React.FC<FinancialDetailOverlayProps> = ({
         });
     }, []);
 
+    useEffect(() => {
+        if (!detailView) return;
+        lastScrollTop.current = 0;
+        filterOffsetRef.current = 0;
+        if (scrollContainerRef.current) {
+            scrollContainerRef.current.scrollTop = 0;
+        }
+        if (filterRef.current) {
+            filterRef.current.style.transform = 'translateY(0px)';
+            filterRef.current.style.opacity = '1';
+            filterRef.current.style.pointerEvents = 'auto';
+        }
+        if (contentRef.current) {
+            contentRef.current.style.transform = 'translateY(0px)';
+        }
+    }, [detailView]);
+
     useLayoutEffect(() => {
         const updateHeight = () => {
-            if (!headerRef.current) return;
-            const height = headerRef.current.offsetHeight;
-            setHeaderHeight(height);
-            headerRef.current.parentElement?.style.setProperty('--detail-header-h', `${height}px`);
-            headerRef.current.style.transform = `translateY(${-headerOffsetRef.current}px)`;
-            headerRef.current.style.opacity = (1 - (headerOffsetRef.current / (height || 1))).toString();
+            if (!headerRef.current || !filterRef.current) return;
+            const headerH = headerRef.current.offsetHeight;
+            const filterH = filterRef.current.offsetHeight;
+            setHeaderHeight(headerH);
+            setFilterHeight(filterH);
+            headerRef.current.parentElement?.style.setProperty('--detail-header-h', `${headerH}px`);
+            headerRef.current.parentElement?.style.setProperty('--detail-filter-h', `${filterH}px`);
+            filterRef.current.style.transform = `translateY(${-filterOffsetRef.current}px)`;
+            filterRef.current.style.opacity = (1 - (filterOffsetRef.current / (filterH || 1))).toString();
+            if (contentRef.current) {
+                contentRef.current.style.transform = `translateY(${-filterOffsetRef.current}px)`;
+            }
         };
         const resizeObserver = new ResizeObserver(updateHeight);
         if (headerRef.current) resizeObserver.observe(headerRef.current);
+        if (filterRef.current) resizeObserver.observe(filterRef.current);
         updateHeight();
         window.addEventListener('resize', updateHeight);
         return () => {
@@ -260,23 +287,26 @@ const FinancialDetailOverlay: React.FC<FinancialDetailOverlayProps> = ({
     };
 
     const handleScroll = useCallback(() => {
-        if (!scrollContainerRef.current || !headerRef.current) return;
+        if (!scrollContainerRef.current || !filterRef.current) return;
         const { scrollTop } = scrollContainerRef.current;
         const diff = scrollTop - lastScrollTop.current;
         lastScrollTop.current = scrollTop;
 
         if (scrollTop <= 0) {
-            headerOffsetRef.current = 0;
+            filterOffsetRef.current = 0;
         } else {
-            headerOffsetRef.current = Math.max(0, Math.min(headerHeight, headerOffsetRef.current + diff));
+            filterOffsetRef.current = Math.max(0, Math.min(filterHeight, filterOffsetRef.current + diff));
         }
 
-        const offset = headerOffsetRef.current;
-        const header = headerRef.current;
-        header.style.transform = `translateY(${-offset}px)`;
-        header.style.opacity = (1 - (offset / (headerHeight || 1))).toString();
-        header.style.pointerEvents = offset > headerHeight * 0.8 ? 'none' : 'auto';
-    }, [headerHeight]);
+        const offset = filterOffsetRef.current;
+        const filter = filterRef.current;
+        filter.style.transform = `translateY(${-offset}px)`;
+        filter.style.opacity = (1 - (offset / (filterHeight || 1))).toString();
+        filter.style.pointerEvents = offset > filterHeight * 0.8 ? 'none' : 'auto';
+        if (contentRef.current) {
+            contentRef.current.style.transform = `translateY(${-offset}px)`;
+        }
+    }, [filterHeight]);
 
     if (!detailView) return null;
 
@@ -321,7 +351,11 @@ const FinancialDetailOverlay: React.FC<FinancialDetailOverlayProps> = ({
                         </div>
                     </div>
 
-                    <div className="bg-taller-light dark:bg-taller-dark">
+                    <div
+                        ref={filterRef}
+                        className="bg-taller-light dark:bg-taller-dark transform-gpu"
+                        style={{ willChange: 'transform, opacity' }}
+                    >
                         <div className="p-4 pb-2">
                             <FilterControls activePeriod={period} setPeriodFn={setPeriod} availableMonths={availableMonths} />
                         </div>
@@ -332,35 +366,37 @@ const FinancialDetailOverlay: React.FC<FinancialDetailOverlayProps> = ({
                     ref={scrollContainerRef}
                     onScroll={handleScroll}
                     className="flex-1 overflow-y-auto px-4 pb-4 pt-2 space-y-4 overscroll-none"
-                    style={{ paddingTop: 'var(--detail-header-h)' }}
+                    style={{ paddingTop: 'calc(var(--detail-header-h) + var(--detail-filter-h))' }}
                 >
-                    <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm text-center mt-2 border-none transform-gpu">
-                        <p className="text-sm text-taller-gray dark:text-gray-400 uppercase tracking-wide">Total del Periodo</p>
-                        <p className={`text-4xl font-bold mt-2 ${data.total >= 0 ? 'text-taller-dark dark:text-taller-light' : 'text-red-600'}`}>{displayTotal}</p>
-                        {isProfitView && <p className="text-xs text-taller-gray dark:text-gray-500 mt-2">* Cálculo: Mano de Obra + Sobrantes de Repuestos.</p>}
-                    </div>
+                    <div ref={contentRef} className="transform-gpu" style={{ willChange: 'transform' }}>
+                        <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm text-center mt-2 border-none transform-gpu">
+                            <p className="text-sm text-taller-gray dark:text-gray-400 uppercase tracking-wide">Total del Periodo</p>
+                            <p className={`text-4xl font-bold mt-2 ${data.total >= 0 ? 'text-taller-dark dark:text-taller-light' : 'text-red-600'}`}>{displayTotal}</p>
+                            {isProfitView && <p className="text-xs text-taller-gray dark:text-gray-500 mt-2">* Cálculo: Mano de Obra + Sobrantes de Repuestos.</p>}
+                        </div>
 
-                    <div className="space-y-3 pb-24">
-                        {data.transactions.length > 0 ? (
-                            data.transactions.map((t, index) => (
-                                <div key={t.id} onClick={() => onItemClick(t)} className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm flex items-center justify-between border-l-4 border-transparent hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer active:scale-[0.98] transition-all duration-300 animate-slide-in-bottom fill-mode-backwards group" style={{ borderLeftColor: t.type === 'income' ? '#22c55e' : '#ef4444', animationDelay: `${index * 50}ms` }}>
-                                    <div className="flex items-center gap-3">
-                                        <div className={`p-2 rounded-full ${t.type === 'income' ? 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400' : 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400'}`}>{t.type === 'income' ? <ArrowTrendingUpIcon className="h-5 w-5" /> : <ArrowTrendingDownIcon className="h-5 w-5" />}</div>
-                                        <div>
-                                            <p className="font-bold text-taller-dark dark:text-taller-light text-sm flex items-center gap-1">{t.description}<ArrowTopRightOnSquareIcon className="h-3 w-3 text-gray-300 opacity-0 group-hover:opacity-100 transition-opacity" /></p>
-                                            <p className="text-xs text-taller-gray dark:text-gray-400">{t.subtext}</p>
-                                            <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">{t.date.toLocaleDateString('es-ES')} {t.date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                        <div className="space-y-3 pb-24">
+                            {data.transactions.length > 0 ? (
+                                data.transactions.map((t, index) => (
+                                    <div key={t.id} onClick={() => onItemClick(t)} className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm flex items-center justify-between border-l-4 border-transparent hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer active:scale-[0.98] transition-all duration-300 animate-slide-in-bottom fill-mode-backwards group" style={{ borderLeftColor: t.type === 'income' ? '#22c55e' : '#ef4444', animationDelay: `${index * 50}ms` }}>
+                                        <div className="flex items-center gap-3">
+                                            <div className={`p-2 rounded-full ${t.type === 'income' ? 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400' : 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400'}`}>{t.type === 'income' ? <ArrowTrendingUpIcon className="h-5 w-5" /> : <ArrowTrendingDownIcon className="h-5 w-5" />}</div>
+                                            <div>
+                                                <p className="font-bold text-taller-dark dark:text-taller-light text-sm flex items-center gap-1">{t.description}<ArrowTopRightOnSquareIcon className="h-3 w-3 text-gray-300 opacity-0 group-hover:opacity-100 transition-opacity" /></p>
+                                                <p className="text-xs text-taller-gray dark:text-gray-400">{t.subtext}</p>
+                                                <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">{t.date.toLocaleDateString('es-ES')} {t.date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                                            </div>
+                                        </div>
+                                        <div className="text-right">
+                                            <p className={`font-bold ${t.type === 'income' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>{t.type === 'income' ? '+' : '-'} {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(t.amount)}</p>
+                                            {isProfitView && t.type === 'income' && <p className="text-[10px] text-gray-400 italic">Neto Mano de Obra</p>}
                                         </div>
                                     </div>
-                                    <div className="text-right">
-                                        <p className={`font-bold ${t.type === 'income' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>{t.type === 'income' ? '+' : '-'} {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(t.amount)}</p>
-                                        {isProfitView && t.type === 'income' && <p className="text-[10px] text-gray-400 italic">Neto Mano de Obra</p>}
-                                    </div>
-                                </div>
-                            ))
-                        ) : (
-                            <div className="text-center py-10 text-taller-gray dark:text-gray-400"><ScaleIcon className="h-12 w-12 mx-auto mb-2 opacity-20" /><p>No hay movimientos en este periodo.</p></div>
-                        )}
+                                ))
+                            ) : (
+                                <div className="text-center py-10 text-taller-gray dark:text-gray-400"><ScaleIcon className="h-12 w-12 mx-auto mb-2 opacity-20" /><p>No hay movimientos en este periodo.</p></div>
+                            )}
+                        </div>
                     </div>
                 </div>
             </div>
