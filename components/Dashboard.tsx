@@ -353,7 +353,7 @@ const FinancialDetailOverlay: React.FC<FinancialDetailOverlayProps> = ({
                 <div
                     ref={scrollContainerRef}
                     onScroll={handleScroll}
-                    className="flex-1 overflow-y-auto px-4 pb-4 pt-2 space-y-4 overscroll-none"
+                    className="flex-1 min-h-0 overflow-y-auto px-4 pb-4 pt-2 space-y-4 overscroll-none"
                     style={{ paddingTop: 'calc(var(--detail-header-h) + var(--detail-filter-h))' }}
                 >
                     <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm text-center mt-2 border-none transform-gpu">
