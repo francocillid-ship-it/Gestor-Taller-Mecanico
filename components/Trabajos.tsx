@@ -1,4 +1,3 @@
-
 import React, { useMemo, useState, useEffect, useRef, useCallback, useLayoutEffect, lazy, Suspense } from 'react';
 import type { Trabajo, Cliente, TallerInfo } from '../types';
 import { JobStatus } from '../types';

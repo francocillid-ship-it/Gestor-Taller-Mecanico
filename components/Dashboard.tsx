@@ -1,5 +1,5 @@
 
-import React, { useMemo, useState, useEffect, useRef } from 'react';
+import React, { useMemo, useState, useEffect, useRef, useLayoutEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import type { Cliente, Trabajo, Gasto } from '../types';
 import { JobStatus } from '../types';
@@ -212,15 +212,18 @@ interface FinancialDetailOverlayProps {
     gananciasNetasDisplay: string;
     onItemClick: (item: TransactionItem) => void;
     availableMonths: { label: string, value: string }[];
+    onAddGasto: () => void;
 }
 
 const FinancialDetailOverlay: React.FC<FinancialDetailOverlayProps> = ({
     detailView, onClose, period, setPeriod, data, gananciasNetasDisplay, onItemClick, availableMonths, onAddGasto
 }) => {
-    const [isFilterVisible, setIsFilterVisible] = useState(true);
     const [isVisible, setIsVisible] = useState(false);
-    const lastScrollTop = useRef(0);
     const scrollContainerRef = useRef<HTMLDivElement>(null);
+    const headerRef = useRef<HTMLDivElement>(null);
+    const headerOffsetRef = useRef(0);
+    const lastScrollTop = useRef(0);
+    const [headerHeight, setHeaderHeight] = useState(0);
 
     useEffect(() => {
         requestAnimationFrame(() => {
@@ -230,6 +233,25 @@ const FinancialDetailOverlay: React.FC<FinancialDetailOverlayProps> = ({
         });
     }, []);
 
+    useLayoutEffect(() => {
+        const updateHeight = () => {
+            if (!headerRef.current) return;
+            const height = headerRef.current.offsetHeight;
+            setHeaderHeight(height);
+            headerRef.current.parentElement?.style.setProperty('--detail-header-h', `${height}px`);
+            headerRef.current.style.transform = `translateY(${-headerOffsetRef.current}px)`;
+            headerRef.current.style.opacity = (1 - (headerOffsetRef.current / (height || 1))).toString();
+        };
+        const resizeObserver = new ResizeObserver(updateHeight);
+        if (headerRef.current) resizeObserver.observe(headerRef.current);
+        updateHeight();
+        window.addEventListener('resize', updateHeight);
+        return () => {
+            resizeObserver.disconnect();
+            window.removeEventListener('resize', updateHeight);
+        };
+    }, []);
+
     const handleClose = () => {
         setIsVisible(false);
         setTimeout(() => {
@@ -237,18 +259,24 @@ const FinancialDetailOverlay: React.FC<FinancialDetailOverlayProps> = ({
         }, 500);
     };
 
-    const handleScroll = () => {
-        if (!scrollContainerRef.current) return;
-        const { scrollTop, scrollHeight, clientHeight } = scrollContainerRef.current;
-        if (scrollTop <= 0 || scrollTop + clientHeight >= scrollHeight) return;
+    const handleScroll = useCallback(() => {
+        if (!scrollContainerRef.current || !headerRef.current) return;
+        const { scrollTop } = scrollContainerRef.current;
         const diff = scrollTop - lastScrollTop.current;
         lastScrollTop.current = scrollTop;
-        if (Math.abs(diff) < 10) return;
-        const isNearBottom = scrollTop + clientHeight > scrollHeight - 100;
-        if (isNearBottom) return;
-        if (diff > 0 && scrollTop > 60 && isFilterVisible) setIsFilterVisible(false);
-        else if (diff < 0 && !isFilterVisible) setIsFilterVisible(true);
-    };
+
+        if (scrollTop <= 0) {
+            headerOffsetRef.current = 0;
+        } else {
+            headerOffsetRef.current = Math.max(0, Math.min(headerHeight, headerOffsetRef.current + diff));
+        }
+
+        const offset = headerOffsetRef.current;
+        const header = headerRef.current;
+        header.style.transform = `translateY(${-offset}px)`;
+        header.style.opacity = (1 - (offset / (headerHeight || 1))).toString();
+        header.style.pointerEvents = offset > headerHeight * 0.8 ? 'none' : 'auto';
+    }, [headerHeight]);
 
     if (!detailView) return null;
 
@@ -266,35 +294,46 @@ const FinancialDetailOverlay: React.FC<FinancialDetailOverlayProps> = ({
         <>
             <div className={`fixed inset-0 z-[99] bg-black/30 backdrop-blur-sm transition-opacity duration-500 ease-in-out ${isVisible ? 'opacity-100' : 'opacity-0'}`} onClick={handleClose} aria-hidden="true" />
             <div
-                className={`fixed inset-0 z-[100] bg-taller-light dark:bg-taller-dark flex flex-col shadow-2xl transition-transform duration-500 will-change-transform ${isVisible ? 'translate-y-0' : 'translate-y-full'}`}
+                className={`fixed inset-0 z-[100] bg-taller-light dark:bg-taller-dark flex flex-col shadow-2xl transition-transform duration-500 will-change-transform relative ${isVisible ? 'translate-y-0' : 'translate-y-full'}`}
                 style={{ transitionTimingFunction: 'cubic-bezier(0.32, 0.72, 0, 1)' }}
             >
-                <div className="bg-white dark:bg-gray-800 shadow-sm flex-shrink-0 border-none z-20 relative safe-top-padding-portal">
-                    <div className="flex items-center justify-between p-4">
-                        <button onClick={handleClose} className="p-2 -ml-2 text-taller-gray dark:text-gray-400 hover:text-taller-dark dark:hover:text-white rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"><ArrowLeftIcon className="h-6 w-6" /></button>
-                        <h2 className="text-lg font-bold text-taller-dark dark:text-taller-light">{titleMap[detailView]}</h2>
-                        <div className="flex items-center gap-2">
-                            {(detailView === 'gastos' || detailView === 'balance') && (
-                                <button
-                                    onClick={onAddGasto}
-                                    className="p-2 bg-taller-primary text-white rounded-full shadow-lg active:scale-95 transition-all"
-                                    title="Añadir Gasto"
-                                >
-                                    <PlusIcon className="h-5 w-5" />
-                                </button>
-                            )}
-                            <div className="w-2"></div>
+                <div
+                    ref={headerRef}
+                    className="absolute top-0 left-0 right-0 z-30 transform-gpu"
+                    style={{ willChange: 'transform, opacity' }}
+                >
+                    <div className="bg-white dark:bg-gray-800 shadow-sm border-none safe-top-padding-portal">
+                        <div className="flex items-center justify-between p-4">
+                            <button onClick={handleClose} className="p-2 -ml-2 text-taller-gray dark:text-gray-400 hover:text-taller-dark dark:hover:text-white rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"><ArrowLeftIcon className="h-6 w-6" /></button>
+                            <h2 className="text-lg font-bold text-taller-dark dark:text-taller-light">{titleMap[detailView]}</h2>
+                            <div className="flex items-center gap-2">
+                                {(detailView === 'gastos' || detailView === 'balance') && (
+                                    <button
+                                        onClick={onAddGasto}
+                                        className="p-2 bg-taller-primary text-white rounded-full shadow-lg active:scale-95 transition-all"
+                                        title="Añadir Gasto"
+                                    >
+                                        <PlusIcon className="h-5 w-5" />
+                                    </button>
+                                )}
+                                <div className="w-2"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="bg-taller-light dark:bg-taller-dark">
+                        <div className="p-4 pb-2">
+                            <FilterControls activePeriod={period} setPeriodFn={setPeriod} availableMonths={availableMonths} />
                         </div>
                     </div>
                 </div>
 
-                <div className={`bg-taller-light dark:bg-taller-dark z-10 flex-shrink-0 transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] overflow-hidden ${isFilterVisible ? 'max-h-[80px] opacity-100 translate-y-0' : 'max-h-0 opacity-0 -translate-y-4'}`}>
-                    <div className="p-4 pb-2">
-                        <FilterControls activePeriod={period} setPeriodFn={setPeriod} availableMonths={availableMonths} />
-                    </div>
-                </div>
-
-                <div ref={scrollContainerRef} onScroll={handleScroll} className="flex-1 overflow-y-auto px-4 pb-4 pt-2 space-y-4 overscroll-none">
+                <div
+                    ref={scrollContainerRef}
+                    onScroll={handleScroll}
+                    className="flex-1 overflow-y-auto px-4 pb-4 pt-2 space-y-4 overscroll-none"
+                    style={{ paddingTop: 'var(--detail-header-h)' }}
+                >
                     <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm text-center mt-2 border-none transform-gpu">
                         <p className="text-sm text-taller-gray dark:text-gray-400 uppercase tracking-wide">Total del Periodo</p>
                         <p className={`text-4xl font-bold mt-2 ${data.total >= 0 ? 'text-taller-dark dark:text-taller-light' : 'text-red-600'}`}>{displayTotal}</p>
