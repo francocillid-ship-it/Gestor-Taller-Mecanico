@@ -145,7 +145,7 @@ const MaintenanceConfigModal: React.FC<MaintenanceConfigModalProps> = ({ vehicul
                 className={`bg-white dark:bg-gray-800 w-full app-height-mobile sm:h-auto sm:max-h-[90svh] sm:max-w-2xl sm:rounded-xl shadow-2xl flex flex-col overflow-hidden relative z-10 transform transition-all duration-300 ease-out ${isVisible ? 'translate-y-0 opacity-100 sm:scale-100' : 'translate-y-full opacity-0 sm:translate-y-0 sm:scale-95'}`}
             >
                 {/* Header */}
-                <div className="flex justify-between items-center p-4 border-b dark:border-gray-700 bg-white dark:bg-gray-800 flex-shrink-0">
+                <div className="safe-top-padding-portal flex justify-between items-center px-4 pb-4 border-b dark:border-gray-700 bg-white dark:bg-gray-800 flex-shrink-0">
                     <div>
                         <h2 className="text-xl font-bold text-taller-dark dark:text-taller-light">Configurar Mantenimiento</h2>
                         <p className="text-sm text-taller-gray dark:text-gray-400">{vehiculo.marca} {vehiculo.modelo} ({vehiculo.matricula})</p>

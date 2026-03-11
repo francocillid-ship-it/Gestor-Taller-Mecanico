@@ -9,7 +9,7 @@ import CameraRecognitionModal from './CameraRecognitionModal';
 
 interface CrearClienteModalProps {
     onClose: () => void;
-    onSuccess: (newClient?: Cliente) => void; 
+    onSuccess: (newClient?: Cliente) => void;
     clienteToEdit?: Cliente | null;
 }
 
@@ -30,7 +30,7 @@ const CrearClienteModal: React.FC<CrearClienteModalProps> = ({ onClose, onSucces
     const [isCameraModalOpen, setIsCameraModalOpen] = useState(false);
     const [scanningVehicleIndex, setScanningVehicleIndex] = useState<number | null>(null);
     const [isVisible, setIsVisible] = useState(false);
-    
+
     // Check dynamic availability
     const [geminiEnabled, setGeminiEnabled] = useState(isGeminiAvailable());
 
@@ -44,7 +44,7 @@ const CrearClienteModal: React.FC<CrearClienteModalProps> = ({ onClose, onSucces
             setTelefono(clienteToEdit.telefono || '');
             if (clienteToEdit.vehiculos && clienteToEdit.vehiculos.length > 0) {
                 setVehicles(clienteToEdit.vehiculos.map(v => ({
-                    ...v, 
+                    ...v,
                     año: v.año ? String(v.año) : '',
                     numero_chasis: v.numero_chasis || '',
                     numero_motor: v.numero_motor || ''
@@ -115,27 +115,27 @@ const CrearClienteModal: React.FC<CrearClienteModalProps> = ({ onClose, onSucces
 
             if (isEditMode && clienteToEdit) {
                 const { error: clientError } = await supabase.from('clientes').update({
-                    nombre, 
-                    apellido: apellido.trim() || null, 
-                    email: email.trim() || null, 
-                    telefono: telefono.trim() || null 
+                    nombre,
+                    apellido: apellido.trim() || null,
+                    email: email.trim() || null,
+                    telefono: telefono.trim() || null
                 }).eq('id', clienteToEdit.id);
-                
+
                 if (clientError) throw clientError;
                 finalClienteId = clienteToEdit.id;
             } else {
                 const { data: newClient, error: clientError } = await supabase
                     .from('clientes')
                     .insert({
-                        taller_id: user.id, 
-                        nombre, 
-                        apellido: apellido.trim() || null, 
-                        email: email.trim() || null, 
+                        taller_id: user.id,
+                        nombre,
+                        apellido: apellido.trim() || null,
+                        email: email.trim() || null,
                         telefono: telefono.trim() || null
                     })
                     .select()
                     .single();
-                
+
                 if (clientError) throw clientError;
                 finalClienteId = newClient.id;
             }
@@ -192,29 +192,29 @@ const CrearClienteModal: React.FC<CrearClienteModalProps> = ({ onClose, onSucces
 
     return createPortal(
         <div className="fixed inset-0 z-[100] flex justify-center items-end sm:items-center">
-            <div className={`fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-300 ${isVisible ? 'opacity-100' : 'opacity-0'}`} onClick={handleClose}/>
-            <div className={`bg-white dark:bg-gray-800 w-full h-[90dvh] sm:h-auto sm:max-h-[95svh] sm:max-w-xl sm:rounded-t-xl flex flex-col overflow-hidden relative z-10 transform transition-all duration-300 ease-out ${isVisible ? 'translate-y-0' : 'translate-y-full'}`}> 
-                <div className="p-4 border-b dark:border-gray-700 flex justify-between items-center bg-gray-50 dark:bg-gray-900/50 flex-shrink-0">
+            <div className={`fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-300 ${isVisible ? 'opacity-100' : 'opacity-0'}`} onClick={handleClose} />
+            <div className={`bg-white dark:bg-gray-800 w-full h-[90dvh] sm:h-auto sm:max-h-[95svh] sm:max-w-xl sm:rounded-t-xl flex flex-col overflow-hidden relative z-10 transform transition-all duration-300 ease-out ${isVisible ? 'translate-y-0' : 'translate-y-full'}`}>
+                <div className="safe-top-padding-portal px-4 pb-4 border-b dark:border-gray-700 flex justify-between items-center bg-gray-50 dark:bg-gray-900/50 flex-shrink-0">
                     <h2 className="font-bold text-lg">{isEditMode ? 'Editar Cliente' : 'Nuevo Cliente'}</h2>
-                    <button onClick={handleClose} className="p-1"><XMarkIcon className="h-6 w-6"/></button>
+                    <button onClick={handleClose} className="p-1"><XMarkIcon className="h-6 w-6" /></button>
                 </div>
 
                 <div className="flex-1 overflow-y-auto p-4 space-y-6 overscroll-none">
                     <form id="client-form" onSubmit={handleSubmit} className="space-y-6 pb-20">
                         <section className="space-y-4">
-                            <h3 className="text-xs font-bold text-taller-gray uppercase flex items-center gap-2"><UserIcon className="h-3 w-3"/> Datos Personales</h3>
+                            <h3 className="text-xs font-bold text-taller-gray uppercase flex items-center gap-2"><UserIcon className="h-3 w-3" /> Datos Personales</h3>
                             <div className="grid grid-cols-2 gap-3">
-                                <input type="text" placeholder="Nombre *" value={nombre} onChange={e => setNombre(e.target.value)} className="p-2.5 border rounded-lg dark:bg-gray-700 dark:border-gray-600 text-sm" required/>
+                                <input type="text" placeholder="Nombre *" value={nombre} onChange={e => setNombre(e.target.value)} className="p-2.5 border rounded-lg dark:bg-gray-700 dark:border-gray-600 text-sm" required />
                                 <input type="text" placeholder="Apellido" value={apellido} onChange={e => setApellido(e.target.value)} className="p-2.5 border rounded-lg dark:bg-gray-700 dark:border-gray-600 text-sm" />
                             </div>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                 <div className="relative">
-                                    <PhoneIcon className="absolute left-3 top-3 h-4 w-4 text-gray-400"/>
+                                    <PhoneIcon className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                                     <input type="tel" placeholder="Teléfono" value={telefono} onChange={e => setTelefono(e.target.value)} className="w-full pl-9 p-2.5 border rounded-lg dark:bg-gray-700 dark:border-gray-600 text-sm" />
                                 </div>
                                 <div className="relative">
-                                    <EnvelopeIcon className="absolute left-3 top-3 h-4 w-4 text-gray-400"/>
-                                    <input type="email" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} className="w-full pl-9 p-2.5 border rounded-lg dark:bg-gray-700 dark:border-gray-600 text-sm"/>
+                                    <EnvelopeIcon className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                                    <input type="email" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} className="w-full pl-9 p-2.5 border rounded-lg dark:bg-gray-700 dark:border-gray-600 text-sm" />
                                 </div>
                             </div>
                         </section>
@@ -222,7 +222,7 @@ const CrearClienteModal: React.FC<CrearClienteModalProps> = ({ onClose, onSucces
                         <section className="space-y-4">
                             <div className="flex justify-between items-center">
                                 <h3 className="text-xs font-bold text-taller-gray uppercase">Vehículos ({vehicles.length})</h3>
-                                <button type="button" onClick={handleAddNewVehicle} className="text-xs font-bold text-taller-primary flex items-center gap-1 bg-blue-50 dark:bg-blue-900/30 px-2 py-1 rounded"><PlusIcon className="h-3 w-3"/> Añadir</button>
+                                <button type="button" onClick={handleAddNewVehicle} className="text-xs font-bold text-taller-primary flex items-center gap-1 bg-blue-50 dark:bg-blue-900/30 px-2 py-1 rounded"><PlusIcon className="h-3 w-3" /> Añadir</button>
                             </div>
 
                             <div className="space-y-3">
@@ -230,14 +230,14 @@ const CrearClienteModal: React.FC<CrearClienteModalProps> = ({ onClose, onSucces
                                     <div key={idx} className="border dark:border-gray-700 rounded-xl overflow-hidden shadow-sm bg-gray-50 dark:bg-gray-900/20">
                                         <button type="button" onClick={() => setExpandedVehicleIdx(expandedVehicleIdx === idx ? -1 : idx)} className="w-full p-3 flex justify-between items-center text-sm font-bold bg-white dark:bg-gray-700">
                                             <span className="truncate">{v.marca || 'Nueva Marca'} {v.modelo}</span>
-                                            <ChevronDownIcon className={`h-4 w-4 transition-transform ${expandedVehicleIdx === idx ? 'rotate-180' : ''}`}/>
+                                            <ChevronDownIcon className={`h-4 w-4 transition-transform ${expandedVehicleIdx === idx ? 'rotate-180' : ''}`} />
                                         </button>
-                                        
+
                                         <div className={`p-4 space-y-4 bg-inherit ${expandedVehicleIdx === idx ? 'block' : 'hidden'}`}>
                                             <div className="flex justify-end">
                                                 {geminiEnabled ? (
                                                     <button type="button" onClick={() => { setScanningVehicleIndex(idx); setIsCameraModalOpen(true); }} className="text-xs font-bold text-blue-600 flex items-center gap-1 border border-blue-200 px-2 py-1 rounded bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 transition-colors">
-                                                        <CameraIcon className="h-3 w-3"/> Escanear Cédula
+                                                        <CameraIcon className="h-3 w-3" /> Escanear Cédula
                                                     </button>
                                                 ) : (
                                                     <span className="text-[10px] text-taller-gray italic flex items-center gap-1">
@@ -246,14 +246,14 @@ const CrearClienteModal: React.FC<CrearClienteModalProps> = ({ onClose, onSucces
                                                 )}
                                             </div>
                                             <div className="grid grid-cols-2 gap-3">
-                                                <input type="text" placeholder="Marca *" value={v.marca} onChange={e => handleVehicleChange(idx, 'marca', e.target.value)} className="p-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 text-sm" required/>
-                                                <input type="text" placeholder="Modelo *" value={v.modelo} onChange={e => handleVehicleChange(idx, 'modelo', e.target.value)} className="p-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 text-sm" required/>
-                                                <input type="text" placeholder="Patente" value={v.matricula} onChange={e => handleVehicleChange(idx, 'matricula', e.target.value)} className="p-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 text-sm"/>
-                                                <input type="number" placeholder="Año" value={v.año} onChange={e => handleVehicleChange(idx, 'año', e.target.value)} className="p-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 text-sm"/>
-                                                <input type="text" placeholder="Nº Chasis" value={v.numero_chasis} onChange={e => handleVehicleChange(idx, 'numero_chasis', e.target.value)} className="p-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 text-sm"/>
-                                                <input type="text" placeholder="Nº Motor" value={v.numero_motor} onChange={e => handleVehicleChange(idx, 'numero_motor', e.target.value)} className="p-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 text-sm"/>
+                                                <input type="text" placeholder="Marca *" value={v.marca} onChange={e => handleVehicleChange(idx, 'marca', e.target.value)} className="p-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 text-sm" required />
+                                                <input type="text" placeholder="Modelo *" value={v.modelo} onChange={e => handleVehicleChange(idx, 'modelo', e.target.value)} className="p-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 text-sm" required />
+                                                <input type="text" placeholder="Patente" value={v.matricula} onChange={e => handleVehicleChange(idx, 'matricula', e.target.value)} className="p-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 text-sm" />
+                                                <input type="number" placeholder="Año" value={v.año} onChange={e => handleVehicleChange(idx, 'año', e.target.value)} className="p-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 text-sm" />
+                                                <input type="text" placeholder="Nº Chasis" value={v.numero_chasis} onChange={e => handleVehicleChange(idx, 'numero_chasis', e.target.value)} className="p-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 text-sm" />
+                                                <input type="text" placeholder="Nº Motor" value={v.numero_motor} onChange={e => handleVehicleChange(idx, 'numero_motor', e.target.value)} className="p-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 text-sm" />
                                             </div>
-                                            <button type="button" onClick={() => handleRemoveVehicle(idx)} className="text-xs font-bold text-red-500 flex items-center gap-1 pt-2"><TrashIcon className="h-3 w-3"/> Eliminar vehículo</button>
+                                            <button type="button" onClick={() => handleRemoveVehicle(idx)} className="text-xs font-bold text-red-500 flex items-center gap-1 pt-2"><TrashIcon className="h-3 w-3" /> Eliminar vehículo</button>
                                         </div>
                                     </div>
                                 ))}
@@ -271,24 +271,24 @@ const CrearClienteModal: React.FC<CrearClienteModalProps> = ({ onClose, onSucces
                     {isEditMode && (
                         <div className="flex-1 flex gap-1">
                             {!isConfirmingDelete ? (
-                                <button 
+                                <button
                                     type="button"
                                     onClick={() => setIsConfirmingDelete(true)}
                                     className="w-full py-3 bg-red-600 text-white rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-red-700 transition-colors shadow-sm"
                                 >
-                                    <TrashIcon className="h-5 w-5"/> Eliminar
+                                    <TrashIcon className="h-5 w-5" /> Eliminar
                                 </button>
                             ) : (
                                 <>
-                                    <button 
+                                    <button
                                         type="button"
                                         onClick={handleDelete}
                                         disabled={isDeleting}
                                         className="flex-1 py-3 bg-red-600 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-1 hover:bg-red-700 transition-colors shadow-inner"
                                     >
-                                        {isDeleting ? '...' : <><CheckIcon className="h-4 w-4"/> Sí</>}
+                                        {isDeleting ? '...' : <><CheckIcon className="h-4 w-4" /> Sí</>}
                                     </button>
-                                    <button 
+                                    <button
                                         type="button"
                                         onClick={() => setIsConfirmingDelete(false)}
                                         disabled={isDeleting}

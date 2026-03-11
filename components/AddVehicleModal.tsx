@@ -102,7 +102,7 @@ const AddVehicleModal: React.FC<AddVehicleModalProps> = ({ onClose, onSuccess, c
             <div
                 className={`bg-white dark:bg-gray-800 w-full app-height-mobile sm:h-auto sm:max-h-[90svh] sm:max-w-lg sm:rounded-xl shadow-2xl flex flex-col overflow-hidden relative z-10 transform transition-all duration-300 ease-out ${isVisible ? 'translate-y-0 opacity-100 sm:scale-100' : 'translate-y-full opacity-0 sm:translate-y-0 sm:scale-95'}`}
             >
-                <div className="flex justify-between items-center p-4 border-b dark:border-gray-700 bg-white dark:bg-gray-800 flex-shrink-0">
+                <div className="safe-top-padding-portal flex justify-between items-center px-4 pb-4 border-b dark:border-gray-700 bg-white dark:bg-gray-800 flex-shrink-0">
                     <h2 className="text-xl font-bold text-taller-dark dark:text-taller-light">Agregar Vehículo</h2>
                     <button onClick={handleClose} className="p-2 -mr-2 text-taller-gray dark:text-gray-400 hover:text-taller-dark dark:hover:text-white rounded-full hover:bg-gray-100 dark:hover:bg-gray-700">
                         <XMarkIcon className="h-6 w-6" />

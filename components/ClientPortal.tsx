@@ -341,7 +341,7 @@ const ClientPortal: React.FC<ClientPortalProps> = ({ client, trabajos, onLogout,
                     <div className="fixed inset-0 z-50 flex justify-end">
                         <div className={`fixed inset-0 bg-black/50 transition-opacity duration-300 ${isSettingsVisible ? 'opacity-100' : 'opacity-0'}`} onClick={closeSettings} />
                         <div className={`bg-white dark:bg-gray-800 w-full max-w-xs shadow-2xl flex flex-col transform transition-transform duration-300 ${isSettingsVisible ? 'translate-x-0' : 'translate-x-full'}`}>
-                            <div className="p-4 border-b dark:border-gray-700 flex justify-between items-center bg-gray-50 dark:bg-gray-900/50">
+                            <div className="safe-top-padding-portal px-4 pb-4 border-b dark:border-gray-700 flex justify-between items-center bg-gray-50 dark:bg-gray-900/50">
                                 <h4 className="font-bold">Ajustes</h4>
                                 <button onClick={closeSettings} className="p-1"><XMarkIcon className="h-6 w-6" /></button>
                             </div>
