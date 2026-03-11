@@ -52,7 +52,7 @@ const AddTransaccionModal: React.FC<AddTransaccionModalProps> = ({ entidad, onCl
 
             <div
                 ref={modalRef}
-                className="w-full sm:max-w-md bg-taller-light dark:bg-taller-dark rounded-t-3xl sm:rounded-3xl shadow-2xl relative flex flex-col max-h-[90vh] transition-transform duration-300 translate-x-full sm:translate-x-0 sm:translate-y-full animate-in slide-in-from-right sm:slide-in-from-bottom"
+                className="w-full sm:max-w-md bg-taller-light dark:bg-taller-dark rounded-t-3xl sm:rounded-3xl shadow-2xl relative flex flex-col max-h-[90vh] transition-transform duration-300 animate-in slide-in-from-bottom sm:slide-in-from-bottom-8 sm:zoom-in-95"
             >
                 {/* Handle for mobile swipe */}
                 <div className="w-full h-1.5 flex justify-center mt-3 sm:hidden shrink-0">
