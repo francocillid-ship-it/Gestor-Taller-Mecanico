@@ -104,6 +104,27 @@ export interface Gasto {
     esFijo: boolean;
 }
 
+export interface EntidadFinanciera {
+    id: string;
+    taller_id: string;
+    nombre: string;
+    tipo: 'empleado' | 'proveedor';
+    telefono?: string;
+    notas?: string;
+    saldo_actual: number; // Positive = we owe them. Negative = they owe us.
+}
+
+export interface TransaccionEntidad {
+    id: string;
+    taller_id: string;
+    entidad_id: string;
+    tipo: 'deuda' | 'pago'; // Deuda adds to what we owe. Pago reduces what we owe.
+    monto: number;
+    fecha: string;
+    descripcion: string;
+    referencia_gasto_id?: string;
+}
+
 export interface TallerInfo {
     nombre: string;
     telefono: string;

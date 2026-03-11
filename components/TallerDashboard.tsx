@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useCallback, lazy, Suspense, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { supabase } from '../supabaseClient';
-import type { Cliente, Trabajo, Gasto, TallerInfo, UserRole } from '../types';
+import type { Cliente, Trabajo, Gasto, TallerInfo, UserRole, EntidadFinanciera, TransaccionEntidad } from '../types';
 import { JobStatus as JobStatusEnum } from '../types';
 import Header from './Header';
 import {
@@ -112,6 +112,8 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout, user }) => 
     const [clientes, setClientes] = useState<Cliente[]>([]);
     const [trabajos, setTrabajos] = useState<Trabajo[]>([]);
     const [gastos, setGastos] = useState<Gasto[]>([]);
+    const [entidades, setEntidades] = useState<EntidadFinanciera[]>([]);
+    const [transaccionesEntidades, setTransaccionesEntidades] = useState<TransaccionEntidad[]>([]);
     const [tallerInfo, setTallerInfo] = useState<TallerInfo>({
         nombre: 'Mi Taller',
         telefono: '',
@@ -185,7 +187,9 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout, user }) => 
         tallerInfo: false,
         clientes: false,
         trabajos: false,
-        gastos: false
+        gastos: false,
+        entidades: false,
+        transaccionesEntidades: false
     });
 
     const fetchingRef = useRef<Set<string>>(new Set());
@@ -283,6 +287,34 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout, user }) => 
         }
     }, []);
 
+    const fetchEntidades = useCallback(async (userId: string) => {
+        if (fetchingRef.current.has('entidades')) return;
+        fetchingRef.current.add('entidades');
+        try {
+            const { data } = await supabase.from('entidades_financieras').select('*').eq('taller_id', userId).order('nombre', { ascending: true });
+            if (data) {
+                setEntidades(data as EntidadFinanciera[]);
+            }
+            setDataLoaded(prev => ({ ...prev, entidades: true }));
+        } finally {
+            fetchingRef.current.delete('entidades');
+        }
+    }, []);
+
+    const fetchTransaccionesEntidades = useCallback(async (userId: string) => {
+        if (fetchingRef.current.has('transaccionesEntidades')) return;
+        fetchingRef.current.add('transaccionesEntidades');
+        try {
+            const { data } = await supabase.from('transacciones_entidad').select('*').eq('taller_id', userId).order('fecha', { ascending: false });
+            if (data) {
+                setTransaccionesEntidades(data as TransaccionEntidad[]);
+            }
+            setDataLoaded(prev => ({ ...prev, transaccionesEntidades: true }));
+        } finally {
+            fetchingRef.current.delete('transaccionesEntidades');
+        }
+    }, []);
+
     const fetchData = useCallback(async (showLoader = true) => {
         if (showLoader) setLoading(true);
         try {
@@ -291,7 +323,9 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout, user }) => 
                 fetchTallerInfo(user.id),
                 fetchClients(user.id),
                 fetchJobs(user.id),
-                fetchExpenses(user.id)
+                fetchExpenses(user.id),
+                fetchEntidades(user.id),
+                fetchTransaccionesEntidades(user.id)
             ]);
 
         } catch (error) {
@@ -311,6 +345,8 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout, user }) => 
                 if (!dataLoaded.clientes) promises.push(fetchClients(user.id));
                 if (!dataLoaded.trabajos) promises.push(fetchJobs(user.id));
                 if (!dataLoaded.gastos) promises.push(fetchExpenses(user.id));
+                if (!dataLoaded.entidades) promises.push(fetchEntidades(user.id));
+                if (!dataLoaded.transaccionesEntidades) promises.push(fetchTransaccionesEntidades(user.id));
                 if (promises.length > 0) {
                     setLoading(true);
                     await Promise.all(promises);
@@ -525,7 +561,14 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout, user }) => 
                                 <div className="main-view-slot" style={{ pointerEvents: view === 'finanzas' ? 'auto' : 'none' }}>
                                     <div className="h-full overflow-y-auto px-4 pt-6 md:px-8 scrollbar-hide overscroll-none dashboard-scroll">
                                         <div className="max-w-6xl mx-auto min-h-full pb-10">
-                                            <Finanzas clientes={clientes} trabajos={trabajos} gastos={gastos} onDataRefresh={() => fetchData(false)} />
+                                            <Finanzas
+                                                clientes={clientes}
+                                                trabajos={trabajos}
+                                                gastos={gastos}
+                                                entidades={entidades}
+                                                transaccionesEntidades={transaccionesEntidades}
+                                                onDataRefresh={() => fetchData(false)}
+                                            />
                                         </div>
                                     </div>
                                 </div>

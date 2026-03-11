@@ -81,7 +81,7 @@ const EditGastoModal: React.FC<EditGastoModalProps> = ({ gasto, onClose, onUpdat
                 ...gasto,
                 descripcion,
                 monto: numericValue,
-                categoria,
+                categoria: categoria as import('../types').GastoCategoria,
                 esFijo
             });
 

@@ -38,12 +38,17 @@ import type { Cliente, Trabajo, Gasto } from '../types';
 import { JobStatus } from '../types';
 import AddGastoModal from './AddGastoModal';
 import EditGastoModal from './EditGastoModal';
+import AddEntidadModal from './AddEntidadModal';
+import AddTransaccionModal from './AddTransaccionModal';
+import EntidadLedgerModal from './EntidadLedgerModal';
 import { supabase } from '../supabaseClient';
 
 interface FinanzasProps {
     clientes: Cliente[];
     trabajos: Trabajo[];
     gastos: Gasto[];
+    entidades: import('../types').EntidadFinanciera[];
+    transaccionesEntidades: import('../types').TransaccionEntidad[];
     onDataRefresh?: () => void;
 }
 
@@ -189,12 +194,17 @@ const FinanceDetailOverlay = ({
     );
 };
 
-const Finanzas: React.FC<FinanzasProps> = ({ clientes, trabajos, gastos, onDataRefresh }) => {
+const Finanzas: React.FC<FinanzasProps> = ({ clientes, trabajos, gastos, entidades, transaccionesEntidades, onDataRefresh }) => {
     const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
     const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
     const [showAddGasto, setShowAddGasto] = useState(false);
+    const [showAddEntidad, setShowAddEntidad] = useState(false);
     const [editingGasto, setEditingGasto] = useState<Gasto | null>(null);
     const [detailView, setDetailView] = useState<'ingresos' | 'egresos' | 'balance' | 'margen' | null>(null);
+    const [activeTab, setActiveTab] = useState<'ingresos' | 'gastos'>('ingresos');
+    const [gastosSubTab, setGastosSubTab] = useState<'historial' | 'cuentas'>('historial');
+    const [selectedEntidadForTransaccion, setSelectedEntidadForTransaccion] = useState<import('../types').EntidadFinanciera | null>(null);
+    const [selectedEntidadForLedger, setSelectedEntidadForLedger] = useState<import('../types').EntidadFinanciera | null>(null);
 
     // Identificar periodos con datos
     const availablePeriods = useMemo(() => {
@@ -408,6 +418,27 @@ const Finanzas: React.FC<FinanzasProps> = ({ clientes, trabajos, gastos, onDataR
         return data;
     }, [trabajos, gastos]);
 
+    const distCatArray = useMemo(() => {
+        const distCat = gastos.filter(g => {
+            const d = new Date(g.fecha);
+            return d.getMonth() === selectedMonth && d.getFullYear() === selectedYear;
+        }).reduce((acc: any, g) => {
+            const cat = g.categoria || 'Otros';
+            acc[cat] = (acc[cat] || 0) + g.monto;
+            return acc;
+        }, {});
+
+        return Object.keys(distCat).map(cat => ({
+            name: CATEGORIAS_GASTO[cat as keyof typeof CATEGORIAS_GASTO]?.label || cat,
+            value: distCat[cat],
+            color: CATEGORIAS_GASTO[cat as keyof typeof CATEGORIAS_GASTO]?.color || '#94a3b8'
+        }));
+    }, [gastos, selectedMonth, selectedYear]);
+
+    const distCatArrayTop4 = useMemo(() => {
+        return [...distCatArray].sort((a, b) => b.value - a.value).slice(0, 4);
+    }, [distCatArray]);
+
     const handleAddGasto = async (newGastos: Omit<Gasto, 'id'>[]) => {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
@@ -453,6 +484,51 @@ const Finanzas: React.FC<FinanzasProps> = ({ clientes, trabajos, gastos, onDataR
         else onDataRefresh?.();
     };
 
+    const handleAddEntidad = async (entidadData: Omit<import('../types').EntidadFinanciera, 'id' | 'taller_id' | 'saldo_actual'>) => {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+
+        const { error } = await supabase.from('entidades_financieras').insert({
+            taller_id: user.id,
+            nombre: entidadData.nombre,
+            tipo: entidadData.tipo,
+            telefono: entidadData.telefono,
+            notas: entidadData.notas,
+            saldo_actual: 0 // Default starting balance
+        });
+
+        if (error) {
+            console.error('Error adding entidad:', error);
+            alert('Error al crear la entidad.');
+        } else {
+            onDataRefresh?.();
+        }
+    };
+
+    const handleAddTransaccion = async (transaccionData: Omit<import('../types').TransaccionEntidad, 'id' | 'taller_id' | 'entidad_id'>) => {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user || !selectedEntidadForTransaccion) return;
+
+        // Use RPC to safely add transaction and update balance in one go
+        const { error } = await supabase.rpc('add_entidad_transaccion', {
+            p_taller_id: user.id,
+            p_entidad_id: selectedEntidadForTransaccion.id,
+            p_tipo: transaccionData.tipo,
+            p_monto: transaccionData.monto,
+            p_descripcion: transaccionData.descripcion,
+            p_fecha: transaccionData.fecha
+        });
+
+        if (error) {
+            console.error('Error adding transaction:', error);
+            // Fallback strategy if RPC is not available yet (in case user hasn't run full migrations yet)
+            // But we requested the user to do so in the plan.
+            alert('Error al registrar la transacción. ' + error.message);
+        } else {
+            onDataRefresh?.();
+        }
+    };
+
     const detailTransactions = useMemo(() => {
         if (!detailView) return [];
         if (detailView === 'ingresos') return stats.transactions.filter(t => t.type === 'plus');
@@ -493,296 +569,453 @@ const Finanzas: React.FC<FinanzasProps> = ({ clientes, trabajos, gastos, onDataR
                             {availableYears.map(y => <option key={y} value={y}>{y}</option>)}
                         </select>
                     </div>
-
-                    <button
-                        onClick={() => setShowAddGasto(true)}
-                        className="flex items-center space-x-2 bg-taller-primary hover:bg-taller-secondary text-white px-5 py-3 rounded-2xl font-bold transition-all shadow-lg shadow-taller-primary/20 active:scale-95"
-                    >
-                        <Plus className="h-5 w-5" />
-                        <span>Añadir Gasto</span>
-                    </button>
                 </div>
             </div>
 
-            {/* Summary Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* Tabs Principales */}
+            <div className="flex space-x-2 bg-gray-200/50 dark:bg-gray-800/50 p-1 rounded-2xl w-fit mb-6">
                 <button
-                    onClick={() => setDetailView('ingresos')}
-                    className="bg-white dark:bg-gray-800 p-6 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 relative overflow-hidden group text-left transition-all hover:shadow-xl hover:-translate-y-1 active:scale-95 cursor-pointer"
+                    onClick={() => setActiveTab('ingresos')}
+                    className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${activeTab === 'ingresos' ? 'bg-white dark:bg-gray-800 text-taller-primary shadow-sm' : 'text-taller-gray hover:text-taller-dark dark:hover:text-taller-light'}`}
                 >
-                    <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                        <TrendingUp className="h-16 w-16 text-emerald-500" />
-                    </div>
-                    <div className="flex items-center justify-between mb-4">
-                        <div className="flex items-center space-x-3">
-                            <div className="p-2 bg-emerald-50 dark:bg-emerald-500/10 rounded-xl">
-                                <ArrowUpRight className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
-                            </div>
-                            <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400">Ingresos</span>
-                        </div>
-                        <ChevronRight className="h-4 w-4 text-taller-gray opacity-0 group-hover:opacity-100 transition-all transform translate-x-1 group-hover:translate-x-0" />
-                    </div>
-                    <div className="text-2xl font-black text-taller-dark dark:text-taller-light font-mono">
-                        {formatCurrency(stats.ingresos)}
-                    </div>
-                    <p className="text-xs text-taller-gray mt-2 font-medium">{stats.jobsCount} trabajos finalizados</p>
+                    Ingresos & Rentabilidad
                 </button>
-
                 <button
-                    onClick={() => setDetailView('egresos')}
-                    className="bg-white dark:bg-gray-800 p-6 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 relative overflow-hidden group text-left transition-all hover:shadow-xl hover:-translate-y-1 active:scale-95 cursor-pointer"
+                    onClick={() => setActiveTab('gastos')}
+                    className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${activeTab === 'gastos' ? 'bg-white dark:bg-gray-800 text-rose-500 shadow-sm' : 'text-taller-gray hover:text-taller-dark dark:hover:text-taller-light'}`}
                 >
-                    <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                        <TrendingDown className="h-16 w-16 text-rose-500" />
-                    </div>
-                    <div className="flex items-center justify-between mb-4">
-                        <div className="flex items-center space-x-3">
-                            <div className="p-2 bg-rose-50 dark:bg-rose-500/10 rounded-xl">
-                                <ArrowDownRight className="h-5 w-5 text-rose-600 dark:text-rose-400" />
-                            </div>
-                            <span className="text-sm font-bold text-rose-600 dark:text-rose-400">Egresos</span>
-                        </div>
-                        <ChevronRight className="h-4 w-4 text-taller-gray opacity-0 group-hover:opacity-100 transition-all transform translate-x-1 group-hover:translate-x-0" />
-                    </div>
-                    <div className="text-2xl font-black text-taller-dark dark:text-taller-light font-mono">
-                        {formatCurrency(stats.egresos)}
-                    </div>
-                    <p className="text-xs text-taller-gray mt-2 font-medium">{stats.gastosCount} ítems registrados</p>
-                </button>
-
-                <button
-                    onClick={() => setDetailView('balance')}
-                    className="bg-white dark:bg-gray-800 p-6 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 relative overflow-hidden group text-left transition-all hover:shadow-xl hover:-translate-y-1 active:scale-95 cursor-pointer"
-                >
-                    <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                        <DollarSign className="h-16 w-16 text-taller-primary" />
-                    </div>
-                    <div className="flex items-center justify-between mb-4">
-                        <div className="flex items-center space-x-3">
-                            <div className="p-2 bg-blue-50 dark:bg-blue-500/10 rounded-xl">
-                                <Wallet className="h-5 w-5 text-taller-primary" />
-                            </div>
-                            <span className="text-sm font-bold text-taller-primary">Balance Neto</span>
-                        </div>
-                        <ChevronRight className="h-4 w-4 text-taller-gray opacity-0 group-hover:opacity-100 transition-all transform translate-x-1 group-hover:translate-x-0" />
-                    </div>
-                    <div className={`text-2xl font-black font-mono ${stats.balance >= 0 ? 'text-taller-dark dark:text-taller-light' : 'text-rose-600'}`}>
-                        {formatCurrency(stats.balance)}
-                    </div>
-                    <p className="text-xs text-taller-gray mt-2 font-medium">Resultado del período</p>
-                </button>
-
-                <button
-                    onClick={() => setDetailView('margen')}
-                    className="bg-white dark:bg-gray-800 p-6 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 relative overflow-hidden group text-left transition-all hover:shadow-xl hover:-translate-y-1 active:scale-95 cursor-pointer"
-                >
-                    <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                        <Calculator className="h-16 w-16 text-violet-500" />
-                    </div>
-                    <div className="flex items-center justify-between mb-4">
-                        <div className="flex items-center space-x-3">
-                            <div className="p-2 bg-violet-50 dark:bg-violet-500/10 rounded-xl">
-                                <ArrowUpRight className="h-5 w-5 text-violet-600 dark:text-violet-400" />
-                            </div>
-                            <span className="text-sm font-bold text-violet-600 dark:text-violet-400">Margen Bruto</span>
-                        </div>
-                        <ChevronRight className="h-4 w-4 text-taller-gray opacity-0 group-hover:opacity-100 transition-all transform translate-x-1 group-hover:translate-x-0" />
-                    </div>
-                    <div className="text-2xl font-black text-taller-dark dark:text-taller-light font-mono">
-                        {stats.margen.toFixed(1)}%
-                    </div>
-                    <p className="text-xs text-taller-gray mt-2 font-medium">Rentabilidad operativa</p>
+                    Gastos & Cuentas
                 </button>
             </div>
 
-            {/* Charts Section */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-2 bg-white dark:bg-gray-800 p-8 rounded-[2rem] shadow-sm border border-gray-100 dark:border-gray-700">
-                    <div className="flex items-center justify-between mb-8">
-                        <div>
-                            <h3 className="text-xl font-black text-taller-dark dark:text-taller-light tracking-tight">Evolución Histórica</h3>
-                            <p className="text-sm text-taller-gray font-medium">Últimos 6 meses de actividad</p>
-                        </div>
-                    </div>
-                    <div className="h-[300px] w-full">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={historyData}>
-                                <CartesianGrid strokeDasharray="3 3" vertical={false} strokeOpacity={0.1} />
-                                <XAxis
-                                    dataKey="name"
-                                    axisLine={false}
-                                    tickLine={false}
-                                    tick={{ fill: '#94a3b8', fontSize: 12, fontWeight: 600 }}
-                                />
-                                <YAxis
-                                    axisLine={false}
-                                    tickLine={false}
-                                    tick={{ fill: '#94a3b8', fontSize: 10 }}
-                                    tickFormatter={(value) => `$${value / 1000}k`}
-                                />
-                                <Tooltip
-                                    cursor={{ fill: 'rgba(0,0,0,0.02)' }}
-                                    content={<CustomTooltip />}
-                                />
-                                <Bar name="Ingresos" dataKey="ingresos" fill="#1e3a8a" radius={[6, 6, 0, 0]} barSize={24} />
-                                <Bar name="Egresos" dataKey="egresos" fill="#ec4899" radius={[6, 6, 0, 0]} barSize={24} />
-                            </BarChart>
-                        </ResponsiveContainer>
-                    </div>
-                </div>
-
-                <div className="bg-white dark:bg-gray-800 p-8 rounded-[2rem] shadow-sm border border-gray-100 dark:border-gray-700">
-                    <div>
-                        <h3 className="text-xl font-black text-taller-dark dark:text-taller-light tracking-tight">Distribución</h3>
-                        <p className="text-sm text-taller-gray font-medium">Gastos por categoría</p>
-                    </div>
-                    <div className="h-[250px] mt-4">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <PieChart>
-                                <Pie
-                                    data={useMemo(() => {
-                                        const distCat = gastos.filter(g => {
-                                            const d = new Date(g.fecha);
-                                            return d.getMonth() === selectedMonth && d.getFullYear() === selectedYear;
-                                        }).reduce((acc: any, g) => {
-                                            const cat = g.categoria || 'Otros';
-                                            acc[cat] = (acc[cat] || 0) + g.monto;
-                                            return acc;
-                                        }, {});
-
-                                        return Object.keys(distCat).map(cat => ({
-                                            name: CATEGORIAS_GASTO[cat as keyof typeof CATEGORIAS_GASTO]?.label || cat,
-                                            value: distCat[cat],
-                                            color: CATEGORIAS_GASTO[cat as keyof typeof CATEGORIAS_GASTO]?.color || '#94a3b8'
-                                        }));
-                                    }, [gastos, selectedMonth, selectedYear])}
-                                    innerRadius={60}
-                                    outerRadius={80}
-                                    paddingAngle={5}
-                                    dataKey="value"
-                                >
-                                    {/* Mapear sobre los datos reales para asegurar que el color coincida con la categoría */}
-                                    {useMemo(() => {
-                                        const distCat = gastos.filter(g => {
-                                            const d = new Date(g.fecha);
-                                            return d.getMonth() === selectedMonth && d.getFullYear() === selectedYear;
-                                        }).reduce((acc: any, g) => {
-                                            const cat = g.categoria || 'Otros';
-                                            acc[cat] = (acc[cat] || 0) + g.monto;
-                                            return acc;
-                                        }, {});
-
-                                        return Object.keys(distCat).map((cat, index) => (
-                                            <Cell
-                                                key={`cell-${index}`}
-                                                fill={CATEGORIAS_GASTO[cat as keyof typeof CATEGORIAS_GASTO]?.color || '#94a3b8'}
-                                            />
-                                        ));
-                                    }, [gastos, selectedMonth, selectedYear])}
-                                </Pie>
-                                <Tooltip
-                                    content={<CustomTooltip />}
-                                    cursor={{ fill: 'rgba(0,0,0,0.05)' }}
-                                />
-                            </PieChart>
-                        </ResponsiveContainer>
-                    </div>
-                    <div className="space-y-2.5 mt-4">
-                        {useMemo(() => {
-                            const distCat = gastos.filter(g => {
-                                const d = new Date(g.fecha);
-                                return d.getMonth() === selectedMonth && d.getFullYear() === selectedYear;
-                            }).reduce((acc: any, g) => {
-                                const cat = g.categoria || 'Otros';
-                                acc[cat] = (acc[cat] || 0) + g.monto;
-                                return acc;
-                            }, {});
-
-                            return Object.keys(distCat).map(cat => ({
-                                name: CATEGORIAS_GASTO[cat as keyof typeof CATEGORIAS_GASTO]?.label || cat,
-                                value: distCat[cat],
-                                color: CATEGORIAS_GASTO[cat as keyof typeof CATEGORIAS_GASTO]?.color || '#94a3b8'
-                            })).sort((a, b) => b.value - a.value).slice(0, 4);
-                        }, [gastos, selectedMonth, selectedYear]).map((item, i) => (
-                            <div key={i} className="flex items-center justify-between text-xs font-bold">
-                                <div className="flex items-center">
-                                    <div className="w-2 h-2 rounded-full mr-2" style={{ backgroundColor: item.color }} />
-                                    <span className="text-taller-gray">{item.name}</span>
+            {/* Ingresos & Rentabilidad Tab */}
+            {activeTab === 'ingresos' && (
+                <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                    {/* Summary Cards */}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <button
+                            onClick={() => setDetailView('ingresos')}
+                            className="bg-white dark:bg-gray-800 p-6 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 relative overflow-hidden group text-left transition-all hover:shadow-xl hover:-translate-y-1 active:scale-95 cursor-pointer"
+                        >
+                            <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                                <TrendingUp className="h-16 w-16 text-emerald-500" />
+                            </div>
+                            <div className="flex items-center justify-between mb-4">
+                                <div className="flex items-center space-x-3">
+                                    <div className="p-2 bg-emerald-50 dark:bg-emerald-500/10 rounded-xl">
+                                        <ArrowUpRight className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+                                    </div>
+                                    <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400">Ingresos</span>
                                 </div>
-                                <span className="text-taller-dark dark:text-taller-light font-mono">{formatCurrency(item.value)}</span>
+                                <ChevronRight className="h-4 w-4 text-taller-gray opacity-0 group-hover:opacity-100 transition-all transform translate-x-1 group-hover:translate-x-0" />
                             </div>
-                        ))}
-                    </div>
-                </div>
-            </div>
+                            <div className="text-2xl font-black text-taller-dark dark:text-taller-light font-mono">
+                                {formatCurrency(stats.ingresos)}
+                            </div>
+                            <p className="text-xs text-taller-gray mt-2 font-medium">{stats.jobsCount} trabajos finalizados</p>
+                        </button>
 
-            {/* Expenses List */}
-            <div className="bg-white dark:bg-gray-800 rounded-[2rem] shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
-                <div className="px-8 py-6 border-b dark:border-gray-700 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                    <h3 className="text-xl font-black text-taller-dark dark:text-taller-light tracking-tight">Detalle de Gastos</h3>
-                    <div className="flex items-center gap-2">
-                        <button className="p-2.5 bg-gray-50 dark:bg-gray-700/50 rounded-xl text-taller-gray hover:text-taller-primary transition-colors">
-                            <Download className="h-5 w-5" />
+                        <button
+                            onClick={() => setDetailView('balance')}
+                            className="bg-white dark:bg-gray-800 p-6 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 relative overflow-hidden group text-left transition-all hover:shadow-xl hover:-translate-y-1 active:scale-95 cursor-pointer"
+                        >
+                            <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                                <DollarSign className="h-16 w-16 text-taller-primary" />
+                            </div>
+                            <div className="flex items-center justify-between mb-4">
+                                <div className="flex items-center space-x-3">
+                                    <div className="p-2 bg-blue-50 dark:bg-blue-500/10 rounded-xl">
+                                        <Wallet className="h-5 w-5 text-taller-primary" />
+                                    </div>
+                                    <span className="text-sm font-bold text-taller-primary">Balance Neto</span>
+                                </div>
+                                <ChevronRight className="h-4 w-4 text-taller-gray opacity-0 group-hover:opacity-100 transition-all transform translate-x-1 group-hover:translate-x-0" />
+                            </div>
+                            <div className={`text-2xl font-black font-mono ${stats.balance >= 0 ? 'text-taller-dark dark:text-taller-light' : 'text-rose-600'}`}>
+                                {formatCurrency(stats.balance)}
+                            </div>
+                            <p className="text-xs text-taller-gray mt-2 font-medium">Resultado del período</p>
+                        </button>
+
+                        <button
+                            onClick={() => setDetailView('margen')}
+                            className="bg-white dark:bg-gray-800 p-6 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 relative overflow-hidden group text-left transition-all hover:shadow-xl hover:-translate-y-1 active:scale-95 cursor-pointer"
+                        >
+                            <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                                <Calculator className="h-16 w-16 text-violet-500" />
+                            </div>
+                            <div className="flex items-center justify-between mb-4">
+                                <div className="flex items-center space-x-3">
+                                    <div className="p-2 bg-violet-50 dark:bg-violet-500/10 rounded-xl">
+                                        <ArrowUpRight className="h-5 w-5 text-violet-600 dark:text-violet-400" />
+                                    </div>
+                                    <span className="text-sm font-bold text-violet-600 dark:text-violet-400">Margen Bruto</span>
+                                </div>
+                                <ChevronRight className="h-4 w-4 text-taller-gray opacity-0 group-hover:opacity-100 transition-all transform translate-x-1 group-hover:translate-x-0" />
+                            </div>
+                            <div className="text-2xl font-black text-taller-dark dark:text-taller-light font-mono">
+                                {stats.margen.toFixed(1)}%
+                            </div>
+                            <p className="text-xs text-taller-gray mt-2 font-medium">Rentabilidad operativa</p>
                         </button>
                     </div>
-                </div>
 
-                <div className="overflow-x-auto">
-                    <table className="w-full">
-                        <thead>
-                            <tr className="bg-gray-50/50 dark:bg-gray-900/20">
-                                <th className="px-8 py-4 text-left text-xs font-black text-taller-gray uppercase tracking-widest">Fecha</th>
-                                <th className="px-8 py-4 text-left text-xs font-black text-taller-gray uppercase tracking-widest">Descripción</th>
-                                <th className="px-8 py-4 text-left text-xs font-black text-taller-gray uppercase tracking-widest">Categoría</th>
-                                <th className="px-8 py-4 text-right text-xs font-black text-taller-gray uppercase tracking-widest">Monto</th>
-                                <th className="px-8 py-4 text-center text-xs font-black text-taller-gray uppercase tracking-widest">Acciones</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y dark:divide-gray-700">
-                            {gastos.filter(g => {
-                                const d = new Date(g.fecha);
-                                return d.getMonth() === selectedMonth && d.getFullYear() === selectedYear;
-                            }).map(gasto => {
-                                const catInfo = CATEGORIAS_GASTO[gasto.categoria as keyof typeof CATEGORIAS_GASTO] || CATEGORIAS_GASTO.Otros;
-                                return (
-                                    <tr key={gasto.id} className="group hover:bg-gray-50/50 dark:hover:bg-gray-700/20 transition-colors">
-                                        <td className="px-8 py-4 text-sm font-bold text-taller-gray whitespace-nowrap">
-                                            {new Date(gasto.fecha).toLocaleDateString()}
-                                        </td>
-                                        <td className="px-8 py-4">
-                                            <div className="flex flex-col">
-                                                <span className="text-sm font-bold text-taller-dark dark:text-taller-light">{gasto.descripcion}</span>
-                                                {gasto.esFijo && <span className="text-[10px] font-black text-taller-primary uppercase tracking-tighter">Gasto Fijo</span>}
-                                            </div>
-                                        </td>
-                                        <td className="px-8 py-4 whitespace-nowrap">
-                                            <div className="flex items-center space-x-2 bg-gray-100 dark:bg-gray-700 w-fit px-3 py-1 rounded-full border border-black/5">
-                                                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: catInfo.color }} />
-                                                <span className="text-[11px] font-black uppercase text-taller-gray tracking-tight">{catInfo.label}</span>
-                                            </div>
-                                        </td>
-                                        <td className="px-8 py-4 text-right">
-                                            <span className="text-sm font-mono font-black text-taller-dark dark:text-taller-light">
-                                                {formatCurrency(gasto.monto)}
-                                            </span>
-                                        </td>
-                                        <td className="px-8 py-4">
-                                            <div className="flex justify-center items-center space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                <button onClick={() => setEditingGasto(gasto)} className="p-2 hover:bg-white dark:hover:bg-gray-600 rounded-lg text-taller-gray dark:text-gray-400 hover:text-taller-primary transition-all shadow-sm border border-transparent hover:border-gray-200">
-                                                    <Calendar className="h-4 w-4" />
-                                                </button>
-                                                <button onClick={() => handleDeleteGasto(gasto.id)} className="p-2 hover:bg-rose-50 dark:hover:bg-rose-500/20 rounded-lg text-rose-400 hover:text-rose-600 transition-all border border-transparent hover:border-rose-100">
-                                                    <TrendingDown className="h-4 w-4" />
-                                                </button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                );
-                            })}
-                        </tbody>
-                    </table>
+                    {/* Evolución Histórica Chart (Full Width in Ingresos tab) */}
+                    <div className="bg-white dark:bg-gray-800 p-8 rounded-[2rem] shadow-sm border border-gray-100 dark:border-gray-700">
+                        <div className="flex items-center justify-between mb-8">
+                            <div>
+                                <h3 className="text-xl font-black text-taller-dark dark:text-taller-light tracking-tight">Evolución Histórica</h3>
+                                <p className="text-sm text-taller-gray font-medium">Últimos 6 meses de actividad</p>
+                            </div>
+                        </div>
+                        <div className="h-[300px] w-full">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <BarChart data={historyData}>
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} strokeOpacity={0.1} />
+                                    <XAxis
+                                        dataKey="name"
+                                        axisLine={false}
+                                        tickLine={false}
+                                        tick={{ fill: '#94a3b8', fontSize: 12, fontWeight: 600 }}
+                                    />
+                                    <YAxis
+                                        axisLine={false}
+                                        tickLine={false}
+                                        tick={{ fill: '#94a3b8', fontSize: 10 }}
+                                        tickFormatter={(value) => `$${value / 1000}k`}
+                                    />
+                                    <Tooltip
+                                        cursor={{ fill: 'rgba(0,0,0,0.02)' }}
+                                        content={<CustomTooltip />}
+                                    />
+                                    <Bar name="Ingresos" dataKey="ingresos" fill="#1e3a8a" radius={[6, 6, 0, 0]} barSize={24} />
+                                    <Bar name="Egresos" dataKey="egresos" fill="#ec4899" radius={[6, 6, 0, 0]} barSize={24} />
+                                </BarChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </div>
                 </div>
-            </div>
+            )}
+
+            {/* Gastos & Cuentas Tab */}
+            {activeTab === 'gastos' && (
+                <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                    <div className="flex items-center justify-between">
+                        <div className="flex space-x-2 bg-gray-100 dark:bg-gray-800 p-1 rounded-xl w-fit">
+                            <button
+                                onClick={() => setGastosSubTab('historial')}
+                                className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${gastosSubTab === 'historial' ? 'bg-white dark:bg-gray-700 text-taller-dark dark:text-taller-light shadow-sm' : 'text-taller-gray hover:text-taller-dark dark:hover:text-taller-light'}`}
+                            >
+                                Historial de Gastos
+                            </button>
+                            <button
+                                onClick={() => setGastosSubTab('cuentas')}
+                                className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${gastosSubTab === 'cuentas' ? 'bg-white dark:bg-gray-700 text-taller-dark dark:text-taller-light shadow-sm' : 'text-taller-gray hover:text-taller-dark dark:hover:text-taller-light'}`}
+                            >
+                                Cuentas Corrientes
+                            </button>
+                        </div>
+                        {gastosSubTab === 'cuentas' && (
+                            <button
+                                onClick={() => setShowAddEntidad(true)}
+                                className="flex items-center space-x-2 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 text-taller-dark dark:text-taller-light px-4 py-2.5 rounded-xl font-bold transition-all shadow-sm border border-gray-200 dark:border-gray-700"
+                            >
+                                <Plus className="h-4 w-4" />
+                                <span>Nueva Entidad</span>
+                            </button>
+                        )}
+                    </div>
+
+                    {gastosSubTab === 'historial' && (
+                        <>
+                            {/* Summary Cards */}
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                <button
+                                    onClick={() => setDetailView('egresos')}
+                                    className="bg-white dark:bg-gray-800 p-6 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 relative overflow-hidden group text-left transition-all hover:shadow-xl hover:-translate-y-1 active:scale-95 cursor-pointer"
+                                >
+                                    <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                                        <TrendingDown className="h-16 w-16 text-rose-500" />
+                                    </div>
+                                    <div className="flex items-center justify-between mb-4">
+                                        <div className="flex items-center space-x-3">
+                                            <div className="p-2 bg-rose-50 dark:bg-rose-500/10 rounded-xl">
+                                                <ArrowDownRight className="h-5 w-5 text-rose-600 dark:text-rose-400" />
+                                            </div>
+                                            <span className="text-sm font-bold text-rose-600 dark:text-rose-400">Egresos</span>
+                                        </div>
+                                        <ChevronRight className="h-4 w-4 text-taller-gray opacity-0 group-hover:opacity-100 transition-all transform translate-x-1 group-hover:translate-x-0" />
+                                    </div>
+                                    <div className="text-2xl font-black text-taller-dark dark:text-taller-light font-mono">
+                                        {formatCurrency(stats.egresos)}
+                                    </div>
+                                    <p className="text-xs text-taller-gray mt-2 font-medium">{stats.gastosCount} ítems registrados</p>
+                                </button>
+
+                                <button
+                                    onClick={() => setDetailView('balance')}
+                                    className="bg-white dark:bg-gray-800 p-6 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 relative overflow-hidden group text-left transition-all hover:shadow-xl hover:-translate-y-1 active:scale-95 cursor-pointer"
+                                >
+                                    <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                                        <DollarSign className="h-16 w-16 text-taller-primary" />
+                                    </div>
+                                    <div className="flex items-center justify-between mb-4">
+                                        <div className="flex items-center space-x-3">
+                                            <div className="p-2 bg-blue-50 dark:bg-blue-500/10 rounded-xl">
+                                                <Wallet className="h-5 w-5 text-taller-primary" />
+                                            </div>
+                                            <span className="text-sm font-bold text-taller-primary">Balance Neto</span>
+                                        </div>
+                                        <ChevronRight className="h-4 w-4 text-taller-gray opacity-0 group-hover:opacity-100 transition-all transform translate-x-1 group-hover:translate-x-0" />
+                                    </div>
+                                    <div className={`text-2xl font-black font-mono ${stats.balance >= 0 ? 'text-taller-dark dark:text-taller-light' : 'text-rose-600'}`}>
+                                        {formatCurrency(stats.balance)}
+                                    </div>
+                                    <p className="text-xs text-taller-gray mt-2 font-medium">Resultado del período</p>
+                                </button>
+
+                                <button
+                                    onClick={() => setDetailView('margen')}
+                                    className="bg-white dark:bg-gray-800 p-6 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 relative overflow-hidden group text-left transition-all hover:shadow-xl hover:-translate-y-1 active:scale-95 cursor-pointer"
+                                >
+                                    <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                                        <Calculator className="h-16 w-16 text-violet-500" />
+                                    </div>
+                                    <div className="flex items-center justify-between mb-4">
+                                        <div className="flex items-center space-x-3">
+                                            <div className="p-2 bg-violet-50 dark:bg-violet-500/10 rounded-xl">
+                                                <ArrowUpRight className="h-5 w-5 text-violet-600 dark:text-violet-400" />
+                                            </div>
+                                            <span className="text-sm font-bold text-violet-600 dark:text-violet-400">Margen Bruto</span>
+                                        </div>
+                                        <ChevronRight className="h-4 w-4 text-taller-gray opacity-0 group-hover:opacity-100 transition-all transform translate-x-1 group-hover:translate-x-0" />
+                                    </div>
+                                    <div className="text-2xl font-black text-taller-dark dark:text-taller-light font-mono">
+                                        {stats.margen.toFixed(1)}%
+                                    </div>
+                                    <p className="text-xs text-taller-gray mt-2 font-medium">Rentabilidad operativa</p>
+                                </button>
+                            </div>
+
+                            {/* Charts Section */}
+                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                                <div className="lg:col-span-2 bg-white dark:bg-gray-800 p-8 rounded-[2rem] shadow-sm border border-gray-100 dark:border-gray-700">
+                                    <div className="flex items-center justify-between mb-8">
+                                        <div>
+                                            <h3 className="text-xl font-black text-taller-dark dark:text-taller-light tracking-tight">Evolución Histórica</h3>
+                                            <p className="text-sm text-taller-gray font-medium">Últimos 6 meses de actividad</p>
+                                        </div>
+                                    </div>
+                                    <div className="h-[300px] w-full">
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <BarChart data={historyData}>
+                                                <CartesianGrid strokeDasharray="3 3" vertical={false} strokeOpacity={0.1} />
+                                                <XAxis
+                                                    dataKey="name"
+                                                    axisLine={false}
+                                                    tickLine={false}
+                                                    tick={{ fill: '#94a3b8', fontSize: 12, fontWeight: 600 }}
+                                                />
+                                                <YAxis
+                                                    axisLine={false}
+                                                    tickLine={false}
+                                                    tick={{ fill: '#94a3b8', fontSize: 10 }}
+                                                    tickFormatter={(value) => `$${value / 1000}k`}
+                                                />
+                                                <Tooltip
+                                                    cursor={{ fill: 'rgba(0,0,0,0.02)' }}
+                                                    content={<CustomTooltip />}
+                                                />
+                                                <Bar name="Ingresos" dataKey="ingresos" fill="#1e3a8a" radius={[6, 6, 0, 0]} barSize={24} />
+                                                <Bar name="Egresos" dataKey="egresos" fill="#ec4899" radius={[6, 6, 0, 0]} barSize={24} />
+                                            </BarChart>
+                                        </ResponsiveContainer>
+                                    </div>
+                                </div>
+
+                                <div className="bg-white dark:bg-gray-800 p-8 rounded-[2rem] shadow-sm border border-gray-100 dark:border-gray-700">
+                                    <div>
+                                        <h3 className="text-xl font-black text-taller-dark dark:text-taller-light tracking-tight">Distribución</h3>
+                                        <p className="text-sm text-taller-gray font-medium">Gastos por categoría</p>
+                                    </div>
+                                    <div className="h-[250px] mt-4">
+                                        <div className="h-[250px] mt-4">
+                                            <ResponsiveContainer width="100%" height="100%">
+                                                <PieChart>
+                                                    <Pie
+                                                        data={distCatArray}
+                                                        innerRadius={60}
+                                                        outerRadius={80}
+                                                        paddingAngle={5}
+                                                        dataKey="value"
+                                                    >
+                                                        {distCatArray.map((entry, index) => (
+                                                            <Cell key={`cell-${index}`} fill={entry.color} />
+                                                        ))}
+                                                    </Pie>
+                                                    <Tooltip
+                                                        content={<CustomTooltip />}
+                                                        cursor={{ fill: 'rgba(0,0,0,0.05)' }}
+                                                    />
+                                                </PieChart>
+                                            </ResponsiveContainer>
+                                        </div>
+                                        <div className="space-y-2.5 mt-4">
+                                            {distCatArrayTop4.map((item, i) => (
+                                                <div key={i} className="flex items-center justify-between text-xs font-bold">
+                                                    <div className="flex items-center">
+                                                        <div className="w-2 h-2 rounded-full mr-2" style={{ backgroundColor: item.color }} />
+                                                        <span className="text-taller-gray">{item.name}</span>
+                                                    </div>
+                                                    <span className="text-taller-dark dark:text-taller-light font-mono">{formatCurrency(item.value)}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Expenses List */}
+                            <div className="bg-white dark:bg-gray-800 rounded-[2rem] shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
+                                <div className="px-8 py-6 border-b dark:border-gray-700 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                    <h3 className="text-xl font-black text-taller-dark dark:text-taller-light tracking-tight">Detalle de Gastos</h3>
+                                    <div className="flex items-center gap-2">
+                                        <button className="p-2.5 bg-gray-50 dark:bg-gray-700/50 rounded-xl text-taller-gray hover:text-taller-primary transition-colors">
+                                            <Download className="h-5 w-5" />
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div className="overflow-x-auto">
+                                    <table className="w-full">
+                                        <thead>
+                                            <tr className="bg-gray-50/50 dark:bg-gray-900/20">
+                                                <th className="px-8 py-4 text-left text-xs font-black text-taller-gray uppercase tracking-widest">Fecha</th>
+                                                <th className="px-8 py-4 text-left text-xs font-black text-taller-gray uppercase tracking-widest">Descripción</th>
+                                                <th className="px-8 py-4 text-left text-xs font-black text-taller-gray uppercase tracking-widest">Categoría</th>
+                                                <th className="px-8 py-4 text-right text-xs font-black text-taller-gray uppercase tracking-widest">Monto</th>
+                                                <th className="px-8 py-4 text-center text-xs font-black text-taller-gray uppercase tracking-widest">Acciones</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y dark:divide-gray-700">
+                                            {gastos.filter(g => {
+                                                const d = new Date(g.fecha);
+                                                return d.getMonth() === selectedMonth && d.getFullYear() === selectedYear;
+                                            }).map(gasto => {
+                                                const catInfo = CATEGORIAS_GASTO[gasto.categoria as keyof typeof CATEGORIAS_GASTO] || CATEGORIAS_GASTO.Otros;
+                                                return (
+                                                    <tr key={gasto.id} className="group hover:bg-gray-50/50 dark:hover:bg-gray-700/20 transition-colors">
+                                                        <td className="px-8 py-4 text-sm font-bold text-taller-gray whitespace-nowrap">
+                                                            {new Date(gasto.fecha).toLocaleDateString()}
+                                                        </td>
+                                                        <td className="px-8 py-4">
+                                                            <div className="flex flex-col">
+                                                                <span className="text-sm font-bold text-taller-dark dark:text-taller-light">{gasto.descripcion}</span>
+                                                                {gasto.esFijo && <span className="text-[10px] font-black text-taller-primary uppercase tracking-tighter">Gasto Fijo</span>}
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-8 py-4 whitespace-nowrap">
+                                                            <div className="flex items-center space-x-2 bg-gray-100 dark:bg-gray-700 w-fit px-3 py-1 rounded-full border border-black/5">
+                                                                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: catInfo.color }} />
+                                                                <span className="text-[11px] font-black uppercase text-taller-gray tracking-tight">{catInfo.label}</span>
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-8 py-4 text-right">
+                                                            <span className="text-sm font-mono font-black text-taller-dark dark:text-taller-light">
+                                                                {formatCurrency(gasto.monto)}
+                                                            </span>
+                                                        </td>
+                                                        <td className="px-8 py-4">
+                                                            <div className="flex justify-center items-center space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                                <button onClick={() => setEditingGasto(gasto)} className="p-2 hover:bg-white dark:hover:bg-gray-600 rounded-lg text-taller-gray dark:text-gray-400 hover:text-taller-primary transition-all shadow-sm border border-transparent hover:border-gray-200">
+                                                                    <Calendar className="h-4 w-4" />
+                                                                </button>
+                                                                <button onClick={() => handleDeleteGasto(gasto.id)} className="p-2 hover:bg-rose-50 dark:hover:bg-rose-500/20 rounded-lg text-rose-400 hover:text-rose-600 transition-all border border-transparent hover:border-rose-100">
+                                                                    <TrendingDown className="h-4 w-4" />
+                                                                </button>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </>
+                    )}
+
+                    {gastosSubTab === 'cuentas' && (
+                        <div className="bg-white dark:bg-gray-800 rounded-[2rem] shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
+                            <div className="px-8 py-6 border-b dark:border-gray-700 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                <div>
+                                    <h3 className="text-xl font-black text-taller-dark dark:text-taller-light tracking-tight">Cuentas Corrientes</h3>
+                                    <p className="text-sm text-taller-gray font-medium">Saldo de Empleados y Proveedores</p>
+                                </div>
+                            </div>
+
+                            <div className="p-4 sm:p-8">
+                                {entidades && entidades.length > 0 ? (
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                        {entidades.map((entidad) => (
+                                            <div key={entidad.id} className="bg-gray-50 dark:bg-gray-900/50 rounded-2xl p-6 border border-gray-100 dark:border-gray-800 flex flex-col justify-between group hover:border-taller-primary/30 transition-colors">
+                                                <div>
+                                                    <div className="flex justify-between items-start mb-4">
+                                                        <div>
+                                                            <h4 className="text-lg font-black text-taller-dark dark:text-taller-light">{entidad.nombre}</h4>
+                                                            <span className="text-xs font-bold text-taller-gray uppercase tracking-widest">{entidad.tipo}</span>
+                                                        </div>
+                                                        <div className={`px-3 py-1.5 rounded-xl text-sm font-bold font-mono ${entidad.saldo_actual >= 0 ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400' : 'bg-rose-50 text-rose-600 dark:bg-rose-500/10 dark:text-rose-400'}`}>
+                                                            {formatCurrency(entidad.saldo_actual)}
+                                                        </div>
+                                                    </div>
+                                                    {entidad.telefono && (
+                                                        <p className="text-sm text-taller-gray mb-1">📞 {entidad.telefono}</p>
+                                                    )}
+                                                    {entidad.notas && (
+                                                        <p className="text-sm text-taller-gray line-clamp-2">{entidad.notas}</p>
+                                                    )}
+                                                </div>
+                                                <div className="mt-6 flex space-x-2">
+                                                    <button
+                                                        onClick={() => setSelectedEntidadForTransaccion(entidad)}
+                                                        className="flex-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-taller-primary dark:hover:border-taller-primary text-taller-dark dark:text-taller-light text-sm font-bold py-2 rounded-xl transition-colors flex items-center justify-center space-x-1 group-hover:shadow-sm"
+                                                    >
+                                                        <Plus className="h-4 w-4" />
+                                                        <span>Mover</span>
+                                                    </button>
+                                                    <button
+                                                        onClick={() => setSelectedEntidadForLedger(entidad)}
+                                                        className="flex-1 bg-taller-primary hover:bg-taller-dark text-white text-sm font-bold py-2 rounded-xl transition-colors flex items-center justify-center space-x-1 group-hover:shadow-sm"
+                                                    >
+                                                        <Wallet className="h-4 w-4" />
+                                                        <span>Ledger</span>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <div className="text-center py-12">
+                                        <div className="bg-gray-100 dark:bg-gray-800 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                                            <Wallet className="h-8 w-8 text-taller-gray" />
+                                        </div>
+                                        <h4 className="text-lg font-bold text-taller-dark dark:text-taller-light mb-2">No hay entidades registradas</h4>
+                                        <p className="text-sm text-taller-gray mb-6">Añade empleados o proveedores para gestionar sus cuentas corrientes.</p>
+                                        <button
+                                            onClick={() => setShowAddEntidad(true)}
+                                            className="bg-taller-primary hover:bg-taller-dark text-white px-6 py-2.5 rounded-xl font-bold transition-colors inline-flex items-center space-x-2"
+                                        >
+                                            <Plus className="h-4 w-4" />
+                                            <span>Nueva Entidad</span>
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+                </div>
+            )}
 
             {/* Overlays */}
             {detailView && (
@@ -812,6 +1045,7 @@ const Finanzas: React.FC<FinanzasProps> = ({ clientes, trabajos, gastos, onDataR
                 />,
                 document.body
             )}
+
         </div>
     );
 };
