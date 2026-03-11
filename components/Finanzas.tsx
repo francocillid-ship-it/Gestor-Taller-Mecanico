@@ -18,6 +18,7 @@ import {
     Calculator,
     X,
     ChevronRight,
+    ChevronDown,
     ArrowUp,
     ArrowDown,
     ChevronLeft
@@ -550,24 +551,31 @@ const Finanzas: React.FC<FinanzasProps> = ({ clientes, trabajos, gastos, entidad
 
                 <div className="flex flex-wrap items-center gap-3">
                     <div className="flex bg-white dark:bg-gray-800 p-1.5 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
-                        <select
-                            value={selectedMonth}
-                            onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
-                            className="bg-transparent text-sm font-bold px-3 py-1.5 outline-none text-taller-dark dark:text-taller-light"
-                        >
-                            {availableMonths.map((m) => (
-                                <option key={m} value={m}>
-                                    {new Date(0, m).toLocaleString('es-ES', { month: 'long' })}
-                                </option>
-                            ))}
-                        </select>
-                        <select
-                            value={selectedYear}
-                            onChange={(e) => setSelectedYear(parseInt(e.target.value))}
-                            className="bg-transparent text-sm font-bold px-3 py-1.5 outline-none text-taller-dark dark:text-taller-light border-l dark:border-gray-700"
-                        >
-                            {availableYears.map(y => <option key={y} value={y}>{y}</option>)}
-                        </select>
+                        <div className="relative flex items-center hover:bg-gray-50 dark:hover:bg-gray-700/50 rounded-xl transition-colors">
+                            <select
+                                value={selectedMonth}
+                                onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
+                                className="appearance-none cursor-pointer bg-transparent text-sm font-bold pl-3 pr-8 py-1.5 outline-none text-taller-dark dark:text-taller-light focus:ring-0"
+                            >
+                                {availableMonths.map((m) => (
+                                    <option key={m} value={m} className="capitalize">
+                                        {new Date(0, m).toLocaleString('es-ES', { month: 'long' })}
+                                    </option>
+                                ))}
+                            </select>
+                            <ChevronDown className="absolute right-2.5 h-4 w-4 text-taller-gray pointer-events-none" />
+                        </div>
+                        <div className="w-px bg-gray-200 dark:bg-gray-700 mx-1 my-1.5" />
+                        <div className="relative flex items-center hover:bg-gray-50 dark:hover:bg-gray-700/50 rounded-xl transition-colors">
+                            <select
+                                value={selectedYear}
+                                onChange={(e) => setSelectedYear(parseInt(e.target.value))}
+                                className="appearance-none cursor-pointer bg-transparent text-sm font-bold pl-3 pr-8 py-1.5 outline-none text-taller-dark dark:text-taller-light focus:ring-0"
+                            >
+                                {availableYears.map(y => <option key={y} value={y}>{y}</option>)}
+                            </select>
+                            <ChevronDown className="absolute right-2.5 h-4 w-4 text-taller-gray pointer-events-none" />
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1042,6 +1050,32 @@ const Finanzas: React.FC<FinanzasProps> = ({ clientes, trabajos, gastos, entidad
                     gasto={editingGasto}
                     onClose={() => setEditingGasto(null)}
                     onUpdateGasto={handleUpdateGasto}
+                />,
+                document.body
+            )}
+
+            {showAddEntidad && createPortal(
+                <AddEntidadModal
+                    onClose={() => setShowAddEntidad(false)}
+                    onAddEntidad={handleAddEntidad}
+                />,
+                document.body
+            )}
+
+            {selectedEntidadForTransaccion && createPortal(
+                <AddTransaccionModal
+                    entidad={selectedEntidadForTransaccion}
+                    onClose={() => setSelectedEntidadForTransaccion(null)}
+                    onAddTransaccion={handleAddTransaccion}
+                />,
+                document.body
+            )}
+
+            {selectedEntidadForLedger && createPortal(
+                <EntidadLedgerModal
+                    entidad={selectedEntidadForLedger}
+                    transacciones={transaccionesEntidades.filter(t => t.entidad_id === selectedEntidadForLedger.id)}
+                    onClose={() => setSelectedEntidadForLedger(null)}
                 />,
                 document.body
             )}
