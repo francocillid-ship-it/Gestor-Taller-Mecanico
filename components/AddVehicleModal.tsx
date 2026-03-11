@@ -2,8 +2,9 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { supabase } from '../supabaseClient';
-import { XMarkIcon, CameraIcon, SparklesIcon } from '@heroicons/react/24/solid';
+import { ChevronLeftIcon, XMarkIcon, CameraIcon, SparklesIcon } from '@heroicons/react/24/solid';
 import { isGeminiAvailable, VehiculoData } from '../gemini';
+import { useSwipeToDismiss } from '../hooks/useSwipeToDismiss';
 import CameraRecognitionModal from './CameraRecognitionModal';
 import type { Vehiculo } from '../types';
 
@@ -22,6 +23,8 @@ const AddVehicleModal: React.FC<AddVehicleModalProps> = ({ onClose, onSuccess, c
     const [error, setError] = useState('');
     const [isCameraModalOpen, setIsCameraModalOpen] = useState(false);
     const [isVisible, setIsVisible] = useState(false);
+    const modalRef = React.useRef<HTMLDivElement>(null);
+    const backdropRef = React.useRef<HTMLDivElement>(null);
 
     // Check dynamic availability
     const [geminiEnabled, setGeminiEnabled] = useState(isGeminiAvailable());
@@ -38,6 +41,12 @@ const AddVehicleModal: React.FC<AddVehicleModalProps> = ({ onClose, onSuccess, c
         setIsVisible(false);
         setTimeout(onClose, 300);
     };
+
+    useSwipeToDismiss({
+        onDismiss: handleClose,
+        modalRef,
+        backdropRef
+    });
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -94,19 +103,24 @@ const AddVehicleModal: React.FC<AddVehicleModalProps> = ({ onClose, onSuccess, c
     };
 
     const modalContent = (
-        <div className="fixed inset-0 z-[100] flex justify-center items-end sm:items-center sm:p-4">
+        <div className="fixed inset-0 z-[100] flex justify-end">
             <div
+                ref={backdropRef}
                 className={`fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-300 ease-out ${isVisible ? 'opacity-100' : 'opacity-0'}`}
                 onClick={handleClose}
             />
             <div
-                className={`bg-white dark:bg-gray-800 w-full app-height-mobile sm:h-auto sm:max-h-[90svh] sm:max-w-lg sm:rounded-xl shadow-2xl flex flex-col overflow-hidden relative z-10 transform transition-all duration-300 ease-out ${isVisible ? 'translate-y-0 opacity-100 sm:scale-100' : 'translate-y-full opacity-0 sm:translate-y-0 sm:scale-95'}`}
+                ref={modalRef}
+                className={`bg-white dark:bg-gray-800 w-full app-height-mobile sm:h-full sm:max-h-none sm:max-w-lg sm:rounded-none shadow-2xl flex flex-col overflow-hidden relative z-10 transform transition-all duration-300 ease-out ${isVisible ? 'translate-x-0' : 'translate-x-full'}`}
             >
                 <div className="safe-top-padding-portal flex justify-between items-center px-4 pb-4 border-b dark:border-gray-700 bg-white dark:bg-gray-800 flex-shrink-0">
-                    <h2 className="text-xl font-bold text-taller-dark dark:text-taller-light">Agregar Vehículo</h2>
-                    <button onClick={handleClose} className="p-2 -mr-2 text-taller-gray dark:text-gray-400 hover:text-taller-dark dark:hover:text-white rounded-full hover:bg-gray-100 dark:hover:bg-gray-700">
-                        <XMarkIcon className="h-6 w-6" />
-                    </button>
+                    <div className="flex items-center gap-1">
+                        <button onClick={handleClose} className="p-1 -ml-2 text-taller-primary dark:text-taller-light active:bg-gray-200 dark:active:bg-gray-700 rounded-full transition-colors flex items-center pr-2">
+                            <ChevronLeftIcon className="h-6 w-6" /> <span className="text-[15px] font-semibold -ml-1">Volver</span>
+                        </button>
+                    </div>
+                    <h2 className="text-xl font-bold text-taller-dark dark:text-taller-light truncate">Agregar Vehículo</h2>
+                    <div className="w-16"></div>
                 </div>
 
                 <div className="flex-1 overflow-y-auto p-4 space-y-4 overscroll-contain">

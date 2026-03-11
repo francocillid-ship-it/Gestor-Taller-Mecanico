@@ -3,10 +3,11 @@ import React, { useMemo, useState, useEffect, useRef, useLayoutEffect, useCallba
 import { createPortal } from 'react-dom';
 import type { Cliente, Trabajo, Gasto } from '../types';
 import { JobStatus } from '../types';
-import { CurrencyDollarIcon, UsersIcon, WrenchScrewdriverIcon, PlusIcon, PencilIcon, TrashIcon, ChartPieIcon, BuildingLibraryIcon, ScaleIcon, ChevronDownIcon, CalendarIcon, ArrowLeftIcon, ArrowTrendingUpIcon, ArrowTrendingDownIcon, ArrowTopRightOnSquareIcon, ClipboardDocumentCheckIcon, XMarkIcon } from '@heroicons/react/24/solid';
+import { ChevronLeftIcon, CurrencyDollarIcon, UsersIcon, WrenchScrewdriverIcon, PlusIcon, PencilIcon, TrashIcon, ChartPieIcon, BuildingLibraryIcon, ScaleIcon, ChevronDownIcon, CalendarIcon, ArrowLeftIcon, ArrowTrendingUpIcon, ArrowTrendingDownIcon, ArrowTopRightOnSquareIcon, ClipboardDocumentCheckIcon, XMarkIcon } from '@heroicons/react/24/solid';
 import AddGastoModal from './AddGastoModal';
 import EditGastoModal from './EditGastoModal';
 import { supabase } from '../supabaseClient';
+import { useSwipeToDismiss } from '../hooks/useSwipeToDismiss';
 
 interface DashboardProps {
     clientes: Cliente[];
@@ -225,6 +226,9 @@ const FinancialDetailOverlay: React.FC<FinancialDetailOverlayProps> = ({
     const scrollContainerRef = useRef<HTMLDivElement>(null);
     const [filterHeight, setFilterHeight] = useState(0);
 
+    const modalRef = React.useRef<HTMLDivElement>(null);
+    const backdropRef = React.useRef<HTMLDivElement>(null);
+
     useEffect(() => {
         requestAnimationFrame(() => {
             requestAnimationFrame(() => {
@@ -269,8 +273,15 @@ const FinancialDetailOverlay: React.FC<FinancialDetailOverlayProps> = ({
         setIsVisible(false);
         setTimeout(() => {
             onClose();
-        }, 500);
+        }, 300);
     };
+
+    useSwipeToDismiss({
+        onDismiss: handleClose,
+        enabled: isVisible,
+        modalRef,
+        backdropRef
+    });
 
     const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
         if (!filterRef.current) return;
@@ -306,15 +317,20 @@ const FinancialDetailOverlay: React.FC<FinancialDetailOverlayProps> = ({
 
     return createPortal(
         <>
-            <div className={`fixed inset-0 z-[9998] bg-black/30 backdrop-blur-sm transition-opacity duration-500 ease-in-out ${isVisible ? 'opacity-100' : 'opacity-0'}`} onClick={handleClose} aria-hidden="true" />
+            <div ref={backdropRef} className={`fixed inset-0 z-[9998] bg-black/30 backdrop-blur-sm transition-opacity duration-300 ease-out ${isVisible ? 'opacity-100' : 'opacity-0'}`} onClick={handleClose} aria-hidden="true" />
             <div
-                className={`fixed inset-0 z-[9999] bg-taller-light dark:bg-taller-dark flex flex-col shadow-2xl transition-transform duration-500 will-change-transform overflow-hidden h-[100svh] w-full ${isVisible ? 'translate-y-0' : 'translate-y-full'}`}
-                style={{ transitionTimingFunction: 'cubic-bezier(0.32, 0.72, 0, 1)', isolation: 'isolate' }}
+                ref={modalRef}
+                className={`fixed inset-0 z-[9999] bg-taller-light dark:bg-taller-dark flex flex-col shadow-2xl transform transition-all duration-300 ease-out overflow-hidden h-[100svh] w-full ${isVisible ? 'translate-x-0' : 'translate-x-full'}`}
+                style={{ isolation: 'isolate' }}
             >
-                <div className="bg-white dark:bg-gray-800 shadow-sm border-none z-30 safe-top-padding-portal flex-shrink-0">
+                <div className="bg-white dark:bg-gray-800 shadow-sm border-none z-30 safe-top-padding-portal flex-shrink-0 relative">
                     <div className="flex items-center justify-between p-4">
-                        <button onClick={handleClose} className="p-2 -ml-2 text-taller-gray dark:text-gray-400 hover:text-taller-dark dark:hover:text-white rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"><ArrowLeftIcon className="h-6 w-6" /></button>
-                        <h2 className="text-lg font-bold text-taller-dark dark:text-taller-light">{titleMap[detailView]}</h2>
+                        <div className="flex items-center gap-1 z-10 w-24">
+                            <button onClick={handleClose} className="p-1 -ml-2 text-taller-primary dark:text-taller-light active:bg-gray-200 dark:active:bg-gray-700 rounded-full transition-colors flex items-center pr-2">
+                                <ChevronLeftIcon className="h-6 w-6" /> <span className="text-[15px] font-semibold -ml-1">Volver</span>
+                            </button>
+                        </div>
+                        <h2 className="text-lg font-bold text-taller-dark dark:text-taller-light truncate absolute left-1/2 -translate-x-1/2 max-w-[50%]">{titleMap[detailView]}</h2>
                         <div className="flex items-center gap-2">
                             {(detailView === 'gastos' || detailView === 'balance') && (
                                 <button

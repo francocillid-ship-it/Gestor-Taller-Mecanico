@@ -1,7 +1,8 @@
 
 import React, { useState, useEffect } from 'react';
 import type { Cliente, Trabajo, TallerInfo } from '../types';
-import { XMarkIcon } from '@heroicons/react/24/solid';
+import { ChevronLeftIcon, XMarkIcon } from '@heroicons/react/24/solid';
+import { useSwipeToDismiss } from '../hooks/useSwipeToDismiss';
 import TrabajoListItem from './TrabajoListItem';
 
 interface TrabajoHistorialModalProps {
@@ -14,6 +15,8 @@ interface TrabajoHistorialModalProps {
 
 const TrabajoHistorialModal: React.FC<TrabajoHistorialModalProps> = ({ trabajos, title, onClose, cliente, tallerInfo }) => {
     const [isVisible, setIsVisible] = useState(false);
+    const modalRef = React.useRef<HTMLDivElement>(null);
+    const backdropRef = React.useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         requestAnimationFrame(() => setIsVisible(true));
@@ -24,22 +27,33 @@ const TrabajoHistorialModal: React.FC<TrabajoHistorialModalProps> = ({ trabajos,
         setTimeout(onClose, 300);
     };
 
+    useSwipeToDismiss({
+        onDismiss: handleClose,
+        modalRef,
+        backdropRef
+    });
+
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-             <div 
-                className={`fixed inset-0 bg-black/60 transition-opacity duration-300 ease-out ${isVisible ? 'opacity-100' : 'opacity-0'}`} 
+        <div className="fixed inset-0 z-50 flex justify-end">
+            <div
+                ref={backdropRef}
+                className={`fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-300 ease-out ${isVisible ? 'opacity-100' : 'opacity-0'}`}
                 onClick={handleClose}
             />
-            <div 
-                className={`bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-2xl max-h-[85svh] flex flex-col relative z-10 transform transition-all duration-300 ease-out ${isVisible ? 'scale-100 opacity-100 translate-y-0' : 'scale-95 opacity-0 translate-y-4 sm:translate-y-0'}`}
+            <div
+                ref={modalRef}
+                className={`bg-white dark:bg-gray-800 w-full app-height-mobile sm:h-full sm:max-h-none sm:max-w-2xl sm:rounded-none shadow-xl flex flex-col relative z-10 transform transition-all duration-300 ease-out ${isVisible ? 'translate-x-0' : 'translate-x-full'}`}
             >
-                <div className="flex justify-between items-center p-4 border-b dark:border-gray-700 flex-shrink-0">
-                    <h2 className="text-xl font-bold text-taller-dark dark:text-taller-light">{title}</h2>
-                    <button onClick={handleClose} className="text-taller-gray dark:text-gray-400 hover:text-taller-dark dark:hover:text-white">
-                        <XMarkIcon className="h-6 w-6" />
-                    </button>
+                <div className="safe-top-padding-portal flex justify-between items-center px-4 pb-4 border-b dark:border-gray-700 bg-white dark:bg-gray-800 flex-shrink-0">
+                    <div className="flex items-center gap-1">
+                        <button onClick={handleClose} className="p-1 -ml-2 text-taller-primary dark:text-taller-light active:bg-gray-200 dark:active:bg-gray-700 rounded-full transition-colors flex items-center pr-2">
+                            <ChevronLeftIcon className="h-6 w-6" /> <span className="text-[15px] font-semibold -ml-1">Volver</span>
+                        </button>
+                    </div>
+                    <h2 className="text-xl font-bold text-taller-dark dark:text-taller-light truncate">{title}</h2>
+                    <div className="w-16"></div>
                 </div>
-                
+
                 <div className="overflow-y-auto p-4 space-y-3">
                     {trabajos.length > 0 ? (
                         trabajos.map(trabajo => {

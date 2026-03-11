@@ -2,8 +2,9 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { supabase } from '../supabaseClient';
-import { XMarkIcon, TrashIcon, ChevronDownIcon, PlusIcon, CameraIcon, UserIcon, PhoneIcon, EnvelopeIcon, CheckIcon, SparklesIcon } from '@heroicons/react/24/solid';
+import { ChevronLeftIcon, XMarkIcon, TrashIcon, ChevronDownIcon, PlusIcon, CameraIcon, UserIcon, PhoneIcon, EnvelopeIcon, CheckIcon, SparklesIcon } from '@heroicons/react/24/solid';
 import type { Cliente, Vehiculo } from '../types';
+import { useSwipeToDismiss } from '../hooks/useSwipeToDismiss';
 import { isGeminiAvailable, VehiculoData } from '../gemini';
 import CameraRecognitionModal from './CameraRecognitionModal';
 
@@ -30,6 +31,8 @@ const CrearClienteModal: React.FC<CrearClienteModalProps> = ({ onClose, onSucces
     const [isCameraModalOpen, setIsCameraModalOpen] = useState(false);
     const [scanningVehicleIndex, setScanningVehicleIndex] = useState<number | null>(null);
     const [isVisible, setIsVisible] = useState(false);
+    const modalRef = React.useRef<HTMLDivElement>(null);
+    const backdropRef = React.useRef<HTMLDivElement>(null);
 
     // Check dynamic availability
     const [geminiEnabled, setGeminiEnabled] = useState(isGeminiAvailable());
@@ -63,6 +66,12 @@ const CrearClienteModal: React.FC<CrearClienteModalProps> = ({ onClose, onSucces
         setIsVisible(false);
         setTimeout(onClose, 300);
     };
+
+    useSwipeToDismiss({
+        onDismiss: handleClose,
+        modalRef,
+        backdropRef
+    });
 
     const handleVehicleChange = (index: number, field: keyof VehicleFormState, value: string) => {
         const updatedVehicles = [...vehicles];
@@ -191,12 +200,17 @@ const CrearClienteModal: React.FC<CrearClienteModalProps> = ({ onClose, onSucces
     };
 
     return createPortal(
-        <div className="fixed inset-0 z-[100] flex justify-center items-end sm:items-center">
-            <div className={`fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-300 ${isVisible ? 'opacity-100' : 'opacity-0'}`} onClick={handleClose} />
-            <div className={`bg-white dark:bg-gray-800 text-taller-dark dark:text-taller-light w-full h-[90dvh] sm:h-auto sm:max-h-[95svh] sm:max-w-xl sm:rounded-t-xl flex flex-col overflow-hidden relative z-10 transform transition-all duration-300 ease-out ${isVisible ? 'translate-y-0' : 'translate-y-full'}`}>
+        <div className="fixed inset-0 z-[100] flex justify-end">
+            <div ref={backdropRef} className={`fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-300 ${isVisible ? 'opacity-100' : 'opacity-0'}`} onClick={handleClose} />
+            <div ref={modalRef} className={`bg-white dark:bg-gray-800 text-taller-dark dark:text-taller-light w-full h-[100dvh] sm:h-full sm:max-h-none sm:max-w-xl sm:rounded-none flex flex-col overflow-hidden relative z-10 transform transition-all duration-300 ease-out ${isVisible ? 'translate-x-0' : 'translate-x-full'}`}>
                 <div className="safe-top-padding-portal px-4 pb-4 border-b dark:border-gray-700 flex justify-between items-center bg-gray-50 dark:bg-gray-900/50 flex-shrink-0">
-                    <h2 className="font-bold text-lg text-taller-dark dark:text-taller-light">{isEditMode ? 'Editar Cliente' : 'Nuevo Cliente'}</h2>
-                    <button onClick={handleClose} className="p-1 text-taller-gray dark:text-gray-400 hover:text-taller-dark dark:hover:text-white"><XMarkIcon className="h-6 w-6" /></button>
+                    <div className="flex items-center gap-1">
+                        <button onClick={handleClose} className="p-1 -ml-2 text-taller-primary dark:text-taller-light active:bg-gray-200 dark:active:bg-gray-700 rounded-full transition-colors flex items-center pr-2">
+                            <ChevronLeftIcon className="h-6 w-6" /> <span className="text-[15px] font-semibold -ml-1">Volver</span>
+                        </button>
+                    </div>
+                    <h2 className="font-bold text-lg text-taller-dark dark:text-taller-light truncate">{isEditMode ? 'Editar Cliente' : 'Nuevo Cliente'}</h2>
+                    <div className="w-16"></div>
                 </div>
 
                 <div className="flex-1 overflow-y-auto p-4 space-y-6 overscroll-none">

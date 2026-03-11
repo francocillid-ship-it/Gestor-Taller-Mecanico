@@ -7,6 +7,7 @@ import {
     ClockIcon,
     Cog6ToothIcon,
     XMarkIcon,
+    ChevronLeftIcon,
     ArrowRightOnRectangleIcon,
     KeyIcon,
     MagnifyingGlassPlusIcon,
@@ -21,6 +22,7 @@ import TrabajoListItem from './TrabajoListItem';
 import TrabajoHistorialModal from './TrabajoHistorialModal';
 import ChangePasswordModal from './ChangePasswordModal';
 import { applyAppTheme, MAINTENANCE_TYPES } from '../constants';
+import { useSwipeToDismiss } from '../hooks/useSwipeToDismiss';
 
 interface ClientPortalProps {
     client: Cliente;
@@ -37,6 +39,8 @@ const ClientPortal: React.FC<ClientPortalProps> = ({ client, trabajos, onLogout,
     const [modalTitle, setModalTitle] = useState('');
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
     const [isSettingsVisible, setIsSettingsVisible] = useState(false);
+    const settingsModalRef = React.useRef<HTMLDivElement>(null);
+    const settingsBackdropRef = React.useRef<HTMLDivElement>(null);
     const [isChangePasswordModalOpen, setIsChangePasswordModalOpen] = useState(false);
     const [fontSize, setFontSize] = useState<FontSize>(() => (localStorage.getItem('client_font_size') as FontSize) || 'normal');
 
@@ -79,6 +83,13 @@ const ClientPortal: React.FC<ClientPortalProps> = ({ client, trabajos, onLogout,
     const closeHistorialModal = () => setIsHistorialModalOpen(false);
     const openSettings = () => { setIsSettingsOpen(true); requestAnimationFrame(() => setIsSettingsVisible(true)); };
     const closeSettings = () => { setIsSettingsVisible(false); setTimeout(() => setIsSettingsOpen(false), 300); };
+
+    useSwipeToDismiss({
+        onDismiss: closeSettings,
+        enabled: isSettingsOpen,
+        modalRef: settingsModalRef,
+        backdropRef: settingsBackdropRef
+    });
 
     const trabajosRecientes = useMemo(() => trabajos.slice(0, 5), [trabajos]);
 
@@ -339,11 +350,16 @@ const ClientPortal: React.FC<ClientPortalProps> = ({ client, trabajos, onLogout,
 
                 {isSettingsOpen && (
                     <div className="fixed inset-0 z-50 flex justify-end">
-                        <div className={`fixed inset-0 bg-black/50 transition-opacity duration-300 ${isSettingsVisible ? 'opacity-100' : 'opacity-0'}`} onClick={closeSettings} />
-                        <div className={`bg-white dark:bg-gray-800 w-full max-w-xs shadow-2xl flex flex-col transform transition-transform duration-300 ${isSettingsVisible ? 'translate-x-0' : 'translate-x-full'}`}>
+                        <div ref={settingsBackdropRef} className={`fixed inset-0 bg-black/50 transition-opacity duration-300 ease-out ${isSettingsVisible ? 'opacity-100' : 'opacity-0'}`} onClick={closeSettings} />
+                        <div ref={settingsModalRef} className={`bg-white dark:bg-gray-800 w-full max-w-xs shadow-2xl flex flex-col transform transition-all duration-300 ease-out ${isSettingsVisible ? 'translate-x-0' : 'translate-x-full'}`}>
                             <div className="safe-top-padding-portal px-4 pb-4 border-b dark:border-gray-700 flex justify-between items-center bg-gray-50 dark:bg-gray-900/50">
-                                <h4 className="font-bold text-taller-dark dark:text-taller-light">Ajustes</h4>
-                                <button onClick={closeSettings} className="p-1 text-taller-gray dark:text-gray-400 hover:text-taller-dark dark:hover:text-white"><XMarkIcon className="h-6 w-6" /></button>
+                                <div className="flex items-center gap-1">
+                                    <button onClick={closeSettings} className="p-1 -ml-2 text-taller-primary dark:text-taller-light active:bg-gray-200 dark:active:bg-gray-700 rounded-full transition-colors flex items-center pr-2">
+                                        <ChevronLeftIcon className="h-6 w-6" /> <span className="text-[15px] font-semibold -ml-1">Volver</span>
+                                    </button>
+                                </div>
+                                <h4 className="font-bold text-taller-dark dark:text-taller-light truncate">Ajustes</h4>
+                                <div className="w-16"></div>
                             </div>
                             <div className="flex-1 p-6 space-y-8 overflow-y-auto">
 

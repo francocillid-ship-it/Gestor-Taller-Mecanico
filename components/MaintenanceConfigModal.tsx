@@ -3,7 +3,8 @@ import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { supabase } from '../supabaseClient';
 import type { Vehiculo, MaintenanceConfig } from '../types';
-import { XMarkIcon } from '@heroicons/react/24/solid';
+import { ChevronLeftIcon, XMarkIcon } from '@heroicons/react/24/solid';
+import { useSwipeToDismiss } from '../hooks/useSwipeToDismiss';
 
 interface MaintenanceConfigModalProps {
     vehiculo: Vehiculo;
@@ -40,6 +41,8 @@ const MaintenanceConfigModal: React.FC<MaintenanceConfigModalProps> = ({ vehicul
     const [config, setConfig] = useState<LocalMaintenanceConfig>({});
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isVisible, setIsVisible] = useState(false);
+    const modalRef = React.useRef<HTMLDivElement>(null);
+    const backdropRef = React.useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         // Cargar configuración existente o inicializar con valores por defecto
@@ -64,6 +67,12 @@ const MaintenanceConfigModal: React.FC<MaintenanceConfigModalProps> = ({ vehicul
         setIsVisible(false);
         setTimeout(onClose, 300);
     };
+
+    useSwipeToDismiss({
+        onDismiss: handleClose,
+        modalRef,
+        backdropRef
+    });
 
     const handleChange = (key: string, field: 'months' | 'mileage', value: string) => {
         // Permitimos string vacío para mejor UX al borrar
@@ -136,23 +145,27 @@ const MaintenanceConfigModal: React.FC<MaintenanceConfigModalProps> = ({ vehicul
     };
 
     const modalContent = (
-        <div className="fixed inset-0 z-[100] flex justify-center items-end sm:items-center sm:p-4">
+        <div className="fixed inset-0 z-[100] flex justify-end">
             <div
+                ref={backdropRef}
                 className={`fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-300 ease-out ${isVisible ? 'opacity-100' : 'opacity-0'}`}
                 onClick={handleClose}
             />
             <div
-                className={`bg-white dark:bg-gray-800 w-full app-height-mobile sm:h-auto sm:max-h-[90svh] sm:max-w-2xl sm:rounded-xl shadow-2xl flex flex-col overflow-hidden relative z-10 transform transition-all duration-300 ease-out ${isVisible ? 'translate-y-0 opacity-100 sm:scale-100' : 'translate-y-full opacity-0 sm:translate-y-0 sm:scale-95'}`}
+                ref={modalRef}
+                className={`bg-white dark:bg-gray-800 w-full app-height-mobile sm:h-full sm:max-h-none sm:max-w-2xl sm:rounded-none shadow-2xl flex flex-col overflow-hidden relative z-10 transform transition-all duration-300 ease-out ${isVisible ? 'translate-x-0' : 'translate-x-full'}`}
             >
                 {/* Header */}
                 <div className="safe-top-padding-portal flex justify-between items-center px-4 pb-4 border-b dark:border-gray-700 bg-white dark:bg-gray-800 flex-shrink-0">
-                    <div>
-                        <h2 className="text-xl font-bold text-taller-dark dark:text-taller-light">Configurar Mantenimiento</h2>
-                        <p className="text-sm text-taller-gray dark:text-gray-400">{vehiculo.marca} {vehiculo.modelo} ({vehiculo.matricula})</p>
+                    <div className="flex items-center gap-1">
+                        <button onClick={handleClose} className="p-1 -ml-2 text-taller-primary dark:text-taller-light active:bg-gray-200 dark:active:bg-gray-700 rounded-full transition-colors flex items-center pr-2">
+                            <ChevronLeftIcon className="h-6 w-6" /> <span className="text-[15px] font-semibold -ml-1">Volver</span>
+                        </button>
                     </div>
-                    <button onClick={handleClose} className="p-2 -mr-2 text-taller-gray dark:text-gray-400 hover:text-taller-dark dark:hover:text-white rounded-full hover:bg-gray-100 dark:hover:bg-gray-700">
-                        <XMarkIcon className="h-6 w-6" />
-                    </button>
+                    <div className="text-right">
+                        <h2 className="text-lg font-bold text-taller-dark dark:text-taller-light truncate max-w-[180px] sm:max-w-xs block">Config. Mantenimiento</h2>
+                        <p className="text-xs text-taller-gray dark:text-gray-400 truncate max-w-[180px] sm:max-w-xs">{vehiculo.marca} {vehiculo.modelo}</p>
+                    </div>
                 </div>
 
                 {/* Body */}
