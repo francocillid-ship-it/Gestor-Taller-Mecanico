@@ -227,10 +227,21 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
         header.style.pointerEvents = offset > headerHeight * 0.8 ? 'none' : 'auto';
     }, [activeTab, headerHeight]);
 
-    const handleTouchStart = (e: React.TouchEvent) => touchStart.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    const handleTouchStart = (e: React.TouchEvent) => {
+        // If touch starts very close to the left edge, it is likely a swipe-to-dismiss for a modal
+        if (e.touches[0].clientX < 40) return;
+        touchStart.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    };
+
     const handleTouchEnd = (e: React.TouchEvent) => {
+        if (!touchStart.current.x) return; // Ignore if touchStart was ignored
+
         const deltaX = e.changedTouches[0].clientX - touchStart.current.x;
         const deltaY = e.changedTouches[0].clientY - touchStart.current.y;
+
+        // Reset touch start
+        touchStart.current = { x: 0, y: 0 };
+
         if (Math.abs(deltaX) > Math.abs(deltaY) * 2 && Math.abs(deltaX) > 60) {
             const currentIndex = statusOrder.indexOf(activeTab);
             if (deltaX > 0 && currentIndex > 0) setActiveTab(statusOrder[currentIndex - 1]);

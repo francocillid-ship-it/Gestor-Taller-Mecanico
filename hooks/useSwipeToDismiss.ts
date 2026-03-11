@@ -100,6 +100,8 @@ export function useSwipeToDismiss({
 
                 // Prevent vertical scrolling while swiping horizontally
                 e.preventDefault();
+                // Prevent gesture from propagating to underlying slider components like Tab.Panels
+                e.stopPropagation();
 
                 // Apply the transform
                 modal.style.transform = `translateX(${deltaX}px)`;
@@ -120,6 +122,8 @@ export function useSwipeToDismiss({
                 resetState(modal, backdrop);
                 return;
             }
+
+            e.stopPropagation();
 
             const touch = e.changedTouches[0];
             const endX = touch.clientX;
