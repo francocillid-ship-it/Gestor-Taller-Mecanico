@@ -19,7 +19,7 @@ export function useSwipeToDismiss({
     onDismiss,
     enabled = true,
     edgeWidth = 40,
-    velocityThreshold = 0.5,
+    velocityThreshold = 0.4,
     distanceThreshold = 0.4,
     modalRef,
     backdropRef
@@ -28,6 +28,7 @@ export function useSwipeToDismiss({
     const startY = useRef<number | null>(null);
     const lastX = useRef<number | null>(null);
     const lastTime = useRef<number | null>(null);
+    const startTime = useRef<number | null>(null);
     const isSwiping = useRef(false);
     const modalWidth = useRef<number>(0);
 
@@ -50,6 +51,7 @@ export function useSwipeToDismiss({
             startY.current = null;
             lastX.current = null;
             lastTime.current = null;
+            startTime.current = null;
             isSwiping.current = false;
         };
 
@@ -65,6 +67,7 @@ export function useSwipeToDismiss({
             startY.current = touch.clientY;
             lastX.current = touch.clientX;
             lastTime.current = Date.now();
+            startTime.current = Date.now();
             isSwiping.current = false;
             modalWidth.current = modal.offsetWidth;
 
@@ -125,9 +128,11 @@ export function useSwipeToDismiss({
             const deltaX = endX - startX.current;
             const timeDiff = now - lastTime.current;
             const recentDist = endX - lastX.current;
+            const totalTime = startTime.current ? now - startTime.current : timeDiff;
 
             // Velocity = pixels per ms
             const velocity = timeDiff > 0 ? recentDist / timeDiff : 0;
+            const overallVelocity = totalTime > 0 ? deltaX / totalTime : 0;
 
             // We use standard React CSS transitions for the bounce back
             modal.style.transition = 'transform 0.3s cubic-bezier(0.32, 0.72, 0, 1)';
@@ -138,7 +143,11 @@ export function useSwipeToDismiss({
             // Decide whether to dismiss or snap back
             const distanceRatio = deltaX / (modalWidth.current || window.innerWidth);
 
-            if (velocity > velocityThreshold || (distanceRatio > distanceThreshold && velocity > -0.1)) {
+            if (
+                velocity > velocityThreshold ||
+                overallVelocity > velocityThreshold ||
+                (distanceRatio > distanceThreshold && velocity > -0.1)
+            ) {
                 // Animate out completely
                 modal.style.transform = 'translateX(100%)';
                 if (backdrop) {
