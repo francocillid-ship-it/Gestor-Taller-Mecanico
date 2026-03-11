@@ -193,10 +193,10 @@ const CrearClienteModal: React.FC<CrearClienteModalProps> = ({ onClose, onSucces
     return createPortal(
         <div className="fixed inset-0 z-[100] flex justify-center items-end sm:items-center">
             <div className={`fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-300 ${isVisible ? 'opacity-100' : 'opacity-0'}`} onClick={handleClose} />
-            <div className={`bg-white dark:bg-gray-800 w-full h-[90dvh] sm:h-auto sm:max-h-[95svh] sm:max-w-xl sm:rounded-t-xl flex flex-col overflow-hidden relative z-10 transform transition-all duration-300 ease-out ${isVisible ? 'translate-y-0' : 'translate-y-full'}`}>
+            <div className={`bg-white dark:bg-gray-800 text-taller-dark dark:text-taller-light w-full h-[90dvh] sm:h-auto sm:max-h-[95svh] sm:max-w-xl sm:rounded-t-xl flex flex-col overflow-hidden relative z-10 transform transition-all duration-300 ease-out ${isVisible ? 'translate-y-0' : 'translate-y-full'}`}>
                 <div className="safe-top-padding-portal px-4 pb-4 border-b dark:border-gray-700 flex justify-between items-center bg-gray-50 dark:bg-gray-900/50 flex-shrink-0">
-                    <h2 className="font-bold text-lg">{isEditMode ? 'Editar Cliente' : 'Nuevo Cliente'}</h2>
-                    <button onClick={handleClose} className="p-1"><XMarkIcon className="h-6 w-6" /></button>
+                    <h2 className="font-bold text-lg text-taller-dark dark:text-taller-light">{isEditMode ? 'Editar Cliente' : 'Nuevo Cliente'}</h2>
+                    <button onClick={handleClose} className="p-1 text-taller-gray dark:text-gray-400 hover:text-taller-dark dark:hover:text-white"><XMarkIcon className="h-6 w-6" /></button>
                 </div>
 
                 <div className="flex-1 overflow-y-auto p-4 space-y-6 overscroll-none">
