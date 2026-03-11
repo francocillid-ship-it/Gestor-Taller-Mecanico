@@ -1057,7 +1057,7 @@ const Finanzas: React.FC<FinanzasProps> = ({ clientes, trabajos, gastos, entidad
             {showAddEntidad && createPortal(
                 <AddEntidadModal
                     onClose={() => setShowAddEntidad(false)}
-                    onAddEntidad={handleAddEntidad}
+                    onAdd={handleAddEntidad}
                 />,
                 document.body
             )}
@@ -1066,7 +1066,7 @@ const Finanzas: React.FC<FinanzasProps> = ({ clientes, trabajos, gastos, entidad
                 <AddTransaccionModal
                     entidad={selectedEntidadForTransaccion}
                     onClose={() => setSelectedEntidadForTransaccion(null)}
-                    onAddTransaccion={handleAddTransaccion}
+                    onAdd={handleAddTransaccion}
                 />,
                 document.body
             )}
@@ -1076,6 +1076,10 @@ const Finanzas: React.FC<FinanzasProps> = ({ clientes, trabajos, gastos, entidad
                     entidad={selectedEntidadForLedger}
                     transacciones={transaccionesEntidades.filter(t => t.entidad_id === selectedEntidadForLedger.id)}
                     onClose={() => setSelectedEntidadForLedger(null)}
+                    onAddTransaccionClick={(entidad) => {
+                        setSelectedEntidadForLedger(null);
+                        setSelectedEntidadForTransaccion(entidad);
+                    }}
                 />,
                 document.body
             )}
