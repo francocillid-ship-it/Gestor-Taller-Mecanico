@@ -80,6 +80,15 @@ const FloatingStatus = ({ status }: { status: SaveStatus }) => {
 
 const Ajustes: React.FC<AjustesProps> = ({ tallerInfo, onUpdateTallerInfo, onLogout, searchQuery }) => {
     const [formData, setFormData] = useState<TallerInfo>(tallerInfo);
+    const [localDir, setLocalDir] = useState(() => {
+        const parts = (tallerInfo.direccion || '').split(',').map(s => s.trim());
+        if (parts.length >= 3) {
+            return { calle: parts.slice(0, -2).join(', '), ciudad: parts[parts.length - 2], cp: parts[parts.length - 1] };
+        } else if (parts.length === 2) {
+            return { calle: parts[0], ciudad: parts[1], cp: '' };
+        }
+        return { calle: parts[0] || '', ciudad: '', cp: '' };
+    });
     const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle');
     const [lastSavedData, setLastSavedData] = useState<string>(JSON.stringify(tallerInfo));
     const isFirstRender = useRef(true);
@@ -114,6 +123,14 @@ const Ajustes: React.FC<AjustesProps> = ({ tallerInfo, onUpdateTallerInfo, onLog
         if (incomingStr !== lastSavedData) {
             setFormData(tallerInfo);
             setLastSavedData(incomingStr);
+            const parts = (tallerInfo.direccion || '').split(',').map(s => s.trim());
+            if (parts.length >= 3) {
+                setLocalDir({ calle: parts.slice(0, -2).join(', '), ciudad: parts[parts.length - 2], cp: parts[parts.length - 1] });
+            } else if (parts.length === 2) {
+                setLocalDir({ calle: parts[0], ciudad: parts[1], cp: '' });
+            } else {
+                setLocalDir({ calle: parts[0] || '', ciudad: '', cp: '' });
+            }
         }
         applyAppTheme();
         if (tallerInfo.fontSize) applyFontSize(tallerInfo.fontSize as any);
@@ -158,6 +175,19 @@ const Ajustes: React.FC<AjustesProps> = ({ tallerInfo, onUpdateTallerInfo, onLog
     const handleFontSizeChange = (size: 'small' | 'normal' | 'large') => {
         applyFontSize(size);
         setFormData(prev => ({ ...prev, fontSize: size }));
+    };
+
+    const handleDirChange = (field: 'calle' | 'ciudad' | 'cp', value: string) => {
+        const capitalizeWords = (str: string) => str.split(' ').map(w => w ? w.charAt(0).toUpperCase() + w.slice(1).toLowerCase() : '').join(' ');
+        const newLocalDir = { ...localDir, [field]: value };
+        setLocalDir(newLocalDir);
+
+        const parts = [];
+        if (newLocalDir.calle.trim()) parts.push(capitalizeWords(newLocalDir.calle.trim()));
+        if (newLocalDir.ciudad.trim()) parts.push(capitalizeWords(newLocalDir.ciudad.trim()));
+        if (newLocalDir.cp.trim()) parts.push(capitalizeWords(newLocalDir.cp.trim()));
+
+        setFormData(prev => ({ ...prev, direccion: parts.join(', ') }));
     };
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -313,7 +343,9 @@ const Ajustes: React.FC<AjustesProps> = ({ tallerInfo, onUpdateTallerInfo, onLog
                                     <div className="md:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-6">
                                         <div><label htmlFor="nombre" className="block text-sm font-medium text-taller-gray dark:text-gray-400">Nombre</label><input type="text" id="nombre" name="nombre" value={formData.nombre} onChange={handleChange} className="mt-1 block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-taller-primary focus:border-taller-primary sm:text-sm" required /></div>
                                         <div><label htmlFor="telefono" className="block text-sm font-medium text-taller-gray dark:text-gray-400">Teléfono</label><input type="tel" id="telefono" name="telefono" value={formData.telefono} onChange={handleChange} className="mt-1 block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-taller-primary focus:border-taller-primary sm:text-sm" required /></div>
-                                        <div className="sm:col-span-2"><label htmlFor="direccion" className="block text-sm font-medium text-taller-gray dark:text-gray-400">Dirección</label><input type="text" id="direccion" name="direccion" value={formData.direccion} onChange={handleChange} className="mt-1 block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-taller-primary focus:border-taller-primary sm:text-sm" required /></div>
+                                        <div className="sm:col-span-2"><label htmlFor="direccion" className="block text-sm font-medium text-taller-gray dark:text-gray-400">Dirección</label><input type="text" id="direccion" name="calle" value={localDir.calle} onChange={(e) => handleDirChange('calle', e.target.value)} className="mt-1 block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-taller-primary focus:border-taller-primary sm:text-sm" required /></div>
+                                        <div><label htmlFor="ciudad" className="block text-sm font-medium text-taller-gray dark:text-gray-400">Ciudad</label><input type="text" id="ciudad" name="ciudad" value={localDir.ciudad} onChange={(e) => handleDirChange('ciudad', e.target.value)} className="mt-1 block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-taller-primary focus:border-taller-primary sm:text-sm" required /></div>
+                                        <div><label htmlFor="cp" className="block text-sm font-medium text-taller-gray dark:text-gray-400">Código Postal</label><input type="text" id="cp" name="cp" value={localDir.cp} onChange={(e) => handleDirChange('cp', e.target.value)} className="mt-1 block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-taller-primary focus:border-taller-primary sm:text-sm" required /></div>
                                         <div>
                                             <label htmlFor="cuit" className="block text-sm font-medium text-taller-gray dark:text-gray-400">CUIT</label>
                                             <input type="text" id="cuit" name="cuit" value={formData.cuit} onChange={handleChange} className="mt-1 block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-taller-primary focus:border-taller-primary sm:text-sm" required />
