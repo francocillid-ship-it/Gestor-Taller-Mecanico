@@ -415,7 +415,24 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout, user }) => 
     };
 
     const handleUpdateTallerInfo = async (newInfo: TallerInfo) => {
-        if (user) await supabase.from('taller_info').upsert({ taller_id: user.id, ...newInfo, updated_at: new Date().toISOString() });
+        if (user) {
+            const dbPayload = {
+                taller_id: user.id,
+                nombre: newInfo.nombre,
+                telefono: newInfo.telefono,
+                direccion: newInfo.direccion,
+                cuit: newInfo.cuit,
+                logo_url: newInfo.logoUrl,
+                pdf_template: newInfo.pdfTemplate,
+                show_logo_on_pdf: newInfo.showLogoOnPdf,
+                show_cuit_on_pdf: newInfo.showCuitOnPdf,
+                header_color: newInfo.headerColor,
+                font_size: newInfo.fontSize,
+                updated_at: new Date().toISOString()
+            };
+            const { error } = await supabase.from('taller_info').upsert(dbPayload);
+            if (error) throw error;
+        }
         setTallerInfo(newInfo);
         applyAppTheme();
         if (newInfo.fontSize) applyFontSize(newInfo.fontSize);
