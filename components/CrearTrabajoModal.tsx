@@ -127,6 +127,7 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
     const [selectedClienteId, setSelectedClienteId] = useState('');
     const [selectedVehiculoId, setSelectedVehiculoId] = useState('');
     const [descripcion, setDescripcion] = useState('');
+    const [observaciones, setObservaciones] = useState('');
     const [kilometraje, setKilometraje] = useState('');
     const [partes, setPartes] = useState<ParteState[]>([]);
     const [status, setStatus] = useState<JobStatus>(JobStatus.Presupuesto);
@@ -154,6 +155,7 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
 
     const cloneRef = useRef<HTMLDivElement>(null);
     const descriptionRef = useRef<HTMLTextAreaElement>(null);
+    const observacionesRef = useRef<HTMLTextAreaElement>(null);
     const dragData = useRef({
         pointerId: -1,
         offsetX: 0,
@@ -209,6 +211,7 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
                 setSelectedVehiculoId(trabajoToEdit.vehiculoId);
             }
             setDescripcion(trabajoToEdit.descripcion);
+            setObservaciones(trabajoToEdit.observaciones || '');
             setKilometraje(trabajoToEdit.kilometraje ? String(trabajoToEdit.kilometraje) : '');
 
             const initialPartes = trabajoToEdit.partes.filter(p => p.nombre !== '__PAGO_REGISTRADO__');
@@ -233,13 +236,17 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
         requestAnimationFrame(() => setIsVisible(true));
     }, [trabajoToEdit, initialClientId]);
 
-    // Auto-resize description textarea
+    // Auto-resize textareas
     useEffect(() => {
         if (descriptionRef.current) {
             descriptionRef.current.style.height = 'auto';
             descriptionRef.current.style.height = `${descriptionRef.current.scrollHeight}px`;
         }
-    }, [descripcion, isVisible]);
+        if (observacionesRef.current) {
+            observacionesRef.current.style.height = 'auto';
+            observacionesRef.current.style.height = `${observacionesRef.current.scrollHeight}px`;
+        }
+    }, [descripcion, observaciones, isVisible, status]);
 
     const handleClose = () => {
         setIsVisible(false);
@@ -517,6 +524,7 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
                 vehiculo_id: finalVehiculoId || null,
                 taller_id: user.id,
                 descripcion,
+                observaciones: observaciones || null,
                 status,
                 partes: [...cleanPartes, ...cleanPagos],
                 kilometraje: kilometraje ? parseInt(kilometraje, 10) : null,
@@ -646,6 +654,19 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
                             className="w-full p-2.5 border rounded-lg dark:bg-gray-700 dark:border-gray-600 text-sm resize-none overflow-hidden focus:ring-1 focus:ring-taller-primary outline-none"
                             rows={2}
                         />
+
+                        {status === JobStatus.EnProceso && (
+                            <div className="animate-in fade-in slide-in-from-top-2 duration-300 -mt-2">
+                                <textarea
+                                    ref={observacionesRef}
+                                    value={observaciones}
+                                    onChange={e => setObservaciones(e.target.value)}
+                                    placeholder="Observaciones (Opcional)..."
+                                    className="w-full p-2.5 border rounded-lg dark:bg-gray-700 dark:border-gray-600 text-sm resize-none overflow-hidden focus:ring-1 focus:ring-taller-primary outline-none"
+                                    rows={1}
+                                />
+                            </div>
+                        )}
 
                         <div className={`space-y-3 relative ${draggedIndex !== null ? 'select-none' : ''}`}>
                             {partes.map((p, idx) => {

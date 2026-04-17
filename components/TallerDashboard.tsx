@@ -255,6 +255,7 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout, user }) => 
                     fechaProgramada: t.fecha_programada,
                     kilometraje: t.kilometraje,
                     notaAdicional: t.nota_adicional,
+                    observaciones: t.observaciones,
                     isQuickBudget: t.is_quick_budget,
                     quickBudgetData: t.quick_budget_data,
                     expiresAt: t.expires_at

@@ -49,6 +49,7 @@ export interface Trabajo {
         modelo: string;
         matricula?: string;
     };
+    observaciones?: string;
     expiresAt?: string;
 }
 

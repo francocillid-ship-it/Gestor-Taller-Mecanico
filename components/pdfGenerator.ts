@@ -148,7 +148,20 @@ export const generateClientPDF = async (
     const descLines = doc.splitTextToSize(trabajo.descripcion, a4Width - (margin * 2));
     doc.text(descLines, margin, 122);
     
-    const lastDescLineY = 122 + (descLines.length * 5);
+    let lastDescLineY = 122 + (descLines.length * 5);
+
+    if (trabajo.observaciones && trabajo.observaciones.trim() !== '') {
+        doc.setFontSize(11);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Observaciones:', margin, lastDescLineY + 2);
+        
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(10);
+        const obsLines = doc.splitTextToSize(trabajo.observaciones, a4Width - (margin * 2));
+        doc.text(obsLines, margin, lastDescLineY + 9);
+        
+        lastDescLineY = lastDescLineY + 9 + (obsLines.length * 5);
+    }
 
     const partesSinPagos = trabajo.partes.filter(p => p.nombre !== '__PAGO_REGISTRADO__');
     const hasServices = partesSinPagos.some(p => p.isService);
