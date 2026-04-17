@@ -997,7 +997,7 @@ const Finanzas: React.FC<FinanzasProps> = ({ clientes, trabajos, gastos, entidad
                                                         className="flex-1 bg-taller-primary hover:bg-taller-dark text-white text-sm font-bold py-2 rounded-xl transition-colors flex items-center justify-center space-x-1 group-hover:shadow-sm"
                                                     >
                                                         <Wallet className="h-4 w-4" />
-                                                        <span>Ledger</span>
+                                                        <span>Registro</span>
                                                     </button>
                                                 </div>
                                             </div>
