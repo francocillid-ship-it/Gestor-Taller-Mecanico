@@ -227,37 +227,27 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
     };
 
     const handlePaymentAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        let val = e.target.value;
-        val = val.replace(/[^0-9,.]/g, '');
-        val = val.replace(/\./g, ',');
+        const rawValue = e.target.value;
+        const digits = rawValue.replace(/\D/g, '');
 
-        const parts = val.split(',');
-        if (parts.length > 2) {
-            val = parts[0] + ',' + parts.slice(1).join('');
-        }
-
-        if (parts.length > 1 && parts[1].length > 2) {
-            val = parts[0] + ',' + parts[1].substring(0, 2);
-        }
-
-        if (parts[0].length > 0) {
-            const intPart = parseInt(parts[0], 10);
-            if (!isNaN(intPart)) {
-                const formattedInt = new Intl.NumberFormat('es-AR').format(intPart);
-                val = parts.length > 1 ? formattedInt + ',' + parts[1] : formattedInt;
-            }
-        }
-
-        if (val !== '') {
-            setPaymentAmount('$ ' + val);
-        } else {
+        if (digits === '') {
             setPaymentAmount('');
+            return;
         }
+
+        const numberValue = parseInt(digits, 10);
+
+        const formattedValue = new Intl.NumberFormat('es-AR', {
+            style: 'currency',
+            currency: 'ARS'
+        }).format(numberValue / 100);
+
+        setPaymentAmount(formattedValue);
     };
 
     const handleAddPayment = async () => {
-        const cleanString = paymentAmount.replace(/[$\s.]/g, '').replace(',', '.');
-        const amount = parseFloat(cleanString) || 0;
+        const digits = paymentAmount.replace(/\D/g, '');
+        const amount = digits ? parseInt(digits, 10) / 100 : 0;
 
         if (amount <= 0) return;
 
@@ -590,7 +580,7 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
                                             <div className="flex gap-2">
                                                 <input
                                                     type="text"
-                                                    inputMode="decimal"
+                                                    inputMode="numeric"
                                                     placeholder="$ 0,00"
                                                     value={paymentAmount}
                                                     onChange={handlePaymentAmountChange}
