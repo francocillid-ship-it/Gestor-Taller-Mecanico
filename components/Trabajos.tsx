@@ -88,7 +88,14 @@ const MonthlyGroup: React.FC<{
     tallerInfo: TallerInfo;
     initialJobId?: string;
 }> = ({ monthKey, trabajos, clientes, onUpdateStatus, onDataRefresh, tallerInfo, initialJobId }) => {
-    const [isOpen, setIsOpen] = useState(false);
+    const [isOpen, setIsOpen] = useState(() => initialJobId ? trabajos.some(t => t.id === initialJobId) : false);
+
+    useEffect(() => {
+        if (initialJobId && trabajos.some(t => t.id === initialJobId)) {
+            setIsOpen(true);
+        }
+    }, [initialJobId, trabajos]);
+
     const [year, month] = monthKey.split('-').map(Number);
     const monthName = getMonthName(month - 1);
 
