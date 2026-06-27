@@ -559,8 +559,11 @@ const Dashboard: React.FC<DashboardProps> = ({ clientes, trabajos, gastos, onDat
     };
 
     const handleUpdateGasto = async (gasto: Gasto) => {
-        const { id, ...updateData } = gasto;
-        const { error } = await supabase.from('gastos').update(updateData).eq('id', id);
+        const { id, esFijo, ...updateData } = gasto;
+        const { error } = await supabase.from('gastos').update({
+            ...updateData,
+            es_fijo: esFijo
+        }).eq('id', id);
         if (error) console.error("Error updating expense:", error);
         else { onDataRefresh(); setGastoToEdit(null); }
     };
