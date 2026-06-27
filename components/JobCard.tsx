@@ -101,11 +101,20 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
                 const isBottomHidden = rect.bottom > windowHeight;
 
                 if (isTopHidden || isBottomHidden || isHighlighted) {
-                    element.scrollIntoView({
-                        behavior: 'smooth',
-                        block: 'center',
-                        inline: 'nearest'
-                    });
+                    const scrollParent = element.closest('.dashboard-scroll, .overflow-y-auto') as HTMLElement;
+                    if (scrollParent) {
+                        const parentRect = scrollParent.getBoundingClientRect();
+                        const absoluteElementTop = rect.top - parentRect.top + scrollParent.scrollTop;
+                        scrollParent.scrollTo({
+                            top: absoluteElementTop - (parentRect.height / 2) + (rect.height / 2),
+                            behavior: 'smooth'
+                        });
+                    } else {
+                        window.scrollTo({
+                            top: window.scrollY + rect.top - (windowHeight / 2) + (rect.height / 2),
+                            behavior: 'smooth'
+                        });
+                    }
                 }
             }, 350);
             return () => clearTimeout(timer);
