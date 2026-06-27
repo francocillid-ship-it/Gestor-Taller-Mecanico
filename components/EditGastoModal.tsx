@@ -33,11 +33,10 @@ const EditGastoModal: React.FC<EditGastoModalProps> = ({ gasto, onClose, onUpdat
             setDescripcion(gasto.descripcion);
             setCategoria(gasto.categoria || 'Otros');
             setEsFijo(!!gasto.esFijo);
-            const formattedValue = new Intl.NumberFormat('es-AR', {
-                style: 'currency',
-                currency: 'ARS'
-            }).format(gasto.monto);
-            setMonto(formattedValue);
+            const formattedInt = new Intl.NumberFormat('es-AR').format(Math.floor(gasto.monto));
+            const decimals = (gasto.monto % 1).toFixed(2).substring(2);
+            const val = gasto.monto % 1 !== 0 && gasto.monto % 1 > 0 ? formattedInt + ',' + decimals : formattedInt;
+            setMonto('$ ' + val);
         }
         if (!isVisible) {
             const timer = setTimeout(() => setIsVisible(true), 10);
@@ -51,22 +50,35 @@ const EditGastoModal: React.FC<EditGastoModalProps> = ({ gasto, onClose, onUpdat
     };
 
     const handleMontoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const rawValue = e.target.value;
-        const digits = rawValue.replace(/\D/g, '');
+        let raw = e.target.value;
+        if (raw.endsWith('.')) {
+            raw = raw.slice(0, -1) + ',';
+        }
+        raw = raw.replace(/[$\s.]/g, '');
+        
+        const parts = raw.split(',');
+        let intPart = parts[0].replace(/\D/g, '');
+        let decPart = parts.length > 1 ? parts[1].replace(/\D/g, '') : null;
 
-        if (digits === '') {
-            setMonto('');
-            return;
+        if (decPart && decPart.length > 2) {
+            decPart = decPart.substring(0, 2);
         }
 
-        const numberValue = parseInt(digits, 10);
+        let formatted = '';
+        if (intPart.length > 0) {
+            formatted = new Intl.NumberFormat('es-AR').format(parseInt(intPart, 10));
+        }
 
-        const formattedValue = new Intl.NumberFormat('es-AR', {
-            style: 'currency',
-            currency: 'ARS'
-        }).format(numberValue / 100);
+        let finalValue = formatted;
+        if (decPart !== null) {
+            finalValue += ',' + decPart;
+        }
 
-        setMonto(formattedValue);
+        if (finalValue) {
+            setMonto('$ ' + finalValue);
+        } else {
+            setMonto('');
+        }
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -74,8 +86,8 @@ const EditGastoModal: React.FC<EditGastoModalProps> = ({ gasto, onClose, onUpdat
         if (descripcion && monto && !isSubmitting) {
             setIsSubmitting(true);
 
-            const digits = monto.replace(/\D/g, '');
-            const numericValue = parseInt(digits, 10) / 100;
+            const cleanString = monto.replace(/[$\s.]/g, '').replace(',', '.');
+            const numericValue = parseFloat(cleanString) || 0;
 
             await onUpdateGasto({
                 ...gasto,
@@ -129,7 +141,7 @@ const EditGastoModal: React.FC<EditGastoModalProps> = ({ gasto, onClose, onUpdat
                             <label htmlFor="edit-monto" className="block text-xs font-bold text-taller-gray dark:text-gray-400 uppercase tracking-wider mb-1">Monto</label>
                             <input
                                 type="text"
-                                inputMode="numeric"
+                                inputMode="decimal"
                                 id="edit-monto"
                                 value={monto}
                                 onChange={handleMontoChange}

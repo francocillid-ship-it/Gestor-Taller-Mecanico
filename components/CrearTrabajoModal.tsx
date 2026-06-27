@@ -182,17 +182,37 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
     }, [clientes, selectedClienteId]);
 
     const formatCurrency = (value: string | number): string => {
-        const strVal = String(value);
-        const digits = strVal.replace(/\D/g, '');
-        if (digits === '') return '';
-        const numberValue = parseInt(digits, 10);
-        return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(numberValue / 100);
+        let raw = String(value);
+        if (raw.endsWith('.')) {
+            raw = raw.slice(0, -1) + ',';
+        }
+        raw = raw.replace(/[$\s.]/g, '');
+        
+        const parts = raw.split(',');
+        let intPart = parts[0].replace(/\D/g, '');
+        let decPart = parts.length > 1 ? parts[1].replace(/\D/g, '') : null;
+
+        if (decPart && decPart.length > 2) {
+            decPart = decPart.substring(0, 2);
+        }
+
+        let formatted = '';
+        if (intPart.length > 0) {
+            formatted = new Intl.NumberFormat('es-AR').format(parseInt(intPart, 10));
+        }
+
+        let finalValue = formatted;
+        if (decPart !== null) {
+            finalValue += ',' + decPart;
+        }
+
+        return finalValue !== '' ? '$ ' + finalValue : '';
     };
 
     const parseCurrency = (value: string): number => {
-        const digits = value.replace(/\D/g, '');
-        if (digits === '') return 0;
-        return parseInt(digits, 10) / 100;
+        const cleanString = value.replace(/[$\s.]/g, '').replace(',', '.');
+        const numericValue = parseFloat(cleanString);
+        return isNaN(numericValue) ? 0 : numericValue;
     };
 
     const generateId = () => Math.random().toString(36).substr(2, 9);
@@ -218,13 +238,13 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
             setPartes(initialPartes.map(p => ({
                 ...p,
                 _id: generateId(),
-                precioUnitario: new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(p.precioUnitario),
+                precioUnitario: formatCurrency(p.precioUnitario.toString().replace('.', ',')),
             })));
 
             const initialPagos = trabajoToEdit.partes.filter(p => p.nombre === '__PAGO_REGISTRADO__');
             setPagosList(initialPagos.map(p => ({
                 _id: generateId(),
-                monto: new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(p.precioUnitario),
+                monto: formatCurrency(p.precioUnitario.toString().replace('.', ',')),
                 fecha: p.fecha || new Date().toISOString(),
                 paymentType: p.paymentType
             })));
@@ -713,8 +733,8 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
                                                 {!p.isCategory && (
                                                     <div className="flex flex-col gap-2 mt-2">
                                                         <div className="flex gap-2 ml-6">
-                                                            <input type="text" inputMode="numeric" value={p.precioUnitario} onChange={e => handleParteChange(idx, 'precioUnitario', formatCurrency(e.target.value))} className="w-24 text-xs border-b dark:border-gray-500 bg-transparent py-1" placeholder="$ 0,00" />
-                                                            <input type="number" inputMode="numeric" value={p.cantidad} onChange={e => handleParteChange(idx, 'cantidad', e.target.value)} className="w-12 text-xs border-b dark:border-gray-500 bg-transparent py-1" placeholder="1" />
+                                                            <input type="text" inputMode="decimal" value={p.precioUnitario} onChange={e => handleParteChange(idx, 'precioUnitario', formatCurrency(e.target.value))} className="w-24 text-xs border-b dark:border-gray-500 bg-transparent py-1" placeholder="$ 0,00" />
+                                                            <input type="number" inputMode="decimal" value={p.cantidad} onChange={e => handleParteChange(idx, 'cantidad', e.target.value)} className="w-12 text-xs border-b dark:border-gray-500 bg-transparent py-1" placeholder="1" />
                                                         </div>
                                                         <div className="flex items-center gap-2 ml-6">
                                                             <select
@@ -826,7 +846,7 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
                                                                 <label className="block text-[10px] text-gray-500 uppercase font-bold mb-1">Monto</label>
                                                                 <input
                                                                     type="text"
-                                                                    inputMode="numeric"
+                                                                    inputMode="decimal"
                                                                     value={pago.monto}
                                                                     onChange={(e) => handleUpdatePayment(pago._id, 'monto', e.target.value)}
                                                                     className="w-full text-sm font-bold text-taller-dark dark:text-white bg-transparent border-b border-gray-300 dark:border-gray-600 focus:border-taller-primary focus:outline-none py-1"
