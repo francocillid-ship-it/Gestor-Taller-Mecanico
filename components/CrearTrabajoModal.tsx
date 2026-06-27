@@ -182,17 +182,34 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
     }, [clientes, selectedClienteId]);
 
     const formatCurrency = (value: string | number): string => {
-        const strVal = String(value);
-        const digits = strVal.replace(/\D/g, '');
-        if (digits === '') return '';
-        const numberValue = parseInt(digits, 10);
-        return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(numberValue / 100);
+        let val = String(value);
+        val = val.replace(/[^0-9,.]/g, '');
+        val = val.replace(/\./g, ',');
+
+        const parts = val.split(',');
+        if (parts.length > 2) {
+            val = parts[0] + ',' + parts.slice(1).join('');
+        }
+
+        if (parts.length > 1 && parts[1].length > 2) {
+            val = parts[0] + ',' + parts[1].substring(0, 2);
+        }
+
+        if (parts[0].length > 0) {
+            const intPart = parseInt(parts[0], 10);
+            if (!isNaN(intPart)) {
+                const formattedInt = new Intl.NumberFormat('es-AR').format(intPart);
+                val = parts.length > 1 ? formattedInt + ',' + parts[1] : formattedInt;
+            }
+        }
+
+        return val !== '' ? '$ ' + val : '';
     };
 
     const parseCurrency = (value: string): number => {
-        const digits = value.replace(/\D/g, '');
-        if (digits === '') return 0;
-        return parseInt(digits, 10) / 100;
+        const cleanString = value.replace(/[$\s.]/g, '').replace(',', '.');
+        const numericValue = parseFloat(cleanString);
+        return isNaN(numericValue) ? 0 : numericValue;
     };
 
     const generateId = () => Math.random().toString(36).substr(2, 9);
@@ -218,13 +235,13 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
             setPartes(initialPartes.map(p => ({
                 ...p,
                 _id: generateId(),
-                precioUnitario: new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(p.precioUnitario),
+                precioUnitario: formatCurrency(p.precioUnitario),
             })));
 
             const initialPagos = trabajoToEdit.partes.filter(p => p.nombre === '__PAGO_REGISTRADO__');
             setPagosList(initialPagos.map(p => ({
                 _id: generateId(),
-                monto: new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(p.precioUnitario),
+                monto: formatCurrency(p.precioUnitario),
                 fecha: p.fecha || new Date().toISOString(),
                 paymentType: p.paymentType
             })));

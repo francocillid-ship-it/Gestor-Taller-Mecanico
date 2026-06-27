@@ -227,27 +227,37 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
     };
 
     const handlePaymentAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const rawValue = e.target.value;
-        const digits = rawValue.replace(/\D/g, '');
+        let val = e.target.value;
+        val = val.replace(/[^0-9,.]/g, '');
+        val = val.replace(/\./g, ',');
 
-        if (digits === '') {
-            setPaymentAmount('');
-            return;
+        const parts = val.split(',');
+        if (parts.length > 2) {
+            val = parts[0] + ',' + parts.slice(1).join('');
         }
 
-        const numberValue = parseInt(digits, 10);
+        if (parts.length > 1 && parts[1].length > 2) {
+            val = parts[0] + ',' + parts[1].substring(0, 2);
+        }
 
-        const formattedValue = new Intl.NumberFormat('es-AR', {
-            style: 'currency',
-            currency: 'ARS'
-        }).format(numberValue / 100);
+        if (parts[0].length > 0) {
+            const intPart = parseInt(parts[0], 10);
+            if (!isNaN(intPart)) {
+                const formattedInt = new Intl.NumberFormat('es-AR').format(intPart);
+                val = parts.length > 1 ? formattedInt + ',' + parts[1] : formattedInt;
+            }
+        }
 
-        setPaymentAmount(formattedValue);
+        if (val !== '') {
+            setPaymentAmount('$ ' + val);
+        } else {
+            setPaymentAmount('');
+        }
     };
 
     const handleAddPayment = async () => {
-        const digits = paymentAmount.replace(/\D/g, '');
-        const amount = digits ? parseInt(digits, 10) / 100 : 0;
+        const cleanString = paymentAmount.replace(/[$\s.]/g, '').replace(',', '.');
+        const amount = parseFloat(cleanString) || 0;
 
         if (amount <= 0) return;
 
