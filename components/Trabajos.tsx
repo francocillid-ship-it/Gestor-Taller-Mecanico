@@ -294,6 +294,8 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
 
             if (tabsContainerRef.current) {
                 tabsContainerRef.current.style.transition = 'transform 0.3s cubic-bezier(0.16, 1, 0.3, 1)';
+                // Force layout reflow to make the browser apply transition changes before transform updates
+                tabsContainerRef.current.offsetHeight;
                 tabsContainerRef.current.style.transform = `translate3d(-${targetIndex * 25}%, 0, 0)`;
             }
 
@@ -493,7 +495,8 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
                     ref={tabsContainerRef}
                     className="tabs-sliding-container"
                     style={{
-                        transform: `translate3d(-${activeIndex * 25}%, 0, 0)`
+                        transform: `translate3d(-${activeIndex * 25}%, 0, 0)`,
+                        transition: 'transform 0.3s cubic-bezier(0.16, 1, 0.3, 1)'
                     }}
                 >
                     {statusOrder.map((status) => (
