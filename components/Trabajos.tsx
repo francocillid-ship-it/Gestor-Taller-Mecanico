@@ -154,6 +154,13 @@ const MonthlyGroup: React.FC<{
 
 const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus, onDataRefresh, tallerInfo, searchQuery, initialTab, initialJobId, isActive }) => {
     const [activeTab, setActiveTab] = useState<JobStatus>(initialTab || JobStatus.Presupuesto);
+    const changeTabDeferred = (status: JobStatus) => {
+        if (status !== activeTab) {
+            setTimeout(() => {
+                setActiveTab(status);
+            }, 60);
+        }
+    };
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const headerOffsetRef = useRef(0); // Use ref to avoid re-renders during scroll
     const [headerHeight, setHeaderHeight] = useState(0);
@@ -410,7 +417,7 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
                 <div className="flex border-b dark:border-gray-700 bg-taller-light dark:bg-taller-dark w-full lg:hidden">
                     <div className="flex w-full px-2 sm:px-4 gap-0.5 justify-between">
                         {statusOrder.map((status) => (
-                            <button key={status} ref={(el: HTMLButtonElement | null) => { tabLabelsRef.current[status] = el; }} type="button" onClick={() => setActiveTab(status)} onTouchStart={() => setActiveTab(status)} className={`flex-1 py-4 px-0.5 text-[8.5px] xs:text-[10px] font-black uppercase tracking-normal xs:tracking-wider text-center transition-all duration-300 active:scale-[0.92] active:opacity-70 relative whitespace-nowrap ${activeTab === status ? 'text-taller-primary dark:text-blue-400' : 'text-gray-400 dark:text-gray-600'}`}>{status}{activeTab === status && <div className="absolute bottom-0 left-0 right-0 h-1 bg-taller-primary rounded-t-full"></div>}</button>
+                            <button key={status} ref={(el: HTMLButtonElement | null) => { tabLabelsRef.current[status] = el; }} type="button" onClick={() => changeTabDeferred(status)} onTouchStart={() => changeTabDeferred(status)} className={`flex-1 py-4 px-0.5 text-[8.5px] xs:text-[10px] font-black uppercase tracking-normal xs:tracking-wider text-center transition-all duration-300 active:scale-[0.92] active:opacity-70 relative whitespace-nowrap ${activeTab === status ? 'text-taller-primary dark:text-blue-400' : 'text-gray-400 dark:text-gray-600'}`}>{status}{activeTab === status && <div className="absolute bottom-0 left-0 right-0 h-1 bg-taller-primary rounded-t-full"></div>}</button>
                         ))}
                     </div>
                 </div>

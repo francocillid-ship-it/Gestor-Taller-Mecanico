@@ -388,7 +388,13 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout, user }) => 
     const handleNavigate = (newView: View, status?: JobStatusEnum, jobId?: string) => {
         setTargetJobStatus(status);
         setTargetJobId(jobId);
-        setView(newView);
+        if (newView !== view) {
+            setTimeout(() => {
+                setView(newView);
+            }, 60);
+        } else {
+            setView(newView);
+        }
     };
 
 
