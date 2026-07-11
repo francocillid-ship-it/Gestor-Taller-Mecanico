@@ -161,8 +161,10 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
 
     const lastScrollTops = useRef<{ [key: string]: number }>({});
     const touchStart = useRef({ x: 0, y: 0 });
+    const isHorizontalSwipe = useRef<boolean | null>(null);
     const tabLabelsRef = useRef<{ [key: string]: HTMLButtonElement | null }>({});
     const headerRef = useRef<HTMLDivElement>(null);
+    const tabsContainerRef = useRef<HTMLDivElement>(null);
 
     useLayoutEffect(() => {
         const updateHeight = () => {
@@ -235,25 +237,71 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
     }, [activeTab, headerHeight]);
 
     const handleTouchStart = (e: React.TouchEvent) => {
-        // If touch starts very close to the left edge, it is likely a swipe-to-dismiss for a modal
         if (e.touches[0].clientX < 40) return;
         touchStart.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+        isHorizontalSwipe.current = null;
+        if (tabsContainerRef.current) {
+            tabsContainerRef.current.style.transition = 'none';
+        }
+    };
+
+    const handleTouchMove = (e: React.TouchEvent) => {
+        if (!touchStart.current.x) return;
+
+        const currentX = e.touches[0].clientX;
+        const currentY = e.touches[0].clientY;
+        const deltaX = currentX - touchStart.current.x;
+        const deltaY = currentY - touchStart.current.y;
+
+        if (isHorizontalSwipe.current === null) {
+            if (Math.abs(deltaY) > Math.abs(deltaX)) {
+                isHorizontalSwipe.current = false;
+            } else if (Math.abs(deltaX) > 10) {
+                isHorizontalSwipe.current = true;
+            }
+        }
+
+        if (isHorizontalSwipe.current === true && tabsContainerRef.current) {
+            if (e.cancelable) e.preventDefault();
+
+            const currentIndex = statusOrder.indexOf(activeTab);
+            let offset = deltaX;
+            if (currentIndex === 0 && deltaX > 0) {
+                offset = deltaX * 0.3;
+            } else if (currentIndex === statusOrder.length - 1 && deltaX < 0) {
+                offset = deltaX * 0.3;
+            }
+
+            tabsContainerRef.current.style.transform = `translate3d(calc(-${currentIndex * 25}% + ${offset}px), 0, 0)`;
+        }
     };
 
     const handleTouchEnd = (e: React.TouchEvent) => {
-        if (!touchStart.current.x) return; // Ignore if touchStart was ignored
+        if (!touchStart.current.x) return;
 
-        const deltaX = e.changedTouches[0].clientX - touchStart.current.x;
-        const deltaY = e.changedTouches[0].clientY - touchStart.current.y;
+        const endX = e.changedTouches[0].clientX;
+        const deltaX = endX - touchStart.current.x;
 
-        // Reset touch start
-        touchStart.current = { x: 0, y: 0 };
-
-        if (Math.abs(deltaX) > Math.abs(deltaY) * 2 && Math.abs(deltaX) > 60) {
+        if (isHorizontalSwipe.current === true) {
             const currentIndex = statusOrder.indexOf(activeTab);
-            if (deltaX > 0 && currentIndex > 0) setActiveTab(statusOrder[currentIndex - 1]);
-            else if (deltaX < 0 && currentIndex < statusOrder.length - 1) setActiveTab(statusOrder[currentIndex + 1]);
+            let targetIndex = currentIndex;
+
+            if (deltaX > 60 && currentIndex > 0) {
+                targetIndex = currentIndex - 1;
+            } else if (deltaX < -60 && currentIndex < statusOrder.length - 1) {
+                targetIndex = currentIndex + 1;
+            }
+
+            setActiveTab(statusOrder[targetIndex]);
+
+            if (tabsContainerRef.current) {
+                tabsContainerRef.current.style.transition = 'transform 0.5s cubic-bezier(0.16, 1, 0.3, 1)';
+                tabsContainerRef.current.style.transform = `translate3d(-${targetIndex * 25}%, 0, 0)`;
+            }
         }
+
+        touchStart.current = { x: 0, y: 0 };
+        isHorizontalSwipe.current = null;
     };
 
     const filteredTrabajos = useMemo(() => {
@@ -437,8 +485,9 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
                 </div>
             </div>
 
-            <div className="flex-1 w-full overflow-hidden relative" onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
+            <div className="flex-1 w-full overflow-hidden relative" onTouchStart={handleTouchStart} onTouchMove={handleTouchMove} onTouchEnd={handleTouchEnd}>
                 <div
+                    ref={tabsContainerRef}
                     className="tabs-sliding-container"
                     style={{
                         transform: `translate3d(-${activeIndex * 25}%, 0, 0)`
