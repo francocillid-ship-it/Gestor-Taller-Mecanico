@@ -54,10 +54,10 @@
 
       updateStandaloneClass();
       window.addEventListener('pageshow', updateStandaloneClass);
-      // Detect iOS + Standalone (PWA) Mode
-      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+      // Detect Mobile (iOS/Android) + Standalone (PWA) Mode
+      const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
       const isStandalone = window.navigator.standalone || window.matchMedia('(display-mode: standalone)').matches;
-      if (isIOS && isStandalone) {
+      if (isMobile && isStandalone) {
         root.classList.add('ios-pwa');
       }
     })();

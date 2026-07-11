@@ -391,26 +391,6 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout, user }) => 
         setView(newView);
     };
 
-    const handleTouchStart = (e: React.TouchEvent) => {
-        updateTouchPosition(e.touches[0].clientX);
-    };
-
-    const handleTouchMove = (e: React.TouchEvent) => {
-        if (e.cancelable) {
-            e.preventDefault();
-        }
-        updateTouchPosition(e.touches[0].clientX);
-    };
-
-    const updateTouchPosition = (clientX: number) => {
-        if (!navRef.current) return;
-        const rect = navRef.current.getBoundingClientRect();
-        const relativeX = clientX - rect.left;
-        const percentage = relativeX / rect.width;
-        const index = Math.max(0, Math.min(navItems.length - 1, Math.floor(percentage * navItems.length)));
-        const targetView = navItems[index].id as View;
-        handleNavigate(targetView);
-    };
 
     const handleUpdateStatus = async (trabajoId: string, newStatus: JobStatusEnum) => {
         try {
@@ -467,24 +447,30 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout, user }) => 
             <div 
                 ref={navRef}
                 className="flex justify-around items-center h-16 w-full px-2 relative"
-                onTouchStart={handleTouchStart}
-                onTouchMove={handleTouchMove}
             >
-                {/* Dynamic sliding bubble for iOS PWA */}
+                {/* Dynamic sliding bubble for PWA (centered inside active item cell width) */}
                 <div 
-                    className="absolute bg-taller-primary/10 dark:bg-taller-primary/20 rounded-xl transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] pointer-events-none ios-pwa-bubble"
+                    className="absolute transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] pointer-events-none ios-pwa-bubble"
                     style={{
-                        width: `calc(${100 / navItems.length}% - 12px)`,
-                        height: '44px',
+                        width: `${100 / navItems.length}%`,
+                        height: '64px',
                         transform: `translate3d(${activeIndex * 100}%, 0, 0)`,
-                        left: '6px',
+                        left: 0,
+                        top: 0,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        padding: '0 6px',
                     }}
-                />
+                >
+                    <div className="w-full h-[44px] bg-taller-primary/10 dark:bg-taller-primary/20 rounded-xl" />
+                </div>
 
                 {navItems.map((item) => (
                     <button
                         key={item.id}
                         onClick={() => handleNavigate(item.id as View)}
+                        onTouchStart={() => handleNavigate(item.id as View)}
                         className={`relative flex flex-col items-center justify-center w-full h-full transition-all duration-300 active:scale-[0.92] active:opacity-70 z-10 ${view === item.id ? 'text-taller-primary' : 'text-taller-gray dark:text-gray-400'}`}
                     >
                         <item.icon className="h-5 w-5" />
