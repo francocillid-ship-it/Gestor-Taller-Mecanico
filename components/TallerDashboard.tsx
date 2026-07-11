@@ -454,22 +454,18 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout, user }) => 
                 ref={navRef}
                 className="flex justify-around items-center h-16 w-full relative"
             >
-                {/* Dynamic sliding bubble for PWA (centered inside active item cell width) */}
+                {/* Sliding highlight bubble — same height as parent, inner pill centered via flex */}
                 <div 
-                    className="absolute transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] pointer-events-none ios-pwa-bubble"
+                    className="absolute inset-y-0 transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] pointer-events-none ios-pwa-bubble"
                     style={{
                         width: `${100 / navItems.length}%`,
-                        height: '100%',
                         transform: `translate3d(${activeIndex * 100}%, 0, 0)`,
                         left: 0,
-                        top: 0,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        padding: '0 6px',
                     }}
                 >
-                    <div className="w-full h-[46px] bg-taller-primary/10 dark:bg-taller-primary/20 rounded-xl" />
+                    <div className="h-full flex items-center justify-center px-[6px]">
+                        <div className="w-full h-[46px] bg-taller-primary/10 dark:bg-taller-primary/20 rounded-xl bubble-pill" />
+                    </div>
                 </div>
 
                 {navItems.map((item) => (
@@ -477,7 +473,7 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout, user }) => 
                         key={item.id}
                         onClick={() => handleNavigate(item.id as View)}
                         onTouchStart={() => handleNavigate(item.id as View)}
-                        className={`relative flex flex-col items-center pt-2 gap-0.5 w-full h-[46px] transition-all duration-300 active:scale-[0.92] active:opacity-70 z-10 ${view === item.id ? 'text-taller-primary' : 'text-taller-gray dark:text-gray-400'}`}
+                        className={`relative flex flex-col items-center justify-center gap-1 w-full h-full transition-all duration-300 active:scale-[0.92] active:opacity-70 z-10 ${view === item.id ? 'text-taller-primary' : 'text-taller-gray dark:text-gray-400'}`}
                     >
                         <item.icon className="h-5 w-5 flex-shrink-0" />
                         <span className="text-[9px] font-bold tracking-tight flex-shrink-0 leading-none">{item.label}</span>
