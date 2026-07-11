@@ -477,7 +477,7 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout, user }) => 
                         key={item.id}
                         onClick={() => handleNavigate(item.id as View)}
                         onTouchStart={() => handleNavigate(item.id as View)}
-                        className={`relative flex flex-col items-center justify-center gap-0.5 w-full h-[46px] transition-all duration-300 active:scale-[0.92] active:opacity-70 z-10 ${view === item.id ? 'text-taller-primary' : 'text-taller-gray dark:text-gray-400'}`}
+                        className={`relative flex flex-col items-center pt-2 gap-0.5 w-full h-[46px] transition-all duration-300 active:scale-[0.92] active:opacity-70 z-10 ${view === item.id ? 'text-taller-primary' : 'text-taller-gray dark:text-gray-400'}`}
                     >
                         <item.icon className="h-5 w-5 flex-shrink-0" />
                         <span className="text-[9px] font-bold tracking-tight flex-shrink-0 leading-none">{item.label}</span>
