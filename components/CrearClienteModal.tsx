@@ -38,6 +38,7 @@ const CrearClienteModal: React.FC<CrearClienteModalProps> = ({ onClose, onSucces
     const [geminiEnabled, setGeminiEnabled] = useState(isGeminiAvailable());
 
     const isEditMode = Boolean(clienteToEdit);
+    const isFormInvalid = !nombre.trim();
 
     useEffect(() => {
         if (clienteToEdit) {
@@ -298,7 +299,7 @@ const CrearClienteModal: React.FC<CrearClienteModalProps> = ({ onClose, onSucces
                                     onClick={() => setIsConfirmingDelete(true)}
                                     className="w-full py-3 bg-red-600 text-white rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-red-700 transition-colors shadow-sm"
                                 >
-                                    <TrashIcon className="h-5 w-5" /> Eliminar
+                                    <TrashIcon className="h-5 w-5" /> <span className="hidden sm:inline">Eliminar</span> <span className="sm:hidden">Borrar</span>
                                 </button>
                             ) : (
                                 <>
@@ -322,9 +323,17 @@ const CrearClienteModal: React.FC<CrearClienteModalProps> = ({ onClose, onSucces
                             )}
                         </div>
                     )}
-                    <button onClick={handleClose} className={`${isEditMode ? 'flex-1' : 'flex-1'} py-3 border rounded-xl font-bold text-gray-500`}>Cancelar</button>
-                    <button type="submit" form="client-form" disabled={isSubmitting} className="flex-[2] py-3 bg-taller-primary text-white rounded-xl font-bold shadow-lg disabled:opacity-50">
-                        {isSubmitting ? 'Guardando...' : 'Guardar'}
+                    <button 
+                        type="submit" 
+                        form="client-form" 
+                        disabled={isSubmitting || isFormInvalid} 
+                        className={`flex-1 w-full py-3 rounded-xl font-bold transition-all shadow-md
+                            ${isFormInvalid 
+                                ? 'bg-gray-200 dark:bg-gray-700 text-gray-400 dark:text-gray-500 cursor-not-allowed shadow-none' 
+                                : 'bg-taller-primary text-white shadow-taller-primary/20 active:scale-[0.98]'
+                            } ${isSubmitting ? 'opacity-50' : ''}`}
+                    >
+                        {isSubmitting ? 'Guardando...' : 'Listo'}
                     </button>
                 </div>
             </div>
