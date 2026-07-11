@@ -272,7 +272,7 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
                 offset = deltaX * 0.3;
             }
 
-            tabsContainerRef.current.style.transform = `translate3d(calc(-${currentIndex * 25}% + ${offset}px), 0, 0)`;
+            tabsContainerRef.current.style.setProperty('--drag-offset', `${offset}px`);
         }
     };
 
@@ -293,16 +293,16 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
             }
 
             if (tabsContainerRef.current) {
+                // Restore the transition immediately
                 tabsContainerRef.current.style.transition = 'transform 0.3s cubic-bezier(0.16, 1, 0.3, 1)';
-                // Force layout reflow to make the browser apply transition changes before transform updates
+                // Force a reflow so the browser registers the transition restore
                 tabsContainerRef.current.offsetHeight;
-                tabsContainerRef.current.style.transform = `translate3d(-${targetIndex * 25}%, 0, 0)`;
+                // Reset the drag-offset custom property so the CSS transition animates to 0px
+                tabsContainerRef.current.style.setProperty('--drag-offset', '0px');
             }
 
-            // Delay React state update until the GPU transition finishes, eliminating rendering freezes
-            setTimeout(() => {
-                setActiveTab(statusOrder[targetIndex]);
-            }, 300);
+            // Update React state immediately. React's inline style will align with 0px offset.
+            setActiveTab(statusOrder[targetIndex]);
         }
 
         touchStart.current = { x: 0, y: 0 };
@@ -495,7 +495,7 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
                     ref={tabsContainerRef}
                     className="tabs-sliding-container"
                     style={{
-                        transform: `translate3d(-${activeIndex * 25}%, 0, 0)`,
+                        transform: `translate3d(calc(-${activeIndex * 25}% + var(--drag-offset, 0px)), 0, 0)`,
                         transition: 'transform 0.3s cubic-bezier(0.16, 1, 0.3, 1)'
                     }}
                 >
