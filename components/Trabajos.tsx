@@ -160,11 +160,8 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
     const [selectedDate, setSelectedDate] = useState<Date | null>(null);
 
     const lastScrollTops = useRef<{ [key: string]: number }>({});
-    const touchStart = useRef({ x: 0, y: 0 });
-    const isHorizontalSwipe = useRef<boolean | null>(null);
     const tabLabelsRef = useRef<{ [key: string]: HTMLButtonElement | null }>({});
     const headerRef = useRef<HTMLDivElement>(null);
-    const tabsContainerRef = useRef<HTMLDivElement>(null);
 
     useLayoutEffect(() => {
         const updateHeight = () => {
@@ -236,78 +233,7 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
         header.style.pointerEvents = offset > headerHeight * 0.8 ? 'none' : 'auto';
     }, [activeTab, headerHeight]);
 
-    const handleTouchStart = (e: React.TouchEvent) => {
-        if (e.touches[0].clientX < 40) return;
-        touchStart.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
-        isHorizontalSwipe.current = null;
-        if (tabsContainerRef.current) {
-            tabsContainerRef.current.style.transition = 'none';
-        }
-    };
-
-    const handleTouchMove = (e: React.TouchEvent) => {
-        if (!touchStart.current.x) return;
-
-        const currentX = e.touches[0].clientX;
-        const currentY = e.touches[0].clientY;
-        const deltaX = currentX - touchStart.current.x;
-        const deltaY = currentY - touchStart.current.y;
-
-        if (isHorizontalSwipe.current === null) {
-            if (Math.abs(deltaY) > Math.abs(deltaX)) {
-                isHorizontalSwipe.current = false;
-            } else if (Math.abs(deltaX) > 10) {
-                isHorizontalSwipe.current = true;
-            }
-        }
-
-        if (isHorizontalSwipe.current === true && tabsContainerRef.current) {
-            if (e.cancelable) e.preventDefault();
-
-            const currentIndex = statusOrder.indexOf(activeTab);
-            let offset = deltaX;
-            if (currentIndex === 0 && deltaX > 0) {
-                offset = deltaX * 0.3;
-            } else if (currentIndex === statusOrder.length - 1 && deltaX < 0) {
-                offset = deltaX * 0.3;
-            }
-
-            tabsContainerRef.current.style.setProperty('--drag-offset', `${offset}px`);
-        }
-    };
-
-    const handleTouchEnd = (e: React.TouchEvent) => {
-        if (!touchStart.current.x) return;
-
-        const endX = e.changedTouches[0].clientX;
-        const deltaX = endX - touchStart.current.x;
-
-        if (isHorizontalSwipe.current === true) {
-            const currentIndex = statusOrder.indexOf(activeTab);
-            let targetIndex = currentIndex;
-
-            if (deltaX > 60 && currentIndex > 0) {
-                targetIndex = currentIndex - 1;
-            } else if (deltaX < -60 && currentIndex < statusOrder.length - 1) {
-                targetIndex = currentIndex + 1;
-            }
-
-            if (tabsContainerRef.current) {
-                // Restore the transition immediately
-                tabsContainerRef.current.style.transition = 'transform 0.3s cubic-bezier(0.16, 1, 0.3, 1)';
-                // Force a reflow so the browser registers the transition restore
-                tabsContainerRef.current.offsetHeight;
-                // Reset the drag-offset custom property so the CSS transition animates to 0px
-                tabsContainerRef.current.style.setProperty('--drag-offset', '0px');
-            }
-
-            // Update React state immediately. React's inline style will align with 0px offset.
-            setActiveTab(statusOrder[targetIndex]);
-        }
-
-        touchStart.current = { x: 0, y: 0 };
-        isHorizontalSwipe.current = null;
-    };
+    // Page transitions are click-only to maximize performance on mobile devices
 
     const filteredTrabajos = useMemo(() => {
         if (!searchQuery) return trabajos;
@@ -490,12 +416,11 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
                 </div>
             </div>
 
-            <div className="flex-1 w-full overflow-hidden relative" onTouchStart={handleTouchStart} onTouchMove={handleTouchMove} onTouchEnd={handleTouchEnd}>
+            <div className="flex-1 w-full overflow-hidden relative">
                 <div
-                    ref={tabsContainerRef}
                     className="tabs-sliding-container"
                     style={{
-                        transform: `translate3d(calc(-${activeIndex * 25}% + var(--drag-offset, 0px)), 0, 0)`,
+                        transform: `translate3d(-${activeIndex * 25}%, 0, 0)`,
                         transition: 'transform 0.3s cubic-bezier(0.16, 1, 0.3, 1)'
                     }}
                 >
