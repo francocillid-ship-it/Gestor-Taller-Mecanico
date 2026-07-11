@@ -163,6 +163,44 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
     const tabLabelsRef = useRef<{ [key: string]: HTMLButtonElement | null }>({});
     const headerRef = useRef<HTMLDivElement>(null);
 
+    const getIndicatorColor = (status: JobStatus) => {
+        if (status === JobStatus.EnProceso) {
+            return 'bg-emerald-500';
+        }
+        if (status === JobStatus.Finalizado) {
+            const finalizados = trabajos.filter(t => t.status === JobStatus.Finalizado);
+            if (finalizados.length === 0) return 'bg-emerald-500';
+            const allPaid = finalizados.every(t => {
+                const totalPagado = t.partes
+                    .filter(p => p.nombre === '__PAGO_REGISTRADO__')
+                    .reduce((sum, p) => sum + p.precioUnitario, 0);
+                const saldoPendiente = t.costoEstimado - totalPagado;
+                return saldoPendiente <= 0;
+            });
+            return allPaid ? 'bg-emerald-500' : 'bg-rose-500';
+        }
+        return 'bg-taller-primary';
+    };
+
+    const getTabActiveTextColor = (status: JobStatus) => {
+        if (status === JobStatus.EnProceso) {
+            return 'text-emerald-600 dark:text-emerald-400';
+        }
+        if (status === JobStatus.Finalizado) {
+            const finalizados = trabajos.filter(t => t.status === JobStatus.Finalizado);
+            if (finalizados.length === 0) return 'text-emerald-600 dark:text-emerald-400';
+            const allPaid = finalizados.every(t => {
+                const totalPagado = t.partes
+                    .filter(p => p.nombre === '__PAGO_REGISTRADO__')
+                    .reduce((sum, p) => sum + p.precioUnitario, 0);
+                const saldoPendiente = t.costoEstimado - totalPagado;
+                return saldoPendiente <= 0;
+            });
+            return allPaid ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400';
+        }
+        return 'text-taller-primary dark:text-blue-400';
+    };
+
     useLayoutEffect(() => {
         const updateHeight = () => {
             if (headerRef.current) {
@@ -410,7 +448,7 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
                 <div className="flex border-b dark:border-gray-700 bg-taller-light dark:bg-taller-dark w-full lg:hidden">
                     <div className="flex w-full px-2 sm:px-4 gap-0.5 justify-between">
                         {statusOrder.map((status) => (
-                            <button key={status} ref={(el: HTMLButtonElement | null) => { tabLabelsRef.current[status] = el; }} type="button" onClick={() => setActiveTab(status)} className={`flex-1 py-4 px-0.5 text-[8.5px] xs:text-[10px] font-black uppercase tracking-normal xs:tracking-wider text-center transition-colors relative whitespace-nowrap ${activeTab === status ? 'text-taller-primary dark:text-blue-400' : 'text-gray-400 dark:text-gray-600'}`}>{status}{activeTab === status && <div className="absolute bottom-0 left-0 right-0 h-1 bg-taller-primary rounded-t-full"></div>}</button>
+                            <button key={status} ref={(el: HTMLButtonElement | null) => { tabLabelsRef.current[status] = el; }} type="button" onClick={() => setActiveTab(status)} className={`flex-1 py-4 px-0.5 text-[8.5px] xs:text-[10px] font-black uppercase tracking-normal xs:tracking-wider text-center transition-colors relative whitespace-nowrap ${activeTab === status ? getTabActiveTextColor(status) : 'text-gray-400 dark:text-gray-600'}`}>{status}{activeTab === status && <div className={`absolute bottom-0 left-0 right-0 h-1 rounded-t-full ${getIndicatorColor(status)}`}></div>}</button>
                         ))}
                     </div>
                 </div>
