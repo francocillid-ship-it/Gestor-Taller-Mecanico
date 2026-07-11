@@ -292,12 +292,15 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
                 targetIndex = currentIndex + 1;
             }
 
-            setActiveTab(statusOrder[targetIndex]);
-
             if (tabsContainerRef.current) {
-                tabsContainerRef.current.style.transition = 'transform 0.5s cubic-bezier(0.16, 1, 0.3, 1)';
+                tabsContainerRef.current.style.transition = 'transform 0.3s cubic-bezier(0.16, 1, 0.3, 1)';
                 tabsContainerRef.current.style.transform = `translate3d(-${targetIndex * 25}%, 0, 0)`;
             }
+
+            // Delay React state update until the GPU transition finishes, eliminating rendering freezes
+            setTimeout(() => {
+                setActiveTab(statusOrder[targetIndex]);
+            }, 300);
         }
 
         touchStart.current = { x: 0, y: 0 };
