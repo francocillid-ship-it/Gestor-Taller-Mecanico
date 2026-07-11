@@ -430,6 +430,7 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
         relative
         w-full h-full
         bg-white dark:bg-gray-800
+        glass-card
         rounded-lg
         transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]
         ${isCompactMode

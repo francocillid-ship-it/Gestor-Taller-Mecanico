@@ -54,9 +54,12 @@
 
       updateStandaloneClass();
       window.addEventListener('pageshow', updateStandaloneClass);
-      document.addEventListener('visibilitychange', () => {
-        if (!document.hidden) updateStandaloneClass();
-      });
+      // Detect iOS + Standalone (PWA) Mode
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+      const isStandalone = window.navigator.standalone || window.matchMedia('(display-mode: standalone)').matches;
+      if (isIOS && isStandalone) {
+        root.classList.add('ios-pwa');
+      }
     })();
   </script>
 
@@ -217,6 +220,74 @@
     .scrollbar-hide {
       -ms-overflow-style: none;
       scrollbar-width: none;
+    }
+
+    /* Glassmorphism overrides for iOS PWA standalone mode */
+    html.ios-pwa .glass-header {
+      background: rgba(255, 255, 255, 0.4) !important;
+      -webkit-backdrop-filter: blur(20px) saturate(190%) !important;
+      backdrop-filter: blur(20px) saturate(190%) !important;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.15) !important;
+      box-shadow: 0 4px 30px rgba(0, 0, 0, 0.03) !important;
+    }
+    html.ios-pwa.dark .glass-header {
+      background: rgba(11, 17, 32, 0.5) !important;
+      -webkit-backdrop-filter: blur(20px) saturate(190%) !important;
+      backdrop-filter: blur(20px) saturate(190%) !important;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
+      box-shadow: none !important;
+    }
+
+    html.ios-pwa .glass-nav {
+      background: rgba(255, 255, 255, 0.4) !important;
+      -webkit-backdrop-filter: blur(20px) saturate(190%) !important;
+      backdrop-filter: blur(20px) saturate(190%) !important;
+      border-top: 1px solid rgba(255, 255, 255, 0.15) !important;
+    }
+    html.ios-pwa.dark .glass-nav {
+      background: rgba(11, 17, 32, 0.5) !important;
+      -webkit-backdrop-filter: blur(20px) saturate(190%) !important;
+      backdrop-filter: blur(20px) saturate(190%) !important;
+      border-top: 1px solid rgba(255, 255, 255, 0.05) !important;
+    }
+
+    html.ios-pwa .glass-card {
+      background: rgba(255, 255, 255, 0.5) !important;
+      -webkit-backdrop-filter: blur(12px) saturate(140%) !important;
+      backdrop-filter: blur(12px) saturate(140%) !important;
+      border: 1px solid rgba(255, 255, 255, 0.25) !important;
+    }
+    html.ios-pwa.dark .glass-card {
+      background: rgba(31, 41, 55, 0.4) !important;
+      -webkit-backdrop-filter: blur(12px) saturate(140%) !important;
+      backdrop-filter: blur(12px) saturate(140%) !important;
+      border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    }
+
+    html.ios-pwa .glass-modal-header {
+      background: rgba(249, 250, 251, 0.5) !important;
+      -webkit-backdrop-filter: blur(16px) saturate(160%) !important;
+      backdrop-filter: blur(16px) saturate(160%) !important;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.15) !important;
+    }
+    html.ios-pwa.dark .glass-modal-header {
+      background: rgba(17, 24, 39, 0.5) !important;
+      -webkit-backdrop-filter: blur(16px) saturate(160%) !important;
+      backdrop-filter: blur(16px) saturate(160%) !important;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
+    }
+
+    html.ios-pwa .glass-modal-footer {
+      background: rgba(255, 255, 255, 0.5) !important;
+      -webkit-backdrop-filter: blur(16px) saturate(160%) !important;
+      backdrop-filter: blur(16px) saturate(160%) !important;
+      border-top: 1px solid rgba(255, 255, 255, 0.15) !important;
+    }
+    html.ios-pwa.dark .glass-modal-footer {
+      background: rgba(31, 41, 55, 0.4) !important;
+      -webkit-backdrop-filter: blur(16px) saturate(160%) !important;
+      backdrop-filter: blur(16px) saturate(160%) !important;
+      border-top: 1px solid rgba(255, 255, 255, 0.05) !important;
     }
   </style>
   <script>
