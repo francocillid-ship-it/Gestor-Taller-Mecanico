@@ -134,6 +134,7 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout, user }) => 
     const navLayout = useNavLayout();
     const lastAutoRouteRef = useRef<string>('');
     const safeAreaReady = useSafeAreaReady();
+    const navRef = useRef<HTMLDivElement>(null);
 
 
 
@@ -390,6 +391,27 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout, user }) => 
         setView(newView);
     };
 
+    const handleTouchStart = (e: React.TouchEvent) => {
+        updateTouchPosition(e.touches[0].clientX);
+    };
+
+    const handleTouchMove = (e: React.TouchEvent) => {
+        if (e.cancelable) {
+            e.preventDefault();
+        }
+        updateTouchPosition(e.touches[0].clientX);
+    };
+
+    const updateTouchPosition = (clientX: number) => {
+        if (!navRef.current) return;
+        const rect = navRef.current.getBoundingClientRect();
+        const relativeX = clientX - rect.left;
+        const percentage = relativeX / rect.width;
+        const index = Math.max(0, Math.min(navItems.length - 1, Math.floor(percentage * navItems.length)));
+        const targetView = navItems[index].id as View;
+        handleNavigate(targetView);
+    };
+
     const handleUpdateStatus = async (trabajoId: string, newStatus: JobStatusEnum) => {
         try {
             const job = trabajos.find(t => t.id === trabajoId);
@@ -442,18 +464,32 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout, user }) => 
     const activeIndex = VIEW_ORDER.indexOf(view);
     const bottomNav = navLayout === 'bottom' && safeAreaReady ? (
         <nav className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t border-gray-100 dark:border-gray-800/50 flex-shrink-0 z-[100] pb-[var(--safe-bottom)] transition-all duration-300 glass-nav">
+            <div 
+                ref={navRef}
+                className="flex justify-around items-center h-16 w-full px-2 relative"
+                onTouchStart={handleTouchStart}
+                onTouchMove={handleTouchMove}
+            >
+                {/* Dynamic sliding bubble for iOS PWA */}
+                <div 
+                    className="absolute bg-taller-primary/10 dark:bg-taller-primary/20 rounded-xl transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] pointer-events-none ios-pwa-bubble"
+                    style={{
+                        width: `calc(${100 / navItems.length}% - 12px)`,
+                        height: '44px',
+                        transform: `translate3d(${activeIndex * 100}%, 0, 0)`,
+                        left: '6px',
+                    }}
+                />
 
-            <div className="flex justify-around items-center h-16 w-full px-2">
                 {navItems.map((item) => (
                     <button
                         key={item.id}
                         onClick={() => handleNavigate(item.id as View)}
-                        onTouchStart={() => handleNavigate(item.id as View)}
-                        className={`relative flex flex-col items-center justify-center w-full h-full transition-all duration-300 active:scale-[0.92] active:opacity-70 ${view === item.id ? 'text-taller-primary' : 'text-taller-gray dark:text-gray-400'}`}
+                        className={`relative flex flex-col items-center justify-center w-full h-full transition-all duration-300 active:scale-[0.92] active:opacity-70 z-10 ${view === item.id ? 'text-taller-primary' : 'text-taller-gray dark:text-gray-400'}`}
                     >
-                        <item.icon className="h-6 w-6" />
-                        <span className="text-[10px] mt-1 font-medium">{item.label}</span>
-                        {view === item.id && <span className="absolute top-0 left-0 right-0 h-[3px] bg-taller-primary rounded-b-lg"></span>}
+                        <item.icon className="h-5 w-5" />
+                        <span className="text-[9px] mt-1 font-bold tracking-tight">{item.label}</span>
+                        {view === item.id && <span className="absolute top-0 left-0 right-0 h-[3px] bg-taller-primary rounded-b-lg ios-pwa-hide-indicator"></span>}
                     </button>
                 ))}
             </div>

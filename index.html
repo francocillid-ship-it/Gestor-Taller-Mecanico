@@ -224,6 +224,12 @@
 
     /* Glassmorphism overrides for iOS PWA standalone mode */
     html.ios-pwa .glass-header {
+      position: absolute !important;
+      top: 0 !important;
+      left: 0 !important;
+      right: 0 !important;
+      width: 100% !important;
+      z-index: 50 !important;
       background: rgba(255, 255, 255, 0.4) !important;
       -webkit-backdrop-filter: blur(20px) saturate(190%) !important;
       backdrop-filter: blur(20px) saturate(190%) !important;
@@ -239,16 +245,71 @@
     }
 
     html.ios-pwa .glass-nav {
+      position: fixed !important;
+      bottom: calc(16px + var(--safe-bottom)) !important;
+      left: 16px !important;
+      right: 16px !important;
+      width: calc(100% - 32px) !important;
+      border: 1px solid rgba(255, 255, 255, 0.2) !important;
+      border-radius: 20px !important;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.12) !important;
       background: rgba(255, 255, 255, 0.4) !important;
       -webkit-backdrop-filter: blur(20px) saturate(190%) !important;
       backdrop-filter: blur(20px) saturate(190%) !important;
-      border-top: 1px solid rgba(255, 255, 255, 0.15) !important;
+      padding-bottom: 0 !important;
+      height: 64px !important;
+      overflow: visible !important;
+      border-top: none !important;
     }
     html.ios-pwa.dark .glass-nav {
-      background: rgba(11, 17, 32, 0.5) !important;
+      background: rgba(17, 24, 39, 0.5) !important;
+      border: 1px solid rgba(255, 255, 255, 0.08) !important;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.35) !important;
+      border-top: none !important;
+    }
+
+    /* Default: bubble is hidden */
+    .ios-pwa-bubble {
+      display: none;
+    }
+    
+    /* Underline indicator is visible by default */
+    .ios-pwa-hide-indicator {
+      display: block;
+    }
+
+    /* iOS PWA Standalone Overrides */
+    html.ios-pwa .ios-pwa-bubble {
+      display: block !important;
+    }
+
+    html.ios-pwa .ios-pwa-hide-indicator {
+      display: none !important;
+    }
+
+    /* Scroll content behind header on iOS PWA */
+    html.ios-pwa .dashboard-scroll:not(.job-scroll-view) {
+      padding-top: calc(76px + var(--safe-top)) !important;
+    }
+
+    html.ios-pwa .job-tab-header-bar {
+      top: calc(64px + var(--safe-top)) !important;
+      background: rgba(240, 249, 255, 0.4) !important; /* bg-taller-light */
       -webkit-backdrop-filter: blur(20px) saturate(190%) !important;
       backdrop-filter: blur(20px) saturate(190%) !important;
-      border-top: 1px solid rgba(255, 255, 255, 0.05) !important;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.15) !important;
+    }
+    html.ios-pwa.dark .job-tab-header-bar {
+      background: rgba(11, 17, 32, 0.4) !important; /* bg-taller-dark */
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
+    }
+
+    html.ios-pwa .job-scroll-view {
+      padding-top: calc(var(--header-h) + 64px + var(--safe-top)) !important;
+    }
+
+    html.ios-pwa main {
+      height: 100vh !important;
     }
 
     html.ios-pwa .glass-card {

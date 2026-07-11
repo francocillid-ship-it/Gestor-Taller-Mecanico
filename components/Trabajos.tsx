@@ -401,7 +401,7 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
 
             <div
                 ref={headerRef}
-                className="absolute top-0 left-0 right-0 bg-taller-light dark:bg-taller-dark z-30 flex-shrink-0"
+                className="absolute top-0 left-0 right-0 bg-taller-light dark:bg-taller-dark z-30 flex-shrink-0 job-tab-header-bar"
                 style={{
                     pointerEvents: 'auto',
                 }}
@@ -426,7 +426,7 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
                 >
                     {statusOrder.map((status) => (
                         <div key={status} className="inner-tab-slot" style={{ pointerEvents: (activeTab === status) ? 'auto' : 'none' }}>
-                            <div onScroll={(e) => handleVerticalScroll(e, status)} className="h-full overflow-y-auto px-4 lg:px-0 scrollbar-hide overscroll-none dashboard-scroll" style={{ WebkitOverflowScrolling: 'touch', paddingTop: 'var(--header-h)' }}>
+                            <div onScroll={(e) => handleVerticalScroll(e, status)} className="h-full overflow-y-auto px-4 lg:px-0 scrollbar-hide overscroll-none dashboard-scroll job-scroll-view" style={{ WebkitOverflowScrolling: 'touch', paddingTop: 'var(--header-h)' }}>
                                 <div className="hidden lg:flex items-center gap-2 mb-6 px-1">
                                     <h3 className="text-xs font-black uppercase tracking-[0.2em] text-taller-primary dark:text-blue-400">{status}</h3>
                                     <div className="h-px flex-1 bg-gray-200 dark:bg-gray-700"></div>
