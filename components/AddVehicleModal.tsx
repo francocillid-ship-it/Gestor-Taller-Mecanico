@@ -39,7 +39,7 @@ const AddVehicleModal: React.FC<AddVehicleModalProps> = ({ onClose, onSuccess, c
 
     const handleClose = () => {
         setIsVisible(false);
-        setTimeout(onClose, 300);
+        setTimeout(onClose, 500);
     };
 
     useSwipeToDismiss({
@@ -106,12 +106,12 @@ const AddVehicleModal: React.FC<AddVehicleModalProps> = ({ onClose, onSuccess, c
         <div className="fixed inset-0 z-[100] flex justify-end">
             <div
                 ref={backdropRef}
-                className={`fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-300 ease-out ${isVisible ? 'opacity-100' : 'opacity-0'}`}
+                className={`fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-500 ease-out ${isVisible ? 'opacity-100' : 'opacity-0'}`}
                 onClick={handleClose}
             />
             <div
                 ref={modalRef}
-                className={`bg-white dark:bg-gray-800 w-full app-height-mobile sm:h-full sm:max-h-none sm:max-w-lg sm:rounded-none shadow-2xl flex flex-col overflow-hidden relative z-10 transform transition-all duration-300 ease-out ${isVisible ? 'translate-x-0' : 'translate-x-full'}`}
+                className={`bg-white dark:bg-gray-800 w-full app-height-mobile sm:h-full sm:max-h-none sm:max-w-lg sm:rounded-none shadow-2xl flex flex-col overflow-hidden relative z-10 transform transition-all duration-500 ease-out ${isVisible ? 'translate-x-0' : 'translate-x-full'}`}
             >
                 <div className="safe-top-padding-portal flex justify-between items-center px-4 pb-4 border-b dark:border-gray-700 bg-white dark:bg-gray-800 flex-shrink-0">
                     <div className="flex items-center gap-1">

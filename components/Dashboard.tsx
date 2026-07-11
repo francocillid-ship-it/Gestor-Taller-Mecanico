@@ -273,7 +273,7 @@ const FinancialDetailOverlay: React.FC<FinancialDetailOverlayProps> = ({
         setIsVisible(false);
         setTimeout(() => {
             onClose();
-        }, 300);
+        }, 500);
     };
 
     useSwipeToDismiss({
@@ -317,10 +317,10 @@ const FinancialDetailOverlay: React.FC<FinancialDetailOverlayProps> = ({
 
     return createPortal(
         <>
-            <div ref={backdropRef} className={`fixed inset-0 z-[9998] bg-black/30 backdrop-blur-sm transition-opacity duration-300 ease-out ${isVisible ? 'opacity-100' : 'opacity-0'}`} onClick={handleClose} aria-hidden="true" />
+            <div ref={backdropRef} className={`fixed inset-0 z-[9998] bg-black/30 backdrop-blur-sm transition-opacity duration-500 ease-out ${isVisible ? 'opacity-100' : 'opacity-0'}`} onClick={handleClose} aria-hidden="true" />
             <div
                 ref={modalRef}
-                className={`fixed inset-0 z-[9999] bg-taller-light dark:bg-taller-dark flex flex-col shadow-2xl transform transition-all duration-300 ease-out overflow-hidden h-[100svh] w-full ${isVisible ? 'translate-x-0' : 'translate-x-full'}`}
+                className={`fixed inset-0 z-[9999] bg-taller-light dark:bg-taller-dark flex flex-col shadow-2xl transform transition-all duration-500 ease-out overflow-hidden h-[100svh] w-full ${isVisible ? 'translate-x-0' : 'translate-x-full'}`}
                 style={{ isolation: 'isolate' }}
             >
                 <div className="bg-white dark:bg-gray-800 shadow-sm border-none z-30 safe-top-padding-portal flex-shrink-0 relative">

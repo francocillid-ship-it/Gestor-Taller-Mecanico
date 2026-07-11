@@ -372,7 +372,7 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
 
     const handleClose = () => {
         setIsVisible(false);
-        setTimeout(onClose, 300);
+        setTimeout(onClose, 500);
     };
 
     useSwipeToDismiss({
@@ -698,8 +698,8 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
 
     return createPortal(
         <div className="fixed inset-0 z-[100] flex justify-end">
-            <div ref={backdropRef} className={`fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-300 ${isVisible ? 'opacity-100' : 'opacity-0'}`} onClick={handleClose} />
-            <div ref={modalRef} className={`bg-white dark:bg-gray-800 text-taller-dark dark:text-taller-light w-full app-height-mobile sm:h-full sm:max-h-none sm:max-w-xl sm:rounded-none flex flex-col overflow-hidden relative z-10 transform transition-all duration-300 ease-out ${isVisible ? 'translate-x-0' : 'translate-x-full'}`}>
+            <div ref={backdropRef} className={`fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-500 ${isVisible ? 'opacity-100' : 'opacity-0'}`} onClick={handleClose} />
+            <div ref={modalRef} className={`bg-white dark:bg-gray-800 text-taller-dark dark:text-taller-light w-full app-height-mobile sm:h-full sm:max-h-none sm:max-w-xl sm:rounded-none flex flex-col overflow-hidden relative z-10 transform transition-all duration-500 ease-out ${isVisible ? 'translate-x-0' : 'translate-x-full'}`}>
                 <div className="safe-top-padding-portal px-4 pb-4 border-b dark:border-gray-700 flex justify-between items-center bg-gray-50 dark:bg-gray-900/50 flex-shrink-0">
                     <div className="flex items-center gap-1">
                         <button onClick={handleClose} className="p-1 -ml-2 text-taller-primary dark:text-taller-light active:bg-gray-200 dark:active:bg-gray-700 rounded-full transition-colors flex items-center pr-2">
