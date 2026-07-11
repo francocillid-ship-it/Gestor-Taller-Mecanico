@@ -49,6 +49,7 @@ const App: React.FC = () => {
     const [user, setUser] = useState<User | null>(null);
     const [role, setRole] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
+    const [initialCheckDone, setInitialCheckDone] = useState(false);
 
     const [authAction, setAuthAction] = useState<AuthAction>('APP');
 
@@ -91,6 +92,13 @@ const App: React.FC = () => {
     }, []);
 
     useEffect(() => {
+        const checkSession = async () => {
+            const { data: { session: initialSession } } = await supabase.auth.getSession();
+            setSession(initialSession);
+            setInitialCheckDone(true);
+        };
+        checkSession();
+
         const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
             setSession(session);
 
@@ -114,6 +122,8 @@ const App: React.FC = () => {
 
     useEffect(() => {
         const processSession = async () => {
+            if (!initialCheckDone) return;
+
             if (authAction !== 'APP') {
                 setUser(session?.user ?? null);
                 setRole(null);
