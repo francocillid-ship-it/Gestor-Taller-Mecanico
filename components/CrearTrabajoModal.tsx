@@ -694,6 +694,8 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
         }
     };
 
+    const isFormInvalid = !quickNombre.trim() || !quickMarca.trim() || !quickModelo.trim();
+
     return createPortal(
         <div className="fixed inset-0 z-[100] flex justify-end">
             <div ref={backdropRef} className={`fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-300 ${isVisible ? 'opacity-100' : 'opacity-0'}`} onClick={handleClose} />
@@ -1126,7 +1128,17 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
                             )}
                         </div>
                     )}
-                    <button onClick={handleSubmit} disabled={isSubmitting} className="flex-1 w-full py-3 bg-taller-primary text-white rounded-xl font-bold shadow-lg disabled:opacity-50 transition-all active:scale-[0.98]">{isSubmitting ? 'Guardando...' : 'Listo'}</button>
+                    <button 
+                        onClick={handleSubmit} 
+                        disabled={isSubmitting || isFormInvalid} 
+                        className={`flex-1 w-full py-3 rounded-xl font-bold transition-all shadow-md
+                            ${isFormInvalid 
+                                ? 'bg-gray-200 dark:bg-gray-700 text-gray-400 dark:text-gray-500 cursor-not-allowed shadow-none' 
+                                : 'bg-taller-primary text-white shadow-taller-primary/20 active:scale-[0.98]'
+                            } ${isSubmitting ? 'opacity-50' : ''}`}
+                    >
+                        {isSubmitting ? 'Guardando...' : 'Listo'}
+                    </button>
                 </div>
             </div>
 
