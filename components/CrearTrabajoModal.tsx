@@ -1126,8 +1126,7 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
                             )}
                         </div>
                     )}
-                    <button onClick={handleClose} className="flex-1 py-3 border rounded-xl font-bold text-gray-500 hover:bg-gray-50 transition-colors">Cancelar</button>
-                    <button onClick={handleSubmit} disabled={isSubmitting} className="flex-[2] py-3 bg-taller-primary text-white rounded-xl font-bold shadow-lg disabled:opacity-50 transition-all active:scale-[0.98]">{isSubmitting ? 'Guardando...' : 'Guardar'}</button>
+                    <button onClick={handleSubmit} disabled={isSubmitting} className="flex-1 w-full py-3 bg-taller-primary text-white rounded-xl font-bold shadow-lg disabled:opacity-50 transition-all active:scale-[0.98]">{isSubmitting ? 'Guardando...' : 'Listo'}</button>
                 </div>
             </div>
 
