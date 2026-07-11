@@ -436,9 +436,14 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
             ? (isExpanded
                 ? 'shadow-lg ring-2 ring-taller-primary/20'
                 : 'shadow-sm hover:shadow-md cursor-pointer active:scale-[0.98]')
-            : `shadow-md border-l-4 ${needsScheduling
-                ? 'border-red-500'
-                : (isHighlighted ? 'border-taller-primary' : 'border-taller-secondary/50 dark:border-taller-secondary')
+            : `shadow-md border-l-4 ${
+                trabajo.status === JobStatusEnum.EnProceso
+                    ? 'border-emerald-500'
+                    : trabajo.status === JobStatusEnum.Finalizado
+                        ? (saldoPendiente <= 0 ? 'border-emerald-500' : 'border-rose-500')
+                        : needsScheduling
+                            ? 'border-red-500'
+                            : (isHighlighted ? 'border-taller-primary' : 'border-taller-secondary/50 dark:border-taller-secondary')
             }`
         }
         ${!isCompactMode && isExpanded ? 'ring-2 ring-taller-primary/20 dark:ring-taller-primary/40' : ''}
