@@ -283,8 +283,31 @@
       display: block !important;
     }
 
+    html.ios-pwa .ios-pwa-bubble div {
+      height: 72px !important;
+      border-radius: 20px !important;
+      background: rgba(255, 255, 255, 0.25) !important;
+      -webkit-backdrop-filter: blur(25px) saturate(210%) !important;
+      backdrop-filter: blur(25px) saturate(210%) !important;
+      border: 1px solid rgba(255, 255, 255, 0.4) !important;
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15) !important;
+    }
+    html.ios-pwa.dark .ios-pwa-bubble div {
+      background: rgba(31, 41, 55, 0.3) !important;
+      border: 1px solid rgba(255, 255, 255, 0.12) !important;
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4) !important;
+    }
+
     html.ios-pwa .ios-pwa-hide-indicator {
       display: none !important;
+    }
+
+    /* Active state zoom effect for the whole nav bar */
+    html.ios-pwa .glass-nav {
+      transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.3s ease !important;
+    }
+    html.ios-pwa .glass-nav:active {
+      transform: scale(1.03) translateZ(0) !important;
     }
 
     /* Scroll content behind header on iOS PWA */
