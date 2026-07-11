@@ -510,19 +510,30 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout, user }) => 
     return (
         <div className="flex app-height w-full bg-taller-light dark:bg-taller-dark text-taller-dark dark:text-taller-light overflow-hidden app-shell">
             <style>{`
-                .main-view-slot { 
-                    width: 20%; 
-                    height: 100%; 
-                    flex-shrink: 0;
-                    overflow: clip;
-                    position: relative;
-                }
                 .views-container {
-                    display: flex;
+                    position: relative;
                     height: 100%;
-                    width: 500%;
-                    will-change: transform;
-                    transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+                    width: 100%;
+                }
+                .main-view-slot { 
+                    position: absolute;
+                    inset: 0;
+                    width: 100%;
+                    height: 100%; 
+                    overflow: clip;
+                    will-change: opacity, transform;
+                    transition: opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1), transform 0.6s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.6s step-end;
+                    opacity: 0;
+                    transform: scale(0.95) translateZ(0);
+                    visibility: hidden;
+                    pointer-events: none;
+                }
+                .main-view-slot.active-view {
+                    opacity: 1;
+                    transform: scale(1) translateZ(0);
+                    visibility: visible;
+                    pointer-events: auto;
+                    transition: opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1), transform 0.6s cubic-bezier(0.16, 1, 0.3, 1), visibility 0s step-start;
                 }
                 input, textarea, select { font-size: 16px !important; }
             `}</style>
@@ -567,12 +578,9 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout, user }) => 
                             </div>
                         </div>
                     ) : (
-                        <div
-                            className="views-container"
-                            style={{ transform: `translate3d(-${activeIndex * 20}%, 0, 0)` }}
-                        >
+                        <div className="views-container">
                             <Suspense fallback={
-                                <div className="main-view-slot">
+                                <div className="main-view-slot active-view">
                                     <div className="h-full overflow-y-auto px-4 pt-6 md:px-8 scrollbar-hide overscroll-none dashboard-scroll">
                                         <div className="max-w-6xl mx-auto min-h-full pb-10">
                                             <DashboardSkeleton />
@@ -580,14 +588,14 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout, user }) => 
                                     </div>
                                 </div>
                             }>
-                                <div className="main-view-slot" style={{ pointerEvents: view === 'dashboard' ? 'auto' : 'none' }}>
+                                <div className={`main-view-slot ${view === 'dashboard' ? 'active-view' : ''}`}>
                                     <div className="h-full overflow-y-auto px-4 pt-6 md:px-8 scrollbar-hide overscroll-none dashboard-scroll">
                                         <div className="max-w-6xl mx-auto min-h-full pb-10">
                                             <Dashboard clientes={clientes} trabajos={trabajos} gastos={gastos} onDataRefresh={() => fetchData(false)} searchQuery={searchQuery} onNavigate={handleNavigate} />
                                         </div>
                                     </div>
                                 </div>
-                                <div className="main-view-slot" style={{ pointerEvents: view === 'trabajos' ? 'auto' : 'none' }}>
+                                <div className={`main-view-slot ${view === 'trabajos' ? 'active-view' : ''}`}>
                                     <Trabajos
                                         trabajos={trabajos}
                                         clientes={clientes}
@@ -600,14 +608,14 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout, user }) => 
                                         isActive={view === 'trabajos'}
                                     />
                                 </div>
-                                <div className="main-view-slot" style={{ pointerEvents: view === 'clientes' ? 'auto' : 'none' }}>
+                                <div className={`main-view-slot ${view === 'clientes' ? 'active-view' : ''}`}>
                                     <div className="h-full overflow-y-auto px-4 pt-6 md:px-8 scrollbar-hide overscroll-none dashboard-scroll">
                                         <div className="max-w-6xl mx-auto min-h-full pb-10">
                                             <Clientes clientes={clientes} trabajos={trabajos} onDataRefresh={() => fetchData(false)} searchQuery={searchQuery} onNavigate={handleNavigate} />
                                         </div>
                                     </div>
                                 </div>
-                                <div className="main-view-slot" style={{ pointerEvents: view === 'finanzas' ? 'auto' : 'none' }}>
+                                <div className={`main-view-slot ${view === 'finanzas' ? 'active-view' : ''}`}>
                                     <div className="h-full overflow-y-auto px-4 pt-6 md:px-8 scrollbar-hide overscroll-none dashboard-scroll">
                                         <div className="max-w-6xl mx-auto min-h-full pb-10">
                                             <Finanzas
@@ -621,7 +629,7 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout, user }) => 
                                         </div>
                                     </div>
                                 </div>
-                                <div className="main-view-slot" style={{ pointerEvents: view === 'ajustes' ? 'auto' : 'none' }}>
+                                <div className={`main-view-slot ${view === 'ajustes' ? 'active-view' : ''}`}>
                                     <div className="h-full overflow-y-auto px-4 pt-6 md:px-8 scrollbar-hide overscroll-none dashboard-scroll">
                                         <div className="max-w-4xl mx-auto min-h-full pb-10">
                                             <Ajustes tallerInfo={tallerInfo} onUpdateTallerInfo={handleUpdateTallerInfo} onLogout={onLogout} searchQuery={searchQuery} />
