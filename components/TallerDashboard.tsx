@@ -459,17 +459,17 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout, user }) => 
                     className="absolute transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] pointer-events-none ios-pwa-bubble"
                     style={{
                         width: `${100 / navItems.length}%`,
-                        height: '46px',
+                        height: '100%',
                         transform: `translate3d(${activeIndex * 100}%, 0, 0)`,
                         left: 0,
-                        top: '9px',
+                        top: 0,
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
                         padding: '0 6px',
                     }}
                 >
-                    <div className="w-full h-full bg-taller-primary/10 dark:bg-taller-primary/20 rounded-xl" />
+                    <div className="w-full h-[46px] bg-taller-primary/10 dark:bg-taller-primary/20 rounded-xl" />
                 </div>
 
                 {navItems.map((item) => (
