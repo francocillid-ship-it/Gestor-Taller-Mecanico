@@ -372,6 +372,14 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
 
     const handleClose = () => {
         setIsVisible(false);
+        if (modalRef.current) {
+            modalRef.current.style.transition = 'transform 0.5s ease-out';
+            modalRef.current.style.transform = 'translate3d(100%, 0, 0)';
+        }
+        if (backdropRef.current) {
+            backdropRef.current.style.transition = 'opacity 0.5s ease-out';
+            backdropRef.current.style.opacity = '0';
+        }
         setTimeout(onClose, 500);
     };
 
