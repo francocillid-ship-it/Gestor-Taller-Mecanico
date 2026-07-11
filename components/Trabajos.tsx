@@ -407,10 +407,10 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
                 }}
             >
                 <div className="max-w-3xl mx-auto p-4 pt-5 pb-3 w-full"><button type="button" onClick={() => setIsCreateModalOpen(true)} className="w-full flex items-center justify-center gap-2 py-3.5 px-4 bg-taller-primary text-white font-extrabold rounded-xl shadow-lg shadow-taller-primary/20 active:scale-95 transition-all"><PlusIcon className="h-5 w-5" /><span className="uppercase tracking-wider text-xs">Nuevo Presupuesto</span></button></div>
-                <div className="flex border-b dark:border-gray-700 bg-taller-light dark:bg-taller-dark overflow-x-auto no-scrollbar w-full lg:hidden">
-                    <div className="flex min-w-full px-4 sm:justify-center gap-1">
+                <div className="flex border-b dark:border-gray-700 bg-taller-light dark:bg-taller-dark w-full lg:hidden">
+                    <div className="flex w-full px-2 sm:px-4 gap-0.5 justify-between">
                         {statusOrder.map((status) => (
-                            <button key={status} ref={(el: HTMLButtonElement | null) => { tabLabelsRef.current[status] = el; }} type="button" onClick={() => setActiveTab(status)} className={`flex-none min-w-[85px] py-4 px-2 text-[10px] font-black uppercase tracking-widest text-center transition-colors relative whitespace-nowrap ${activeTab === status ? 'text-taller-primary dark:text-blue-400' : 'text-gray-400 dark:text-gray-600'}`}>{status}{activeTab === status && <div className="absolute bottom-0 left-0 right-0 h-1 bg-taller-primary rounded-t-full"></div>}</button>
+                            <button key={status} ref={(el: HTMLButtonElement | null) => { tabLabelsRef.current[status] = el; }} type="button" onClick={() => setActiveTab(status)} className={`flex-1 py-4 px-0.5 text-[8.5px] xs:text-[10px] font-black uppercase tracking-normal xs:tracking-wider text-center transition-colors relative whitespace-nowrap ${activeTab === status ? 'text-taller-primary dark:text-blue-400' : 'text-gray-400 dark:text-gray-600'}`}>{status}{activeTab === status && <div className="absolute bottom-0 left-0 right-0 h-1 bg-taller-primary rounded-t-full"></div>}</button>
                         ))}
                     </div>
                 </div>
