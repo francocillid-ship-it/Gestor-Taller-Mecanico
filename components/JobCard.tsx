@@ -121,17 +121,44 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
     const isCompactMode = compactMode === true;
     const isCollapsedInCompact = isCompactMode && !isExpanded;
 
-    const displayClientName = cliente
-        ? `${cliente.nombre} ${cliente.apellido || ''}`.trim()
-        : (trabajo.quickBudgetData ? `${trabajo.quickBudgetData.nombre} ${trabajo.quickBudgetData.apellido || ''}`.trim() : 'Cliente no identificado');
+    const renderClientName = () => {
+        if (cliente) {
+            return `${cliente.nombre} ${cliente.apellido || ''}`.trim();
+        }
+        if (trabajo.quickBudgetData) {
+            return `${trabajo.quickBudgetData.nombre} ${trabajo.quickBudgetData.apellido || ''}`.trim();
+        }
+        if (clientes.length === 0) {
+            return <span className="inline-block w-28 h-4 bg-gray-200 dark:bg-gray-700 animate-pulse rounded"></span>;
+        }
+        return 'Cliente no identificado';
+    };
 
-    const displayVehicleInfo = vehiculo
-        ? `${vehiculo.marca} ${vehiculo.modelo} (${vehiculo.matricula})`
-        : (trabajo.quickBudgetData ? `${trabajo.quickBudgetData.marca} ${trabajo.quickBudgetData.modelo} ${trabajo.quickBudgetData.matricula ? `(${trabajo.quickBudgetData.matricula})` : ''}`.trim() : 'Vehículo no identificado');
+    const renderVehicleInfo = () => {
+        if (vehiculo) {
+            return `${vehiculo.marca} ${vehiculo.modelo} (${vehiculo.matricula})`;
+        }
+        if (trabajo.quickBudgetData) {
+            return `${trabajo.quickBudgetData.marca} ${trabajo.quickBudgetData.modelo} ${trabajo.quickBudgetData.matricula ? `(${trabajo.quickBudgetData.matricula})` : ''}`.trim();
+        }
+        if (clientes.length === 0) {
+            return <span className="inline-block w-36 h-3 bg-gray-200 dark:bg-gray-700 animate-pulse rounded mt-1"></span>;
+        }
+        return 'Vehículo no identificado';
+    };
 
-    const displayVehicleModelOnly = vehiculo
-        ? vehiculo.modelo
-        : (trabajo.quickBudgetData ? trabajo.quickBudgetData.modelo : 'Vehículo');
+    const renderVehicleModelOnly = () => {
+        if (vehiculo) {
+            return vehiculo.modelo;
+        }
+        if (trabajo.quickBudgetData) {
+            return trabajo.quickBudgetData.modelo;
+        }
+        if (clientes.length === 0) {
+            return <span className="inline-block w-16 h-3 bg-gray-200 dark:bg-gray-700 animate-pulse rounded mt-1"></span>;
+        }
+        return 'Vehículo';
+    };
 
     useEffect(() => {
         if (trabajo) {
@@ -527,7 +554,7 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
                         <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2">
                                 <p className={`font-bold text-taller-dark dark:text-taller-light truncate transition-all duration-300 ${isCollapsedInCompact ? 'text-xs' : 'text-sm'}`}>
-                                    {displayClientName}
+                                    {renderClientName()}
                                 </p>
                                 {!isCollapsedInCompact && needsScheduling && (
                                     <span className="flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300 animate-pulse">
@@ -537,7 +564,7 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
                             </div>
 
                             <p className={`text-taller-gray dark:text-gray-400 truncate transition-all duration-300 ${isCollapsedInCompact ? 'text-[10px] mt-0.5' : 'text-xs'}`}>
-                                {isCollapsedInCompact ? displayVehicleModelOnly : displayVehicleInfo}
+                                {isCollapsedInCompact ? renderVehicleModelOnly() : renderVehicleInfo()}
                             </p>
 
                             {!isCollapsedInCompact && isProgramado && trabajo.fechaProgramada && (
