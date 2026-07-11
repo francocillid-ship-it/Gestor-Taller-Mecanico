@@ -41,6 +41,88 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
 
     const cardRef = useRef<HTMLDivElement>(null);
 
+    // Swipe gesture states
+    const [swipeOffset, setSwipeOffset] = useState(0);
+    const [isSwiping, setIsSwiping] = useState(false);
+    const touchStartRef = useRef({ x: 0, y: 0 });
+    const isHorizontalSwipe = useRef<boolean | null>(null);
+
+    const handleTouchStart = (e: React.TouchEvent) => {
+        touchStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+        isHorizontalSwipe.current = null;
+        setIsSwiping(false);
+    };
+
+    const handleTouchMove = (e: React.TouchEvent) => {
+        if (touchStartRef.current.x === 0) return;
+
+        const deltaX = e.touches[0].clientX - touchStartRef.current.x;
+        const deltaY = e.touches[0].clientY - touchStartRef.current.y;
+
+        if (isHorizontalSwipe.current === null) {
+            if (Math.abs(deltaY) > Math.abs(deltaX)) {
+                isHorizontalSwipe.current = false;
+            } else if (Math.abs(deltaX) > 10) {
+                isHorizontalSwipe.current = true;
+                setIsSwiping(true);
+            }
+        }
+
+        if (isHorizontalSwipe.current === true) {
+            if (e.cancelable) e.preventDefault();
+            e.stopPropagation();
+
+            let offset = deltaX;
+            if (offset > 120) {
+                offset = 120 + (offset - 120) * 0.2;
+            } else if (offset < -120) {
+                offset = -120 + (offset + 120) * 0.2;
+            }
+            setSwipeOffset(offset);
+        }
+    };
+
+    const triggerStatusMenuFromSwipe = () => {
+        const anchor = buttonRef.current || cardRef.current;
+        if (anchor) {
+            const rect = anchor.getBoundingClientRect();
+            const spaceBelow = window.innerHeight - rect.bottom;
+            const menuHeight = 180;
+            const placement = spaceBelow < menuHeight ? 'top' : 'bottom';
+
+            setMenuCoords({
+                top: placement === 'bottom' ? rect.bottom + 4 : undefined,
+                bottom: placement === 'top' ? window.innerHeight - rect.top + 4 : undefined,
+                left: Math.max(16, rect.left + (rect.width - 200) / 2),
+                width: Math.min(200, rect.width),
+                placement
+            });
+            setIsStatusMenuOpen(true);
+            requestAnimationFrame(() => setIsMenuVisible(true));
+        }
+    };
+
+    const handleTouchEnd = (e: React.TouchEvent) => {
+        if (isHorizontalSwipe.current === true) {
+            e.stopPropagation();
+
+            if (swipeOffset > 80) {
+                setIsExpanded(true);
+                setIsAddingPayment(true);
+                setTimeout(() => {
+                    cardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                }, 150);
+            } else if (swipeOffset < -80) {
+                triggerStatusMenuFromSwipe();
+            }
+        }
+
+        setIsSwiping(false);
+        setSwipeOffset(0);
+        touchStartRef.current = { x: 0, y: 0 };
+        isHorizontalSwipe.current = null;
+    };
+
     const isProgramado = trabajo.status === JobStatusEnum.Programado;
     const needsScheduling = isProgramado && !trabajo.fechaProgramada;
 
@@ -333,22 +415,39 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
         displayTime = dateObj.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', hour12: false });
     }
 
-    const containerClasses = `
+    const outerClasses = `
         relative
+        overflow-hidden
+        rounded-lg
+        transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]
+        ${isCompactMode
+            ? (isExpanded
+                ? 'col-span-2 z-10'
+                : 'col-span-1 min-h-[80px]')
+            : needsScheduling
+                ? 'ring-2 ring-red-100 dark:ring-red-900/20'
+                : (isHighlighted ? 'ring-2 ring-taller-primary/50' : '')
+        }
+        ${!isCompactMode && isExpanded ? 'mb-4' : ''}
+        ${isHighlighted ? 'animate-pulse-once' : ''} 
+    `;
+
+    const innerClasses = `
+        relative
+        w-full h-full
         bg-white dark:bg-gray-800
         rounded-lg
         transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]
         ${isCompactMode
             ? (isExpanded
-                ? 'col-span-2 shadow-lg ring-2 ring-taller-primary/20 z-10'
-                : 'col-span-1 shadow-sm hover:shadow-md cursor-pointer active:scale-[0.98] min-h-[80px]')
+                ? 'shadow-lg ring-2 ring-taller-primary/20'
+                : 'shadow-sm hover:shadow-md cursor-pointer active:scale-[0.98]')
             : `shadow-md border-l-4 ${needsScheduling
-                ? 'border-red-500 ring-2 ring-red-100 dark:ring-red-900/20'
-                : (isHighlighted ? 'border-taller-primary ring-2 ring-taller-primary/50' : 'border-taller-secondary/50 dark:border-taller-secondary')
+                ? 'border-red-500'
+                : (isHighlighted ? 'border-taller-primary' : 'border-taller-secondary/50 dark:border-taller-secondary')
             }`
         }
-        ${!isCompactMode && isExpanded ? 'mb-4 ring-2 ring-taller-primary/20 dark:ring-taller-primary/40' : ''}
-        ${isHighlighted ? 'animate-pulse-once' : ''} 
+        ${!isCompactMode && isExpanded ? 'ring-2 ring-taller-primary/20 dark:ring-taller-primary/40' : ''}
     `;
 
     return (
@@ -364,9 +463,57 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
             `}</style>
             <div
                 ref={cardRef}
-                className={containerClasses}
-                onClick={isCollapsedInCompact ? () => setIsExpanded(true) : undefined}
+                className={outerClasses}
             >
+                {/* Background actions revealed on swipe */}
+                <div className="absolute inset-0 flex items-center justify-between pointer-events-none rounded-lg overflow-hidden select-none">
+                    {/* Swipe Right action (reveals Left action) */}
+                    <div 
+                        className="absolute inset-y-0 left-0 bg-green-500 text-white flex items-center pl-6 gap-2 transition-opacity duration-200"
+                        style={{ 
+                            right: '50%',
+                            opacity: swipeOffset > 10 ? Math.min(swipeOffset / 80, 1) : 0,
+                        }}
+                    >
+                        <CurrencyDollarIcon className="h-6 w-6 animate-pulse" />
+                        <span className="text-xs font-black uppercase tracking-wider">Registrar Pago</span>
+                    </div>
+
+                    {/* Swipe Left action (reveals Right action) */}
+                    <div 
+                        className="absolute inset-y-0 right-0 bg-taller-primary text-white flex items-center justify-end pr-6 gap-2 transition-opacity duration-200"
+                        style={{ 
+                            left: '50%',
+                            opacity: swipeOffset < -10 ? Math.min(-swipeOffset / 80, 1) : 0,
+                        }}
+                    >
+                        <span className="text-xs font-black uppercase tracking-wider">Mover a...</span>
+                        <ArrowPathIcon className="h-6 w-6 animate-pulse" />
+                    </div>
+                </div>
+
+                {/* Sliding Card Content */}
+                <div
+                    className={innerClasses}
+                    style={{
+                        transform: `translate3d(${swipeOffset}px, 0, 0)`,
+                        transition: isSwiping ? 'none' : 'transform 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
+                        zIndex: 10,
+                    }}
+                    onTouchStart={handleTouchStart}
+                    onTouchMove={handleTouchMove}
+                    onTouchEnd={handleTouchEnd}
+                    onTouchCancel={handleTouchEnd}
+                    onClick={(e) => {
+                        if (Math.abs(swipeOffset) > 5) {
+                            e.stopPropagation();
+                            return;
+                        }
+                        if (isCollapsedInCompact) {
+                            setIsExpanded(true);
+                        }
+                    }}
+                >
                 <div className={`p-3 ${isCollapsedInCompact ? 'flex flex-col justify-between h-full' : ''}`}>
                     <div
                         className={`flex justify-between items-start ${!isCollapsedInCompact ? 'cursor-pointer select-none' : ''}`}
@@ -654,6 +801,7 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
                             </div>
                         </div>
                     </div>
+                </div>
                 </div>
             </div>
 
