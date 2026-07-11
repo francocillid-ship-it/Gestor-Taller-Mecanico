@@ -118,7 +118,6 @@ const DraggedItemClone = React.forwardRef<HTMLDivElement, {
 DraggedItemClone.displayName = 'DraggedItemClone';
 
 const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSuccess, onDataRefresh, clientes, trabajoToEdit, initialClientId }) => {
-    const [creationMode, setCreationMode] = useState<'existing' | 'quick'>(trabajoToEdit?.isQuickBudget ? 'quick' : 'existing');
     const [quickNombre, setQuickNombre] = useState('');
     const [quickApellido, setQuickApellido] = useState('');
     const [quickMarca, setQuickMarca] = useState('');
@@ -131,6 +130,76 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
     const [kilometraje, setKilometraje] = useState('');
     const [partes, setPartes] = useState<ParteState[]>([]);
     const [status, setStatus] = useState<JobStatus>(JobStatus.Presupuesto);
+
+    // Suggestions states for autocomplete
+    const [suggestions, setSuggestions] = useState<Cliente[]>([]);
+    const [vehiculoSuggestions, setVehiculoSuggestions] = useState<any[]>([]);
+
+    const handleNombreChange = (val: string) => {
+        setQuickNombre(val);
+        setSelectedClienteId('');
+        setSelectedVehiculoId('');
+        setVehiculoSuggestions([]);
+
+        if (val.trim().length > 1) {
+            const searchVal = val.toLowerCase();
+            const matches = clientes.filter(c => 
+                c.nombre.toLowerCase().includes(searchVal) || 
+                (c.apellido && c.apellido.toLowerCase().includes(searchVal))
+            );
+            setSuggestions(matches.slice(0, 5));
+        } else {
+            setSuggestions([]);
+        }
+    };
+
+    const handleApellidoChange = (val: string) => {
+        setQuickApellido(val);
+        setSelectedClienteId('');
+        setSelectedVehiculoId('');
+        setVehiculoSuggestions([]);
+
+        const fullName = `${quickNombre} ${val}`.trim().toLowerCase();
+        if (fullName.length > 1) {
+            const matches = clientes.filter(c => 
+                `${c.nombre} ${c.apellido || ''}`.toLowerCase().includes(fullName)
+            );
+            setSuggestions(matches.slice(0, 5));
+        } else {
+            setSuggestions([]);
+        }
+    };
+
+    const handleSelectClient = (client: Cliente) => {
+        setSelectedClienteId(client.id);
+        setQuickNombre(client.nombre);
+        setQuickApellido(client.apellido || '');
+        setSuggestions([]);
+        
+        if (client.vehiculos && client.vehiculos.length > 0) {
+            if (client.vehiculos.length === 1) {
+                const v = client.vehiculos[0];
+                setSelectedVehiculoId(v.id);
+                setQuickMarca(v.marca);
+                setQuickModelo(v.modelo);
+                setQuickMatricula(v.matricula || '');
+                setVehiculoSuggestions([]);
+            } else {
+                const firstV = client.vehiculos[0];
+                setSelectedVehiculoId(firstV.id);
+                setQuickMarca(firstV.marca);
+                setQuickModelo(firstV.modelo);
+                setQuickMatricula(firstV.matricula || '');
+                setVehiculoSuggestions(client.vehiculos);
+            }
+        } else {
+            setSelectedVehiculoId('');
+            setQuickMarca('');
+            setQuickModelo('');
+            setQuickMatricula('');
+            setVehiculoSuggestions([]);
+        }
+    };
 
     // Payment State
     const [pagosList, setPagosList] = useState<PaymentState[]>([]);
@@ -219,7 +288,6 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
 
     useEffect(() => {
         if (trabajoToEdit) {
-            setCreationMode(trabajoToEdit.isQuickBudget ? 'quick' : 'existing');
             if (trabajoToEdit.isQuickBudget && trabajoToEdit.quickBudgetData) {
                 setQuickNombre(trabajoToEdit.quickBudgetData.nombre);
                 setQuickApellido(trabajoToEdit.quickBudgetData.apellido || '');
@@ -229,6 +297,17 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
             } else {
                 setSelectedClienteId(trabajoToEdit.clienteId);
                 setSelectedVehiculoId(trabajoToEdit.vehiculoId);
+                const client = clientes.find(c => c.id === trabajoToEdit.clienteId);
+                if (client) {
+                    setQuickNombre(client.nombre);
+                    setQuickApellido(client.apellido || '');
+                    const vehicle = client.vehiculos.find(v => v.id === trabajoToEdit.vehiculoId);
+                    if (vehicle) {
+                        setQuickMarca(vehicle.marca);
+                        setQuickModelo(vehicle.modelo);
+                        setQuickMatricula(vehicle.matricula || '');
+                    }
+                }
             }
             setDescripcion(trabajoToEdit.descripcion);
             setObservaciones(trabajoToEdit.observaciones || '');
@@ -243,6 +322,7 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
 
             const initialPagos = trabajoToEdit.partes.filter(p => p.nombre === '__PAGO_REGISTRADO__');
             setPagosList(initialPagos.map(p => ({
+                ...p,
                 _id: generateId(),
                 monto: formatCurrency(p.precioUnitario.toString().replace('.', ',')),
                 fecha: p.fecha || new Date().toISOString(),
@@ -252,9 +332,31 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
             setStatus(trabajoToEdit.status);
         } else if (initialClientId) {
             setSelectedClienteId(initialClientId);
+            const client = clientes.find(c => c.id === initialClientId);
+            if (client) {
+                setQuickNombre(client.nombre);
+                setQuickApellido(client.apellido || '');
+                if (client.vehiculos && client.vehiculos.length > 0) {
+                    if (client.vehiculos.length === 1) {
+                        const v = client.vehiculos[0];
+                        setSelectedVehiculoId(v.id);
+                        setQuickMarca(v.marca);
+                        setQuickModelo(v.modelo);
+                        setQuickMatricula(v.matricula || '');
+                        setVehiculoSuggestions([]);
+                    } else {
+                        const firstV = client.vehiculos[0];
+                        setSelectedVehiculoId(firstV.id);
+                        setQuickMarca(firstV.marca);
+                        setQuickModelo(firstV.modelo);
+                        setQuickMatricula(firstV.matricula || '');
+                        setVehiculoSuggestions(client.vehiculos);
+                    }
+                }
+            }
         }
         requestAnimationFrame(() => setIsVisible(true));
-    }, [trabajoToEdit, initialClientId]);
+    }, [trabajoToEdit, initialClientId, clientes]);
 
     // Auto-resize textareas
     useEffect(() => {
@@ -472,10 +574,6 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (creationMode === 'existing' && (!selectedClienteId || !selectedVehiculoId)) {
-            setError('Seleccione cliente y vehículo.');
-            return;
-        }
         setIsSubmitting(true);
         try {
             const { data: { user } } = await supabase.auth.getUser();
@@ -483,8 +581,50 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
 
             let finalClienteId = selectedClienteId;
             let finalVehiculoId = selectedVehiculoId;
-            let isQuick = creationMode === 'quick' && status === JobStatus.Presupuesto;
-            let qData = creationMode === 'quick' ? {
+
+            // If we have selected a client, but we don't have selectedVehiculoId (meaning they entered new vehicle details)
+            if (finalClienteId && !finalVehiculoId && quickMarca) {
+                // Create vehicle in db under existing client
+                const { data: newV, error: vE } = await supabase.from('vehiculos').insert({
+                    cliente_id: finalClienteId,
+                    marca: quickMarca.toUpperCase(),
+                    modelo: quickModelo.toUpperCase(),
+                    matricula: quickMatricula.toUpperCase() || null
+                }).select().single();
+                if (vE) throw vE;
+                finalVehiculoId = newV.id;
+            }
+
+            // If we do NOT have selectedClienteId (new client entirely)
+            if (!finalClienteId) {
+                if (status === JobStatus.Presupuesto) {
+                    // Quick budget - saved as a temporary record
+                } else {
+                    // Need to formalize client and vehicle immediately
+                    // 1. Crear Cliente
+                    const { data: newC, error: cE } = await supabase.from('clientes').insert({
+                        taller_id: user.id,
+                        nombre: quickNombre,
+                        apellido: quickApellido || null
+                    }).select().single();
+                    if (cE) throw cE;
+
+                    // 2. Crear Vehículo
+                    const { data: newV, error: vE } = await supabase.from('vehiculos').insert({
+                        cliente_id: newC.id,
+                        marca: quickMarca.toUpperCase(),
+                        modelo: quickModelo.toUpperCase(),
+                        matricula: quickMatricula.toUpperCase() || null
+                    }).select().single();
+                    if (vE) throw vE;
+
+                    finalClienteId = newC.id;
+                    finalVehiculoId = newV.id;
+                }
+            }
+
+            let isQuick = !finalClienteId && status === JobStatus.Presupuesto;
+            let qData = !finalClienteId ? {
                 nombre: quickNombre,
                 apellido: quickApellido,
                 marca: quickMarca.toUpperCase(),
@@ -492,33 +632,9 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
                 matricula: quickMatricula.toUpperCase()
             } : null;
 
-            // FORMALIZACIÓN AUTOMÁTICA SI ESTÁ EN MODO RÁPIDO PERO CAMBIA DE ESTADO
-            if (creationMode === 'quick' && status !== JobStatus.Presupuesto) {
-                // 1. Crear Cliente formal
-                const { data: newC, error: cE } = await supabase.from('clientes').insert({
-                    taller_id: user.id,
-                    nombre: quickNombre,
-                    apellido: quickApellido || null
-                }).select().single();
-                if (cE) throw cE;
-
-                // 2. Crear Vehículo formal vinculado al cliente
-                const { data: newV, error: vE } = await supabase.from('vehiculos').insert({
-                    cliente_id: newC.id,
-                    marca: quickMarca.toUpperCase(),
-                    modelo: quickModelo.toUpperCase(),
-                    matricula: quickMatricula.toUpperCase() || null
-                }).select().single();
-                if (vE) throw vE;
-
-                finalClienteId = newC.id;
-                finalVehiculoId = newV.id;
-                isQuick = false;
-                qData = null;
-            }
-
             const cleanPartes = partes.filter(p => p.nombre.trim() !== '').map(p => ({
                 nombre: p.nombre,
+                bold: false, // Default if needed
                 cantidad: p.isCategory ? 0 : Number(p.cantidad || 1),
                 precioUnitario: p.isCategory ? 0 : parseCurrency(p.precioUnitario),
                 isCategory: !!p.isCategory,
@@ -592,43 +708,94 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
                     <div className="w-16"></div> {/* Spacer for centering title if needed, or just let it align right */}
                 </div>
 
-                {!isEditMode && (
-                    <div className="bg-gray-100 dark:bg-gray-900 p-1 flex-shrink-0">
-                        <div className="flex bg-white dark:bg-gray-800 rounded-lg p-1 gap-1">
-                            <button type="button" onClick={() => setCreationMode('existing')} className={`flex-1 flex items-center justify-center gap-2 py-2 text-sm font-bold rounded-md transition-all ${creationMode === 'existing' ? 'bg-taller-primary text-white shadow-md' : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-700'}`}><UsersIcon className="h-4 w-4" /> Cliente</button>
-                            <button type="button" onClick={() => setCreationMode('quick')} className={`flex-1 flex items-center justify-center gap-2 py-2 text-sm font-bold rounded-md transition-all ${creationMode === 'quick' ? 'bg-taller-primary text-white shadow-md' : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-700'}`}><BoltIcon className="h-4 w-4" /> Rápido</button>
-                        </div>
-                    </div>
-                )}
-
                 <div className="flex-1 overflow-y-auto p-4 space-y-4 overscroll-none touch-auto">
                     <form onSubmit={handleSubmit} className="space-y-4 pb-12">
-                        {creationMode === 'existing' ? (
-                            <div className="space-y-3">
-                                <div className="grid grid-cols-2 gap-3">
-                                    <select value={selectedClienteId} onChange={e => setSelectedClienteId(e.target.value)} className="p-2.5 border rounded-lg dark:bg-gray-700 dark:border-gray-600 text-sm focus:ring-1 focus:ring-taller-primary outline-none" required>
-                                        <option value="">Cliente...</option>
-                                        {clientes.map(c => <option key={c.id} value={c.id}>{c.nombre} {c.apellido}</option>)}
-                                    </select>
-                                    <select value={selectedVehiculoId} onChange={e => setSelectedVehiculoId(e.target.value)} className="p-2.5 border rounded-lg dark:bg-gray-700 dark:border-gray-600 text-sm focus:ring-1 focus:ring-taller-primary outline-none" required disabled={!selectedClienteId}>
-                                        <option value="">Vehículo...</option>
-                                        {selectedClientVehiculos.map(v => <option key={v.id} value={v.id}>{v.marca} {v.modelo}</option>)}
-                                    </select>
+                        <div className="space-y-3">
+                            <div className="grid grid-cols-2 gap-2 relative">
+                                <div className="relative">
+                                    <input 
+                                        type="text" 
+                                        placeholder="Nombre" 
+                                        value={quickNombre} 
+                                        onChange={e => handleNombreChange(e.target.value)} 
+                                        className="w-full p-2.5 border rounded-lg dark:bg-gray-700 dark:border-gray-600 text-sm focus:ring-1 focus:ring-taller-primary outline-none" 
+                                        required 
+                                    />
+                                    {/* Client Suggestions Dropdown */}
+                                    {suggestions.length > 0 && (
+                                        <div className="absolute left-0 right-0 mt-1 bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-lg shadow-xl z-50 max-h-48 overflow-y-auto">
+                                            {suggestions.map(c => (
+                                                <button
+                                                    key={c.id}
+                                                    type="button"
+                                                    onClick={() => handleSelectClient(c)}
+                                                    className="w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 border-none block text-taller-dark dark:text-taller-light font-medium"
+                                                >
+                                                    {c.nombre} {c.apellido || ''}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
+                                <input 
+                                    type="text" 
+                                    placeholder="Apellido (Opcional)" 
+                                    value={quickApellido} 
+                                    onChange={e => handleApellidoChange(e.target.value)} 
+                                    className="p-2.5 border rounded-lg dark:bg-gray-700 dark:border-gray-600 text-sm focus:ring-1 focus:ring-taller-primary outline-none" 
+                                />
                             </div>
-                        ) : (
-                            <div className="space-y-2">
-                                <div className="grid grid-cols-2 gap-2">
-                                    <input type="text" placeholder="Nombre" value={quickNombre} onChange={e => setQuickNombre(e.target.value)} className="p-2.5 border rounded-lg dark:bg-gray-700 dark:border-gray-600 text-sm" required />
-                                    <input type="text" placeholder="Apellido (Opcional)" value={quickApellido} onChange={e => setQuickApellido(e.target.value)} className="p-2.5 border rounded-lg dark:bg-gray-700 dark:border-gray-600 text-sm" />
-                                </div>
-                                <div className="grid grid-cols-2 gap-2">
-                                    <input type="text" placeholder="Marca" value={quickMarca} onChange={e => setQuickMarca(e.target.value.toUpperCase())} className="p-2.5 border rounded-lg dark:bg-gray-700 dark:border-gray-600 text-sm" required />
-                                    <input type="text" placeholder="Modelo" value={quickModelo} onChange={e => setQuickModelo(e.target.value.toUpperCase())} className="p-2.5 border rounded-lg dark:bg-gray-700 dark:border-gray-600 text-sm" required />
-                                </div>
-                                <input type="text" placeholder="Matrícula" value={quickMatricula} onChange={e => setQuickMatricula(e.target.value.toUpperCase())} className="w-full p-2.5 border rounded-lg dark:bg-gray-700 dark:border-gray-600 text-sm" />
+
+                            <div className="grid grid-cols-2 gap-2">
+                                <input type="text" placeholder="Marca" value={quickMarca} onChange={e => setQuickMarca(e.target.value.toUpperCase())} className="p-2.5 border rounded-lg dark:bg-gray-700 dark:border-gray-600 text-sm focus:ring-1 focus:ring-taller-primary outline-none" required />
+                                <input type="text" placeholder="Modelo" value={quickModelo} onChange={e => setQuickModelo(e.target.value.toUpperCase())} className="p-2.5 border rounded-lg dark:bg-gray-700 dark:border-gray-600 text-sm focus:ring-1 focus:ring-taller-primary outline-none" required />
                             </div>
-                        )}
+                            <input type="text" placeholder="Matrícula (Opcional)" value={quickMatricula} onChange={e => setQuickMatricula(e.target.value.toUpperCase())} className="w-full p-2.5 border rounded-lg dark:bg-gray-700 dark:border-gray-600 text-sm focus:ring-1 focus:ring-taller-primary outline-none" />
+
+                            {/* Vehicle suggestions pills if multiple exist */}
+                            {vehiculoSuggestions.length > 0 && (
+                                <div className="bg-blue-50 dark:bg-blue-900/10 p-2.5 rounded-lg border border-blue-100 dark:border-blue-900/30 space-y-2 animate-in fade-in duration-200">
+                                    <p className="text-[10px] font-bold text-blue-700 dark:text-blue-400 uppercase tracking-wider">Vehículos guardados para este cliente:</p>
+                                    <div className="flex flex-wrap gap-1.5">
+                                        {vehiculoSuggestions.map(v => (
+                                            <button
+                                                key={v.id}
+                                                type="button"
+                                                onClick={() => {
+                                                    setSelectedVehiculoId(v.id);
+                                                    setQuickMarca(v.marca);
+                                                    setQuickModelo(v.modelo);
+                                                    setQuickMatricula(v.matricula || '');
+                                                }}
+                                                className={`px-2 py-1 border rounded text-xs font-semibold active:scale-95 transition-all
+                                                    ${selectedVehiculoId === v.id
+                                                        ? 'bg-taller-primary text-white border-taller-primary'
+                                                        : 'bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-taller-dark dark:text-white hover:border-taller-primary'
+                                                    }`}
+                                            >
+                                                {v.marca} {v.modelo} {v.matricula ? `(${v.matricula})` : ''}
+                                            </button>
+                                        ))}
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                setSelectedVehiculoId('');
+                                                setQuickMarca('');
+                                                setQuickModelo('');
+                                                setQuickMatricula('');
+                                            }}
+                                            className={`px-2 py-1 rounded text-xs font-semibold border border-dashed border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400
+                                                ${!selectedVehiculoId
+                                                    ? 'bg-taller-primary/10 text-taller-primary border-taller-primary/50'
+                                                    : 'hover:border-taller-primary'
+                                                }`}
+                                        >
+                                            + Nuevo Vehículo
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
 
                         {/* MENÚ DE SELECCIÓN DE ESTADO */}
                         <div className="animate-in fade-in slide-in-from-top-1 duration-300">
