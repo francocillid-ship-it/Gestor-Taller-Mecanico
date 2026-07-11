@@ -54,10 +54,9 @@
 
       updateStandaloneClass();
       window.addEventListener('pageshow', updateStandaloneClass);
-      // Detect Mobile (iOS/Android) + Standalone (PWA) Mode
+      // Apply glass interface to all mobile devices
       const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-      const isStandalone = window.navigator.standalone || window.matchMedia('(display-mode: standalone)').matches;
-      if (isMobile && isStandalone) {
+      if (isMobile) {
         root.classList.add('ios-pwa');
       }
     })();
@@ -222,7 +221,8 @@
       scrollbar-width: none;
     }
 
-    /* Glassmorphism overrides for iOS PWA standalone mode */
+    /* ===== Glass Mobile Interface (applied on all mobile devices) ===== */
+
     html.ios-pwa .glass-header {
       position: absolute !important;
       top: 0 !important;
@@ -260,6 +260,10 @@
       height: 64px !important;
       overflow: visible !important;
       border-top: none !important;
+      transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.3s ease !important;
+    }
+    html.ios-pwa .glass-nav:active {
+      transform: scale(1.03) translateZ(0) !important;
     }
     html.ios-pwa.dark .glass-nav {
       background: rgba(17, 24, 39, 0.5) !important;
@@ -268,22 +272,8 @@
       border-top: none !important;
     }
 
-    /* Default: bubble is hidden */
-    .ios-pwa-bubble {
-      display: none;
-    }
-    
-    /* Underline indicator is visible by default */
-    .ios-pwa-hide-indicator {
-      display: block;
-    }
-
-    /* iOS PWA Standalone Overrides */
-    html.ios-pwa .ios-pwa-bubble {
-      display: block !important;
-    }
-
-    html.ios-pwa .ios-pwa-bubble .bubble-pill {
+    /* Nav bubble pill — glass style */
+    html.ios-pwa .bubble-pill {
       border-radius: 14px !important;
       background: rgba(255, 255, 255, 0.18) !important;
       -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
@@ -291,38 +281,26 @@
       border: 1px solid rgba(255, 255, 255, 0.25) !important;
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05) !important;
     }
-    html.ios-pwa.dark .ios-pwa-bubble .bubble-pill {
+    html.ios-pwa.dark .bubble-pill {
       background: rgba(255, 255, 255, 0.08) !important;
       border: 1px solid rgba(255, 255, 255, 0.08) !important;
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25) !important;
     }
 
-    html.ios-pwa .ios-pwa-hide-indicator {
-      display: none !important;
-    }
-
-    /* Active state zoom effect for the whole nav bar */
-    html.ios-pwa .glass-nav {
-      transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.3s ease !important;
-    }
-    html.ios-pwa .glass-nav:active {
-      transform: scale(1.03) translateZ(0) !important;
-    }
-
-    /* Scroll content behind header on iOS PWA */
+    /* Scroll content behind translucent header */
     html.ios-pwa .dashboard-scroll:not(.job-scroll-view) {
       padding-top: calc(76px + var(--safe-top)) !important;
     }
 
     html.ios-pwa .job-tab-header-bar {
       top: calc(63px + var(--safe-top)) !important;
-      background: rgba(240, 249, 255, 0.4) !important; /* bg-taller-light */
+      background: rgba(240, 249, 255, 0.4) !important;
       -webkit-backdrop-filter: blur(20px) saturate(190%) !important;
       backdrop-filter: blur(20px) saturate(190%) !important;
       border-bottom: none !important;
     }
     html.ios-pwa.dark .job-tab-header-bar {
-      background: rgba(11, 17, 32, 0.4) !important; /* bg-taller-dark */
+      background: rgba(11, 17, 32, 0.4) !important;
       border-bottom: none !important;
     }
 
