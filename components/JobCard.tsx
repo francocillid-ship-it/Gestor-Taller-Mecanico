@@ -40,12 +40,14 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
     const [isSavingSchedule, setIsSavingSchedule] = useState(false);
 
     const cardRef = useRef<HTMLDivElement>(null);
+    const paymentInputRef = useRef<HTMLInputElement>(null);
 
     // Swipe gesture states
     const [swipeOffset, setSwipeOffset] = useState(0);
     const [isSwiping, setIsSwiping] = useState(false);
     const touchStartRef = useRef({ x: 0, y: 0 });
     const isHorizontalSwipe = useRef<boolean | null>(null);
+    const [isSwipeTriggeredMenu, setIsSwipeTriggeredMenu] = useState(false);
 
     const handleTouchStart = (e: React.TouchEvent) => {
         touchStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
@@ -83,23 +85,9 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
     };
 
     const triggerStatusMenuFromSwipe = () => {
-        const anchor = buttonRef.current || cardRef.current;
-        if (anchor) {
-            const rect = anchor.getBoundingClientRect();
-            const spaceBelow = window.innerHeight - rect.bottom;
-            const menuHeight = 180;
-            const placement = spaceBelow < menuHeight ? 'top' : 'bottom';
-
-            setMenuCoords({
-                top: placement === 'bottom' ? rect.bottom + 4 : undefined,
-                bottom: placement === 'top' ? window.innerHeight - rect.top + 4 : undefined,
-                left: Math.max(16, rect.left + (rect.width - 200) / 2),
-                width: Math.min(200, rect.width),
-                placement
-            });
-            setIsStatusMenuOpen(true);
-            requestAnimationFrame(() => setIsMenuVisible(true));
-        }
+        setIsSwipeTriggeredMenu(true);
+        setIsStatusMenuOpen(true);
+        requestAnimationFrame(() => setIsMenuVisible(true));
     };
 
     const handleTouchEnd = (e: React.TouchEvent) => {
@@ -109,9 +97,13 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
             if (swipeOffset > 80) {
                 setIsExpanded(true);
                 setIsAddingPayment(true);
+                // Wait for the card expansion transition to finish before scrolling and focusing
                 setTimeout(() => {
-                    cardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-                }, 150);
+                    if (paymentInputRef.current) {
+                        paymentInputRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        paymentInputRef.current.focus();
+                    }
+                }, 350);
             } else if (swipeOffset < -80) {
                 triggerStatusMenuFromSwipe();
             }
@@ -220,11 +212,13 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
         setTimeout(() => {
             setIsStatusMenuOpen(false);
             setMenuCoords(null);
+            setIsSwipeTriggeredMenu(false);
         }, 200);
     };
 
     const toggleStatusMenu = (e: React.MouseEvent) => {
         e.stopPropagation();
+        setIsSwipeTriggeredMenu(false);
         if (isStatusMenuOpen) {
             handleCloseMenu();
         } else {
@@ -739,6 +733,7 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
                                         <div className="flex flex-col gap-2">
                                             <div className="flex gap-2">
                                                 <input
+                                                    ref={paymentInputRef}
                                                     type="text"
                                                     inputMode="decimal"
                                                     placeholder="$ 0,00"
@@ -805,30 +800,41 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
                 </div>
             </div>
 
-            {isStatusMenuOpen && menuCoords && createPortal(
+            {isStatusMenuOpen && (menuCoords || isSwipeTriggeredMenu) && createPortal(
                 <div className="fixed inset-0 z-[9999] flex flex-col" style={{ pointerEvents: 'none' }}>
                     <div
-                        className="fixed inset-0 bg-transparent"
+                        className={isSwipeTriggeredMenu ? "fixed inset-0 bg-black/40 backdrop-blur-sm transition-all duration-300" : "fixed inset-0 bg-transparent"}
                         style={{ pointerEvents: 'auto' }}
                         onClick={handleCloseMenu}
                     />
 
                     <div
-                        className={`fixed bg-white dark:bg-gray-700 rounded-md shadow-lg border-none overflow-hidden transition-all duration-200 ease-out transform
-                            ${isMenuVisible
-                                ? 'opacity-100 scale-100 translate-y-0'
-                                : `opacity-0 scale-95 ${menuCoords.placement === 'bottom' ? '-translate-y-2' : 'translate-y-2'}`
-                            }
-                            ${menuCoords.placement === 'bottom' ? 'origin-top' : 'origin-bottom'}
-                        `}
-                        style={{
-                            top: menuCoords.top,
-                            bottom: menuCoords.bottom,
-                            left: menuCoords.left,
-                            width: menuCoords.width,
-                            pointerEvents: 'auto'
-                        }}
+                        className={isSwipeTriggeredMenu
+                            ? `fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[85%] max-w-[280px] bg-white dark:bg-gray-800 rounded-xl shadow-2xl border dark:border-gray-700 overflow-hidden transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] transform z-50
+                               ${isMenuVisible ? 'opacity-100 scale-100' : 'opacity-0 scale-95'}`
+                            : `fixed bg-white dark:bg-gray-700 rounded-md shadow-lg border-none overflow-hidden transition-all duration-200 ease-out transform
+                               ${isMenuVisible
+                                   ? 'opacity-100 scale-100 translate-y-0'
+                                   : `opacity-0 scale-95 ${menuCoords?.placement === 'bottom' ? '-translate-y-2' : 'translate-y-2'}`
+                               }
+                               ${menuCoords?.placement === 'bottom' ? 'origin-top' : 'origin-bottom'}`
+                        }
+                        style={isSwipeTriggeredMenu
+                            ? { pointerEvents: 'auto' }
+                            : {
+                                top: menuCoords?.top,
+                                bottom: menuCoords?.bottom,
+                                left: menuCoords?.left,
+                                width: menuCoords?.width,
+                                pointerEvents: 'auto'
+                              }
+                        }
                     >
+                        {isSwipeTriggeredMenu && (
+                            <div className="px-4 py-3 bg-gray-50 dark:bg-gray-700/50 border-b dark:border-gray-700">
+                                <h4 className="text-xs font-bold text-taller-gray dark:text-gray-300 uppercase tracking-wider">Mover Trabajo a</h4>
+                            </div>
+                        )}
                         {Object.values(JobStatusEnum).map((status) => (
                             <button
                                 key={status}
@@ -836,7 +842,7 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
                                     onUpdateStatus(trabajo.id, status);
                                     handleCloseMenu();
                                 }}
-                                className={`block w-full text-left px-4 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-600 border-none ${status === trabajo.status
+                                className={`block w-full text-left px-4 py-2.5 text-xs hover:bg-gray-100 dark:hover:bg-gray-600 border-none ${status === trabajo.status
                                     ? 'font-bold text-taller-primary bg-blue-50 dark:bg-blue-600/30 dark:text-white'
                                     : 'text-taller-dark dark:text-gray-200'
                                     }`}
