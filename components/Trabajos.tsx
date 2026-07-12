@@ -488,8 +488,8 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
                                 key={status}
                                 ref={(el: HTMLButtonElement | null) => { tabLabelsRef.current[status] = el; }}
                                 type="button"
-                                onClick={() => changeTabDeferred(status)}
-                                onTouchStart={() => changeTabDeferred(status)}
+                                onClick={() => setActiveTab(status)}
+                                onTouchStart={() => setActiveTab(status)}
                                 className={`relative flex-1 py-2 text-[9px] xs:text-[10px] font-black uppercase tracking-wider text-center transition-all duration-300 active:scale-[0.95] z-10 whitespace-nowrap ${
                                     activeTab === status 
                                         ? 'text-taller-primary dark:text-blue-400 font-extrabold' 

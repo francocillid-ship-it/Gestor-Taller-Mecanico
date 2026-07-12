@@ -465,13 +465,7 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout, user }) => 
     const handleNavigate = (newView: View, status?: JobStatusEnum, jobId?: string) => {
         setTargetJobStatus(status);
         setTargetJobId(jobId);
-        if (newView !== view) {
-            setTimeout(() => {
-                setView(newView);
-            }, 60);
-        } else {
-            setView(newView);
-        }
+        setView(newView);
     };
 
 
@@ -559,6 +553,7 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout, user }) => 
                     <button
                         key={item.id}
                         onClick={() => handleNavigate(item.id as View)}
+                        onTouchStart={() => handleNavigate(item.id as View)}
                         className={`relative flex flex-col items-center justify-center gap-1 w-full h-full transition-all duration-300 active:scale-[0.92] active:opacity-70 z-10 ${view === item.id ? 'text-taller-primary' : 'text-taller-gray dark:text-gray-400'}`}
                     >
                         <item.icon className="h-5 w-5 flex-shrink-0" />
