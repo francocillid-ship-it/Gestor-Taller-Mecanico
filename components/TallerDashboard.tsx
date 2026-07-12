@@ -562,7 +562,7 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout, user }) => 
                     }}
                 >
                     <div className="h-full flex items-center justify-center px-[6px]">
-                        <div className="w-full h-[46px] bg-taller-primary/10 dark:bg-taller-primary/20 rounded-xl bubble-pill" />
+                        <div className="w-full h-[46px] bg-taller-primary/10 dark:bg-taller-primary/20 rounded-full bubble-pill" />
                     </div>
                 </div>
 
