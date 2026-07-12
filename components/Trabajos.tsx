@@ -89,6 +89,16 @@ const MonthlyGroup: React.FC<{
     initialJobId?: string;
 }> = ({ monthKey, trabajos, clientes, onUpdateStatus, onDataRefresh, tallerInfo, initialJobId }) => {
     const [isOpen, setIsOpen] = useState(() => initialJobId ? trabajos.some(t => t.id === initialJobId) : false);
+    const [shouldRender, setShouldRender] = useState(isOpen);
+
+    useEffect(() => {
+        if (isOpen) {
+            setShouldRender(true);
+        } else {
+            const timer = setTimeout(() => setShouldRender(false), 500);
+            return () => clearTimeout(timer);
+        }
+    }, [isOpen]);
 
     useEffect(() => {
         if (initialJobId && trabajos.some(t => t.id === initialJobId)) {
@@ -130,22 +140,24 @@ const MonthlyGroup: React.FC<{
 
             <div className={`grid transition-[grid-template-rows] duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] ${isOpen ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>
                 <div className="overflow-hidden bg-gray-50/50 dark:bg-gray-900/20">
-                    <div className="p-4 space-y-6">
-                        {groupedByWeek.map(([weekNum, weekJobs]) => (
-                            <div key={weekNum} className="space-y-3">
-                                <div className="flex items-center gap-2 mb-2 px-1">
-                                    <div className="h-px flex-1 bg-gray-200 dark:bg-gray-700"></div>
-                                    <span className="text-[9px] font-black uppercase text-gray-400 tracking-[0.2em]">Semana {weekNum}</span>
-                                    <div className="h-px flex-1 bg-gray-200 dark:bg-gray-700"></div>
+                    {shouldRender && (
+                        <div className="p-4 space-y-6">
+                            {groupedByWeek.map(([weekNum, weekJobs]) => (
+                                <div key={weekNum} className="space-y-3">
+                                    <div className="flex items-center gap-2 mb-2 px-1">
+                                        <div className="h-px flex-1 bg-gray-200 dark:bg-gray-700"></div>
+                                        <span className="text-[9px] font-black uppercase text-gray-400 tracking-[0.2em]">Semana {weekNum}</span>
+                                        <div className="h-px flex-1 bg-gray-200 dark:bg-gray-700"></div>
+                                    </div>
+                                    <div className="space-y-4">
+                                        {weekJobs.map(t => (
+                                            <JobCard key={t.id} trabajo={t} cliente={clientes.find(c => c.id === t.clienteId)} vehiculo={clientes.find(c => c.id === t.clienteId)?.vehiculos.find(v => v.id === t.vehiculoId)} onUpdateStatus={onUpdateStatus} tallerInfo={tallerInfo} clientes={clientes} onDataRefresh={onDataRefresh} isHighlighted={t.id === initialJobId} />
+                                        ))}
+                                    </div>
                                 </div>
-                                <div className="space-y-4">
-                                    {weekJobs.map(t => (
-                                        <JobCard key={t.id} trabajo={t} cliente={clientes.find(c => c.id === t.clienteId)} vehiculo={clientes.find(c => c.id === t.clienteId)?.vehiculos.find(v => v.id === t.vehiculoId)} onUpdateStatus={onUpdateStatus} tallerInfo={tallerInfo} clientes={clientes} onDataRefresh={onDataRefresh} isHighlighted={t.id === initialJobId} />
-                                    ))}
-                                </div>
-                            </div>
-                        ))}
-                    </div>
+                            ))}
+                        </div>
+                    )}
                 </div>
             </div>
         </div>

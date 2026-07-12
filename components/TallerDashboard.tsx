@@ -475,7 +475,7 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout, user }) => 
     };
 
 
-    const handleUpdateStatus = async (trabajoId: string, newStatus: JobStatusEnum) => {
+    const handleUpdateStatus = useCallback(async (trabajoId: string, newStatus: JobStatusEnum) => {
         try {
             const job = trabajos.find(t => t.id === trabajoId);
             if (!job) return;
@@ -498,7 +498,11 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout, user }) => 
         } catch (error) {
             alert("Error al actualizar el estado.");
         }
-    };
+    }, [trabajos, user.id, fetchData]);
+
+    const handleDataRefreshSilent = useCallback(() => {
+        fetchData(false);
+    }, [fetchData]);
 
     const handleUpdateTallerInfo = async (newInfo: TallerInfo) => {
         if (user) {
@@ -669,7 +673,7 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout, user }) => 
                                 <div className={`main-view-slot ${view === 'dashboard' ? 'active-view' : ''}`}>
                                     <div className="h-full overflow-y-auto px-4 pt-6 md:px-8 scrollbar-hide overscroll-none dashboard-scroll">
                                         <div className="max-w-6xl mx-auto min-h-full pb-10">
-                                            <Dashboard clientes={clientes} trabajos={trabajos} gastos={gastos} onDataRefresh={() => fetchData(false)} searchQuery={searchQuery} onNavigate={handleNavigate} />
+                                            <Dashboard clientes={clientes} trabajos={trabajos} gastos={gastos} onDataRefresh={handleDataRefreshSilent} searchQuery={searchQuery} onNavigate={handleNavigate} />
                                         </div>
                                     </div>
                                 </div>
@@ -678,7 +682,7 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout, user }) => 
                                         trabajos={trabajos}
                                         clientes={clientes}
                                         onUpdateStatus={handleUpdateStatus}
-                                        onDataRefresh={() => fetchData(false)}
+                                        onDataRefresh={handleDataRefreshSilent}
                                         tallerInfo={tallerInfo}
                                         searchQuery={searchQuery}
                                         initialTab={targetJobStatus}
@@ -689,7 +693,7 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout, user }) => 
                                 <div className={`main-view-slot ${view === 'clientes' ? 'active-view' : ''}`}>
                                     <div className="h-full overflow-y-auto px-4 pt-6 md:px-8 scrollbar-hide overscroll-none dashboard-scroll">
                                         <div className="max-w-6xl mx-auto min-h-full pb-10">
-                                            <Clientes clientes={clientes} trabajos={trabajos} onDataRefresh={() => fetchData(false)} searchQuery={searchQuery} onNavigate={handleNavigate} />
+                                            <Clientes clientes={clientes} trabajos={trabajos} onDataRefresh={handleDataRefreshSilent} searchQuery={searchQuery} onNavigate={handleNavigate} />
                                         </div>
                                     </div>
                                 </div>
@@ -702,7 +706,7 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout, user }) => 
                                                 gastos={gastos}
                                                 entidades={entidades}
                                                 transaccionesEntidades={transaccionesEntidades}
-                                                onDataRefresh={() => fetchData(false)}
+                                                onDataRefresh={handleDataRefreshSilent}
                                             />
                                         </div>
                                     </div>

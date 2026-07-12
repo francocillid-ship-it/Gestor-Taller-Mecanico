@@ -1,5 +1,5 @@
 
-import React, { useState, useRef, useEffect, lazy, Suspense } from 'react';
+import React, { useState, useRef, useEffect, lazy, Suspense, memo } from 'react';
 import { createPortal } from 'react-dom';
 import type { Trabajo, Cliente, Vehiculo, JobStatus, Parte, TallerInfo } from '../types';
 import { JobStatus as JobStatusEnum } from '../types';
@@ -526,6 +526,7 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
                         transform: `translate3d(${swipeOffset}px, 0, 0)`,
                         transition: isSwiping ? 'none' : 'transform 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
                         zIndex: 10,
+                        willChange: 'transform',
                     }}
                     onTouchStart={handleTouchStart}
                     onTouchMove={handleTouchMove}
@@ -906,4 +907,4 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
     );
 };
 
-export default JobCard;
+export default memo(JobCard);
