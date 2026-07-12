@@ -168,6 +168,7 @@ const MonthlyGroup: React.FC<{
 
 const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus, onDataRefresh, tallerInfo, searchQuery, initialTab, initialJobId, isActive, syncStatus }) => {
     const [activeTab, setActiveTab] = useState<JobStatus>(initialTab || JobStatus.Presupuesto);
+    const [tabState, setTabState] = useState<'initial' | 'pressed' | 'released'>('initial');
     const changeTabDeferred = (status: JobStatus) => {
         if (status !== activeTab) {
             setTimeout(() => {
@@ -419,6 +420,26 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
                         border-right: none;
                     }
                 }
+                .tab-pressed {
+                    transform: scale(1.04) translateZ(0) !important;
+                    transition: transform 0.25s ease-in !important;
+                }
+                .tab-released {
+                    transform: scale(1) translateZ(0) !important;
+                    transition: transform 0.25s ease-out !important;
+                }
+                .tab-bubble-pill {
+                    transform: scale(1) translateZ(0);
+                    transition: transform 0.25s ease-out !important;
+                }
+                .tab-pressed .tab-bubble-pill {
+                    transform: scale(1.35) translateZ(0) !important;
+                    transition: transform 0.25s ease-in !important;
+                }
+                .tab-released .tab-bubble-pill {
+                    transform: scale(1) translateZ(0) !important;
+                    transition: transform 0.25s ease-out !important;
+                }
             `}</style>
 
             <div
@@ -430,16 +451,29 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
             >
                 <div className="max-w-3xl mx-auto p-4 pt-5 pb-3 w-full"><button type="button" onClick={() => setIsCreateModalOpen(true)} onTouchStart={() => setIsCreateModalOpen(true)} className="w-full flex items-center justify-center gap-2 py-3.5 px-4 bg-taller-primary text-white font-extrabold rounded-xl shadow-lg shadow-taller-primary/20 active:scale-95 transition-all duration-300"><PlusIcon className="h-5 w-5" /><span className="uppercase tracking-wider text-xs">Nuevo Presupuesto</span></button></div>
                 <div className="px-4 pb-3 w-full lg:hidden">
-                    <div className="relative flex bg-gray-200/50 dark:bg-gray-800/40 p-1 rounded-full border border-gray-200/20 dark:border-gray-700/30 backdrop-blur-sm select-none">
+                    <div 
+                        className={`relative flex bg-gray-200/50 dark:bg-gray-800/40 p-1 rounded-full border border-gray-200/20 dark:border-gray-700/30 backdrop-blur-sm select-none transition-all duration-200 ${
+                            tabState === 'pressed' ? 'tab-pressed' : tabState === 'released' ? 'tab-released' : ''
+                        }`}
+                        onTouchStart={() => setTabState('pressed')}
+                        onTouchEnd={() => setTabState('released')}
+                        onTouchCancel={() => setTabState('released')}
+                        onMouseDown={() => setTabState('pressed')}
+                        onMouseUp={() => setTabState('released')}
+                        onMouseLeave={() => setTabState('released')}
+                    >
                         {/* Sliding highlight container */}
                         <div 
-                            className="absolute top-1 bottom-1 rounded-full bg-white dark:bg-gray-700 shadow-sm transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]"
+                            className="absolute inset-y-0 left-0 pointer-events-none transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]"
                             style={{
-                                width: `calc(${100 / statusOrder.length}% - 8px)`,
+                                width: `${100 / statusOrder.length}%`,
                                 transform: `translate3d(${activeIndex * 100}%, 0, 0)`,
-                                left: '4px',
                             }}
-                        />
+                        >
+                            <div className="h-full flex items-center justify-center p-1">
+                                <div className="w-full h-full bg-white dark:bg-gray-700 shadow-sm rounded-full tab-bubble-pill" />
+                            </div>
+                        </div>
                         {statusOrder.map((status) => (
                             <button
                                 key={status}
