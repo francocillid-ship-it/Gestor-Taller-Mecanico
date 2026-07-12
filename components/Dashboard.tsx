@@ -1,13 +1,8 @@
-
-import React, { useMemo, useState, useEffect, useRef, useLayoutEffect, useCallback } from 'react';
+import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import type { Cliente, Trabajo, Gasto } from '../types';
 import { JobStatus } from '../types';
-import { ChevronLeftIcon, CurrencyDollarIcon, UsersIcon, WrenchScrewdriverIcon, PlusIcon, PencilIcon, TrashIcon, ChartPieIcon, BuildingLibraryIcon, ScaleIcon, ChevronDownIcon, CalendarIcon, ArrowLeftIcon, ArrowTrendingUpIcon, ArrowTrendingDownIcon, ArrowTopRightOnSquareIcon, ClipboardDocumentCheckIcon, XMarkIcon } from '@heroicons/react/24/solid';
-import AddGastoModal from './AddGastoModal';
-import EditGastoModal from './EditGastoModal';
-import { supabase } from '../supabaseClient';
-import { useSwipeToDismiss } from '../hooks/useSwipeToDismiss';
+import { CurrencyDollarIcon, UsersIcon, WrenchScrewdriverIcon, ChartPieIcon, BuildingLibraryIcon, ChevronDownIcon, CalendarIcon, ArrowTrendingUpIcon, ArrowTrendingDownIcon, ClipboardDocumentCheckIcon, XMarkIcon } from '@heroicons/react/24/solid';
 
 interface DashboardProps {
     clientes: Cliente[];
@@ -30,9 +25,9 @@ interface StatCardProps {
 const StatCard: React.FC<StatCardProps> = ({ title, value, icon, color, onClick, onNavigate }) => (
     <div
         onClick={onClick || onNavigate}
-        className={`bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-xl shadow-md flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:space-x-4 h-full transform-gpu transition-all duration-300 ease-out select-none will-change-transform ${(onClick || onNavigate) ? 'cursor-pointer hover:shadow-lg hover:scale-[1.02] active:scale-[0.96]' : ''}`}
+        className={`bg-white/40 dark:bg-gray-800/40 backdrop-blur-md border border-white/20 dark:border-gray-700/30 p-4 sm:p-6 rounded-2xl shadow-md flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:space-x-4 h-full transform-gpu transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] select-none will-change-transform ${(onClick || onNavigate) ? 'cursor-pointer hover:shadow-lg hover:scale-[1.04] active:scale-[0.96]' : ''}`}
     >
-        <div className={`p-2 sm:p-3 rounded-full ${color} shrink-0 shadow-sm`}>
+        <div className={`p-2 sm:p-3 rounded-xl ${color} shrink-0 shadow-sm`}>
             {React.isValidElement(icon)
                 ? React.cloneElement(icon as React.ReactElement<any>, { className: "h-5 w-5 sm:h-6 sm:w-6 text-white" })
                 : icon
@@ -45,9 +40,8 @@ const StatCard: React.FC<StatCardProps> = ({ title, value, icon, color, onClick,
     </div>
 );
 
-// Formato de periodo: 'this_month' | 'last_7_days' | 'last_15_days' | 'last_month' | 'YYYY-MM'
 type Period = string;
-type DetailType = 'ingresos' | 'ganancias' | 'gastos' | 'balance' | null;
+type DetailType = 'ingresos' | 'ganancias' | 'gastos' | null;
 
 interface TransactionItem {
     id: string;
@@ -59,7 +53,6 @@ interface TransactionItem {
     subtext?: string;
 }
 
-// Selector de meses usando Portales para evitar recortes por overflow
 const MonthPickerPortal = ({
     isOpen,
     onClose,
@@ -79,23 +72,18 @@ const MonthPickerPortal = ({
 
     return createPortal(
         <div className="fixed inset-0 z-[200] flex items-center justify-center sm:block">
-            {/* Overlay */}
             <div className="fixed inset-0 bg-black/40 backdrop-blur-sm transition-opacity animate-in fade-in duration-300" onClick={onClose} />
-
-            {/* Contenedor del Menú */}
             <div
                 className="relative w-[95%] max-w-[280px] sm:absolute bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border-none overflow-hidden animate-in zoom-in-95 fade-in duration-200"
                 style={anchorRect && window.innerWidth > 640 ? (() => {
                     const spaceAbove = anchorRect.top;
                     const spaceBelow = window.innerHeight - anchorRect.bottom;
-                    const menuHeight = 320; // Aproximación (py-3 header + sm:max-h-64 + py-1)
-
+                    const menuHeight = 320;
                     const showBelow = spaceBelow > spaceAbove || spaceAbove < menuHeight;
-
                     return {
                         top: showBelow ? anchorRect.bottom + 8 : 'auto',
                         bottom: showBelow ? 'auto' : window.innerHeight - anchorRect.top + 8,
-                        left: Math.max(16, Math.min(anchorRect.left, window.innerWidth - 296)) // 280 (width) + 16 (padding)
+                        left: Math.max(16, Math.min(anchorRect.left, window.innerWidth - 296))
                     };
                 })() : {}}
             >
@@ -103,7 +91,6 @@ const MonthPickerPortal = ({
                     <span className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Seleccionar Mes</span>
                     <button onClick={onClose} className="p-1 text-gray-400 hover:text-gray-600"><XMarkIcon className="h-5 w-5" /></button>
                 </div>
-
                 <div className="max-h-[60svh] sm:max-h-64 overflow-y-auto py-1">
                     {availableMonths.length > 0 ? (
                         availableMonths.map(m => (
@@ -208,221 +195,120 @@ interface FinancialDetailOverlayProps {
     detailView: DetailType;
     onClose: () => void;
     period: Period;
-    setPeriod: (p: Period) => void;
     data: { transactions: TransactionItem[], total: number };
-    gananciasNetasDisplay: string;
     onItemClick: (item: TransactionItem) => void;
-    availableMonths: { label: string, value: string }[];
-    onAddGasto: () => void;
 }
 
 const FinancialDetailOverlay: React.FC<FinancialDetailOverlayProps> = ({
-    detailView, onClose, period, setPeriod, data, gananciasNetasDisplay, onItemClick, availableMonths, onAddGasto
+    detailView, onClose, period, data, onItemClick
 }) => {
-    const [isVisible, setIsVisible] = useState(false);
-    const lastScrollTop = useRef(0);
-    const filterRef = useRef<HTMLDivElement>(null);
-    const filterOffsetRef = useRef(0);
-    const scrollContainerRef = useRef<HTMLDivElement>(null);
-    const [filterHeight, setFilterHeight] = useState(0);
+    const formatCurrency = (amount: number) => 
+        new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(amount);
 
-    const modalRef = React.useRef<HTMLDivElement>(null);
-    const backdropRef = React.useRef<HTMLDivElement>(null);
-
-    useEffect(() => {
-        requestAnimationFrame(() => {
-            requestAnimationFrame(() => {
-                setIsVisible(true);
-            });
-        });
-    }, []);
-
-    useEffect(() => {
-        if (!detailView) return;
-        lastScrollTop.current = 0;
-        filterOffsetRef.current = 0;
-        if (filterRef.current) {
-            filterRef.current.style.transform = 'translateY(0px)';
-            filterRef.current.style.opacity = '1';
-            filterRef.current.style.pointerEvents = 'auto';
-        }
-        if (scrollContainerRef.current) {
-            scrollContainerRef.current.scrollTop = 0;
-        }
-    }, [detailView]);
-
-    useLayoutEffect(() => {
-        const updateHeights = () => {
-            if (!filterRef.current) return;
-            const filterH = filterRef.current.offsetHeight;
-            setFilterHeight(filterH);
-            filterRef.current.style.transform = `translateY(${-filterOffsetRef.current}px)`;
-            filterRef.current.style.opacity = (1 - (filterOffsetRef.current / (filterH || 1))).toString();
-        };
-        const resizeObserver = new ResizeObserver(updateHeights);
-        if (filterRef.current) resizeObserver.observe(filterRef.current);
-        updateHeights();
-        window.addEventListener('resize', updateHeights);
-        return () => {
-            resizeObserver.disconnect();
-            window.removeEventListener('resize', updateHeights);
-        };
-    }, []);
-
-    const handleClose = () => {
-        setIsVisible(false);
-        setTimeout(() => {
-            onClose();
-        }, 500);
+    const titles = {
+        ingresos: 'Detalle de Ingresos',
+        ganancias: 'Detalle de Ganancias',
+        gastos: 'Detalle de Gastos'
     };
 
-    useSwipeToDismiss({
-        onDismiss: handleClose,
-        enabled: isVisible,
-        modalRef,
-        backdropRef
-    });
-
-    const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
-        if (!filterRef.current) return;
-        const el = e.currentTarget;
-        const scrollTop = el.scrollTop;
-        const diff = scrollTop - lastScrollTop.current;
-        lastScrollTop.current = scrollTop;
-
-        if (scrollTop <= 0) {
-            filterOffsetRef.current = 0;
-        } else {
-            filterOffsetRef.current = Math.max(0, Math.min(filterHeight, filterOffsetRef.current + diff));
-        }
-
-        const offset = filterOffsetRef.current;
-        const filter = filterRef.current;
-        filter.style.transform = `translateY(${-offset}px)`;
-        filter.style.opacity = (1 - (offset / (filterHeight || 1))).toString();
-        filter.style.pointerEvents = offset > filterHeight * 0.8 ? 'none' : 'auto';
-    }, [filterHeight]);
-
-    if (!detailView) return null;
-
-    const titleMap = {
-        'ingresos': 'Historial de Ingresos',
-        'gastos': 'Historial de Gastos',
-        'balance': 'Balance (Flujo de Caja)',
-        'ganancias': 'Detalle de Ganancia Real'
+    const colors = {
+        ingresos: 'text-emerald-500',
+        ganancias: 'text-taller-primary',
+        gastos: 'text-rose-500'
     };
 
-    const isProfitView = detailView === 'ganancias';
-    const displayTotal = isProfitView ? gananciasNetasDisplay : new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(data.total);
+    const periodLabels: Record<string, string> = {
+        this_month: 'Este Mes',
+        last_7_days: 'Últimos 7 Días',
+        last_15_days: 'Últimos 15 Días',
+        last_month: 'Mes Pasado'
+    };
+
+    const getPeriodLabel = (p: string) => {
+        if (p.includes('-')) {
+            return new Intl.DateTimeFormat('es-ES', { month: 'long', year: 'numeric' }).format(new Date(p + '-02'));
+        }
+        return periodLabels[p] || p;
+    };
+
+    const totalAmount = detailView === 'ganancias' 
+        ? data.transactions.reduce((sum, t) => sum + t.amount, 0)
+        : Math.abs(data.total);
 
     return createPortal(
-        <>
-            <div ref={backdropRef} className={`fixed inset-0 z-[9998] bg-black/30 backdrop-blur-sm transition-opacity duration-500 ease-out ${isVisible ? 'opacity-100' : 'opacity-0'}`} onClick={handleClose} aria-hidden="true" />
-            <div
-                ref={modalRef}
-                className={`fixed inset-0 z-[9999] bg-taller-light dark:bg-taller-dark flex flex-col shadow-2xl transform transition-all duration-500 ease-out overflow-hidden h-[100svh] w-full ${isVisible ? 'translate-x-0' : 'translate-x-full'}`}
-                style={{ isolation: 'isolate' }}
-            >
-                <div className="bg-white dark:bg-gray-800 shadow-sm border-none z-30 safe-top-padding-portal flex-shrink-0 relative">
-                    <div className="flex items-center justify-between p-4">
-                        <div className="flex items-center gap-1 z-10 w-24">
-                            <button onClick={handleClose} className="p-1 -ml-2 text-taller-primary dark:text-taller-light active:bg-gray-200 dark:active:bg-gray-700 rounded-full transition-colors flex items-center pr-2">
-                                <ChevronLeftIcon className="h-6 w-6" /> <span className="text-[15px] font-semibold -ml-1">Volver</span>
-                            </button>
+        <div className="fixed inset-0 z-[300] flex items-center justify-center p-4 sm:p-6">
+            <div className="absolute inset-0 bg-black/60 backdrop-blur-md animate-in fade-in duration-300" onClick={onClose} />
+            <div className="relative w-full max-w-2xl bg-white dark:bg-gray-900 rounded-[2.5rem] shadow-2xl border border-white/10 overflow-hidden animate-in zoom-in-95 slide-in-from-bottom-10 duration-500">
+                <div className="p-8 border-b dark:border-gray-800 flex items-center justify-between">
+                    <div>
+                        <h2 className="text-2xl font-black text-taller-dark dark:text-taller-light tracking-tight capitalize">{titles[detailView as 'ingresos' | 'ganancias' | 'gastos']}</h2>
+                        <p className="text-taller-gray dark:text-gray-400 font-medium capitalize">{getPeriodLabel(period)}</p>
+                    </div>
+                    <button onClick={onClose} className="p-3 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-2xl transition-colors">
+                        <XMarkIcon className="h-6 w-6 text-taller-gray" />
+                    </button>
+                </div>
+
+                <div className="p-8 space-y-8 max-h-[70svh] overflow-y-auto">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                        <div className="bg-gray-50 dark:bg-gray-800/50 p-6 rounded-3xl border border-gray-100 dark:border-gray-700">
+                            <span className="text-xs font-black text-taller-gray uppercase tracking-widest block mb-2">Total Acumulado</span>
+                            <div className={`text-3xl font-black font-mono ${colors[detailView as 'ingresos' | 'ganancias' | 'gastos']}`}>
+                                {formatCurrency(totalAmount)}
+                            </div>
                         </div>
-                        <h2 className="text-lg font-bold text-taller-dark dark:text-taller-light truncate absolute left-1/2 -translate-x-1/2 max-w-[50%]">{titleMap[detailView]}</h2>
-                        <div className="flex items-center gap-2">
-                            {(detailView === 'gastos' || detailView === 'balance') && (
-                                <button
-                                    onClick={onAddGasto}
-                                    className="p-2 bg-taller-primary text-white rounded-full shadow-lg active:scale-95 transition-all"
-                                    title="Añadir Gasto"
+                        <div className="bg-gray-50 dark:bg-gray-800/50 p-6 rounded-3xl border border-gray-100 dark:border-gray-700">
+                            <span className="text-xs font-black text-taller-gray uppercase tracking-widest block mb-2">Movimientos</span>
+                            <div className="text-3xl font-black font-mono text-taller-gray dark:text-gray-400">
+                                {data.transactions.length}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="space-y-4">
+                        <h3 className="text-sm font-black text-taller-gray uppercase tracking-widest">Movimientos del Período</h3>
+                        <div className="space-y-2">
+                            {data.transactions.length > 0 ? data.transactions.map((t, idx) => (
+                                <div 
+                                    key={`${t.id}-${idx}`} 
+                                    onClick={() => onItemClick(t)}
+                                    className="flex items-center justify-between p-4 bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 group hover:border-taller-primary/30 transition-all cursor-pointer"
                                 >
-                                    <PlusIcon className="h-5 w-5" />
-                                </button>
-                            )}
-                            <div className="w-2"></div>
-                        </div>
-                    </div>
-                </div>
-
-                <div className="relative flex-shrink-0 z-20" style={filterHeight ? { height: `${filterHeight}px` } : undefined}>
-                    <div
-                        ref={filterRef}
-                        className="absolute left-0 right-0 top-0 bg-taller-light dark:bg-taller-dark transform-gpu"
-                        style={{ willChange: 'transform, opacity' }}
-                    >
-                        <div className="p-4 pb-2">
-                            <FilterControls activePeriod={period} setPeriodFn={setPeriod} availableMonths={availableMonths} />
-                        </div>
-                    </div>
-                </div>
-
-                <div
-                    ref={scrollContainerRef}
-                    onScroll={handleScroll}
-                    className="flex-1 min-h-0 overflow-y-auto px-4 pb-4 pt-2 space-y-4 overscroll-none"
-                >
-                    <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm text-center mt-2 border-none transform-gpu">
-                        <p className="text-sm text-taller-gray dark:text-gray-400 uppercase tracking-wide">Total del Periodo</p>
-                        <p className={`text-4xl font-bold mt-2 ${data.total >= 0 ? 'text-taller-dark dark:text-taller-light' : 'text-red-600'}`}>{displayTotal}</p>
-                        {isProfitView && <p className="text-xs text-taller-gray dark:text-gray-500 mt-2">* Cálculo: Mano de Obra + Sobrantes de Repuestos.</p>}
-                    </div>
-
-                    <div className="space-y-3 pb-24">
-                        {data.transactions.length > 0 ? (
-                            data.transactions.map((t, index) => (
-                                <div key={t.id} onClick={() => onItemClick(t)} className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm flex items-center justify-between border-l-4 border-transparent hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer active:scale-[0.98] transition-all duration-300 animate-slide-in-bottom fill-mode-backwards group" style={{ borderLeftColor: t.type === 'income' ? '#22c55e' : '#ef4444', animationDelay: `${index * 50}ms` }}>
-                                    <div className="flex items-center gap-3">
-                                        <div className={`p-2 rounded-full ${t.type === 'income' ? 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400' : 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400'}`}>{t.type === 'income' ? <ArrowTrendingUpIcon className="h-5 w-5" /> : <ArrowTrendingDownIcon className="h-5 w-5" />}</div>
+                                    <div className="flex items-center gap-4">
+                                        <div className={`p-2 rounded-xl ${t.type === 'income' ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400' : 'bg-rose-50 text-rose-600 dark:bg-rose-500/10 dark:text-rose-400'}`}>
+                                            {t.type === 'income' ? <ArrowTrendingUpIcon className="h-4 w-4" /> : <ArrowTrendingDownIcon className="h-4 w-4" />}
+                                        </div>
                                         <div>
-                                            <p className="font-bold text-taller-dark dark:text-taller-light text-sm flex items-center gap-1">{t.description}<ArrowTopRightOnSquareIcon className="h-3 w-3 text-gray-300 opacity-0 group-hover:opacity-100 transition-opacity" /></p>
-                                            <p className="text-xs text-taller-gray dark:text-gray-400">{t.subtext}</p>
-                                            <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">{t.date.toLocaleDateString('es-ES')} {t.date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                                            <p className="text-sm font-bold text-taller-dark dark:text-taller-light">{t.description}</p>
+                                            <p className="text-[10px] text-taller-gray font-bold uppercase">{t.subtext || new Date(t.date).toLocaleDateString()}</p>
                                         </div>
                                     </div>
-                                    <div className="text-right">
-                                        <p className={`font-bold ${t.type === 'income' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>{t.type === 'income' ? '+' : '-'} {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(t.amount)}</p>
-                                        {isProfitView && t.type === 'income' && <p className="text-[10px] text-gray-400 italic">Neto Mano de Obra</p>}
+                                    <div className={`text-sm font-black font-mono ${t.type === 'income' ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                                        {t.type === 'income' ? '+' : '-'}{formatCurrency(t.amount)}
                                     </div>
                                 </div>
-                            ))
-                        ) : (
-                            <div className="text-center py-10 text-taller-gray dark:text-gray-400"><ScaleIcon className="h-12 w-12 mx-auto mb-2 opacity-20" /><p>No hay movimientos en este periodo.</p></div>
-                        )}
+                            )) : (
+                                <div className="text-center py-12 text-taller-gray italic font-medium">No hay registros en este período.</div>
+                            )}
+                        </div>
                     </div>
                 </div>
             </div>
-        </>,
+        </div>,
         document.body
     );
 };
 
-const Dashboard: React.FC<DashboardProps> = ({ clientes, trabajos, gastos, onDataRefresh, searchQuery, onNavigate }) => {
-    const [isAddGastoModalOpen, setIsAddGastoModalOpen] = useState(false);
-    const [gastoToEdit, setGastoToEdit] = useState<Gasto | null>(null);
+const Dashboard: React.FC<DashboardProps> = ({ clientes, trabajos, gastos, searchQuery, onNavigate }) => {
     const [period, setPeriod] = useState<Period>('this_month');
-    const [confirmingDeleteGastoId, setConfirmingDeleteGastoId] = useState<string | null>(null);
-    const [isLastMonthExpanded, setIsLastMonthExpanded] = useState(false);
     const [detailView, setDetailView] = useState<DetailType>(null);
 
-    const gastosSectionRef = useRef<HTMLDivElement>(null);
-
-    useEffect(() => {
-        if (searchQuery && gastosSectionRef.current) {
-            gastosSectionRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
-    }, [searchQuery]);
-
-    // Calcular meses disponibles con registros reales
     const availableMonths = useMemo(() => {
         const months = new Set<string>();
-
         gastos.forEach(g => {
             const d = new Date(g.fecha);
             months.add(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
         });
-
         trabajos.forEach(t => {
             t.partes.forEach(p => {
                 if (p.nombre === '__PAGO_REGISTRADO__' && p.fecha) {
@@ -431,7 +317,6 @@ const Dashboard: React.FC<DashboardProps> = ({ clientes, trabajos, gastos, onDat
                 }
             });
         });
-
         return Array.from(months)
             .sort()
             .reverse()
@@ -518,62 +403,30 @@ const Dashboard: React.FC<DashboardProps> = ({ clientes, trabajos, gastos, onDat
                 } else {
                     const remainingPartsCost = Math.max(0, costoRepuestosTaller - partsCostCoveredSoFar);
                     const contributionToParts = Math.min(monto, remainingPartsCost);
-                    const contributionToLabor = monto - contributionToParts;
+                    const profitPortion = monto - contributionToParts;
                     partsCostCoveredSoFar += contributionToParts;
+
                     if (esDelPeriodo) {
                         ingresosTotales += monto;
-                        gananciaManoDeObraReal += contributionToLabor;
+                        if (profitPortion > 0) {
+                            gananciaManoDeObraReal += profitPortion;
+                        }
                     }
                 }
             });
         });
 
-        const gananciaNeta = gananciaManoDeObraReal - totalGastos;
-        const trabajosActivos = trabajos.filter(t => t.status === JobStatus.EnProceso).length;
-        const totalClientes = clientes.length;
+        const trabajosActivos = trabajos.filter(t => t.status === JobStatus.EnProceso || t.status === JobStatus.Programado).length;
 
         return {
             ingresosTotales: formatCurrency(ingresosTotales),
-            gananciasNetas: formatCurrency(gananciaNeta),
+            gananciasNetas: formatCurrency(gananciaManoDeObraReal),
             gastos: formatCurrency(totalGastos),
-            trabajosActivos,
             trabajosFinalizados,
-            totalClientes,
+            trabajosActivos,
+            totalClientes: clientes.length
         };
-    }, [clientes, trabajos, gastos, period]);
-
-    const handleAddGasto = async (gastosToAdd: Omit<Gasto, 'id'>[]) => {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
-        const gastosConId = gastosToAdd.map(g => ({
-            taller_id: user.id,
-            descripcion: g.descripcion,
-            monto: g.monto,
-            fecha: g.fecha,
-            categoria: g.categoria,
-            es_fijo: g.esFijo // Fix: Map camelCase to snake_case for DB
-        }));
-        const { error } = await supabase.from('gastos').insert(gastosConId);
-        if (error) console.error("Error adding expense:", error);
-        else { onDataRefresh(); setIsAddGastoModalOpen(false); }
-    };
-
-    const handleUpdateGasto = async (gasto: Gasto) => {
-        const { id, esFijo, ...updateData } = gasto;
-        const { error } = await supabase.from('gastos').update({
-            ...updateData,
-            es_fijo: esFijo
-        }).eq('id', id);
-        if (error) console.error("Error updating expense:", error);
-        else { onDataRefresh(); setGastoToEdit(null); }
-    };
-
-    const handleDeleteGasto = async (gastoId: string) => {
-        const { error } = await supabase.from('gastos').delete().eq('id', gastoId);
-        if (error) console.error("Error deleting expense:", error);
-        else onDataRefresh();
-        setConfirmingDeleteGastoId(null);
-    };
+    }, [period, trabajos, gastos, clientes]);
 
     const handleTransactionClick = (item: TransactionItem) => {
         if (item.type === 'income') {
@@ -581,42 +434,15 @@ const Dashboard: React.FC<DashboardProps> = ({ clientes, trabajos, gastos, onDat
             const job = trabajos.find(t => t.id === item.referenceId);
             const status = job ? job.status : undefined;
             onNavigate('trabajos', status, item.referenceId);
-        } else if (item.type === 'expense') {
-            const gasto = gastos.find(g => g.id === item.referenceId);
-            if (gasto) { setDetailView(null); setGastoToEdit(gasto); }
         }
     };
-
-    const groupedGastos = useMemo(() => {
-        let filtered = [...gastos];
-        if (searchQuery) {
-            const query = searchQuery.toLowerCase();
-            filtered = filtered.filter(g => g.descripcion.toLowerCase().includes(query) || g.monto.toString().includes(query));
-        }
-        filtered.sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
-        const now = new Date();
-        const currentMonth = now.getMonth();
-        const currentYear = now.getFullYear();
-        const prevDate = new Date(currentYear, currentMonth - 1, 1);
-        const prevMonth = prevDate.getMonth();
-        const prevYear = prevDate.getFullYear();
-        const thisMonth: Gasto[] = [];
-        const lastMonth: Gasto[] = [];
-        filtered.forEach(g => {
-            const d = new Date(g.fecha);
-            if (d.getMonth() === currentMonth && d.getFullYear() === currentYear) thisMonth.push(g);
-            else if (d.getMonth() === prevMonth && d.getFullYear() === prevYear) lastMonth.push(g);
-            else if (searchQuery) thisMonth.push(g);
-        });
-        return { thisMonth, lastMonth };
-    }, [gastos, searchQuery]);
 
     const financialDetailData = useMemo(() => {
         if (!detailView) return { transactions: [], total: 0 };
         const { startDate, endDate } = getPeriodDates(period);
         const transactions: TransactionItem[] = [];
 
-        if (detailView === 'ingresos' || detailView === 'balance' || detailView === 'ganancias') {
+        if (detailView === 'ingresos' || detailView === 'ganancias') {
             trabajos.forEach(t => {
                 const parts = t.partes.filter(p => p.nombre !== '__PAGO_REGISTRADO__');
                 const costoRepuestosTaller = parts
@@ -638,8 +464,8 @@ const Dashboard: React.FC<DashboardProps> = ({ clientes, trabajos, gastos, onDat
                         profitPortion = amount - contributionToParts;
                         partsCostCoveredSoFar += contributionToParts;
                     }
-                    let amountToReport = detailView === 'ganancias' ? profitPortion : amount;
-                    let shouldReport = detailView === 'ganancias' ? amountToReport > 0 : true;
+                    const amountToReport = detailView === 'ganancias' ? profitPortion : amount;
+                    const shouldReport = detailView === 'ganancias' ? amountToReport > 0 : true;
                     if (shouldReport && date >= startDate && date <= endDate) {
                         const cliente = clientes.find(c => c.id === t.clienteId);
                         const vehiculo = cliente?.vehiculos.find(v => v.id === t.vehiculoId);
@@ -648,7 +474,7 @@ const Dashboard: React.FC<DashboardProps> = ({ clientes, trabajos, gastos, onDat
                 });
             });
         }
-        if (detailView === 'gastos' || detailView === 'balance' || detailView === 'ganancias') {
+        if (detailView === 'gastos') {
             gastos.forEach(g => {
                 const date = new Date(g.fecha);
                 if (date >= startDate && date <= endDate) transactions.push({ id: g.id, referenceId: g.id, date: date, amount: g.monto, description: g.descripcion, subtext: 'Gasto registrado', type: 'expense' });
@@ -658,23 +484,6 @@ const Dashboard: React.FC<DashboardProps> = ({ clientes, trabajos, gastos, onDat
         const total = transactions.reduce((sum, t) => t.type === 'income' ? sum + t.amount : sum - t.amount, 0);
         return { transactions, total };
     }, [detailView, trabajos, gastos, clientes, period]);
-
-    const renderGastoRow = (gasto: Gasto) => (
-        <div key={gasto.id} className="flex flex-col sm:flex-row sm:justify-between sm:items-center p-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 rounded-lg gap-2 border-none transition-colors">
-            <div className="w-full sm:w-auto">
-                <p className="font-medium text-taller-dark dark:text-taller-light">{gasto.descripcion}</p>
-                <p className="text-sm text-taller-gray dark:text-gray-400">{new Date(gasto.fecha).toLocaleDateString('es-ES')}</p>
-            </div>
-            <div className="flex items-center justify-between w-full sm:w-auto gap-4">
-                <p className="font-semibold text-red-600">{new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(gasto.monto)}</p>
-                {confirmingDeleteGastoId === gasto.id ? (
-                    <div className="flex items-center gap-2"><span className="text-sm font-medium text-red-600 hidden sm:inline">¿Seguro?</span><button onClick={() => handleDeleteGasto(gasto.id)} className="px-2 py-1 text-xs font-bold text-white bg-red-600 rounded hover:bg-red-700">Sí</button><button onClick={() => setConfirmingDeleteGastoId(null)} className="px-2 py-1 text-xs font-medium text-gray-700 bg-gray-200 dark:bg-gray-600 dark:text-gray-200 dark:hover:bg-gray-500 rounded">No</button></div>
-                ) : (
-                    <div className="flex gap-1"><button onClick={() => setGastoToEdit(gasto)} className="text-taller-gray dark:text-gray-400 hover:text-taller-secondary dark:hover:text-white p-1 bg-gray-100 dark:bg-gray-700 sm:bg-transparent sm:dark:bg-transparent rounded"><PencilIcon className="h-4 w-4" /></button><button onClick={() => setConfirmingDeleteGastoId(gasto.id)} className="text-taller-gray dark:text-gray-400 hover:text-red-600 dark:hover:text-red-500 p-1 bg-gray-100 dark:bg-gray-700 sm:bg-transparent sm:dark:bg-transparent rounded"><TrashIcon className="h-4 w-4" /></button></div>
-                )}
-            </div>
-        </div>
-    );
 
     return (
         <div className="space-y-6 sm:space-y-8">
@@ -694,43 +503,13 @@ const Dashboard: React.FC<DashboardProps> = ({ clientes, trabajos, gastos, onDat
                 <StatCard title="Total Clientes" value={stats.totalClientes} icon={<UsersIcon />} color="bg-purple-500" onNavigate={() => onNavigate('clientes')} />
             </div>
 
-            <div ref={gastosSectionRef} className="bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-xl shadow-md scroll-mt-24">
-                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 gap-4">
-                    <h3 className="text-lg font-bold text-taller-dark dark:text-taller-light">Gastos Recientes</h3>
-                    <button onClick={() => setIsAddGastoModalOpen(true)} className="flex items-center justify-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-taller-primary rounded-lg shadow-md hover:bg-taller-secondary transition-colors"><PlusIcon className="h-5 w-5" /> Añadir Gasto</button>
-                </div>
-                <div className="space-y-2">
-                    {groupedGastos.thisMonth.length > 0 ? groupedGastos.thisMonth.map(renderGastoRow) : !searchQuery && <p className="text-center text-sm text-taller-gray dark:text-gray-400 py-2">No hay gastos registrados este mes.</p>}
-                    {groupedGastos.lastMonth.length > 0 && !searchQuery && (
-                        <div className="mt-4 border-none pt-2">
-                            <button onClick={() => setIsLastMonthExpanded(!isLastMonthExpanded)} className="w-full flex items-center justify-between p-2 text-sm font-medium text-taller-gray dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50 rounded transition-colors"><span className="flex items-center gap-2"><CalendarIcon className="h-4 w-4" />Mes Pasado ({groupedGastos.lastMonth.length})</span><ChevronDownIcon className={`h-4 w-4 transform transition-transform duration-200 ${isLastMonthExpanded ? 'rotate-180' : ''}`} /></button>
-                            <div className={`grid transition-[grid-template-rows] duration-300 ease-out ${isLastMonthExpanded ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}><div className="overflow-hidden"><div className="pt-2">{groupedGastos.lastMonth.map(renderGastoRow)}</div></div></div>
-                        </div>
-                    )}
-                    {groupedGastos.thisMonth.length === 0 && groupedGastos.lastMonth.length === 0 && <p className="text-center text-taller-gray dark:text-gray-400 py-4">No hay gastos registrados que coincidan con la búsqueda.</p>}
-                </div>
-            </div>
-
-            {isAddGastoModalOpen && createPortal(
-                <AddGastoModal onClose={() => setIsAddGastoModalOpen(false)} onAddGasto={handleAddGasto} />,
-                document.body
-            )}
-            {gastoToEdit && createPortal(
-                <EditGastoModal gasto={gastoToEdit} onClose={() => setGastoToEdit(null)} onUpdateGasto={handleUpdateGasto} />,
-                document.body
-            )}
-
             {detailView && (
                 <FinancialDetailOverlay
                     detailView={detailView}
                     onClose={() => setDetailView(null)}
                     period={period}
-                    setPeriod={setPeriod}
                     data={financialDetailData}
-                    gananciasNetasDisplay={stats.gananciasNetas}
                     onItemClick={handleTransactionClick}
-                    availableMonths={availableMonths}
-                    onAddGasto={() => setIsAddGastoModalOpen(true)}
                 />
             )}
         </div>

@@ -386,12 +386,27 @@
       backdrop-filter: blur(16px) saturate(160%) !important;
       border-top: 1px solid rgba(255, 255, 255, 0.05) !important;
     }
+    button, input, select, textarea {
+      border-radius: 14px;
+    }
   </style>
   <script>
     tailwind.config = {
       darkMode: 'class',
       theme: {
         extend: {
+          borderRadius: {
+            'none': '0px',
+            'xs': '4px',
+            'sm': '8px',
+            'DEFAULT': '12px',
+            'md': '14px',
+            'lg': '18px',
+            'xl': '22px',
+            '2xl': '26px',
+            '3xl': '32px',
+            'full': '9999px',
+          },
           colors: {
             'taller-primary': 'rgb(var(--color-taller-primary) / <alpha-value>)',
             'taller-secondary': 'rgb(var(--color-taller-secondary) / <alpha-value>)',
