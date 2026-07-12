@@ -433,9 +433,6 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
                 .tab-pressed {
                     transform: scale(1.04) translateZ(0);
                 }
-                .tab-released {
-                    transform: scale(1) translateZ(0);
-                }
                 .tab-bubble-pill {
                     border-radius: 9999px !important;
                     background: rgba(255, 255, 255, 0.18) !important;
@@ -461,9 +458,6 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
                 }
                 .tab-pressed .tab-bubble-pill {
                     transform: scale(1.35) translateZ(0);
-                }
-                .tab-released .tab-bubble-pill {
-                    transform: scale(1) translateZ(0);
                 }
             `}</style>
 
