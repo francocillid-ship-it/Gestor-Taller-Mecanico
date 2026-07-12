@@ -429,10 +429,32 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
                 }}
             >
                 <div className="max-w-3xl mx-auto p-4 pt-5 pb-3 w-full"><button type="button" onClick={() => setIsCreateModalOpen(true)} onTouchStart={() => setIsCreateModalOpen(true)} className="w-full flex items-center justify-center gap-2 py-3.5 px-4 bg-taller-primary text-white font-extrabold rounded-xl shadow-lg shadow-taller-primary/20 active:scale-95 transition-all duration-300"><PlusIcon className="h-5 w-5" /><span className="uppercase tracking-wider text-xs">Nuevo Presupuesto</span></button></div>
-                <div className="flex border-b dark:border-gray-700 bg-taller-light dark:bg-taller-dark w-full lg:hidden">
-                    <div className="flex w-full px-2 sm:px-4 gap-0.5 justify-between">
+                <div className="px-4 pb-3 w-full lg:hidden">
+                    <div className="relative flex bg-gray-200/50 dark:bg-gray-800/40 p-1 rounded-full border border-gray-200/20 dark:border-gray-700/30 backdrop-blur-sm select-none">
+                        {/* Sliding highlight container */}
+                        <div 
+                            className="absolute top-1 bottom-1 rounded-full bg-white dark:bg-gray-700 shadow-sm transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]"
+                            style={{
+                                width: `calc(${100 / statusOrder.length}% - 8px)`,
+                                transform: `translate3d(${activeIndex * 100}%, 0, 0)`,
+                                left: '4px',
+                            }}
+                        />
                         {statusOrder.map((status) => (
-                            <button key={status} ref={(el: HTMLButtonElement | null) => { tabLabelsRef.current[status] = el; }} type="button" onClick={() => changeTabDeferred(status)} onTouchStart={() => changeTabDeferred(status)} className={`flex-1 py-4 px-0.5 text-[8.5px] xs:text-[10px] font-black uppercase tracking-normal xs:tracking-wider text-center transition-all duration-300 active:scale-[0.92] active:opacity-70 relative whitespace-nowrap ${activeTab === status ? 'text-taller-primary dark:text-blue-400' : 'text-gray-400 dark:text-gray-600'}`}>{status}{activeTab === status && <div className="absolute bottom-0 left-0 right-0 h-1 bg-taller-primary rounded-t-full"></div>}</button>
+                            <button
+                                key={status}
+                                ref={(el: HTMLButtonElement | null) => { tabLabelsRef.current[status] = el; }}
+                                type="button"
+                                onClick={() => changeTabDeferred(status)}
+                                onTouchStart={() => changeTabDeferred(status)}
+                                className={`relative flex-1 py-2 text-[9px] xs:text-[10px] font-black uppercase tracking-wider text-center transition-all duration-300 active:scale-[0.95] z-10 whitespace-nowrap ${
+                                    activeTab === status 
+                                        ? 'text-taller-primary dark:text-blue-400 font-extrabold' 
+                                        : 'text-gray-500 dark:text-gray-400 hover:text-gray-700'
+                                }`}
+                            >
+                                {status}
+                            </button>
                         ))}
                     </div>
                 </div>
