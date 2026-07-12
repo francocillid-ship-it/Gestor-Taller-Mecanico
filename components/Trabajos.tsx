@@ -464,15 +464,13 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
                     >
                         {/* Sliding highlight container */}
                         <div 
-                            className="absolute inset-y-0 left-0 pointer-events-none transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]"
+                            className="absolute top-1 bottom-1 left-1 pointer-events-none transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]"
                             style={{
-                                width: `${100 / statusOrder.length}%`,
+                                width: `calc((100% - 8px) / ${statusOrder.length})`,
                                 transform: `translate3d(${activeIndex * 100}%, 0, 0)`,
                             }}
                         >
-                            <div className="h-full flex items-center justify-center p-1">
-                                <div className="w-full h-full bg-white dark:bg-gray-700 shadow-sm rounded-full tab-bubble-pill" />
-                            </div>
+                            <div className="w-full h-full bg-white dark:bg-gray-700 shadow-sm rounded-full tab-bubble-pill" />
                         </div>
                         {statusOrder.map((status) => (
                             <button

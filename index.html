@@ -317,8 +317,10 @@
     }
 
     html.ios-pwa .job-tab-header-bar {
-      top: calc(64px + var(--safe-top) - 1.5px) !important;
-      background: rgb(240, 249, 255) !important;
+      top: calc(64px + var(--safe-top) - 10px) !important;
+      background: rgba(240, 249, 255, 0.4) !important;
+      -webkit-backdrop-filter: blur(20px) saturate(190%) !important;
+      backdrop-filter: blur(20px) saturate(190%) !important;
       border-bottom: none !important;
     }
     html.ios-pwa .job-tab-header-bar::before {
@@ -327,12 +329,14 @@
       top: -10px;
       left: 0;
       right: 0;
-      height: 12px;
+      height: 10.5px;
       background: inherit;
       pointer-events: none;
     }
     html.ios-pwa.dark .job-tab-header-bar {
-      background: rgb(11, 17, 32) !important;
+      background: rgba(11, 17, 32, 0.4) !important;
+      -webkit-backdrop-filter: blur(20px) saturate(190%) !important;
+      backdrop-filter: blur(20px) saturate(190%) !important;
       border-bottom: none !important;
     }
 
