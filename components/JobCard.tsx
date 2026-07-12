@@ -19,9 +19,10 @@ interface JobCardProps {
     onDataRefresh: () => void;
     compactMode?: boolean;
     isHighlighted?: boolean;
+    syncStatus?: 'idle' | 'syncing' | 'synced' | 'offline';
 }
 
-const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateStatus, tallerInfo, clientes, onDataRefresh, compactMode, isHighlighted }) => {
+const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateStatus, tallerInfo, clientes, onDataRefresh, compactMode, isHighlighted, syncStatus }) => {
     const [isExpanded, setIsExpanded] = useState(false);
     const [isJobModalOpen, setIsJobModalOpen] = useState(false);
     const [isAddingPayment, setIsAddingPayment] = useState(false);
@@ -128,7 +129,7 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
         if (trabajo.quickBudgetData) {
             return `${trabajo.quickBudgetData.nombre} ${trabajo.quickBudgetData.apellido || ''}`.trim();
         }
-        if (clientes.length === 0) {
+        if (clientes.length === 0 || (!cliente && syncStatus === 'syncing')) {
             return <span className="inline-block w-28 h-4 bg-gray-200 dark:bg-gray-700 animate-pulse rounded"></span>;
         }
         return 'Cliente no identificado';
@@ -141,7 +142,7 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
         if (trabajo.quickBudgetData) {
             return `${trabajo.quickBudgetData.marca} ${trabajo.quickBudgetData.modelo} ${trabajo.quickBudgetData.matricula ? `(${trabajo.quickBudgetData.matricula})` : ''}`.trim();
         }
-        if (clientes.length === 0) {
+        if (clientes.length === 0 || (!vehiculo && syncStatus === 'syncing')) {
             return <span className="inline-block w-36 h-3 bg-gray-200 dark:bg-gray-700 animate-pulse rounded mt-1"></span>;
         }
         return 'Vehículo no identificado';

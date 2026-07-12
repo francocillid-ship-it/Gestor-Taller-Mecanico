@@ -662,23 +662,29 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout, user }) => 
                         </div>
                     ) : (
                         <div className="views-container">
-                            <Suspense fallback={
-                                <div className="main-view-slot active-view">
+                            <div className={`main-view-slot ${view === 'dashboard' ? 'active-view' : ''}`}>
+                                <Suspense fallback={
                                     <div className="h-full overflow-y-auto px-4 pt-6 md:px-8 scrollbar-hide overscroll-none dashboard-scroll">
                                         <div className="max-w-6xl mx-auto min-h-full pb-10">
                                             <DashboardSkeleton />
                                         </div>
                                     </div>
-                                </div>
-                            }>
-                                <div className={`main-view-slot ${view === 'dashboard' ? 'active-view' : ''}`}>
+                                }>
                                     <div className="h-full overflow-y-auto px-4 pt-6 md:px-8 scrollbar-hide overscroll-none dashboard-scroll">
                                         <div className="max-w-6xl mx-auto min-h-full pb-10">
                                             <Dashboard clientes={clientes} trabajos={trabajos} gastos={gastos} onDataRefresh={handleDataRefreshSilent} searchQuery={searchQuery} onNavigate={handleNavigate} />
                                         </div>
                                     </div>
-                                </div>
-                                <div className={`main-view-slot ${view === 'trabajos' ? 'active-view' : ''}`}>
+                                </Suspense>
+                            </div>
+                            <div className={`main-view-slot ${view === 'trabajos' ? 'active-view' : ''}`}>
+                                <Suspense fallback={
+                                    <div className="h-full overflow-y-auto px-4 pt-6 md:px-8 scrollbar-hide overscroll-none dashboard-scroll">
+                                        <div className="max-w-6xl mx-auto min-h-full pb-10">
+                                            <DashboardSkeleton />
+                                        </div>
+                                    </div>
+                                }>
                                     <Trabajos
                                         trabajos={trabajos}
                                         clientes={clientes}
@@ -689,16 +695,33 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout, user }) => 
                                         initialTab={targetJobStatus}
                                         initialJobId={targetJobId}
                                         isActive={view === 'trabajos'}
+                                        syncStatus={syncStatus}
                                     />
-                                </div>
-                                <div className={`main-view-slot ${view === 'clientes' ? 'active-view' : ''}`}>
+                                </Suspense>
+                            </div>
+                            <div className={`main-view-slot ${view === 'clientes' ? 'active-view' : ''}`}>
+                                <Suspense fallback={
+                                    <div className="h-full overflow-y-auto px-4 pt-6 md:px-8 scrollbar-hide overscroll-none dashboard-scroll">
+                                        <div className="max-w-6xl mx-auto min-h-full pb-10">
+                                            <DashboardSkeleton />
+                                        </div>
+                                    </div>
+                                }>
                                     <div className="h-full overflow-y-auto px-4 pt-6 md:px-8 scrollbar-hide overscroll-none dashboard-scroll">
                                         <div className="max-w-6xl mx-auto min-h-full pb-10">
                                             <Clientes clientes={clientes} trabajos={trabajos} onDataRefresh={handleDataRefreshSilent} searchQuery={searchQuery} onNavigate={handleNavigate} />
                                         </div>
                                     </div>
-                                </div>
-                                <div className={`main-view-slot ${view === 'finanzas' ? 'active-view' : ''}`}>
+                                </Suspense>
+                            </div>
+                            <div className={`main-view-slot ${view === 'finanzas' ? 'active-view' : ''}`}>
+                                <Suspense fallback={
+                                    <div className="h-full overflow-y-auto px-4 pt-6 md:px-8 scrollbar-hide overscroll-none dashboard-scroll">
+                                        <div className="max-w-6xl mx-auto min-h-full pb-10">
+                                            <DashboardSkeleton />
+                                        </div>
+                                    </div>
+                                }>
                                     <div className="h-full overflow-y-auto px-4 pt-6 md:px-8 scrollbar-hide overscroll-none dashboard-scroll">
                                         <div className="max-w-6xl mx-auto min-h-full pb-10">
                                             <Finanzas
@@ -711,15 +734,23 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout, user }) => 
                                             />
                                         </div>
                                     </div>
-                                </div>
-                                <div className={`main-view-slot ${view === 'ajustes' ? 'active-view' : ''}`}>
+                                </Suspense>
+                            </div>
+                            <div className={`main-view-slot ${view === 'ajustes' ? 'active-view' : ''}`}>
+                                <Suspense fallback={
+                                    <div className="h-full overflow-y-auto px-4 pt-6 md:px-8 scrollbar-hide overscroll-none dashboard-scroll">
+                                        <div className="max-w-4xl mx-auto min-h-full pb-10">
+                                            <DashboardSkeleton />
+                                        </div>
+                                    </div>
+                                }>
                                     <div className="h-full overflow-y-auto px-4 pt-6 md:px-8 scrollbar-hide overscroll-none dashboard-scroll">
                                         <div className="max-w-4xl mx-auto min-h-full pb-10">
                                             <Ajustes tallerInfo={tallerInfo} onUpdateTallerInfo={handleUpdateTallerInfo} onLogout={onLogout} searchQuery={searchQuery} />
                                         </div>
                                     </div>
-                                </div>
-                            </Suspense>
+                                </Suspense>
+                            </div>
                         </div>
                     )}
                 </main>

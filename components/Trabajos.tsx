@@ -16,6 +16,7 @@ interface TrabajosProps {
     initialTab?: JobStatus;
     initialJobId?: string;
     isActive?: boolean;
+    syncStatus?: 'idle' | 'syncing' | 'synced' | 'offline';
 }
 
 const statusOrder = [JobStatus.Presupuesto, JobStatus.Programado, JobStatus.EnProceso, JobStatus.Finalizado];
@@ -87,7 +88,8 @@ const MonthlyGroup: React.FC<{
     onDataRefresh: () => void;
     tallerInfo: TallerInfo;
     initialJobId?: string;
-}> = ({ monthKey, trabajos, clientes, onUpdateStatus, onDataRefresh, tallerInfo, initialJobId }) => {
+    syncStatus?: 'idle' | 'syncing' | 'synced' | 'offline';
+}> = ({ monthKey, trabajos, clientes, onUpdateStatus, onDataRefresh, tallerInfo, initialJobId, syncStatus }) => {
     const [isOpen, setIsOpen] = useState(() => initialJobId ? trabajos.some(t => t.id === initialJobId) : false);
     const [shouldRender, setShouldRender] = useState(isOpen);
 
@@ -151,7 +153,7 @@ const MonthlyGroup: React.FC<{
                                     </div>
                                     <div className="space-y-4">
                                         {weekJobs.map(t => (
-                                            <JobCard key={t.id} trabajo={t} cliente={clientes.find(c => c.id === t.clienteId)} vehiculo={clientes.find(c => c.id === t.clienteId)?.vehiculos.find(v => v.id === t.vehiculoId)} onUpdateStatus={onUpdateStatus} tallerInfo={tallerInfo} clientes={clientes} onDataRefresh={onDataRefresh} isHighlighted={t.id === initialJobId} />
+                                            <JobCard key={t.id} trabajo={t} cliente={clientes.find(c => c.id === t.clienteId)} vehiculo={clientes.find(c => c.id === t.clienteId)?.vehiculos.find(v => v.id === t.vehiculoId)} onUpdateStatus={onUpdateStatus} tallerInfo={tallerInfo} clientes={clientes} onDataRefresh={onDataRefresh} isHighlighted={t.id === initialJobId} syncStatus={syncStatus} />
                                         ))}
                                     </div>
                                 </div>
@@ -164,7 +166,7 @@ const MonthlyGroup: React.FC<{
     );
 };
 
-const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus, onDataRefresh, tallerInfo, searchQuery, initialTab, initialJobId, isActive }) => {
+const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus, onDataRefresh, tallerInfo, searchQuery, initialTab, initialJobId, isActive, syncStatus }) => {
     const [activeTab, setActiveTab] = useState<JobStatus>(initialTab || JobStatus.Presupuesto);
     const changeTabDeferred = (status: JobStatus) => {
         if (status !== activeTab) {
@@ -293,7 +295,7 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
                             <h4 className="text-[10px] font-black text-red-600 dark:text-red-400 uppercase tracking-widest mb-4 flex items-center gap-2"><ExclamationCircleIcon className="h-4 w-4" /> Pendientes de Turno ({pending.length})</h4>
                             <div className="space-y-4">
                                 {pending.map(t => (
-                                    <JobCard key={t.id} trabajo={t} cliente={clientes.find(c => c.id === t.clienteId)} vehiculo={clientes.find(c => c.id === t.clienteId)?.vehiculos.find(v => v.id === t.vehiculoId)} onUpdateStatus={onUpdateStatus} tallerInfo={tallerInfo} clientes={clientes} onDataRefresh={onDataRefresh} isHighlighted={t.id === initialJobId} />
+                                    <JobCard key={t.id} trabajo={t} cliente={clientes.find(c => c.id === t.clienteId)} vehiculo={clientes.find(c => c.id === t.clienteId)?.vehiculos.find(v => v.id === t.vehiculoId)} onUpdateStatus={onUpdateStatus} tallerInfo={tallerInfo} clientes={clientes} onDataRefresh={onDataRefresh} isHighlighted={t.id === initialJobId} syncStatus={syncStatus} />
                                 ))}
                             </div>
                         </div>
@@ -302,7 +304,7 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
                         {calendarFiltered.length > 0 ? (
                             <div className="space-y-4 pb-8">
                                 {calendarFiltered.map(t => (
-                                    <JobCard key={t.id} trabajo={t} cliente={clientes.find(c => c.id === t.clienteId)} vehiculo={clientes.find(c => c.id === t.clienteId)?.vehiculos.find(v => v.id === t.vehiculoId)} onUpdateStatus={onUpdateStatus} tallerInfo={tallerInfo} clientes={clientes} onDataRefresh={onDataRefresh} isHighlighted={t.id === initialJobId} />
+                                    <JobCard key={t.id} trabajo={t} cliente={clientes.find(c => c.id === t.clienteId)} vehiculo={clientes.find(c => c.id === t.clienteId)?.vehiculos.find(v => v.id === t.vehiculoId)} onUpdateStatus={onUpdateStatus} tallerInfo={tallerInfo} clientes={clientes} onDataRefresh={onDataRefresh} isHighlighted={t.id === initialJobId} syncStatus={syncStatus} />
                                 ))}
                             </div>
                         ) : <EmptyState />}
@@ -336,7 +338,7 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
                         </div>
                         <div className="space-y-4">
                             {recentJobs.map(t => (
-                                <JobCard key={t.id} trabajo={t} cliente={clientes.find(c => c.id === t.clienteId)} vehiculo={clientes.find(c => c.id === t.clienteId)?.vehiculos.find(v => v.id === t.vehiculoId)} onUpdateStatus={onUpdateStatus} tallerInfo={tallerInfo} clientes={clientes} onDataRefresh={onDataRefresh} isHighlighted={t.id === initialJobId} />
+                                <JobCard key={t.id} trabajo={t} cliente={clientes.find(c => c.id === t.clienteId)} vehiculo={clientes.find(c => c.id === t.clienteId)?.vehiculos.find(v => v.id === t.vehiculoId)} onUpdateStatus={onUpdateStatus} tallerInfo={tallerInfo} clientes={clientes} onDataRefresh={onDataRefresh} isHighlighted={t.id === initialJobId} syncStatus={syncStatus} />
                             ))}
                         </div>
                     </div>
@@ -359,6 +361,7 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
                                     onDataRefresh={onDataRefresh}
                                     tallerInfo={tallerInfo}
                                     initialJobId={initialJobId}
+                                    syncStatus={syncStatus}
                                 />
                             ))}
                         </div>
@@ -372,7 +375,7 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
         return (
             <div className="space-y-4 pb-8">
                 {tabJobs.map(t => (
-                    <JobCard key={t.id} trabajo={t} cliente={clientes.find(c => c.id === t.clienteId)} vehiculo={clientes.find(c => c.id === t.clienteId)?.vehiculos.find(v => v.id === t.vehiculoId)} onUpdateStatus={onUpdateStatus} tallerInfo={tallerInfo} clientes={clientes} onDataRefresh={onDataRefresh} isHighlighted={t.id === initialJobId} />
+                    <JobCard key={t.id} trabajo={t} cliente={clientes.find(c => c.id === t.clienteId)} vehiculo={clientes.find(c => c.id === t.clienteId)?.vehiculos.find(v => v.id === t.vehiculoId)} onUpdateStatus={onUpdateStatus} tallerInfo={tallerInfo} clientes={clientes} onDataRefresh={onDataRefresh} isHighlighted={t.id === initialJobId} syncStatus={syncStatus} />
                 ))}
             </div>
         );
