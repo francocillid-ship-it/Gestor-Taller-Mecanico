@@ -168,7 +168,6 @@ const MonthlyGroup: React.FC<{
 
 const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus, onDataRefresh, tallerInfo, searchQuery, initialTab, initialJobId, isActive, syncStatus }) => {
     const [activeTab, setActiveTab] = useState<JobStatus>(initialTab || JobStatus.Presupuesto);
-    const [tabState, setTabState] = useState<'initial' | 'pressed' | 'released'>('initial');
     const changeTabDeferred = (status: JobStatus) => {
         if (status !== activeTab) {
             setTimeout(() => {
@@ -430,7 +429,8 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
                     transform-style: preserve-3d;
                     perspective: 1000px;
                 }
-                .tab-pressed {
+                div.relative.flex.bg-gray-200\/50:active,
+                div.relative.flex.dark\:bg-gray-800\/40:active {
                     transform: scale(1.04) translateZ(0);
                 }
                 .tab-bubble-pill {
@@ -456,7 +456,8 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
                     border: 1px solid rgba(255, 255, 255, 0.08) !important;
                     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25) !important;
                 }
-                .tab-pressed .tab-bubble-pill {
+                div.relative.flex.bg-gray-200\/50:active .tab-bubble-pill,
+                div.relative.flex.dark\:bg-gray-800\/40:active .tab-bubble-pill {
                     transform: scale(1.35) translateZ(0);
                 }
             `}</style>
@@ -470,23 +471,14 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
             >
                 <div className="max-w-3xl mx-auto p-4 pt-5 pb-3 w-full"><button type="button" onClick={() => setIsCreateModalOpen(true)} onTouchStart={() => setIsCreateModalOpen(true)} className="w-full flex items-center justify-center gap-2 py-3.5 px-4 bg-taller-primary text-white font-extrabold rounded-xl shadow-lg shadow-taller-primary/20 active:scale-95 transition-all duration-300"><PlusIcon className="h-5 w-5" /><span className="uppercase tracking-wider text-xs">Nuevo Presupuesto</span></button></div>
                 <div className="px-4 pb-3 w-full lg:hidden">
-                    <div 
-                        className={`relative flex bg-gray-200/50 dark:bg-gray-800/40 p-1 rounded-full border border-gray-200/20 dark:border-gray-700/30 backdrop-blur-sm select-none transition-all duration-200 ${
-                            tabState === 'pressed' ? 'tab-pressed' : tabState === 'released' ? 'tab-released' : ''
-                        }`}
-                        onTouchStart={() => setTabState('pressed')}
-                        onTouchEnd={() => setTabState('released')}
-                        onTouchCancel={() => setTabState('released')}
-                        onMouseDown={() => setTabState('pressed')}
-                        onMouseUp={() => setTabState('released')}
-                        onMouseLeave={() => setTabState('released')}
-                    >
+                    <div className="relative flex bg-gray-200/50 dark:bg-gray-800/40 p-1 rounded-full border border-gray-200/20 dark:border-gray-700/30 backdrop-blur-sm select-none">
                         {/* Sliding highlight container */}
                         <div 
-                            className="absolute top-1 bottom-1 left-1 pointer-events-none transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]"
+                            className="absolute top-1 bottom-1 left-1 pointer-events-none"
                             style={{
                                 width: `calc((100% - 8px) / ${statusOrder.length})`,
                                 transform: `translate3d(${activeIndex * 100}%, 0, 0)`,
+                                transition: 'transform 250ms cubic-bezier(0.4, 0, 0.2, 1)',
                             }}
                         >
                             <div className="w-full h-full bg-white dark:bg-gray-700 shadow-sm rounded-full tab-bubble-pill" />
