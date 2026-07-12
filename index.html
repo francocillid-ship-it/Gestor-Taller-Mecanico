@@ -255,33 +255,33 @@
       right: 12px !important;
       width: calc(100% - 24px) !important;
       border: 1px solid rgba(255, 255, 255, 0.2) !important;
-      border-radius: 9999px !important;
-      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.12) !important;
-      background: rgba(255, 255, 255, 0.4) !important;
-      -webkit-backdrop-filter: blur(20px) saturate(190%) !important;
-      backdrop-filter: blur(20px) saturate(190%) !important;
-      padding: 0 !important;
+      position: absolute !important;
+      bottom: calc(14px + var(--safe-bottom)) !important;
+      left: 14px !important;
+      right: 14px !important;
+      width: calc(100% - 28px) !important;
       height: 64px !important;
-      display: flex !important;
-      align-items: center !important;
-      justify-content: center !important;
-      overflow: visible !important;
-      border-top: none !important;
-      transition: background-color 0.6s ease !important;
+      border-radius: 9999px !important;
+      z-index: 90 !important;
+      background: rgba(255, 255, 255, 0.4) !important;
+      -webkit-backdrop-filter: blur(25px) saturate(210%) !important;
+      backdrop-filter: blur(25px) saturate(210%) !important;
+      border: 1px solid rgba(255, 255, 255, 0.3) !important;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1) !important;
+      padding: 0 !important;
+      transform: scale(1) translateZ(0);
+      transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.6s ease !important;
     }
     html.ios-pwa .glass-nav.nav-pressed {
       transform: scale(1.04) translateZ(0) !important;
-      transition: transform 0.25s ease-in !important;
     }
     html.ios-pwa .glass-nav.nav-released {
       transform: scale(1) translateZ(0) !important;
-      transition: transform 0.25s ease-out !important;
     }
     html.ios-pwa.dark .glass-nav {
       background: rgba(17, 24, 39, 0.5) !important;
       border: 1px solid rgba(255, 255, 255, 0.08) !important;
       box-shadow: 0 10px 40px rgba(0, 0, 0, 0.35) !important;
-      border-top: none !important;
     }
 
     /* Nav bubble pill — glass style */
@@ -293,17 +293,15 @@
       border: 1px solid rgba(255, 255, 255, 0.25) !important;
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05) !important;
       transform: scale(1) translateZ(0);
-      transition: transform 0.25s ease-out, box-shadow 0.25s ease-out !important;
+      transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s ease-out !important;
     }
     html.ios-pwa .glass-nav.nav-pressed .bubble-pill {
       transform: scale(1.35) translateZ(0) !important;
       box-shadow: 0 8px 24px rgba(0, 0, 0, 0.16) !important;
-      transition: transform 0.25s ease-in, box-shadow 0.25s ease-in !important;
     }
     html.ios-pwa .glass-nav.nav-released .bubble-pill {
       transform: scale(1) translateZ(0) !important;
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05) !important;
-      transition: transform 0.25s ease-out, box-shadow 0.25s ease-out !important;
     }
     html.ios-pwa.dark .bubble-pill {
       background: rgba(255, 255, 255, 0.08) !important;

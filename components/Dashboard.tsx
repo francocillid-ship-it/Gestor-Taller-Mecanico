@@ -205,6 +205,17 @@ interface FinancialDetailOverlayProps {
 const FinancialDetailOverlay: React.FC<FinancialDetailOverlayProps> = ({
     detailView, onClose, period, data, onItemClick, onAddGasto
 }) => {
+    const [isVisible, setIsVisible] = useState(false);
+
+    useEffect(() => {
+        setIsVisible(true);
+    }, []);
+
+    const handleClose = () => {
+        setIsVisible(false);
+        setTimeout(onClose, 400);
+    };
+
     const formatCurrency = (amount: number) => 
         new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(amount);
 
@@ -240,8 +251,8 @@ const FinancialDetailOverlay: React.FC<FinancialDetailOverlayProps> = ({
 
     return createPortal(
         <div className="fixed inset-0 z-[300] flex items-center justify-center p-4 sm:p-6">
-            <div className="absolute inset-0 bg-black/60 backdrop-blur-md animate-in fade-in duration-300" onClick={onClose} />
-            <div className="relative w-full max-w-2xl bg-white dark:bg-gray-900 rounded-[2.5rem] shadow-2xl border border-white/10 overflow-hidden animate-in zoom-in-95 slide-in-from-bottom-10 duration-500">
+            <div className={`absolute inset-0 bg-black/60 backdrop-blur-md transition-opacity duration-400 ${isVisible ? 'opacity-100' : 'opacity-0'}`} onClick={handleClose} />
+            <div className={`relative w-full max-w-2xl bg-white dark:bg-gray-900 rounded-[2.5rem] shadow-2xl border border-white/10 overflow-hidden transform transition-all duration-400 ease-[cubic-bezier(0.16,1,0.3,1)] ${isVisible ? 'translate-x-0' : 'translate-x-full'}`}>
                 <div className="p-8 border-b dark:border-gray-800 flex items-center justify-between">
                     <div>
                         <h2 className="text-2xl font-black text-taller-dark dark:text-taller-light tracking-tight capitalize">{titles[detailView as 'ingresos' | 'ganancias' | 'gastos']}</h2>
@@ -256,7 +267,7 @@ const FinancialDetailOverlay: React.FC<FinancialDetailOverlayProps> = ({
                                 <PlusIcon className="h-4 w-4" /> Añadir Gasto
                             </button>
                         )}
-                        <button onClick={onClose} className="p-3 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-2xl transition-colors">
+                        <button onClick={handleClose} className="p-3 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-2xl transition-colors">
                             <XMarkIcon className="h-6 w-6 text-taller-gray" />
                         </button>
                     </div>

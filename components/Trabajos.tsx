@@ -429,8 +429,19 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
                     transition: transform 0.25s ease-out !important;
                 }
                 .tab-bubble-pill {
+                    border-radius: 9999px !important;
+                    background: rgba(255, 255, 255, 0.18) !important;
+                    -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
+                    backdrop-filter: blur(20px) saturate(180%) !important;
+                    border: 1px solid rgba(255, 255, 255, 0.25) !important;
+                    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05) !important;
                     transform: scale(1) translateZ(0);
                     transition: transform 0.25s ease-out !important;
+                }
+                .dark .tab-bubble-pill {
+                    background: rgba(255, 255, 255, 0.08) !important;
+                    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+                    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25) !important;
                 }
                 .tab-pressed .tab-bubble-pill {
                     transform: scale(1.35) translateZ(0) !important;
