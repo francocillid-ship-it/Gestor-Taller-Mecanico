@@ -260,10 +260,28 @@
       height: 64px !important;
       overflow: visible !important;
       border-top: none !important;
-      transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.6s ease !important;
+      transition: background-color 0.6s ease !important;
     }
-    html.ios-pwa .glass-nav:active {
+    html.ios-pwa .glass-nav.nav-pressed {
       transform: scale(1.03) translateZ(0) !important;
+      transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+    }
+    html.ios-pwa .glass-nav.nav-released {
+      animation: nav-release-bounce 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+    }
+    @keyframes nav-release-bounce {
+      0% {
+        transform: scale(1.03) translateZ(0);
+      }
+      45% {
+        transform: scale(0.985) translateZ(0);
+      }
+      75% {
+        transform: scale(1.004) translateZ(0);
+      }
+      100% {
+        transform: scale(1) translateZ(0);
+      }
     }
     html.ios-pwa.dark .glass-nav {
       background: rgba(17, 24, 39, 0.5) !important;

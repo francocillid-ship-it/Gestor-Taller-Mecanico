@@ -145,6 +145,7 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout, user }) => 
     });
     const [syncStatus, setSyncStatus] = useState<'idle' | 'syncing' | 'synced' | 'offline'>('idle');
     const [searchQuery, setSearchQuery] = useState('');
+    const [navState, setNavState] = useState<'initial' | 'pressed' | 'released'>('initial');
     const [targetJobStatus, setTargetJobStatus] = useState<JobStatusEnum | undefined>(undefined);
     const [targetJobId, setTargetJobId] = useState<string | undefined>(undefined);
 
@@ -535,7 +536,17 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout, user }) => 
 
     const activeIndex = VIEW_ORDER.indexOf(view);
     const bottomNav = navLayout === 'bottom' && safeAreaReady ? (
-        <nav className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t border-gray-100 dark:border-gray-800/50 flex-shrink-0 z-[100] pb-[var(--safe-bottom)] transition-all duration-300 glass-nav">
+        <nav 
+            className={`fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t border-gray-100 dark:border-gray-800/50 flex-shrink-0 z-[100] pb-[var(--safe-bottom)] transition-all duration-300 glass-nav ${
+                navState === 'pressed' ? 'nav-pressed' : navState === 'released' ? 'nav-released' : ''
+            }`}
+            onTouchStart={() => setNavState('pressed')}
+            onTouchEnd={() => setNavState('released')}
+            onTouchCancel={() => setNavState('released')}
+            onMouseDown={() => setNavState('pressed')}
+            onMouseUp={() => setNavState('released')}
+            onMouseLeave={() => setNavState('released')}
+        >
             <div 
                 ref={navRef}
                 className="flex justify-around items-center h-16 w-full relative"
