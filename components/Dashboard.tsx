@@ -2,7 +2,9 @@ import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import type { Cliente, Trabajo, Gasto } from '../types';
 import { JobStatus } from '../types';
-import { CurrencyDollarIcon, UsersIcon, WrenchScrewdriverIcon, ChartPieIcon, BuildingLibraryIcon, ChevronDownIcon, CalendarIcon, ArrowTrendingUpIcon, ArrowTrendingDownIcon, ClipboardDocumentCheckIcon, XMarkIcon } from '@heroicons/react/24/solid';
+import { CurrencyDollarIcon, UsersIcon, WrenchScrewdriverIcon, ChartPieIcon, BuildingLibraryIcon, ChevronDownIcon, CalendarIcon, ArrowTrendingUpIcon, ArrowTrendingDownIcon, ClipboardDocumentCheckIcon, XMarkIcon, PlusIcon } from '@heroicons/react/24/solid';
+import AddGastoModal from './AddGastoModal';
+import { supabase } from '../supabaseClient';
 
 interface DashboardProps {
     clientes: Cliente[];
@@ -197,10 +199,11 @@ interface FinancialDetailOverlayProps {
     period: Period;
     data: { transactions: TransactionItem[], total: number };
     onItemClick: (item: TransactionItem) => void;
+    onAddGasto: () => void;
 }
 
 const FinancialDetailOverlay: React.FC<FinancialDetailOverlayProps> = ({
-    detailView, onClose, period, data, onItemClick
+    detailView, onClose, period, data, onItemClick, onAddGasto
 }) => {
     const formatCurrency = (amount: number) => 
         new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(amount);
@@ -244,9 +247,19 @@ const FinancialDetailOverlay: React.FC<FinancialDetailOverlayProps> = ({
                         <h2 className="text-2xl font-black text-taller-dark dark:text-taller-light tracking-tight capitalize">{titles[detailView as 'ingresos' | 'ganancias' | 'gastos']}</h2>
                         <p className="text-taller-gray dark:text-gray-400 font-medium capitalize">{getPeriodLabel(period)}</p>
                     </div>
-                    <button onClick={onClose} className="p-3 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-2xl transition-colors">
-                        <XMarkIcon className="h-6 w-6 text-taller-gray" />
-                    </button>
+                    <div className="flex items-center gap-2">
+                        {detailView === 'gastos' && (
+                            <button 
+                                onClick={onAddGasto} 
+                                className="flex items-center gap-1.5 px-4 py-2 bg-taller-primary text-white font-bold text-xs rounded-xl shadow-md active:scale-95 transition-all whitespace-nowrap"
+                            >
+                                <PlusIcon className="h-4 w-4" /> Añadir Gasto
+                            </button>
+                        )}
+                        <button onClick={onClose} className="p-3 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-2xl transition-colors">
+                            <XMarkIcon className="h-6 w-6 text-taller-gray" />
+                        </button>
+                    </div>
                 </div>
 
                 <div className="p-8 space-y-8 max-h-[70svh] overflow-y-auto">
@@ -299,9 +312,30 @@ const FinancialDetailOverlay: React.FC<FinancialDetailOverlayProps> = ({
     );
 };
 
-const Dashboard: React.FC<DashboardProps> = ({ clientes, trabajos, gastos, searchQuery, onNavigate }) => {
+const Dashboard: React.FC<DashboardProps> = ({ clientes, trabajos, gastos, searchQuery, onNavigate, onDataRefresh }) => {
     const [period, setPeriod] = useState<Period>('this_month');
     const [detailView, setDetailView] = useState<DetailType>(null);
+    const [isAddGastoModalOpen, setIsAddGastoModalOpen] = useState(false);
+
+    const handleAddGasto = async (gasto: Omit<Gasto, 'id' | 'tallerId'>) => {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+        const { data: taller } = await supabase.from('talleres').select('id').eq('owner_id', user.id).single();
+        if (!taller) return;
+        const gastoId = crypto.randomUUID();
+        const gastosConId = [{
+            id: gastoId,
+            taller_id: taller.id,
+            descripcion: gasto.descripcion,
+            monto: gasto.monto,
+            fecha: gasto.fecha,
+            categoria: gasto.categoria,
+            es_fijo: gasto.esFijo
+        }];
+        const { error } = await supabase.from('gastos').insert(gastosConId);
+        if (error) console.error("Error adding expense:", error);
+        else { onDataRefresh(); setIsAddGastoModalOpen(false); }
+    };
 
     const availableMonths = useMemo(() => {
         const months = new Set<string>();
@@ -510,7 +544,13 @@ const Dashboard: React.FC<DashboardProps> = ({ clientes, trabajos, gastos, searc
                     period={period}
                     data={financialDetailData}
                     onItemClick={handleTransactionClick}
+                    onAddGasto={() => setIsAddGastoModalOpen(true)}
                 />
+            )}
+
+            {isAddGastoModalOpen && createPortal(
+                <AddGastoModal onClose={() => setIsAddGastoModalOpen(false)} onAddGasto={handleAddGasto} />,
+                document.body
             )}
         </div>
     );

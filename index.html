@@ -390,27 +390,23 @@
       border-radius: 14px;
     }
 
-    /* Center all fixed overlays and convert them to centered Apple modals */
-    div.fixed.inset-0[class*="z-"].flex {
-      justify-content: center !important;
-      align-items: center !important;
-      padding: 1rem !important;
-    }
-
-    /* Style the modal panel (2nd child) */
+    /* Transition classes for modals (Z-100, Z-200 and Z-300) */
     div.fixed.inset-0[class*="z-"].flex > div:nth-child(2) {
-      width: 100% !important;
-      max-width: 36rem !important; /* max-w-xl size */
-      height: 90% !important;
-      max-height: 85vh !important;
-      max-height: 85dvh !important;
-      border-radius: 28px !important; /* Apple squircle 3xl */
-      
-      /* Apple Zoom & Fade In Out Animation */
-      opacity: 0;
-      transform: scale(0.9) translateZ(0);
       transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1) !important;
-      animation: apple-zoom-in 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+    }
+    
+    /* Default / Closed state (when translate-x-full class is active) */
+    div.fixed.inset-0[class*="z-"].flex > div:nth-child(2).translate-x-full {
+      transform: scale(0.9) translateZ(0) !important;
+      opacity: 0 !important;
+      pointer-events: none !important;
+    }
+    
+    /* Open / Active state (when translate-x-0 class is active) */
+    div.fixed.inset-0[class*="z-"].flex > div:nth-child(2).translate-x-0 {
+      transform: scale(1) translateZ(0) !important;
+      opacity: 1 !important;
+      pointer-events: auto !important;
     }
 
     /* Target backdrop transitions to make them fade nicely */
@@ -418,15 +414,36 @@
       transition: opacity 0.4s ease-out !important;
     }
 
-    @keyframes apple-zoom-in {
-      from {
-        transform: scale(0.9) translateZ(0);
-        opacity: 0;
-      }
-      to {
-        transform: scale(1) translateZ(0);
-        opacity: 1;
-      }
+    /* Full screen layouts for z-[100] (Nuevo Trabajo, Nuevo Cliente, etc.) */
+    div.fixed.inset-0.z-\[100\].flex {
+      justify-content: stretch !important;
+      align-items: stretch !important;
+      padding: 0px !important;
+    }
+    div.fixed.inset-0.z-\[100\].flex > div:nth-child(2) {
+      width: 100% !important;
+      max-width: none !important;
+      height: 100% !important;
+      max-height: none !important;
+      border-radius: 0px !important;
+    }
+
+    /* Floating card layouts for z-[200] and z-[300] (Detail Popups, Months Pickers, etc.) */
+    div.fixed.inset-0.z-\[200\].flex,
+    div.fixed.inset-0.z-\[300\].flex {
+      justify-content: center !important;
+      align-items: center !important;
+      padding: 1rem !important;
+    }
+    div.fixed.inset-0.z-\[200\].flex > div:nth-child(2),
+    div.fixed.inset-0.z-\[300\].flex > div:nth-child(2) {
+      width: 100% !important;
+      max-width: 36rem !important;
+      height: auto !important;
+      max-height: 85vh !important;
+      max-height: 85dvh !important;
+      border-radius: 28px !important;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5) !important;
     }
   </style>
   <script>
