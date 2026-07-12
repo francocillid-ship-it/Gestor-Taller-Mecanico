@@ -420,13 +420,21 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
                         border-right: none;
                     }
                 }
+                /* Segmented control container base style transition */
+                div.relative.flex.bg-gray-200\/50,
+                div.relative.flex.dark\:bg-gray-800\/40 {
+                    transition: transform 250ms cubic-bezier(0.4, 0, 0.2, 1) !important;
+                    will-change: transform;
+                    -webkit-backface-visibility: hidden;
+                    backface-visibility: hidden;
+                    transform-style: preserve-3d;
+                    perspective: 1000px;
+                }
                 .tab-pressed {
-                    transform: scale(1.04) translateZ(0) !important;
-                    transition: transform 0.25s ease-in !important;
+                    transform: scale(1.04) translateZ(0);
                 }
                 .tab-released {
-                    transform: scale(1) translateZ(0) !important;
-                    transition: transform 0.25s ease-out !important;
+                    transform: scale(1) translateZ(0);
                 }
                 .tab-bubble-pill {
                     border-radius: 9999px !important;
@@ -435,8 +443,16 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
                     backdrop-filter: blur(20px) saturate(180%) !important;
                     border: 1px solid rgba(255, 255, 255, 0.25) !important;
                     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05) !important;
+                    
+                    /* GPU Acceleration for 120Hz */
+                    will-change: transform;
+                    -webkit-backface-visibility: hidden;
+                    backface-visibility: hidden;
+                    transform-style: preserve-3d;
+                    perspective: 1000px;
+                    
                     transform: scale(1) translateZ(0);
-                    transition: transform 0.25s ease-out !important;
+                    transition: transform 250ms cubic-bezier(0.4, 0, 0.2, 1), box-shadow 250ms cubic-bezier(0.4, 0, 0.2, 1) !important;
                 }
                 .dark .tab-bubble-pill {
                     background: rgba(255, 255, 255, 0.08) !important;
@@ -444,12 +460,10 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
                     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25) !important;
                 }
                 .tab-pressed .tab-bubble-pill {
-                    transform: scale(1.35) translateZ(0) !important;
-                    transition: transform 0.25s ease-in !important;
+                    transform: scale(1.35) translateZ(0);
                 }
                 .tab-released .tab-bubble-pill {
-                    transform: scale(1) translateZ(0) !important;
-                    transition: transform 0.25s ease-out !important;
+                    transform: scale(1) translateZ(0);
                 }
             `}</style>
 
