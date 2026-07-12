@@ -228,7 +228,7 @@ const App: React.FC = () => {
         };
 
         processSession();
-    }, [session, authAction]);
+    }, [session, authAction, initialCheckDone]);
 
     const handleLogout = async () => {
         await supabase.auth.signOut();
