@@ -129,7 +129,7 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
         if (trabajo.quickBudgetData) {
             return `${trabajo.quickBudgetData.nombre} ${trabajo.quickBudgetData.apellido || ''}`.trim();
         }
-        if (clientes.length === 0 || (!cliente && syncStatus === 'syncing')) {
+        if (clientes.length === 0 || syncStatus === 'syncing') {
             return <span className="inline-block w-28 h-4 bg-gray-200 dark:bg-gray-700 animate-pulse rounded"></span>;
         }
         return 'Cliente no identificado';
@@ -142,7 +142,7 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
         if (trabajo.quickBudgetData) {
             return `${trabajo.quickBudgetData.marca} ${trabajo.quickBudgetData.modelo} ${trabajo.quickBudgetData.matricula ? `(${trabajo.quickBudgetData.matricula})` : ''}`.trim();
         }
-        if (clientes.length === 0 || (!vehiculo && syncStatus === 'syncing')) {
+        if (clientes.length === 0 || syncStatus === 'syncing') {
             return <span className="inline-block w-36 h-3 bg-gray-200 dark:bg-gray-700 animate-pulse rounded mt-1"></span>;
         }
         return 'Vehículo no identificado';
@@ -155,10 +155,10 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
         if (trabajo.quickBudgetData) {
             return trabajo.quickBudgetData.modelo;
         }
-        if (clientes.length === 0) {
-            return <span className="inline-block w-16 h-3 bg-gray-200 dark:bg-gray-700 animate-pulse rounded mt-1"></span>;
+        if (clientes.length === 0 || syncStatus === 'syncing') {
+            return <span className="inline-block w-20 h-3 bg-gray-200 dark:bg-gray-700 animate-pulse rounded mt-1"></span>;
         }
-        return 'Vehículo';
+        return 'Vehículo no identificado';
     };
 
     useEffect(() => {
