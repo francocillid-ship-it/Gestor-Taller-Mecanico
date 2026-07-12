@@ -108,13 +108,23 @@ const useSafeAreaReady = () => {
 
 
 const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout, user }) => {
+    const getCached = <T,>(key: string, fallback: T): T => {
+        try {
+            const val = localStorage.getItem(`taller_cache_${user.id}_${key}`);
+            if (val) return JSON.parse(val);
+        } catch (e) {
+            console.error(`Error reading cache for ${key}:`, e);
+        }
+        return fallback;
+    };
+
     const [view, setView] = useState<View>('dashboard');
-    const [clientes, setClientes] = useState<Cliente[]>([]);
-    const [trabajos, setTrabajos] = useState<Trabajo[]>([]);
-    const [gastos, setGastos] = useState<Gasto[]>([]);
-    const [entidades, setEntidades] = useState<EntidadFinanciera[]>([]);
-    const [transaccionesEntidades, setTransaccionesEntidades] = useState<TransaccionEntidad[]>([]);
-    const [tallerInfo, setTallerInfo] = useState<TallerInfo>({
+    const [clientes, setClientes] = useState<Cliente[]>(() => getCached('clientes', []));
+    const [trabajos, setTrabajos] = useState<Trabajo[]>(() => getCached('trabajos', []));
+    const [gastos, setGastos] = useState<Gasto[]>(() => getCached('gastos', []));
+    const [entidades, setEntidades] = useState<EntidadFinanciera[]>(() => getCached('entidades', []));
+    const [transaccionesEntidades, setTransaccionesEntidades] = useState<TransaccionEntidad[]>(() => getCached('transaccionesEntidades', []));
+    const [tallerInfo, setTallerInfo] = useState<TallerInfo>(() => getCached('tallerInfo', {
         nombre: 'Mi Taller',
         telefono: '',
         direccion: '',
@@ -125,8 +135,15 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout, user }) => 
         logoUrl: undefined,
         headerColor: '#334155',
         fontSize: 'normal'
+    }));
+    const [loading, setLoading] = useState(() => {
+        try {
+            return !localStorage.getItem(`taller_cache_${user.id}_tallerInfo`);
+        } catch (e) {
+            return true;
+        }
     });
-    const [loading, setLoading] = useState(true);
+    const [syncStatus, setSyncStatus] = useState<'idle' | 'syncing' | 'synced' | 'offline'>('idle');
     const [searchQuery, setSearchQuery] = useState('');
     const [targetJobStatus, setTargetJobStatus] = useState<JobStatusEnum | undefined>(undefined);
     const [targetJobId, setTargetJobId] = useState<string | undefined>(undefined);
@@ -184,6 +201,28 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout, user }) => 
         }
     }, [searchQuery, clientes, trabajos, gastos, view]);
 
+    useEffect(() => {
+        if (syncStatus === 'synced') {
+            const timer = setTimeout(() => {
+                setSyncStatus('idle');
+            }, 3000);
+            return () => clearTimeout(timer);
+        }
+    }, [syncStatus]);
+
+    useEffect(() => {
+        // Pre-carga en segundo plano de componentes lazy
+        const preload = () => {
+            import('./Dashboard');
+            import('./Trabajos');
+            import('./Clientes');
+            import('./Finanzas');
+            import('./Ajustes');
+        };
+        const timer = setTimeout(preload, 1200);
+        return () => clearTimeout(timer);
+    }, []);
+
     const [dataLoaded, setDataLoaded] = useState({
         tallerInfo: false,
         clientes: false,
@@ -214,6 +253,11 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout, user }) => 
                     fontSize: data.font_size || 'normal'
                 };
                 setTallerInfo(loadedInfo);
+                try {
+                    localStorage.setItem(`taller_cache_${userId}_tallerInfo`, JSON.stringify(loadedInfo));
+                } catch (e) {
+                    console.error("Error caching tallerInfo:", e);
+                }
                 applyAppTheme();
                 if (loadedInfo.fontSize) applyFontSize(loadedInfo.fontSize);
             }
@@ -228,7 +272,14 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout, user }) => 
         fetchingRef.current.add('clientes');
         try {
             const { data } = await supabase.from('clientes').select('*, vehiculos(*)').eq('taller_id', userId);
-            if (data) setClientes(data as Cliente[]);
+            if (data) {
+                setClientes(data as Cliente[]);
+                try {
+                    localStorage.setItem(`taller_cache_${userId}_clientes`, JSON.stringify(data));
+                } catch (e) {
+                    console.error("Error caching clientes:", e);
+                }
+            }
             setDataLoaded(prev => ({ ...prev, clientes: true }));
         } finally {
             fetchingRef.current.delete('clientes');
@@ -241,7 +292,7 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout, user }) => 
         try {
             const { data } = await supabase.from('trabajos').select('*').eq('taller_id', userId);
             if (data) {
-                setTrabajos(data.map(t => ({
+                const mappedJobs = data.map(t => ({
                     id: t.id,
                     tallerId: t.taller_id,
                     clienteId: t.cliente_id,
@@ -260,7 +311,13 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout, user }) => 
                     isQuickBudget: t.is_quick_budget,
                     quickBudgetData: t.quick_budget_data,
                     expiresAt: t.expires_at
-                })) as Trabajo[]);
+                })) as Trabajo[];
+                setTrabajos(mappedJobs);
+                try {
+                    localStorage.setItem(`taller_cache_${userId}_trabajos`, JSON.stringify(mappedJobs));
+                } catch (e) {
+                    console.error("Error caching trabajos:", e);
+                }
             }
             setDataLoaded(prev => ({ ...prev, trabajos: true }));
         } finally {
@@ -274,14 +331,20 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout, user }) => 
         try {
             const { data } = await supabase.from('gastos').select('*').eq('taller_id', userId).order('fecha', { ascending: false });
             if (data) {
-                setGastos(data.map(g => ({
+                const mappedExpenses = data.map(g => ({
                     id: g.id,
                     fecha: g.fecha,
                     descripcion: g.descripcion,
                     monto: Number(g.monto),
                     categoria: g.categoria,
                     esFijo: g.es_fijo
-                })) as Gasto[]);
+                })) as Gasto[];
+                setGastos(mappedExpenses);
+                try {
+                    localStorage.setItem(`taller_cache_${userId}_gastos`, JSON.stringify(mappedExpenses));
+                } catch (e) {
+                    console.error("Error caching gastos:", e);
+                }
             }
             setDataLoaded(prev => ({ ...prev, gastos: true }));
         } finally {
@@ -296,6 +359,11 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout, user }) => 
             const { data } = await supabase.from('entidades_financieras').select('*').eq('taller_id', userId).order('nombre', { ascending: true });
             if (data) {
                 setEntidades(data as EntidadFinanciera[]);
+                try {
+                    localStorage.setItem(`taller_cache_${userId}_entidades`, JSON.stringify(data));
+                } catch (e) {
+                    console.error("Error caching entidades:", e);
+                }
             }
             setDataLoaded(prev => ({ ...prev, entidades: true }));
         } finally {
@@ -310,6 +378,11 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout, user }) => 
             const { data } = await supabase.from('transacciones_entidad').select('*').eq('taller_id', userId).order('fecha', { ascending: false });
             if (data) {
                 setTransaccionesEntidades(data as TransaccionEntidad[]);
+                try {
+                    localStorage.setItem(`taller_cache_${userId}_transaccionesEntidades`, JSON.stringify(data));
+                } catch (e) {
+                    console.error("Error caching transaccionesEntidades:", e);
+                }
             }
             setDataLoaded(prev => ({ ...prev, transaccionesEntidades: true }));
         } finally {
@@ -319,6 +392,7 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout, user }) => 
 
     const fetchData = useCallback(async (showLoader = true) => {
         if (showLoader) setLoading(true);
+        setSyncStatus('syncing');
         try {
             // En el inicio o refresco total, cargamos todo en paralelo para máxima velocidad
             await Promise.all([
@@ -329,61 +403,64 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout, user }) => 
                 fetchEntidades(user.id),
                 fetchTransaccionesEntidades(user.id)
             ]);
-
+            setSyncStatus('synced');
         } catch (error) {
             console.error("Error fetching data:", error);
+            setSyncStatus('offline');
         } finally {
             if (showLoader) setLoading(false);
         }
-    }, [user.id, fetchTallerInfo, fetchClients, fetchJobs, fetchExpenses]);
+    }, [user.id, fetchTallerInfo, fetchClients, fetchJobs, fetchExpenses, fetchEntidades, fetchTransaccionesEntidades]);
 
     // Carga bajo demanda basada en la vista actual
     useEffect(() => {
         const loadRequiredData = async () => {
+            let promises: Promise<void>[] = [];
+
             if (view === 'dashboard' || view === 'finanzas') {
-                // Estas vistas necesitan todo para el balance y estadísticas
-                const promises = [];
                 if (!dataLoaded.tallerInfo) promises.push(fetchTallerInfo(user.id));
                 if (!dataLoaded.clientes) promises.push(fetchClients(user.id));
                 if (!dataLoaded.trabajos) promises.push(fetchJobs(user.id));
                 if (!dataLoaded.gastos) promises.push(fetchExpenses(user.id));
                 if (!dataLoaded.entidades) promises.push(fetchEntidades(user.id));
                 if (!dataLoaded.transaccionesEntidades) promises.push(fetchTransaccionesEntidades(user.id));
-                if (promises.length > 0) {
-                    setLoading(true);
-                    await Promise.all(promises);
-                    setLoading(false);
-                }
             } else if (view === 'trabajos') {
-                const promises = [];
                 if (!dataLoaded.tallerInfo) promises.push(fetchTallerInfo(user.id));
                 if (!dataLoaded.clientes) promises.push(fetchClients(user.id));
                 if (!dataLoaded.trabajos) promises.push(fetchJobs(user.id));
-                if (promises.length > 0) {
-                    setLoading(true);
-                    await Promise.all(promises);
-                    setLoading(false);
-                }
             } else if (view === 'clientes') {
-                const promises = [];
                 if (!dataLoaded.clientes) promises.push(fetchClients(user.id));
-                if (!dataLoaded.trabajos) promises.push(fetchJobs(user.id)); // Los clientes muestran sus trabajos
-                if (promises.length > 0) {
-                    setLoading(true);
-                    await Promise.all(promises);
-                    setLoading(false);
-                }
+                if (!dataLoaded.trabajos) promises.push(fetchJobs(user.id));
             } else if (view === 'ajustes') {
-                if (!dataLoaded.tallerInfo) {
+                if (!dataLoaded.tallerInfo) promises.push(fetchTallerInfo(user.id));
+            }
+
+            if (promises.length > 0) {
+                const hasCache = (() => {
+                    try {
+                        return !!localStorage.getItem(`taller_cache_${user.id}_tallerInfo`);
+                    } catch {
+                        return false;
+                    }
+                })();
+                if (!hasCache) {
                     setLoading(true);
-                    await fetchTallerInfo(user.id);
+                }
+                setSyncStatus('syncing');
+                try {
+                    await Promise.all(promises);
+                    setSyncStatus('synced');
+                } catch (error) {
+                    console.error("Error loading required data:", error);
+                    setSyncStatus('offline');
+                } finally {
                     setLoading(false);
                 }
             }
         };
 
         loadRequiredData();
-    }, [view, dataLoaded, user.id, fetchTallerInfo, fetchClients, fetchJobs, fetchExpenses]);
+    }, [view, dataLoaded, user.id, fetchTallerInfo, fetchClients, fetchJobs, fetchExpenses, fetchEntidades, fetchTransaccionesEntidades]);
 
     const handleNavigate = (newView: View, status?: JobStatusEnum, jobId?: string) => {
         setTargetJobStatus(status);
@@ -443,6 +520,11 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout, user }) => 
             if (error) throw error;
         }
         setTallerInfo(newInfo);
+        try {
+            localStorage.setItem(`taller_cache_${user.id}_tallerInfo`, JSON.stringify(newInfo));
+        } catch (e) {
+            console.error("Error caching updated tallerInfo:", e);
+        }
         applyAppTheme();
         if (newInfo.fontSize) applyFontSize(newInfo.fontSize);
     };
@@ -517,7 +599,7 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout, user }) => 
                     height: 100%; 
                     overflow: clip;
                     will-change: opacity, transform;
-                    transition: opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1), transform 0.6s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.6s step-end;
+                    transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1), transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.3s step-end;
                     opacity: 0;
                     transform: scale(0.95) translateZ(0);
                     visibility: hidden;
@@ -528,7 +610,7 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout, user }) => 
                     transform: scale(1) translateZ(0);
                     visibility: visible;
                     pointer-events: auto;
-                    transition: opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1), transform 0.6s cubic-bezier(0.16, 1, 0.3, 1), visibility 0s step-start;
+                    transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1), transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), visibility 0s step-start;
                 }
                 input, textarea, select { font-size: 16px !important; }
             `}</style>
@@ -563,6 +645,7 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout, user }) => 
                     showMenuButton={false}
                     searchQuery={searchQuery}
                     onSearchChange={setSearchQuery}
+                    syncStatus={syncStatus}
                 />
 
                 <main className="flex-1 w-full overflow-hidden relative bg-taller-light dark:bg-taller-dark">

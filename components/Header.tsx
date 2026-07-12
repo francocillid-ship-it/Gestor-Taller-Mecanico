@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { MagnifyingGlassIcon, Bars3Icon, XMarkIcon } from '@heroicons/react/24/outline';
+import { MagnifyingGlassIcon, Bars3Icon, XMarkIcon, ArrowPathIcon, CheckIcon, SignalSlashIcon } from '@heroicons/react/24/outline';
 
 interface HeaderProps {
     tallerName: string;
@@ -9,9 +9,10 @@ interface HeaderProps {
     showMenuButton?: boolean;
     searchQuery: string;
     onSearchChange: (query: string) => void;
+    syncStatus?: 'idle' | 'syncing' | 'synced' | 'offline';
 }
 
-const Header: React.FC<HeaderProps> = ({ tallerName, logoUrl, onMenuClick, showMenuButton, searchQuery, onSearchChange }) => {
+const Header: React.FC<HeaderProps> = ({ tallerName, logoUrl, onMenuClick, showMenuButton, searchQuery, onSearchChange, syncStatus }) => {
     const [isSearchExpanded, setIsSearchExpanded] = useState(false);
     const mobileInputRef = useRef<HTMLInputElement>(null);
 
@@ -31,6 +32,36 @@ const Header: React.FC<HeaderProps> = ({ tallerName, logoUrl, onMenuClick, showM
     const handleCloseSearch = () => {
         onSearchChange('');
         setIsSearchExpanded(false);
+    };
+
+    const renderSyncIndicator = () => {
+        if (!syncStatus || syncStatus === 'idle') return null;
+
+        switch (syncStatus) {
+            case 'syncing':
+                return (
+                    <div className="flex items-center gap-1 text-[10px] font-semibold text-taller-primary animate-pulse shrink-0 ml-1.5" title="Sincronizando con la nube...">
+                        <ArrowPathIcon className="h-3.5 w-3.5 animate-spin text-taller-primary" />
+                        <span className="hidden sm:inline">Sincronizando...</span>
+                    </div>
+                );
+            case 'synced':
+                return (
+                    <div className="flex items-center gap-1 text-[10px] font-semibold text-green-500 transition-opacity duration-1000 shrink-0 ml-1.5" title="Datos actualizados">
+                        <CheckIcon className="h-3.5 w-3.5 text-green-500" />
+                        <span className="hidden sm:inline">Actualizado</span>
+                    </div>
+                );
+            case 'offline':
+                return (
+                    <div className="flex items-center gap-1 text-[10px] font-semibold text-orange-500 shrink-0 ml-1.5 animate-pulse" title="Trabajando offline (modo local)">
+                        <SignalSlashIcon className="h-3.5 w-3.5 text-orange-500" />
+                        <span className="hidden sm:inline">Sin conexión</span>
+                    </div>
+                );
+            default:
+                return null;
+        }
     };
 
     return (
@@ -59,9 +90,12 @@ const Header: React.FC<HeaderProps> = ({ tallerName, logoUrl, onMenuClick, showM
                             </div>
                         )}
 
-                        <h2 className={`text-base md:text-xl font-bold text-taller-dark dark:text-taller-light truncate ${logoUrl ? 'hidden md:block' : 'block'}`}>
-                            {tallerName}
-                        </h2>
+                        <div className="flex items-center gap-2 shrink-0 max-w-[70%] md:max-w-none min-w-0">
+                            <h2 className={`text-base md:text-xl font-bold text-taller-dark dark:text-taller-light truncate ${logoUrl ? 'hidden md:block' : 'block'}`}>
+                                {tallerName}
+                            </h2>
+                            {renderSyncIndicator()}
+                        </div>
                     </div>
 
                     {/* --- Right Side: Search Controls --- */}
