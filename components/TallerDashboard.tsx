@@ -542,11 +542,12 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout, user }) => 
             >
                 {/* Sliding highlight bubble — same height as parent, inner pill centered via flex */}
                 <div 
-                    className="absolute inset-y-0 transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] pointer-events-none"
+                    className="absolute inset-y-0 pointer-events-none"
                     style={{
                         width: `${100 / navItems.length}%`,
                         transform: `translate3d(${activeIndex * 100}%, 0, 0)`,
                         left: 0,
+                        transition: 'transform 0.45s cubic-bezier(0.16, 1, 0.3, 1)',
                     }}
                 >
                     <div className="h-full flex items-center justify-center px-[6px]">
@@ -603,7 +604,7 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout, user }) => 
                     height: 100%; 
                     overflow: clip;
                     will-change: opacity, transform;
-                    transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1), transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.3s step-end;
+                    transition: opacity 0.45s cubic-bezier(0.16, 1, 0.3, 1), transform 0.45s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.45s step-end;
                     opacity: 0;
                     transform: scale(0.95) translateZ(0);
                     visibility: hidden;
@@ -614,7 +615,7 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout, user }) => 
                     transform: scale(1) translateZ(0);
                     visibility: visible;
                     pointer-events: auto;
-                    transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1), transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), visibility 0s step-start;
+                    transition: opacity 0.45s cubic-bezier(0.16, 1, 0.3, 1), transform 0.45s cubic-bezier(0.16, 1, 0.3, 1), visibility 0s step-start;
                 }
                 input, textarea, select { font-size: 16px !important; }
             `}</style>
