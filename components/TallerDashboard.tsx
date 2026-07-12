@@ -537,7 +537,7 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout, user }) => 
     const activeIndex = VIEW_ORDER.indexOf(view);
     const bottomNav = navLayout === 'bottom' && safeAreaReady ? (
         <nav 
-            className={`fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t border-gray-100 dark:border-gray-800/50 flex-shrink-0 z-[100] transition-all duration-300 glass-nav ${
+            className={`fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t border-gray-100 dark:border-gray-800/50 flex-shrink-0 z-[100] glass-nav ${
                 navState === 'pressed' ? 'nav-pressed' : navState === 'released' ? 'nav-released' : ''
             }`}
             onTouchStart={() => setNavState('pressed')}
@@ -555,10 +555,10 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout, user }) => 
                 <div 
                     className="absolute inset-y-0 pointer-events-none"
                     style={{
-                        width: `${100 / navItems.length}%`,
-                        transform: `translate3d(${activeIndex * 100}%, 0, 0)`,
-                        left: 0,
-                        transition: 'transform 0.45s cubic-bezier(0.16, 1, 0.3, 1)',
+                         width: `${100 / navItems.length}%`,
+                         transform: `translate3d(${activeIndex * 100}%, 0, 0)`,
+                         left: 0,
+                         transition: 'transform 250ms cubic-bezier(0.4, 0, 0.2, 1)',
                     }}
                 >
                     <div className="h-full flex items-center justify-center px-[6px]">
