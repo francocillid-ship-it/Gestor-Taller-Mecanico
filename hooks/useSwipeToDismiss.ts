@@ -41,6 +41,7 @@ export function useSwipeToDismiss({
         const resetState = (mod: HTMLDivElement, back?: HTMLDivElement, clearTransform = false) => {
             if (clearTransform) {
                 mod.style.transform = '';
+                mod.style.opacity = '';
                 mod.style.transition = '';
                 if (back) {
                     back.style.opacity = '';
@@ -103,13 +104,16 @@ export function useSwipeToDismiss({
                 // Prevent gesture from propagating to underlying slider components like Tab.Panels
                 e.stopPropagation();
 
-                // Apply the transform
-                modal.style.transform = `translateX(${deltaX}px)`;
+                const progress = Math.min(deltaX / (modalWidth.current || window.innerWidth || 1), 1);
+                const scale = 1 - (progress * 0.12); // Scale from 1.0 down to 0.88
+                const opacity = 1 - progress;
+
+                modal.style.transform = `scale(${scale})`;
+                modal.style.opacity = `${opacity}`;
 
                 // Apply backdrop fade
-                if (backdrop && modalWidth.current > 0) {
-                    const progress = Math.min(deltaX / modalWidth.current, 1);
-                    backdrop.style.opacity = `${1 - progress}`;
+                if (backdrop) {
+                    backdrop.style.opacity = `${opacity}`;
                 }
 
                 lastX.current = currentX;
@@ -139,7 +143,7 @@ export function useSwipeToDismiss({
             const overallVelocity = totalTime > 0 ? deltaX / totalTime : 0;
 
             // We use standard React CSS transitions for the bounce back
-            modal.style.transition = 'transform 0.3s cubic-bezier(0.32, 0.72, 0, 1)';
+            modal.style.transition = 'transform 0.3s cubic-bezier(0.32, 0.72, 0, 1), opacity 0.3s ease-out';
             if (backdrop) {
                 backdrop.style.transition = 'opacity 0.3s ease-out';
             }
@@ -152,8 +156,9 @@ export function useSwipeToDismiss({
                 overallVelocity > velocityThreshold ||
                 (distanceRatio > distanceThreshold && velocity > -0.1)
             ) {
-                // Animate out completely
-                modal.style.transform = 'translateX(100%)';
+                // Animate out completely (shrink and fade)
+                modal.style.transform = 'scale(0.88)';
+                modal.style.opacity = '0';
                 if (backdrop) {
                     backdrop.style.opacity = '0';
                 }
@@ -164,7 +169,8 @@ export function useSwipeToDismiss({
                 }, 300);
             } else {
                 // Snap back
-                modal.style.transform = 'translateX(0)';
+                modal.style.transform = 'scale(1)';
+                modal.style.opacity = '1';
                 if (backdrop) {
                     backdrop.style.opacity = '1';
                 }

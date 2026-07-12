@@ -389,6 +389,45 @@
     button, input, select, textarea {
       border-radius: 14px;
     }
+
+    /* Center all fixed overlays and convert them to centered Apple modals */
+    div.fixed.inset-0[class*="z-"].flex {
+      justify-content: center !important;
+      align-items: center !important;
+      padding: 1rem !important;
+    }
+
+    /* Style the modal panel (2nd child) */
+    div.fixed.inset-0[class*="z-"].flex > div:nth-child(2) {
+      width: 100% !important;
+      max-width: 36rem !important; /* max-w-xl size */
+      height: 90% !important;
+      max-height: 85vh !important;
+      max-height: 85dvh !important;
+      border-radius: 28px !important; /* Apple squircle 3xl */
+      
+      /* Apple Zoom & Fade In Out Animation */
+      opacity: 0;
+      transform: scale(0.9) translateZ(0);
+      transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1) !important;
+      animation: apple-zoom-in 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+    }
+
+    /* Target backdrop transitions to make them fade nicely */
+    div.fixed.inset-0[class*="z-"].flex > div:nth-child(1) {
+      transition: opacity 0.4s ease-out !important;
+    }
+
+    @keyframes apple-zoom-in {
+      from {
+        transform: scale(0.9) translateZ(0);
+        opacity: 0;
+      }
+      to {
+        transform: scale(1) translateZ(0);
+        opacity: 1;
+      }
+    }
   </style>
   <script>
     tailwind.config = {
