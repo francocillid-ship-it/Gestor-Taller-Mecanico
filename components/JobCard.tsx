@@ -555,7 +555,7 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
                     >
                         <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2">
-                                <p className={`font-bold text-taller-dark dark:text-taller-light truncate transition-all duration-300 ${isCollapsedInCompact ? 'text-xs' : 'text-sm'}`}>
+                                <p className={`font-bold text-taller-dark dark:text-taller-light truncate ${isCollapsedInCompact ? 'text-xs' : 'text-sm'}`}>
                                     {renderClientName()}
                                 </p>
                                 {!isCollapsedInCompact && needsScheduling && (
@@ -565,7 +565,7 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
                                 )}
                             </div>
 
-                            <p className={`text-taller-gray dark:text-gray-400 truncate transition-all duration-300 ${isCollapsedInCompact ? 'text-[10px] mt-0.5' : 'text-xs'}`}>
+                            <p className={`text-taller-gray dark:text-gray-400 truncate ${isCollapsedInCompact ? 'text-[10px] mt-0.5' : 'text-xs'}`}>
                                 {isCollapsedInCompact ? renderVehicleModelOnly() : renderVehicleInfo()}
                             </p>
 
