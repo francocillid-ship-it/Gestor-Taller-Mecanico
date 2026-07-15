@@ -341,6 +341,8 @@ const Clientes: React.FC<ClientesProps> = ({ clientes, trabajos, onDataRefresh, 
     const headerRef = useRef<HTMLDivElement>(null);
 
     const [headerHeight, setHeaderHeight] = useState(0);
+    const headerOffsetRef = useRef(0);
+    const lastScrollTop = useRef(0);
 
     useLayoutEffect(() => {
         const updateHeight = () => {
@@ -349,6 +351,8 @@ const Clientes: React.FC<ClientesProps> = ({ clientes, trabajos, onDataRefresh, 
                 setHeaderHeight(height);
                 // Set CSS variable for children to use
                 headerRef.current.parentElement?.style.setProperty('--header-h', `${height}px`);
+                headerRef.current.style.transform = `translateY(${-headerOffsetRef.current}px)`;
+                headerRef.current.style.opacity = (1 - (headerOffsetRef.current / (height || 1))).toString();
             }
         };
         const resizeObserver = new ResizeObserver(updateHeight);
@@ -366,8 +370,33 @@ const Clientes: React.FC<ClientesProps> = ({ clientes, trabajos, onDataRefresh, 
             const height = headerRef.current.offsetHeight;
             setHeaderHeight(height);
             headerRef.current.parentElement?.style.setProperty('--header-h', `${height}px`);
+            
+            headerOffsetRef.current = 0;
+            headerRef.current.style.transform = 'translateY(0px)';
+            headerRef.current.style.opacity = '1';
         }
     }, [isActive]);
+
+    const handleVerticalScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
+        if (!headerRef.current) return;
+        const el = e.currentTarget;
+        const st = el.scrollTop;
+        const lastSt = lastScrollTop.current;
+        const diff = st - lastSt;
+        lastScrollTop.current = st;
+
+        if (st <= 0) {
+            headerOffsetRef.current = 0;
+        } else {
+            headerOffsetRef.current = Math.max(0, Math.min(headerHeight, headerOffsetRef.current + diff));
+        }
+
+        const offset = headerOffsetRef.current;
+        const header = headerRef.current;
+        header.style.transform = `translateY(${-offset}px)`;
+        header.style.opacity = (1 - (offset / (headerHeight || 1))).toString();
+        header.style.pointerEvents = offset > headerHeight * 0.8 ? 'none' : 'auto';
+    }, [headerHeight]);
 
     const handleEditClick = (cliente: Cliente) => {
         setClienteToEdit(cliente);
@@ -464,6 +493,7 @@ const Clientes: React.FC<ClientesProps> = ({ clientes, trabajos, onDataRefresh, 
             <div 
                 className="flex-1 w-full overflow-y-auto px-4 lg:px-0 scrollbar-hide overscroll-none dashboard-scroll job-scroll-view" 
                 style={{ WebkitOverflowScrolling: 'touch', paddingTop: 'var(--header-h)' }}
+                onScroll={handleVerticalScroll}
             >
                 <div className="max-w-3xl mx-auto min-h-full w-full flex flex-col space-y-4 pb-20">
                     {visibleClientes.length > 0 ? (
