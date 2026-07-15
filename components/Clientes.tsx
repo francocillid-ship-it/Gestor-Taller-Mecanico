@@ -337,6 +337,14 @@ const Clientes: React.FC<ClientesProps> = ({ clientes, trabajos, onDataRefresh, 
     const [clientForNewJob, setClientForNewJob] = useState<string | null>(null);
     const [visibleCount, setVisibleCount] = useState(15);
     const sentinelRef = useRef<HTMLDivElement>(null);
+    const headerRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        if (headerRef.current) {
+            const height = headerRef.current.offsetHeight;
+            headerRef.current.parentElement?.style.setProperty('--header-h', `${height}px`);
+        }
+    }, []);
 
     const handleEditClick = (cliente: Cliente) => {
         setClienteToEdit(cliente);
@@ -411,8 +419,11 @@ const Clientes: React.FC<ClientesProps> = ({ clientes, trabajos, onDataRefresh, 
         <div className="h-full w-full flex flex-col relative overflow-hidden bg-taller-light dark:bg-taller-dark">
             {/* Header bar matching Trabajos.tsx layout & positioning */}
             <div
-                className="absolute top-0 left-0 right-0 bg-taller-light dark:bg-taller-dark z-30 flex-shrink-0"
-                style={{ height: '82px' }}
+                ref={headerRef}
+                className="absolute top-0 left-0 right-0 bg-taller-light dark:bg-taller-dark z-30 flex-shrink-0 job-tab-header-bar"
+                style={{
+                    pointerEvents: 'auto',
+                }}
             >
                 <div className="max-w-3xl mx-auto p-4 pt-5 pb-3 w-full">
                     <button
@@ -428,8 +439,8 @@ const Clientes: React.FC<ClientesProps> = ({ clientes, trabajos, onDataRefresh, 
 
             {/* Scrollable list content matching Trabajos.tsx format and padding */}
             <div 
-                className="flex-1 w-full overflow-y-auto px-4 lg:px-0 scrollbar-hide overscroll-none dashboard-scroll" 
-                style={{ WebkitOverflowScrolling: 'touch', paddingTop: '82px' }}
+                className="flex-1 w-full overflow-y-auto px-4 lg:px-0 scrollbar-hide overscroll-none dashboard-scroll job-scroll-view" 
+                style={{ WebkitOverflowScrolling: 'touch', paddingTop: 'var(--header-h)' }}
             >
                 <div className="max-w-3xl mx-auto min-h-full w-full flex flex-col space-y-4 pb-20">
                     {visibleClientes.length > 0 ? (
