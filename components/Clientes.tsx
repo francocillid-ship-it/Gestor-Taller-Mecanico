@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo, useRef, useEffect, useLayoutEffect, lazy, Suspense } from 'react';
+import React, { useState, useMemo, useRef, useEffect, useLayoutEffect, useCallback, lazy, Suspense } from 'react';
 import type { Cliente, Trabajo, Vehiculo, JobStatus } from '../types';
 import { ChevronDownIcon, PhoneIcon, EnvelopeIcon, UserPlusIcon, PencilIcon, Cog6ToothIcon, PlusIcon, PaperAirplaneIcon, CurrencyDollarIcon, KeyIcon, ArrowTopRightOnSquareIcon, ArrowPathIcon } from '@heroicons/react/24/solid';
 import { supabase, supabaseUrl, supabaseKey } from '../supabaseClient';
