@@ -3,7 +3,7 @@ import React, { useState, useRef, useEffect, lazy, Suspense, memo } from 'react'
 import { createPortal } from 'react-dom';
 import type { Trabajo, Cliente, Vehiculo, JobStatus, Parte, TallerInfo } from '../types';
 import { JobStatus as JobStatusEnum } from '../types';
-import { ChevronDownIcon, ChevronUpIcon, PencilIcon, PrinterIcon, CurrencyDollarIcon, WrenchScrewdriverIcon, ArrowPathIcon, CalendarIcon, ClockIcon, CheckIcon, ExclamationCircleIcon, ArchiveBoxIcon, ShoppingBagIcon } from '@heroicons/react/24/solid';
+import { ChevronDownIcon, ChevronUpIcon, PencilIcon, PrinterIcon, CurrencyDollarIcon, WrenchScrewdriverIcon, ArrowPathIcon, CalendarIcon, ClockIcon, CheckIcon, ExclamationCircleIcon, ArchiveBoxIcon, ShoppingBagIcon, TrashIcon } from '@heroicons/react/24/solid';
 import { supabase } from '../supabaseClient';
 import { generateClientPDF } from './pdfGenerator';
 
@@ -29,6 +29,8 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
     const [paymentAmount, setPaymentAmount] = useState('');
     const [paymentType, setPaymentType] = useState<'items' | 'labor'>('items');
     const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+    const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
 
     const [isStatusMenuOpen, setIsStatusMenuOpen] = useState(false);
     const [isMenuVisible, setIsMenuVisible] = useState(false);
@@ -85,6 +87,21 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
         }
     };
 
+    const handleDeleteJob = async () => {
+        setIsDeleting(true);
+        try {
+            const { error } = await supabase.from('trabajos').delete().eq('id', trabajo.id);
+            if (error) throw error;
+            onDataRefresh();
+        } catch (error) {
+            console.error('Error deleting job:', error);
+            alert('Error al eliminar el presupuesto');
+        } finally {
+            setIsDeleting(false);
+            setIsConfirmingDelete(false);
+        }
+    };
+
     const triggerStatusMenuFromSwipe = () => {
         setIsSwipeTriggeredMenu(true);
         setIsStatusMenuOpen(true);
@@ -96,15 +113,19 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
             e.stopPropagation();
 
             if (swipeOffset > 80) {
-                setIsExpanded(true);
-                setIsAddingPayment(true);
-                // Wait for the card expansion transition to finish before scrolling and focusing
-                setTimeout(() => {
-                    if (paymentInputRef.current) {
-                        paymentInputRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                        paymentInputRef.current.focus();
-                    }
-                }, 350);
+                if (trabajo.status === JobStatusEnum.Presupuesto) {
+                    setIsConfirmingDelete(true);
+                } else {
+                    setIsExpanded(true);
+                    setIsAddingPayment(true);
+                    // Wait for the card expansion transition to finish before scrolling and focusing
+                    setTimeout(() => {
+                        if (paymentInputRef.current) {
+                            paymentInputRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            paymentInputRef.current.focus();
+                        }
+                    }, 350);
+                }
             } else if (swipeOffset < -80) {
                 triggerStatusMenuFromSwipe();
             }
@@ -496,16 +517,29 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
                 {/* Background actions revealed on swipe */}
                 <div className="absolute inset-0 flex items-center justify-between pointer-events-none rounded-lg overflow-hidden select-none">
                     {/* Swipe Right action (reveals Left action) */}
-                    <div 
-                        className="absolute inset-y-0 left-0 bg-green-500 text-white flex items-center pl-6 gap-2 transition-opacity duration-200"
-                        style={{ 
-                            right: '50%',
-                            opacity: swipeOffset > 10 ? Math.min(swipeOffset / 80, 1) : 0,
-                        }}
-                    >
-                        <CurrencyDollarIcon className="h-6 w-6 animate-pulse" />
-                        <span className="text-xs font-black uppercase tracking-wider">Registrar Pago</span>
-                    </div>
+                    {trabajo.status === JobStatusEnum.Presupuesto ? (
+                        <div 
+                            className="absolute inset-y-0 left-0 bg-red-600 text-white flex items-center pl-6 gap-2 transition-opacity duration-200"
+                            style={{ 
+                                right: '50%',
+                                opacity: swipeOffset > 10 ? Math.min(swipeOffset / 80, 1) : 0,
+                            }}
+                        >
+                            <TrashIcon className="h-6 w-6 animate-pulse" />
+                            <span className="text-xs font-black uppercase tracking-wider">Eliminar</span>
+                        </div>
+                    ) : (
+                        <div 
+                            className="absolute inset-y-0 left-0 bg-green-500 text-white flex items-center pl-6 gap-2 transition-opacity duration-200"
+                            style={{ 
+                                right: '50%',
+                                opacity: swipeOffset > 10 ? Math.min(swipeOffset / 80, 1) : 0,
+                            }}
+                        >
+                            <CurrencyDollarIcon className="h-6 w-6 animate-pulse" />
+                            <span className="text-xs font-black uppercase tracking-wider">Registrar Pago</span>
+                        </div>
+                    )}
 
                     {/* Swipe Left action (reveals Right action) */}
                     <div 
@@ -890,6 +924,16 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
                 document.body
             )}
 
+            {isConfirmingDelete && createPortal(
+                <DeleteConfirmationModal
+                    onClose={() => setIsConfirmingDelete(false)}
+                    onConfirm={handleDeleteJob}
+                    isDeleting={isDeleting}
+                    description={`¿Estás seguro de que deseas eliminar el presupuesto para el vehículo ${vehiculo?.marca || ''} ${vehiculo?.modelo || ''}?`}
+                />,
+                document.body
+            )}
+
             <Suspense fallback={null}>
                 {isJobModalOpen && (
                     <CrearTrabajoModal
@@ -909,3 +953,69 @@ const JobCard: React.FC<JobCardProps> = ({ trabajo, cliente, vehiculo, onUpdateS
 };
 
 export default memo(JobCard);
+
+interface DeleteConfirmationModalProps {
+    onClose: () => void;
+    onConfirm: () => void;
+    isDeleting: boolean;
+    description: string;
+}
+
+const DeleteConfirmationModal: React.FC<DeleteConfirmationModalProps> = ({ onClose, onConfirm, isDeleting, description }) => {
+    const [isVisible, setIsVisible] = useState(false);
+
+    useEffect(() => {
+        const timer = setTimeout(() => setIsVisible(true), 10);
+        return () => clearTimeout(timer);
+    }, []);
+
+    const handleClose = () => {
+        setIsVisible(false);
+        setTimeout(onClose, 250);
+    };
+
+    return (
+        <div className="fixed inset-0 z-[999] flex items-center justify-center p-4">
+            <div
+                className={`fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-300 ease-out ${isVisible ? 'opacity-100' : 'opacity-0'}`}
+                onClick={handleClose}
+            />
+            <div
+                className={`bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-6 w-full max-w-md relative z-10 transform transition-all duration-300 ease-out border border-white/10 ${isVisible ? 'scale-100 opacity-100 translate-y-0' : 'scale-95 opacity-0 translate-y-4'}`}
+            >
+                <div className="flex items-center space-x-3 mb-4">
+                    <div className="p-2 bg-red-500/10 rounded-lg text-red-500">
+                        <TrashIcon className="h-6 w-6" />
+                    </div>
+                    <h3 className="text-lg font-bold text-taller-dark dark:text-taller-light">Eliminar Presupuesto</h3>
+                </div>
+                <p className="text-sm text-taller-gray dark:text-gray-400 mb-6 leading-relaxed">
+                    {description}
+                </p>
+                <div className="flex gap-3">
+                    <button
+                        onClick={handleClose}
+                        disabled={isDeleting}
+                        className="flex-1 py-3 px-4 border border-gray-200 dark:border-gray-600 rounded-xl text-sm font-bold text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                    >
+                        Cancelar
+                    </button>
+                    <button
+                        onClick={onConfirm}
+                        disabled={isDeleting}
+                        className="flex-1 py-3 px-4 bg-red-600 hover:bg-red-700 text-white rounded-xl text-sm font-bold shadow-lg shadow-red-600/20 transition-all active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-1"
+                    >
+                        {isDeleting ? (
+                            <span>Eliminando...</span>
+                        ) : (
+                            <>
+                                <TrashIcon className="h-4 w-4" />
+                                <span>Eliminar</span>
+                            </>
+                        )}
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};
