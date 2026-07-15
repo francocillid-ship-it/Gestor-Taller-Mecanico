@@ -6,9 +6,9 @@ import type { Cliente, Trabajo, TallerInfo } from './types';
 import { WrenchScrewdriverIcon } from '@heroicons/react/24/solid';
 import { applyAppTheme } from './constants';
 
+import TallerDashboard from './components/TallerDashboard';
 // Lazy loading components
 const Login = lazy(() => import('./components/Login'));
-const TallerDashboard = lazy(() => import('./components/TallerDashboard'));
 const ClientPortal = lazy(() => import('./components/ClientPortal'));
 const ResetPassword = lazy(() => import('./components/ResetPassword'));
 const SetInitialPassword = lazy(() => import('./components/SetInitialPassword'));
