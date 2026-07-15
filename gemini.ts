@@ -11,6 +11,18 @@ export type GastoData = {
     esFijo?: boolean;
 };
 
+const withTimeout = <T>(promise: Promise<T>, timeoutMs: number, errorMessage: string): Promise<T> => {
+    let timeoutId: any;
+    const timeoutPromise = new Promise<never>((_, reject) => {
+        timeoutId = setTimeout(() => {
+            reject(new Error(errorMessage));
+        }, timeoutMs);
+    });
+    return Promise.race([promise, timeoutPromise]).finally(() => {
+        clearTimeout(timeoutId);
+    });
+};
+
 export const getGeminiApiKey = (): string | undefined => {
     return localStorage.getItem('gemini_api_key') || (import.meta as any).env?.VITE_GEMINI_API_KEY;
 };
@@ -87,24 +99,28 @@ export const recognizeVehicleDataFromImage = async (base64Image: string): Promis
     };
 
     try {
-        const response = await ai.models.generateContent({
-            model: 'gemini-3-flash-preview',
-            contents: { parts: [imagePart, textPart] },
-            config: {
-                responseMimeType: "application/json",
-                responseSchema: {
-                    type: Type.OBJECT,
-                    properties: {
-                        marca: { type: Type.STRING },
-                        modelo: { type: Type.STRING },
-                        año: { type: Type.STRING },
-                        matricula: { type: Type.STRING },
-                        numero_chasis: { type: Type.STRING },
-                        numero_motor: { type: Type.STRING }
-                    },
+        const response = await withTimeout(
+            ai.models.generateContent({
+                model: 'gemini-2.5-flash',
+                contents: { parts: [imagePart, textPart] },
+                config: {
+                    responseMimeType: "application/json",
+                    responseSchema: {
+                        type: Type.OBJECT,
+                        properties: {
+                            marca: { type: Type.STRING },
+                            modelo: { type: Type.STRING },
+                            año: { type: Type.STRING },
+                            matricula: { type: Type.STRING },
+                            numero_chasis: { type: Type.STRING },
+                            numero_motor: { type: Type.STRING }
+                        },
+                    }
                 }
-            }
-        });
+            }),
+            18000,
+            "El análisis de la cédula está tardando demasiado. Por favor, intente de nuevo con una foto más clara."
+        );
 
         const jsonString = response.text?.trim();
         if (!jsonString) return {};
@@ -172,22 +188,26 @@ export const recognizeGastoDataFromFile = async (base64Data: string, mimeType: s
     };
 
     try {
-        const response = await ai.models.generateContent({
-            model: 'gemini-3-flash-preview',
-            contents: { parts: [filePart, textPart] },
-            config: {
-                responseMimeType: "application/json",
-                responseSchema: {
-                    type: Type.OBJECT,
-                    properties: {
-                        descripcion: { type: Type.STRING },
-                        monto: { type: Type.NUMBER },
-                        categoria: { type: Type.STRING },
-                        esFijo: { type: Type.BOOLEAN }
+        const response = await withTimeout(
+            ai.models.generateContent({
+                model: 'gemini-2.5-flash',
+                contents: { parts: [filePart, textPart] },
+                config: {
+                    responseMimeType: "application/json",
+                    responseSchema: {
+                        type: Type.OBJECT,
+                        properties: {
+                            descripcion: { type: Type.STRING },
+                            monto: { type: Type.NUMBER },
+                            categoria: { type: Type.STRING },
+                            esFijo: { type: Type.BOOLEAN }
+                        }
                     }
                 }
-            }
-        });
+            }),
+            18000,
+            "El análisis del comprobante está tardando demasiado. Por favor, intente de nuevo con un archivo más claro."
+        );
 
         const jsonString = response.text?.trim();
         if (!jsonString) return {};
