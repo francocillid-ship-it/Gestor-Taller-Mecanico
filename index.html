@@ -176,6 +176,17 @@
       background-color: #374151 !important; /* bg-gray-700 placeholder */
     }
 
+    /* Fallbacks for border colors in dark mode before Tailwind compiler executes */
+    html.dark .border-white\/10 {
+      border-color: rgba(255, 255, 255, 0.05) !important;
+    }
+    html.dark .border-white\/15 {
+      border-color: rgba(255, 255, 255, 0.05) !important;
+    }
+    html.dark .border-white\/20 {
+      border-color: rgba(255, 255, 255, 0.08) !important;
+    }
+
     html.dark body {
       background-color: var(--color-bg-app);
     }
