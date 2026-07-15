@@ -408,40 +408,53 @@ const Clientes: React.FC<ClientesProps> = ({ clientes, trabajos, onDataRefresh, 
     }, [filteredClientes.length, visibleCount]);
 
     return (
-        <div className="space-y-6 pb-16">
-            <div className="max-w-3xl mx-auto p-4 pt-5 pb-3 w-full">
-                <button
-                    type="button"
-                    onClick={() => setIsCreateModalOpen(true)}
-                    className="w-full flex items-center justify-center gap-2 py-3.5 px-4 bg-taller-primary text-white font-extrabold rounded-xl shadow-lg shadow-taller-primary/20 active:scale-95 transition-all duration-300"
-                >
-                    <UserPlusIcon className="h-5 w-5" />
-                    <span className="uppercase tracking-wider text-xs">Nuevo Cliente</span>
-                </button>
+        <div className="h-full w-full flex flex-col relative overflow-hidden bg-taller-light dark:bg-taller-dark">
+            {/* Header bar matching Trabajos.tsx layout & positioning */}
+            <div
+                className="absolute top-0 left-0 right-0 bg-taller-light dark:bg-taller-dark z-30 flex-shrink-0"
+                style={{ height: '82px' }}
+            >
+                <div className="max-w-3xl mx-auto p-4 pt-5 pb-3 w-full">
+                    <button
+                        type="button"
+                        onClick={() => setIsCreateModalOpen(true)}
+                        className="w-full flex items-center justify-center gap-2 py-3.5 px-4 bg-taller-primary text-white font-extrabold rounded-xl shadow-lg shadow-taller-primary/20 active:scale-95 transition-all duration-300"
+                    >
+                        <UserPlusIcon className="h-5 w-5" />
+                        <span className="uppercase tracking-wider text-xs">Nuevo Cliente</span>
+                    </button>
+                </div>
             </div>
-            <div className="space-y-4 px-4 max-w-3xl mx-auto">
-                {visibleClientes.length > 0 ? (
-                    visibleClientes.map(cliente => (
-                        <ClientCard
-                            key={cliente.id}
-                            cliente={cliente}
-                            trabajos={trabajos}
-                            onEdit={handleEditClick}
-                            onConfigVehicle={setVehicleToConfig}
-                            onAddVehicle={setClientToAddVehicle}
-                            onCreateJob={setClientForNewJob}
-                            forceExpand={searchQuery.length > 0}
-                            onDataRefresh={onDataRefresh}
-                            onNavigate={onNavigate}
-                        />
-                    ))
-                ) : (
-                    <div className="text-center py-10 bg-white dark:bg-gray-800 rounded-lg shadow-md">
-                        <p className="text-taller-gray dark:text-gray-400">No se encontraron clientes.</p>
-                        {searchQuery && <p className="text-sm text-taller-gray dark:text-gray-400 mt-2">Intente con otro término de búsqueda.</p>}
-                    </div>
-                )}
-                <div ref={sentinelRef} className="h-4 w-full pointer-events-none" />
+
+            {/* Scrollable list content matching Trabajos.tsx format and padding */}
+            <div 
+                className="flex-1 w-full overflow-y-auto px-4 lg:px-0 scrollbar-hide overscroll-none dashboard-scroll" 
+                style={{ WebkitOverflowScrolling: 'touch', paddingTop: '82px' }}
+            >
+                <div className="max-w-3xl mx-auto min-h-full w-full flex flex-col space-y-4 pb-20">
+                    {visibleClientes.length > 0 ? (
+                        visibleClientes.map(cliente => (
+                            <ClientCard
+                                key={cliente.id}
+                                cliente={cliente}
+                                trabajos={trabajos}
+                                onEdit={handleEditClick}
+                                onConfigVehicle={setVehicleToConfig}
+                                onAddVehicle={setClientToAddVehicle}
+                                onCreateJob={setClientForNewJob}
+                                forceExpand={searchQuery.length > 0}
+                                onDataRefresh={onDataRefresh}
+                                onNavigate={onNavigate}
+                            />
+                        ))
+                    ) : (
+                        <div className="text-center py-10 bg-white dark:bg-gray-800 rounded-lg shadow-md">
+                            <p className="text-taller-gray dark:text-gray-400">No se encontraron clientes.</p>
+                            {searchQuery && <p className="text-sm text-taller-gray dark:text-gray-400 mt-2">Intente con otro término de búsqueda.</p>}
+                        </div>
+                    )}
+                    <div ref={sentinelRef} className="h-4 w-full pointer-events-none flex-shrink-0" />
+                </div>
             </div>
 
             <Suspense fallback={null}>
