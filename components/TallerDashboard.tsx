@@ -152,6 +152,11 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout, user }) => 
     const [searchQuery, setSearchQuery] = useState('');
     const [targetJobStatus, setTargetJobStatus] = useState<JobStatusEnum | undefined>(undefined);
     const [targetJobId, setTargetJobId] = useState<string | undefined>(undefined);
+    const [isReady, setIsReady] = useState(false);
+
+    useEffect(() => {
+        setIsReady(true);
+    }, []);
 
     const navLayout = useNavLayout();
     const lastAutoRouteRef = useRef<string>('');
@@ -605,17 +610,23 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout, user }) => 
                     height: 100%; 
                     overflow: clip;
                     will-change: opacity, transform;
-                    transition: opacity 0.45s cubic-bezier(0.16, 1, 0.3, 1), transform 0.45s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.45s step-end;
                     opacity: 0;
                     transform: scale(0.95) translateZ(0);
                     visibility: hidden;
                     pointer-events: none;
+                    transition: none;
+                }
+                .views-container.ready .main-view-slot {
+                    transition: opacity 0.45s cubic-bezier(0.16, 1, 0.3, 1), transform 0.45s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.45s step-end;
                 }
                 .main-view-slot.active-view {
                     opacity: 1;
                     transform: scale(1) translateZ(0);
                     visibility: visible;
                     pointer-events: auto;
+                    transition: none;
+                }
+                .views-container.ready .main-view-slot.active-view {
                     transition: opacity 0.45s cubic-bezier(0.16, 1, 0.3, 1), transform 0.45s cubic-bezier(0.16, 1, 0.3, 1), visibility 0s step-start;
                 }
                 input, textarea, select { font-size: 16px !important; }
@@ -663,7 +674,7 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout, user }) => 
                 />
 
                 <main className="flex-1 w-full overflow-hidden relative bg-taller-light dark:bg-taller-dark">
-                    <div className="views-container">
+                    <div className={`views-container ${isReady ? 'ready' : ''}`}>
                         <div className={`main-view-slot ${view === 'dashboard' ? 'active-view' : ''}`}>
                             <Suspense fallback={
                                 <div className="h-full overflow-y-auto px-4 pt-6 md:px-8 scrollbar-hide overscroll-none dashboard-scroll">
