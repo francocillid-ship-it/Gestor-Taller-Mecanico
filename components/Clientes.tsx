@@ -34,9 +34,19 @@ interface ClientCardProps {
 
 const ClientCard: React.FC<ClientCardProps> = ({ cliente, trabajos, onEdit, onConfigVehicle, onAddVehicle, onCreateJob, forceExpand, onDataRefresh, onNavigate }) => {
     const [isExpanded, setIsExpanded] = useState(false);
+    const [shouldRender, setShouldRender] = useState(false);
     const [sendingAccess, setSendingAccess] = useState(false);
     const clientTrabajos = trabajos.filter(t => t.clienteId === cliente.id);
     const cardRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        if (isExpanded) {
+            setShouldRender(true);
+        } else {
+            const timer = setTimeout(() => setShouldRender(false), 300);
+            return () => clearTimeout(timer);
+        }
+    }, [isExpanded]);
 
     const generateTempPassword = () => {
         const charset = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -208,110 +218,111 @@ const ClientCard: React.FC<ClientCardProps> = ({ cliente, trabajos, onEdit, onCo
                     <ChevronDownIcon className={`h-6 w-6 text-taller-gray dark:text-gray-400 transform transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`} />
                 </div>
             </button>
-
             <div className={`grid transition-[grid-template-rows] duration-300 ease-in-out ${isExpanded ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>
                 <div className="overflow-hidden">
-                    <div className="p-4 border-t dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                            <div>
-                                <h4 className="font-semibold mb-2 text-taller-dark dark:text-taller-light">Información de Contacto</h4>
-                                <div className="space-y-2 text-sm text-taller-dark dark:text-gray-300">
-                                    <p className="flex items-center"><PhoneIcon className="h-4 w-4 mr-2 text-taller-gray dark:text-gray-400" /> {cliente.telefono}</p>
-                                    <div className="flex flex-wrap items-center justify-between gap-2 group">
-                                        <p className="flex items-center break-all">
-                                            <EnvelopeIcon className="h-4 w-4 mr-2 text-taller-gray dark:text-gray-400 flex-shrink-0" />
-                                            {cliente.email || 'Sin email registrado'}
-                                        </p>
-                                        {cliente.email && (
-                                            <button
-                                                onClick={handleSendAccess}
-                                                disabled={sendingAccess}
-                                                className="flex-shrink-0 flex items-center gap-1 text-xs font-bold text-white bg-green-500 hover:bg-green-600 px-3 py-1.5 rounded-full transition-all shadow-sm ml-auto sm:ml-0 disabled:opacity-50"
-                                                title="Enviar enlace de acceso automático"
-                                            >
-                                                {sendingAccess ? (
-                                                    <span className="flex items-center gap-1"><ArrowPathIcon className="h-3 w-3 flex-shrink-0 animate-spin" /> Generando...</span>
-                                                ) : (
-                                                    <>
-                                                        <KeyIcon className="h-3.5 w-3.5" />
-                                                        Compartir Acceso
-                                                    </>
-                                                )}
-                                            </button>
-                                        )}
+                    {shouldRender && (
+                        <div className="p-4 border-t dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                                <div>
+                                    <h4 className="font-semibold mb-2 text-taller-dark dark:text-taller-light">Información de Contacto</h4>
+                                    <div className="space-y-2 text-sm text-taller-dark dark:text-gray-300">
+                                        <p className="flex items-center"><PhoneIcon className="h-4 w-4 mr-2 text-taller-gray dark:text-gray-400" /> {cliente.telefono}</p>
+                                        <div className="flex flex-wrap items-center justify-between gap-2 group">
+                                            <p className="flex items-center break-all">
+                                                <EnvelopeIcon className="h-4 w-4 mr-2 text-taller-gray dark:text-gray-400 flex-shrink-0" />
+                                                {cliente.email || 'Sin email registrado'}
+                                            </p>
+                                            {cliente.email && (
+                                                <button
+                                                    onClick={handleSendAccess}
+                                                    disabled={sendingAccess}
+                                                    className="flex-shrink-0 flex items-center gap-1 text-xs font-bold text-white bg-green-500 hover:bg-green-600 px-3 py-1.5 rounded-full transition-all shadow-sm ml-auto sm:ml-0 disabled:opacity-50"
+                                                    title="Enviar enlace de acceso automático"
+                                                >
+                                                    {sendingAccess ? (
+                                                        <span className="flex items-center gap-1"><ArrowPathIcon className="h-3 w-3 flex-shrink-0 animate-spin" /> Generando...</span>
+                                                    ) : (
+                                                        <>
+                                                            <KeyIcon className="h-3.5 w-3.5" />
+                                                            Compartir Acceso
+                                                        </>
+                                                    )}
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div>
+                                    <div className="flex justify-between items-center mb-2">
+                                        <h4 className="font-semibold text-taller-dark dark:text-taller-light">Vehículos</h4>
+                                        <button
+                                            onClick={(e) => { e.stopPropagation(); onAddVehicle(cliente.id); }}
+                                            className="flex items-center gap-1 text-xs font-semibold text-taller-primary hover:text-taller-secondary bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/30 dark:hover:bg-blue-900/50 px-2 py-1 rounded transition-colors"
+                                        >
+                                            <PlusIcon className="h-3 w-3" /> Agregar
+                                        </button>
+                                    </div>
+                                    <div className="space-y-2 text-sm text-taller-dark dark:text-gray-300">
+                                        {cliente.vehiculos.map(v => (
+                                            <div key={v.id} className="flex justify-between items-center bg-white dark:bg-gray-700 p-2 rounded border dark:border-gray-600">
+                                                <p><strong>{v.marca} {v.modelo} {v.año ? `(${v.año})` : ''}</strong> - {v.matricula}</p>
+                                                <button
+                                                    onClick={(e) => { e.stopPropagation(); onConfigVehicle(v); }}
+                                                    className="text-taller-gray hover:text-taller-primary dark:text-gray-400 dark:hover:text-white p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
+                                                    title="Configurar intervalos de mantenimiento"
+                                                >
+                                                    <Cog6ToothIcon className="h-5 w-5" />
+                                                </button>
+                                            </div>
+                                        ))}
                                     </div>
                                 </div>
                             </div>
-                            <div>
-                                <div className="flex justify-between items-center mb-2">
-                                    <h4 className="font-semibold text-taller-dark dark:text-taller-light">Vehículos</h4>
-                                    <button
-                                        onClick={(e) => { e.stopPropagation(); onAddVehicle(cliente.id); }}
-                                        className="flex items-center gap-1 text-xs font-semibold text-taller-primary hover:text-taller-secondary bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/30 dark:hover:bg-blue-900/50 px-2 py-1 rounded transition-colors"
-                                    >
-                                        <PlusIcon className="h-3 w-3" /> Agregar
-                                    </button>
-                                </div>
-                                <div className="space-y-2 text-sm text-taller-dark dark:text-gray-300">
-                                    {cliente.vehiculos.map(v => (
-                                        <div key={v.id} className="flex justify-between items-center bg-white dark:bg-gray-700 p-2 rounded border dark:border-gray-600">
-                                            <p><strong>{v.marca} {v.modelo} {v.año ? `(${v.año})` : ''}</strong> - {v.matricula}</p>
-                                            <button
-                                                onClick={(e) => { e.stopPropagation(); onConfigVehicle(v); }}
-                                                className="text-taller-gray hover:text-taller-primary dark:text-gray-400 dark:hover:text-white p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
-                                                title="Configurar intervalos de mantenimiento"
-                                            >
-                                                <Cog6ToothIcon className="h-5 w-5" />
-                                            </button>
-                                        </div>
-                                    ))}
-                                </div>
+
+                            <h4 className="font-semibold mb-2 text-taller-dark dark:text-taller-light">Historial de Trabajos</h4>
+                            <div className="space-y-2">
+                                {clientTrabajos.length > 0 ? clientTrabajos.map(trabajo => {
+                                    const vehiculo = cliente.vehiculos.find(v => v.id === trabajo.vehiculoId);
+                                    return (
+                                        <button
+                                            key={trabajo.id}
+                                            onClick={() => onNavigate('trabajos', trabajo.status, trabajo.id)}
+                                            className="w-full text-left p-3 bg-white dark:bg-gray-700 rounded-md border dark:border-gray-600 flex justify-between items-center hover:border-taller-primary hover:shadow-sm transition-all group active:scale-[0.99]"
+                                        >
+                                            <div className="flex-1 min-w-0">
+                                                <div className="flex justify-between items-center mb-1">
+                                                    <p className="font-semibold text-taller-dark dark:text-taller-light truncate">{vehiculo ? `${vehiculo.marca} ${vehiculo.modelo}` : 'Vehículo'}</p>
+                                                    <span className={`flex-shrink-0 px-2 py-0.5 text-[10px] font-bold uppercase rounded-full ${trabajo.status === 'Finalizado' ? 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300' : 'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300'}`}>{trabajo.status}</span>
+                                                </div>
+                                                <p className="text-sm text-taller-gray dark:text-gray-400 truncate">{trabajo.descripcion}</p>
+                                                <p className="text-[10px] text-taller-gray dark:text-gray-500 mt-1">Fecha: {new Date(trabajo.fechaEntrada).toLocaleDateString('es-ES')}</p>
+                                            </div>
+                                            <div className="ml-4 text-taller-gray dark:text-gray-500 group-hover:text-taller-primary transition-colors">
+                                                <ArrowTopRightOnSquareIcon className="h-5 w-5" />
+                                            </div>
+                                        </button>
+                                    )
+                                }) : <p className="text-sm text-taller-gray dark:text-gray-400">No hay trabajos registrados.</p>}
+                            </div>
+
+                            <div className="mt-6 flex gap-3 w-full">
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); onCreateJob(cliente.id); }}
+                                    className="flex-1 flex items-center justify-center gap-2 px-3 py-2 text-sm font-semibold text-white bg-taller-primary rounded-lg shadow-sm hover:bg-taller-secondary transition-colors"
+                                >
+                                    <CurrencyDollarIcon className="h-4 w-4" />
+                                    Crear Presupuesto
+                                </button>
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); onEdit(cliente); }}
+                                    className="flex-1 flex items-center justify-center gap-2 px-3 py-2 text-sm font-semibold text-taller-secondary bg-blue-50 border border-taller-secondary/50 rounded-lg shadow-sm hover:bg-blue-100 dark:text-blue-300 dark:bg-blue-900/30 dark:border-blue-500/50 dark:hover:bg-blue-900/50 transition-colors"
+                                >
+                                    <PencilIcon className="h-4 w-4" />
+                                    Editar Datos
+                                </button>
                             </div>
                         </div>
-
-                        <h4 className="font-semibold mb-2 text-taller-dark dark:text-taller-light">Historial de Trabajos</h4>
-                        <div className="space-y-2">
-                            {clientTrabajos.length > 0 ? clientTrabajos.map(trabajo => {
-                                const vehiculo = cliente.vehiculos.find(v => v.id === trabajo.vehiculoId);
-                                return (
-                                    <button
-                                        key={trabajo.id}
-                                        onClick={() => onNavigate('trabajos', trabajo.status, trabajo.id)}
-                                        className="w-full text-left p-3 bg-white dark:bg-gray-700 rounded-md border dark:border-gray-600 flex justify-between items-center hover:border-taller-primary hover:shadow-sm transition-all group active:scale-[0.99]"
-                                    >
-                                        <div className="flex-1 min-w-0">
-                                            <div className="flex justify-between items-center mb-1">
-                                                <p className="font-semibold text-taller-dark dark:text-taller-light truncate">{vehiculo ? `${vehiculo.marca} ${vehiculo.modelo}` : 'Vehículo'}</p>
-                                                <span className={`flex-shrink-0 px-2 py-0.5 text-[10px] font-bold uppercase rounded-full ${trabajo.status === 'Finalizado' ? 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300' : 'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300'}`}>{trabajo.status}</span>
-                                            </div>
-                                            <p className="text-sm text-taller-gray dark:text-gray-400 truncate">{trabajo.descripcion}</p>
-                                            <p className="text-[10px] text-taller-gray dark:text-gray-500 mt-1">Fecha: {new Date(trabajo.fechaEntrada).toLocaleDateString('es-ES')}</p>
-                                        </div>
-                                        <div className="ml-4 text-taller-gray dark:text-gray-500 group-hover:text-taller-primary transition-colors">
-                                            <ArrowTopRightOnSquareIcon className="h-5 w-5" />
-                                        </div>
-                                    </button>
-                                )
-                            }) : <p className="text-sm text-taller-gray dark:text-gray-400">No hay trabajos registrados.</p>}
-                        </div>
-
-                        <div className="mt-6 flex gap-3 w-full">
-                            <button
-                                onClick={(e) => { e.stopPropagation(); onCreateJob(cliente.id); }}
-                                className="flex-1 flex items-center justify-center gap-2 px-3 py-2 text-sm font-semibold text-white bg-taller-primary rounded-lg shadow-sm hover:bg-taller-secondary transition-colors"
-                            >
-                                <CurrencyDollarIcon className="h-4 w-4" />
-                                Crear Presupuesto
-                            </button>
-                            <button
-                                onClick={(e) => { e.stopPropagation(); onEdit(cliente); }}
-                                className="flex-1 flex items-center justify-center gap-2 px-3 py-2 text-sm font-semibold text-taller-secondary bg-blue-50 border border-taller-secondary/50 rounded-lg shadow-sm hover:bg-blue-100 dark:text-blue-300 dark:bg-blue-900/30 dark:border-blue-500/50 dark:hover:bg-blue-900/50 transition-colors"
-                            >
-                                <PencilIcon className="h-4 w-4" />
-                                Editar Datos
-                            </button>
-                        </div>
-                    </div>
+                    )}
                 </div>
             </div>
         </div>
@@ -324,6 +335,8 @@ const Clientes: React.FC<ClientesProps> = ({ clientes, trabajos, onDataRefresh, 
     const [vehicleToConfig, setVehicleToConfig] = useState<Vehiculo | null>(null);
     const [clientToAddVehicle, setClientToAddVehicle] = useState<string | null>(null);
     const [clientForNewJob, setClientForNewJob] = useState<string | null>(null);
+    const [visibleCount, setVisibleCount] = useState(15);
+    const sentinelRef = useRef<HTMLDivElement>(null);
 
     const handleEditClick = (cliente: Cliente) => {
         setClienteToEdit(cliente);
@@ -367,23 +380,48 @@ const Clientes: React.FC<ClientesProps> = ({ clientes, trabajos, onDataRefresh, 
         });
     }, [searchQuery, clientes]);
 
+    const visibleClientes = useMemo(() => {
+        return filteredClientes.slice(0, visibleCount);
+    }, [filteredClientes, visibleCount]);
+
+    useEffect(() => {
+        setVisibleCount(15);
+    }, [searchQuery]);
+
+    useEffect(() => {
+        const observer = new IntersectionObserver((entries) => {
+            if (entries[0].isIntersecting && visibleCount < filteredClientes.length) {
+                setVisibleCount(prev => prev + 15);
+            }
+        }, { threshold: 0.1, rootMargin: '150px' });
+
+        const currentSentinel = sentinelRef.current;
+        if (currentSentinel) {
+            observer.observe(currentSentinel);
+        }
+
+        return () => {
+            if (currentSentinel) {
+                observer.unobserve(currentSentinel);
+            }
+        };
+    }, [filteredClientes.length, visibleCount]);
+
     return (
         <div className="space-y-6 pb-16">
-            <div className="flex flex-col gap-4 sm:flex-row sm:justify-between sm:items-center">
-                <h2 className="text-2xl font-bold text-taller-dark dark:text-taller-light">Gestión de Clientes</h2>
-                <div className="flex flex-col sm:flex-row gap-3">
-                    <button
-                        onClick={() => setIsCreateModalOpen(true)}
-                        className="flex items-center justify-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-taller-primary rounded-lg shadow-md hover:bg-taller-secondary focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-taller-primary transition-colors"
-                    >
-                        <UserPlusIcon className="h-5 w-5" />
-                        Nuevo Cliente
-                    </button>
-                </div>
+            <div className="max-w-3xl mx-auto p-4 pt-5 pb-3 w-full">
+                <button
+                    type="button"
+                    onClick={() => setIsCreateModalOpen(true)}
+                    className="w-full flex items-center justify-center gap-2 py-3.5 px-4 bg-taller-primary text-white font-extrabold rounded-xl shadow-lg shadow-taller-primary/20 active:scale-95 transition-all duration-300"
+                >
+                    <UserPlusIcon className="h-5 w-5" />
+                    <span className="uppercase tracking-wider text-xs">Nuevo Cliente</span>
+                </button>
             </div>
-            <div className="space-y-4">
-                {filteredClientes.length > 0 ? (
-                    filteredClientes.map(cliente => (
+            <div className="space-y-4 px-4 max-w-3xl mx-auto">
+                {visibleClientes.length > 0 ? (
+                    visibleClientes.map(cliente => (
                         <ClientCard
                             key={cliente.id}
                             cliente={cliente}
@@ -403,6 +441,7 @@ const Clientes: React.FC<ClientesProps> = ({ clientes, trabajos, onDataRefresh, 
                         {searchQuery && <p className="text-sm text-taller-gray dark:text-gray-400 mt-2">Intente con otro término de búsqueda.</p>}
                     </div>
                 )}
+                <div ref={sentinelRef} className="h-4 w-full pointer-events-none" />
             </div>
 
             <Suspense fallback={null}>
