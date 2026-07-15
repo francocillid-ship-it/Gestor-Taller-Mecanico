@@ -158,6 +158,15 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout, user }) => 
         setIsReady(true);
     }, []);
 
+    const [animatedView, setAnimatedView] = useState<View>(view);
+
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setAnimatedView(view);
+        }, 30); // 30ms render cycle lag to protect GPU transition framerates
+        return () => clearTimeout(timer);
+    }, [view]);
+
     const [pressingTab, setPressingTab] = useState<View | null>(null);
     const navigateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -637,7 +646,7 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout, user }) => 
                     transition: none;
                 }
                 .views-container.ready .main-view-slot {
-                    transition: opacity 0.45s cubic-bezier(0.16, 1, 0.3, 1), transform 0.45s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.45s step-end;
+                    transition: opacity 0.58s cubic-bezier(0.16, 1, 0.3, 1), transform 0.58s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.58s step-end;
                 }
                 .main-view-slot.active-view {
                     opacity: 1;
@@ -647,7 +656,7 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout, user }) => 
                     transition: none;
                 }
                 .views-container.ready .main-view-slot.active-view {
-                    transition: opacity 0.45s cubic-bezier(0.16, 1, 0.3, 1), transform 0.45s cubic-bezier(0.16, 1, 0.3, 1), visibility 0s step-start;
+                    transition: opacity 0.58s cubic-bezier(0.16, 1, 0.3, 1), transform 0.58s cubic-bezier(0.16, 1, 0.3, 1), visibility 0s step-start;
                 }
                 input, textarea, select { font-size: 16px !important; }
             `}</style>
@@ -700,7 +709,7 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout, user }) => 
 
                 <main className="flex-1 w-full overflow-hidden relative bg-taller-light dark:bg-taller-dark">
                     <div className={`views-container ${isReady ? 'ready' : ''}`}>
-                        <div className={`main-view-slot ${view === 'dashboard' ? 'active-view' : ''}`}>
+                        <div className={`main-view-slot ${animatedView === 'dashboard' ? 'active-view' : ''}`}>
                             <Suspense fallback={
                                 <div className="h-full overflow-y-auto px-4 pt-6 md:px-8 scrollbar-hide overscroll-none dashboard-scroll">
                                     <div className="max-w-6xl mx-auto min-h-full pb-10">
@@ -723,7 +732,7 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout, user }) => 
                                 )}
                             </Suspense>
                         </div>
-                            <div className={`main-view-slot ${view === 'trabajos' ? 'active-view' : ''}`}>
+                            <div className={`main-view-slot ${animatedView === 'trabajos' ? 'active-view' : ''}`}>
                                 <Suspense fallback={
                                     <div className="h-full overflow-y-auto px-4 pt-6 md:px-8 scrollbar-hide overscroll-none dashboard-scroll">
                                         <div className="max-w-6xl mx-auto min-h-full pb-10">
@@ -745,7 +754,7 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout, user }) => 
                                     />
                                 </Suspense>
                             </div>
-                            <div className={`main-view-slot ${view === 'clientes' ? 'active-view' : ''}`}>
+                            <div className={`main-view-slot ${animatedView === 'clientes' ? 'active-view' : ''}`}>
                                 <Suspense fallback={
                                     <div className="h-full overflow-y-auto px-4 pt-6 md:px-8 scrollbar-hide overscroll-none dashboard-scroll">
                                         <div className="max-w-6xl mx-auto min-h-full pb-10">
@@ -756,7 +765,7 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout, user }) => 
                                     <Clientes clientes={clientes} trabajos={trabajos} onDataRefresh={handleDataRefreshSilent} searchQuery={searchQuery} onNavigate={handleNavigate} isActive={view === 'clientes'} />
                                 </Suspense>
                             </div>
-                            <div className={`main-view-slot ${view === 'finanzas' ? 'active-view' : ''}`}>
+                            <div className={`main-view-slot ${animatedView === 'finanzas' ? 'active-view' : ''}`}>
                                 <Suspense fallback={
                                     <div className="h-full overflow-y-auto px-4 pt-6 md:px-8 scrollbar-hide overscroll-none dashboard-scroll">
                                         <div className="max-w-6xl mx-auto min-h-full pb-10">
@@ -778,7 +787,7 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout, user }) => 
                                     </div>
                                 </Suspense>
                             </div>
-                            <div className={`main-view-slot ${view === 'ajustes' ? 'active-view' : ''}`}>
+                            <div className={`main-view-slot ${animatedView === 'ajustes' ? 'active-view' : ''}`}>
                                 <Suspense fallback={
                                     <div className="h-full overflow-y-auto px-4 pt-6 md:px-8 scrollbar-hide overscroll-none dashboard-scroll">
                                         <div className="max-w-4xl mx-auto min-h-full pb-10">
