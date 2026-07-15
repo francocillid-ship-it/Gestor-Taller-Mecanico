@@ -638,6 +638,14 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout, user }) => 
             {navRail}
 
             <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden relative">
+                {/* Unified Glass Header Panel for mobile */}
+                <div 
+                    className="glass-unified-panel"
+                    style={{
+                        height: `calc(64px + var(--safe-top) + ${(view === 'trabajos' || view === 'clientes') ? 'var(--header-h, 0px)' : '0px'})`
+                    }}
+                />
+
                 <Header
                     tallerName={tallerInfo.nombre}
                     logoUrl={tallerInfo.logoUrl}

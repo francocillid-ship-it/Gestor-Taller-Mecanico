@@ -225,6 +225,10 @@
       scrollbar-width: none;
     }
 
+    .glass-unified-panel {
+      display: none;
+    }
+
     /* ===== Glass Mobile Interface (applied on all mobile devices) ===== */
 
     html.ios-pwa .glass-header {
@@ -234,16 +238,16 @@
       right: 0 !important;
       width: 100% !important;
       z-index: 50 !important;
-      background: rgba(255, 255, 255, 0.4) !important;
-      -webkit-backdrop-filter: blur(20px) saturate(190%) !important;
-      backdrop-filter: blur(20px) saturate(190%) !important;
+      background: transparent !important;
+      -webkit-backdrop-filter: none !important;
+      backdrop-filter: none !important;
       border-bottom: none !important;
       box-shadow: none !important;
     }
     html.ios-pwa.dark .glass-header {
-      background: rgba(11, 17, 32, 0.5) !important;
-      -webkit-backdrop-filter: blur(20px) saturate(190%) !important;
-      backdrop-filter: blur(20px) saturate(190%) !important;
+      background: transparent !important;
+      -webkit-backdrop-filter: none !important;
+      backdrop-filter: none !important;
       border-bottom: none !important;
       box-shadow: none !important;
     }
@@ -318,27 +322,43 @@
     }
 
     html.ios-pwa .job-tab-header-bar {
-      top: calc(64px + var(--safe-top) - 10px) !important;
-      background: rgba(240, 249, 255, 0.4) !important;
-      -webkit-backdrop-filter: blur(20px) saturate(190%) !important;
-      backdrop-filter: blur(20px) saturate(190%) !important;
+      top: calc(64px + var(--safe-top)) !important;
+      background: transparent !important;
+      -webkit-backdrop-filter: none !important;
+      backdrop-filter: none !important;
       border-bottom: none !important;
     }
     html.ios-pwa .job-tab-header-bar::before {
-      content: '';
-      position: absolute;
-      top: -10px;
-      left: 0;
-      right: 0;
-      height: 10.5px;
-      background: inherit;
-      pointer-events: none;
+      display: none !important;
     }
     html.ios-pwa.dark .job-tab-header-bar {
-      background: rgba(11, 17, 32, 0.4) !important;
+      background: transparent !important;
+      -webkit-backdrop-filter: none !important;
+      backdrop-filter: none !important;
+      border-bottom: none !important;
+    }
+
+    /* Unified Glass Header Panel for seamless backdrop filtering */
+    html.ios-pwa .glass-unified-panel {
+      display: block !important;
+      position: fixed !important;
+      top: 0 !important;
+      left: 0 !important;
+      right: 0 !important;
+      z-index: 45 !important;
+      background: rgba(255, 255, 255, 0.4) !important;
       -webkit-backdrop-filter: blur(20px) saturate(190%) !important;
       backdrop-filter: blur(20px) saturate(190%) !important;
-      border-bottom: none !important;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.15) !important;
+      box-shadow: 0 4px 30px rgba(0, 0, 0, 0.03) !important;
+      will-change: height;
+      transition: height 250ms cubic-bezier(0.4, 0, 0.2, 1) !important;
+      pointer-events: none !important;
+    }
+    html.ios-pwa.dark .glass-unified-panel {
+      background: rgba(11, 17, 32, 0.5) !important;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
+      box-shadow: 0 4px 30px rgba(0, 0, 0, 0.15) !important;
     }
 
     html.ios-pwa .job-scroll-view {
