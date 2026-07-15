@@ -158,6 +158,9 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout, user }) => 
         setIsReady(true);
     }, []);
 
+    const [pressingTab, setPressingTab] = useState<View | null>(null);
+    const navigateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
     const navLayout = useNavLayout();
     const lastAutoRouteRef = useRef<string>('');
     const safeAreaReady = useSafeAreaReady();
@@ -478,6 +481,13 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout, user }) => 
         setTargetJobStatus(status);
         setTargetJobId(jobId);
         setView(newView);
+
+        // Visual click/touch feedback timing control
+        setPressingTab(newView);
+        if (navigateTimeoutRef.current) clearTimeout(navigateTimeoutRef.current);
+        navigateTimeoutRef.current = setTimeout(() => {
+            setPressingTab(null);
+        }, 220); // Ensures a natural and fluid 220ms minimum transition lifecycle
     };
 
 
@@ -566,7 +576,12 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout, user }) => 
                         key={item.id}
                         onClick={() => handleNavigate(item.id as View)}
                         onTouchStart={() => handleNavigate(item.id as View)}
-                        className={`relative flex flex-col items-center justify-center gap-1 w-full h-full transition-all duration-300 active:scale-[0.92] active:opacity-70 z-10 ${view === item.id ? 'text-taller-primary' : 'text-taller-gray dark:text-gray-400'}`}
+                        className={`relative flex flex-col items-center justify-center gap-1 w-full h-full z-10 ${view === item.id ? 'text-taller-primary' : 'text-taller-gray dark:text-gray-400'}`}
+                        style={{
+                            transform: pressingTab === item.id ? 'scale(0.92) translateZ(0)' : 'scale(1) translateZ(0)',
+                            opacity: pressingTab === item.id ? 0.7 : 1,
+                            transition: 'transform 220ms cubic-bezier(0.4, 0, 0.2, 1), opacity 220ms'
+                        }}
                     >
                         <item.icon className="h-5 w-5 flex-shrink-0" />
                         <span className="text-[9px] font-bold tracking-tight flex-shrink-0 leading-none">{item.label}</span>
@@ -584,7 +599,12 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout, user }) => 
                         key={item.id}
                         onClick={() => handleNavigate(item.id as View)}
                         onTouchStart={() => handleNavigate(item.id as View)}
-                        className={`relative flex flex-col items-center justify-center w-full px-2 py-2 transition-all duration-300 active:scale-[0.92] active:opacity-70 ${view === item.id ? 'text-taller-primary' : 'text-taller-gray dark:text-gray-400'}`}
+                        className={`relative flex flex-col items-center justify-center w-full px-2 py-2 z-10 ${view === item.id ? 'text-taller-primary' : 'text-taller-gray dark:text-gray-400'}`}
+                        style={{
+                            transform: pressingTab === item.id ? 'scale(0.92) translateZ(0)' : 'scale(1) translateZ(0)',
+                            opacity: pressingTab === item.id ? 0.7 : 1,
+                            transition: 'transform 220ms cubic-bezier(0.4, 0, 0.2, 1), opacity 220ms'
+                        }}
                     >
                         <item.icon className="h-6 w-6" />
                         <span className="text-[10px] mt-1 font-medium text-center">{item.label}</span>
@@ -643,7 +663,12 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout, user }) => 
                                 key={item.id}
                                 onClick={() => handleNavigate(item.id as View)}
                                 onTouchStart={() => handleNavigate(item.id as View)}
-                                className={`w-full flex items-center px-4 py-3 rounded-xl transition-all duration-300 active:scale-[0.95] active:opacity-75 ${view === item.id ? 'bg-taller-primary text-white shadow-lg shadow-taller-primary/20 scale-[1.02]' : 'text-taller-gray dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'}`}
+                                className={`w-full flex items-center px-4 py-3 rounded-xl ${view === item.id ? 'bg-taller-primary text-white shadow-lg shadow-taller-primary/20' : 'text-taller-gray dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'}`}
+                                style={{
+                                    transform: pressingTab === item.id ? 'scale(0.96) translateZ(0)' : 'scale(1) translateZ(0)',
+                                    opacity: pressingTab === item.id ? 0.8 : 1,
+                                    transition: 'transform 220ms cubic-bezier(0.4, 0, 0.2, 1), opacity 220ms'
+                                }}
                             >
                                 <item.icon className="h-5 w-5 mr-3" />
                                 <span className="font-bold text-sm tracking-tight">{item.label}</span>

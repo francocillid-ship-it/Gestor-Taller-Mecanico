@@ -316,11 +316,8 @@
       transform-style: preserve-3d;
       perspective: 1000px;
       
-      transform: scale(1) translateZ(0);
-      transition: transform 250ms cubic-bezier(0.4, 0, 0.2, 1), background-color 0.6s ease !important;
-    }
-    html.ios-pwa .glass-nav:active {
-      transform: scale(1.04) translateZ(0);
+      transform: none !important;
+      transition: background-color 0.6s ease !important;
     }
     html.ios-pwa.dark .glass-nav {
       background: rgba(17, 24, 39, 0.5) !important;
