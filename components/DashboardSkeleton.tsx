@@ -10,12 +10,12 @@ const DashboardSkeleton = () => {
         <div className="space-y-6 sm:space-y-8 animate-in fade-in duration-500 dashboard-skeleton">
             {/* Header / Title */}
             <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
-                <Skeleton className="h-[32px] w-32 rounded-md" />
+                <Skeleton className="h-[24px] w-28 rounded-md" />
                 <div className="flex items-center gap-2 overflow-x-auto flex-nowrap pb-2 -mx-4 px-4 sm:mx-0 sm:px-0 scrollbar-hide w-full md:w-auto">
-                    <Skeleton className="h-[34px] sm:h-[38px] w-[80px] rounded-full flex-shrink-0" />
-                    <Skeleton className="h-[34px] sm:h-[38px] w-[100px] rounded-full flex-shrink-0" />
-                    <Skeleton className="h-[34px] sm:h-[38px] w-[100px] rounded-full flex-shrink-0" />
-                    <Skeleton className="h-[34px] sm:h-[38px] w-[90px] rounded-full flex-shrink-0" />
+                    <Skeleton className="h-[30px] sm:h-[34px] w-[80px] rounded-full flex-shrink-0" />
+                    <Skeleton className="h-[30px] sm:h-[34px] w-[100px] rounded-full flex-shrink-0" />
+                    <Skeleton className="h-[30px] sm:h-[34px] w-[100px] rounded-full flex-shrink-0" />
+                    <Skeleton className="h-[30px] sm:h-[34px] w-[90px] rounded-full flex-shrink-0" />
                 </div>
             </div>
 
