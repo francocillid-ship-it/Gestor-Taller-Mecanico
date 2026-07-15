@@ -22,7 +22,23 @@
       const metaTheme = document.querySelector('meta[name="theme-color"]');
       if (metaTheme) metaTheme.setAttribute('content', themeColor);
 
-      const savedFontSize = localStorage.getItem('fontSizePreference');
+      let savedFontSize = localStorage.getItem('fontSizePreference');
+      if (!savedFontSize) {
+        // Fallback: search for any tallerInfo cache keys to extract preference
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          if (key && key.startsWith('taller_cache_') && key.endsWith('_tallerInfo')) {
+            try {
+              const cached = JSON.parse(localStorage.getItem(key));
+              if (cached && cached.fontSize) {
+                savedFontSize = cached.fontSize;
+                break;
+              }
+            } catch (e) {}
+          }
+        }
+      }
+
       if (savedFontSize) {
         let sizepx = '16px';
         if (savedFontSize === 'small') sizepx = '14px';

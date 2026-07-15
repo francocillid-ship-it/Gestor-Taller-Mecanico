@@ -124,18 +124,23 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout, user }) => 
     const [gastos, setGastos] = useState<Gasto[]>(() => getCached('gastos', []));
     const [entidades, setEntidades] = useState<EntidadFinanciera[]>(() => getCached('entidades', []));
     const [transaccionesEntidades, setTransaccionesEntidades] = useState<TransaccionEntidad[]>(() => getCached('transaccionesEntidades', []));
-    const [tallerInfo, setTallerInfo] = useState<TallerInfo>(() => getCached('tallerInfo', {
-        nombre: 'Mi Taller',
-        telefono: '',
-        direccion: '',
-        cuit: '',
-        pdfTemplate: 'classic',
-        showLogoOnPdf: false,
-        showCuitOnPdf: true,
-        logoUrl: undefined,
-        headerColor: '#334155',
-        fontSize: 'normal'
-    }));
+    const [tallerInfo, setTallerInfo] = useState<TallerInfo>(() => {
+        const cached = getCached<TallerInfo | null>('tallerInfo', null);
+        if (cached) return cached;
+        const localFontSize = localStorage.getItem('fontSizePreference') as 'small' | 'normal' | 'large' | null;
+        return {
+            nombre: 'Mi Taller',
+            telefono: '',
+            direccion: '',
+            cuit: '',
+            pdfTemplate: 'classic',
+            showLogoOnPdf: false,
+            showCuitOnPdf: true,
+            logoUrl: undefined,
+            headerColor: '#334155',
+            fontSize: localFontSize || 'normal'
+        };
+    });
     const [loading, setLoading] = useState(() => {
         try {
             return !localStorage.getItem(`taller_cache_${user.id}_tallerInfo`);
