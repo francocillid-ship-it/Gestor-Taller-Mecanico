@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo, useRef, useEffect, lazy, Suspense } from 'react';
+import React, { useState, useMemo, useRef, useEffect, useLayoutEffect, lazy, Suspense } from 'react';
 import type { Cliente, Trabajo, Vehiculo, JobStatus } from '../types';
 import { ChevronDownIcon, PhoneIcon, EnvelopeIcon, UserPlusIcon, PencilIcon, Cog6ToothIcon, PlusIcon, PaperAirplaneIcon, CurrencyDollarIcon, KeyIcon, ArrowTopRightOnSquareIcon, ArrowPathIcon } from '@heroicons/react/24/solid';
 import { supabase, supabaseUrl, supabaseKey } from '../supabaseClient';
@@ -18,6 +18,7 @@ interface ClientesProps {
     searchQuery: string;
     onClientUpdate?: (client: Cliente) => void;
     onNavigate: (view: 'dashboard' | 'trabajos' | 'clientes' | 'ajustes', jobStatus?: JobStatus, jobId?: string) => void;
+    isActive?: boolean;
 }
 
 interface ClientCardProps {
@@ -329,7 +330,7 @@ const ClientCard: React.FC<ClientCardProps> = ({ cliente, trabajos, onEdit, onCo
     );
 };
 
-const Clientes: React.FC<ClientesProps> = ({ clientes, trabajos, onDataRefresh, searchQuery, onClientUpdate, onNavigate }) => {
+const Clientes: React.FC<ClientesProps> = ({ clientes, trabajos, onDataRefresh, searchQuery, onClientUpdate, onNavigate, isActive }) => {
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [clienteToEdit, setClienteToEdit] = useState<Cliente | null>(null);
     const [vehicleToConfig, setVehicleToConfig] = useState<Vehiculo | null>(null);
@@ -339,12 +340,34 @@ const Clientes: React.FC<ClientesProps> = ({ clientes, trabajos, onDataRefresh, 
     const sentinelRef = useRef<HTMLDivElement>(null);
     const headerRef = useRef<HTMLDivElement>(null);
 
+    const [headerHeight, setHeaderHeight] = useState(0);
+
+    useLayoutEffect(() => {
+        const updateHeight = () => {
+            if (headerRef.current) {
+                const height = headerRef.current.offsetHeight;
+                setHeaderHeight(height);
+                // Set CSS variable for children to use
+                headerRef.current.parentElement?.style.setProperty('--header-h', `${height}px`);
+            }
+        };
+        const resizeObserver = new ResizeObserver(updateHeight);
+        if (headerRef.current) resizeObserver.observe(headerRef.current);
+        updateHeight();
+        window.addEventListener('resize', updateHeight);
+        return () => {
+            resizeObserver.disconnect();
+            window.removeEventListener('resize', updateHeight);
+        };
+    }, []);
+
     useEffect(() => {
-        if (headerRef.current) {
+        if (isActive && headerRef.current) {
             const height = headerRef.current.offsetHeight;
+            setHeaderHeight(height);
             headerRef.current.parentElement?.style.setProperty('--header-h', `${height}px`);
         }
-    }, []);
+    }, [isActive]);
 
     const handleEditClick = (cliente: Cliente) => {
         setClienteToEdit(cliente);

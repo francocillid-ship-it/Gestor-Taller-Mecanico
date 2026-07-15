@@ -701,7 +701,7 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout, user }) => 
                                         </div>
                                     </div>
                                 }>
-                                    <Clientes clientes={clientes} trabajos={trabajos} onDataRefresh={handleDataRefreshSilent} searchQuery={searchQuery} onNavigate={handleNavigate} />
+                                    <Clientes clientes={clientes} trabajos={trabajos} onDataRefresh={handleDataRefreshSilent} searchQuery={searchQuery} onNavigate={handleNavigate} isActive={view === 'clientes'} />
                                 </Suspense>
                             </div>
                             <div className={`main-view-slot ${view === 'finanzas' ? 'active-view' : ''}`}>
