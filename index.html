@@ -158,19 +158,21 @@
 
     html.dark {
       --color-bg-app: #0b1120;
+      /* html background matches the nav bar / header color so edge gaps are invisible */
+      background-color: #1f2937;
     }
 
-    /* Fallbacks for skeletons & dynamic boxes in dark mode before Tailwind compiler executes */
-    html.dark .bg-white,
-    html.dark .bg-white * {
+    /* Fallbacks for skeletons in dark mode before Tailwind compiler executes */
+    html.dark .dashboard-skeleton .bg-white,
+    html.dark .dashboard-skeleton .bg-white * {
       background-color: #1f2937 !important; /* bg-gray-800 */
       color: #f3f4f6 !important;
       border-color: #374151 !important;
     }
-    html.dark .bg-gray-200 {
+    html.dark .dashboard-skeleton .bg-gray-200 {
       background-color: #374151 !important; /* bg-gray-700 */
     }
-    html.dark .animate-pulse {
+    html.dark .dashboard-skeleton .animate-pulse {
       background-color: #374151 !important; /* bg-gray-700 placeholder */
     }
 
