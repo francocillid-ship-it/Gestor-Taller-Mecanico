@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useCallback, lazy, Suspense, useRef } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useCallback, lazy, Suspense, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { supabase } from '../supabaseClient';
 import type { Cliente, Trabajo, Gasto, TallerInfo, UserRole, EntidadFinanciera, TransaccionEntidad } from '../types';
@@ -152,9 +152,11 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout, user }) => 
     const lastAutoRouteRef = useRef<string>('');
     const safeAreaReady = useSafeAreaReady();
     const navRef = useRef<HTMLDivElement>(null);
-
-
-
+    useLayoutEffect(() => {
+        if (tallerInfo.fontSize) {
+            applyFontSize(tallerInfo.fontSize);
+        }
+    }, []);
     useEffect(() => {
         const q = searchQuery.toLowerCase().trim();
         if (q.length < 2) {
