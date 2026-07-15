@@ -701,11 +701,7 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout, user }) => 
                                         </div>
                                     </div>
                                 }>
-                                    <div className="h-full overflow-y-auto px-4 pt-6 md:px-8 scrollbar-hide overscroll-none dashboard-scroll">
-                                        <div className="max-w-6xl mx-auto min-h-full pb-10">
-                                            <Clientes clientes={clientes} trabajos={trabajos} onDataRefresh={handleDataRefreshSilent} searchQuery={searchQuery} onNavigate={handleNavigate} />
-                                        </div>
-                                    </div>
+                                    <Clientes clientes={clientes} trabajos={trabajos} onDataRefresh={handleDataRefreshSilent} searchQuery={searchQuery} onNavigate={handleNavigate} />
                                 </Suspense>
                             </div>
                             <div className={`main-view-slot ${view === 'finanzas' ? 'active-view' : ''}`}>
