@@ -331,12 +331,10 @@ const Dashboard: React.FC<DashboardProps> = ({ clientes, trabajos, gastos, searc
     const handleAddGasto = async (gasto: Omit<Gasto, 'id' | 'tallerId'>) => {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
-        const { data: taller } = await supabase.from('talleres').select('id').eq('owner_id', user.id).single();
-        if (!taller) return;
         const gastoId = crypto.randomUUID();
         const gastosConId = [{
             id: gastoId,
-            taller_id: taller.id,
+            taller_id: user.id,
             descripcion: gasto.descripcion,
             monto: gasto.monto,
             fecha: gasto.fecha,
