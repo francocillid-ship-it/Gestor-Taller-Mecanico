@@ -637,16 +637,18 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout, user }) => 
                     inset: 0;
                     width: 100%;
                     height: 100%; 
-                    overflow: clip;
+                    overflow: hidden;
                     will-change: opacity, transform;
                     opacity: 0;
-                    transform: scale(0.95) translateZ(0);
+                    transform: scale(0.98) translateZ(0);
                     visibility: hidden;
                     pointer-events: none;
                     transition: none;
+                    -webkit-font-smoothing: antialiased;
+                    backface-visibility: hidden;
                 }
                 .views-container.ready .main-view-slot {
-                    transition: opacity 0.58s cubic-bezier(0.16, 1, 0.3, 1), transform 0.58s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.58s step-end;
+                    transition: opacity 0.45s cubic-bezier(0.16, 1, 0.3, 1), transform 0.45s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.45s step-end;
                 }
                 .main-view-slot.active-view {
                     opacity: 1;
@@ -656,13 +658,15 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout, user }) => 
                     transition: none;
                 }
                 .views-container.ready .main-view-slot.active-view {
-                    transition: opacity 0.58s cubic-bezier(0.16, 1, 0.3, 1), transform 0.58s cubic-bezier(0.16, 1, 0.3, 1), visibility 0s step-start;
+                    transition: opacity 0.45s cubic-bezier(0.16, 1, 0.3, 1), transform 0.45s cubic-bezier(0.16, 1, 0.3, 1), visibility 0s step-start;
                 }
-                input, textarea, select { font-size: 16px !important; }
+                @media (max-width: 767px) {
+                    input, textarea, select { font-size: 16px !important; }
+                }
             `}</style>
 
             {navLayout === 'sidebar' && (
-                <aside className="hidden md:flex md:flex-col w-64 bg-white dark:bg-gray-800 shadow-lg shrink-0 border-none z-[90]">
+                <aside className="hidden md:flex md:flex-col w-64 bg-white dark:bg-gray-800 border-r border-gray-100 dark:border-gray-800/60 shrink-0 z-[90]">
                     <div className="h-20 flex items-center justify-center border-none p-4">
                         {tallerInfo.logoUrl ? <img src={tallerInfo.logoUrl} alt="Logo" className="max-h-full object-contain" /> : <WrenchScrewdriverIcon className="h-10 w-10 text-taller-primary" />}
                     </div>
@@ -790,13 +794,13 @@ const TallerDashboard: React.FC<TallerDashboardProps> = ({ onLogout, user }) => 
                             <div className={`main-view-slot ${animatedView === 'ajustes' ? 'active-view' : ''}`}>
                                 <Suspense fallback={
                                     <div className="h-full overflow-y-auto px-4 pt-6 md:px-8 scrollbar-hide overscroll-none dashboard-scroll">
-                                        <div className="max-w-4xl mx-auto min-h-full pb-10">
+                                        <div className="max-w-6xl mx-auto min-h-full pb-10">
                                             <DashboardSkeleton />
                                         </div>
                                     </div>
                                 }>
                                     <div className="h-full overflow-y-auto px-4 pt-6 md:px-8 scrollbar-hide overscroll-none dashboard-scroll">
-                                        <div className="max-w-4xl mx-auto min-h-full pb-10">
+                                        <div className="max-w-6xl mx-auto min-h-full pb-10">
                                             <Ajustes tallerInfo={tallerInfo} onUpdateTallerInfo={handleUpdateTallerInfo} onLogout={onLogout} searchQuery={searchQuery} />
                                         </div>
                                     </div>

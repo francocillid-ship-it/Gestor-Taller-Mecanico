@@ -256,14 +256,45 @@
       overflow-x: hidden;
     }
 
-    /* Scrollbars ocultas pero funcional */
-    .scrollbar-hide::-webkit-scrollbar {
-      display: none;
+    /* Scrollbars ocultas en móvil, estilizadas sutilmente en escritorio para Chromium & WebKit */
+    @media (max-width: 767px) {
+      .scrollbar-hide::-webkit-scrollbar {
+        display: none;
+      }
+      .scrollbar-hide {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+      }
     }
 
-    .scrollbar-hide {
-      -ms-overflow-style: none;
-      scrollbar-width: none;
+    @media (min-width: 768px) {
+      .dashboard-scroll {
+        scroll-behavior: smooth;
+      }
+      .scrollbar-hide::-webkit-scrollbar {
+        width: 6px;
+        height: 6px;
+      }
+      .scrollbar-hide::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      .scrollbar-hide::-webkit-scrollbar-thumb {
+        background: rgba(148, 163, 184, 0.35);
+        border-radius: 9999px;
+      }
+      .scrollbar-hide::-webkit-scrollbar-thumb:hover {
+        background: rgba(148, 163, 184, 0.65);
+      }
+      html.dark .scrollbar-hide::-webkit-scrollbar-thumb {
+        background: rgba(75, 85, 99, 0.45);
+      }
+      html.dark .scrollbar-hide::-webkit-scrollbar-thumb:hover {
+        background: rgba(107, 114, 128, 0.75);
+      }
+      .scrollbar-hide {
+        scrollbar-width: thin;
+        scrollbar-color: rgba(148, 163, 184, 0.35) transparent;
+      }
     }
 
     .glass-unified-panel {
