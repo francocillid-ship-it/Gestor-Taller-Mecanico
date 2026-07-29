@@ -328,20 +328,21 @@ const Dashboard: React.FC<DashboardProps> = ({ clientes, trabajos, gastos, searc
     const [detailView, setDetailView] = useState<DetailType>(null);
     const [isAddGastoModalOpen, setIsAddGastoModalOpen] = useState(false);
 
-    const handleAddGasto = async (gasto: Omit<Gasto, 'id' | 'tallerId'>) => {
+    const handleAddGasto = async (newGastos: Omit<Gasto, 'id'>[]) => {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
-        const gastoId = crypto.randomUUID();
-        const gastosConId = [{
-            id: gastoId,
-            taller_id: user.id,
-            descripcion: gasto.descripcion,
-            monto: gasto.monto,
-            fecha: gasto.fecha,
-            categoria: gasto.categoria,
-            es_fijo: gasto.esFijo
-        }];
-        const { error } = await supabase.from('gastos').insert(gastosConId);
+
+        const { error } = await supabase.from('gastos').insert(
+            newGastos.map(g => ({
+                taller_id: user.id,
+                descripcion: g.descripcion,
+                monto: g.monto,
+                fecha: g.fecha,
+                categoria: g.categoria,
+                es_fijo: g.esFijo
+            }))
+        );
+
         if (error) console.error("Error adding expense:", error);
         else { onDataRefresh(); setIsAddGastoModalOpen(false); }
     };
