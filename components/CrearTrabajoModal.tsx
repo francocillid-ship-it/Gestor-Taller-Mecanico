@@ -844,14 +844,14 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
                                         type="date"
                                         value={fechaProgramadaDate}
                                         onChange={e => setFechaProgramadaDate(e.target.value)}
-                                        className="w-full h-[42px] px-3 py-2 m-0 border rounded-lg dark:bg-gray-700 dark:border-gray-600 text-sm focus:ring-1 focus:ring-taller-primary outline-none bg-white dark:text-white box-border shadow-sm font-semibold transition-all"
+                                        className="w-full h-[38px] px-2 py-1 m-0 border rounded-lg dark:bg-gray-700 dark:border-gray-600 text-xs focus:ring-1 focus:ring-taller-primary outline-none bg-white dark:text-white box-border shadow-sm font-semibold transition-all appearance-none"
                                         required
                                     />
                                     <input
                                         type="time"
                                         value={fechaProgramadaTime}
                                         onChange={e => setFechaProgramadaTime(e.target.value)}
-                                        className="w-full h-[42px] px-3 py-2 m-0 border rounded-lg dark:bg-gray-700 dark:border-gray-600 text-sm focus:ring-1 focus:ring-taller-primary outline-none bg-white dark:text-white box-border shadow-sm font-semibold transition-all"
+                                        className="w-full h-[38px] px-2 py-1 m-0 border rounded-lg dark:bg-gray-700 dark:border-gray-600 text-xs focus:ring-1 focus:ring-taller-primary outline-none bg-white dark:text-white box-border shadow-sm font-semibold transition-all appearance-none"
                                         required
                                     />
                                 </div>
