@@ -130,7 +130,8 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
     const [kilometraje, setKilometraje] = useState('');
     const [partes, setPartes] = useState<ParteState[]>([]);
     const [status, setStatus] = useState<JobStatus>(JobStatus.Presupuesto);
-    const [fechaProgramada, setFechaProgramada] = useState('');
+    const [fechaProgramadaDate, setFechaProgramadaDate] = useState('');
+    const [fechaProgramadaTime, setFechaProgramadaTime] = useState('');
 
     // Suggestions states for autocomplete
     const [suggestions, setSuggestions] = useState<Cliente[]>([]);
@@ -334,8 +335,9 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
             if (trabajoToEdit.fechaProgramada) {
                 const date = new Date(trabajoToEdit.fechaProgramada);
                 const tzOffset = date.getTimezoneOffset() * 60000;
-                const localISOTime = (new Date(date.getTime() - tzOffset)).toISOString().slice(0, 16);
-                setFechaProgramada(localISOTime);
+                const localISOTime = (new Date(date.getTime() - tzOffset)).toISOString();
+                setFechaProgramadaDate(localISOTime.slice(0, 10));
+                setFechaProgramadaTime(localISOTime.slice(11, 16));
             }
         } else if (initialClientId) {
             setSelectedClienteId(initialClientId);
@@ -683,7 +685,7 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
                 costo_mano_de_obra: laborCost || (trabajoToEdit?.costoManoDeObra || null),
                 is_quick_budget: isQuick,
                 quick_budget_data: qData,
-                fecha_programada: status === JobStatus.Programado && fechaProgramada ? new Date(fechaProgramada).toISOString() : null
+                fecha_programada: status === JobStatus.Programado && fechaProgramadaDate && fechaProgramadaTime ? new Date(`${fechaProgramadaDate}T${fechaProgramadaTime}`).toISOString() : null
             };
 
             if (isEditMode) await supabase.from('trabajos').update(jobData).eq('id', trabajoToEdit!.id);
@@ -837,11 +839,18 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
                                 <label className="block text-[10px] font-bold text-taller-gray dark:text-gray-400 uppercase mb-1 pl-1 flex items-center gap-1">
                                     <CalendarDaysIcon className="h-3 w-3" /> Fecha y Hora Programada
                                 </label>
-                                <div className="relative">
+                                <div className="grid grid-cols-2 gap-2">
                                     <input
-                                        type="datetime-local"
-                                        value={fechaProgramada}
-                                        onChange={e => setFechaProgramada(e.target.value)}
+                                        type="date"
+                                        value={fechaProgramadaDate}
+                                        onChange={e => setFechaProgramadaDate(e.target.value)}
+                                        className="w-full h-[42px] px-3 py-2 m-0 border rounded-lg dark:bg-gray-700 dark:border-gray-600 text-sm focus:ring-1 focus:ring-taller-primary outline-none bg-white dark:text-white box-border shadow-sm font-semibold transition-all"
+                                        required
+                                    />
+                                    <input
+                                        type="time"
+                                        value={fechaProgramadaTime}
+                                        onChange={e => setFechaProgramadaTime(e.target.value)}
                                         className="w-full h-[42px] px-3 py-2 m-0 border rounded-lg dark:bg-gray-700 dark:border-gray-600 text-sm focus:ring-1 focus:ring-taller-primary outline-none bg-white dark:text-white box-border shadow-sm font-semibold transition-all"
                                         required
                                     />
