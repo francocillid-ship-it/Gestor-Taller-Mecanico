@@ -4,6 +4,7 @@ import type { Cliente, Trabajo, Gasto } from '../types';
 import { JobStatus } from '../types';
 import { CurrencyDollarIcon, UsersIcon, WrenchScrewdriverIcon, ChartPieIcon, BuildingLibraryIcon, ChevronDownIcon, CalendarIcon, ArrowTrendingUpIcon, ArrowTrendingDownIcon, ClipboardDocumentCheckIcon, XMarkIcon, PlusIcon } from '@heroicons/react/24/solid';
 import AddGastoModal from './AddGastoModal';
+import EditGastoModal from './EditGastoModal';
 import { supabase } from '../supabaseClient';
 
 interface DashboardProps {
@@ -327,6 +328,30 @@ const Dashboard: React.FC<DashboardProps> = ({ clientes, trabajos, gastos, searc
     const [period, setPeriod] = useState<Period>('this_month');
     const [detailView, setDetailView] = useState<DetailType>(null);
     const [isAddGastoModalOpen, setIsAddGastoModalOpen] = useState(false);
+    const [editingGasto, setEditingGasto] = useState<Gasto | null>(null);
+
+    const handleUpdateGasto = async (updatedGasto: Gasto) => {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+
+        const { error } = await supabase
+            .from('gastos')
+            .update({
+                monto: updatedGasto.monto,
+                descripcion: updatedGasto.descripcion,
+                fecha: updatedGasto.fecha,
+                categoria: updatedGasto.categoria,
+                es_fijo: updatedGasto.esFijo
+            })
+            .eq('id', updatedGasto.id);
+
+        if (error) {
+            console.error("Error updating expense:", error);
+        } else {
+            onDataRefresh();
+            setEditingGasto(null);
+        }
+    };
 
     const handleAddGasto = async (newGastos: Omit<Gasto, 'id'>[]) => {
         const { data: { user } } = await supabase.auth.getUser();
@@ -478,6 +503,11 @@ const Dashboard: React.FC<DashboardProps> = ({ clientes, trabajos, gastos, searc
             const job = trabajos.find(t => t.id === item.referenceId);
             const status = job ? job.status : undefined;
             onNavigate('trabajos', status, item.referenceId);
+        } else if (item.type === 'expense') {
+            const gastoToEdit = gastos.find(g => g.id === item.referenceId);
+            if (gastoToEdit) {
+                setEditingGasto(gastoToEdit);
+            }
         }
     };
 
@@ -560,6 +590,15 @@ const Dashboard: React.FC<DashboardProps> = ({ clientes, trabajos, gastos, searc
 
             {isAddGastoModalOpen && createPortal(
                 <AddGastoModal onClose={() => setIsAddGastoModalOpen(false)} onAddGasto={handleAddGasto} />,
+                document.body
+            )}
+
+            {editingGasto && createPortal(
+                <EditGastoModal
+                    gasto={editingGasto}
+                    onClose={() => setEditingGasto(null)}
+                    onUpdateGasto={handleUpdateGasto}
+                />,
                 document.body
             )}
         </div>
