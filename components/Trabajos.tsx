@@ -233,6 +233,7 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
     }, [activeTab, isActive]);
 
     const handleVerticalScroll = useCallback((e: React.UIEvent<HTMLDivElement>, status: JobStatus) => {
+        if (typeof window !== 'undefined' && window.innerWidth >= 1024) return;
         if (status !== activeTab || !headerRef.current) return;
         const el = e.currentTarget;
         const st = el.scrollTop;
@@ -418,6 +419,14 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
                     .inner-tab-slot:last-child {
                         border-right: none;
                     }
+                    .job-scroll-view {
+                        padding-top: 0px !important;
+                    }
+                    .job-tab-header-bar {
+                        transform: translateY(0px) !important;
+                        opacity: 1 !important;
+                        pointer-events: auto !important;
+                    }
                 }
                 /* Segmented control container base style transition */
                 div.relative.flex.bg-gray-200\/50,
@@ -511,19 +520,28 @@ const Trabajos: React.FC<TrabajosProps> = ({ trabajos, clientes, onUpdateStatus,
                         transition: 'transform 0.5s cubic-bezier(0.16, 1, 0.3, 1)'
                     }}
                 >
-                    {statusOrder.map((status) => (
-                        <div key={status} className="inner-tab-slot" style={{ pointerEvents: (activeTab === status) ? 'auto' : 'none' }}>
-                            <div onScroll={(e) => handleVerticalScroll(e, status)} className="h-full overflow-y-auto px-4 lg:px-0 scrollbar-hide overscroll-none dashboard-scroll job-scroll-view" style={{ WebkitOverflowScrolling: 'touch', paddingTop: 'var(--header-h)' }}>
-                                <div className="hidden lg:flex items-center gap-2 mb-6 px-1">
+                    {statusOrder.map((status) => {
+                        const count = filteredTrabajos.filter(t => t.status === status).length;
+                        return (
+                            <div key={status} className="inner-tab-slot flex flex-col h-full overflow-hidden" style={{ pointerEvents: (activeTab === status) ? 'auto' : 'none' }}>
+                                {/* Fixed Column Header for Desktop */}
+                                <div className="hidden lg:flex items-center gap-2 px-1 py-3.5 bg-taller-light dark:bg-taller-dark z-20 shrink-0 border-b border-gray-200/50 dark:border-gray-800/60" style={{ marginTop: 'var(--header-h)' }}>
                                     <h3 className="text-xs font-black uppercase tracking-[0.2em] text-taller-primary dark:text-blue-400">{status}</h3>
+                                    <span className="text-[10px] font-extrabold text-taller-gray dark:text-gray-400 bg-gray-200/60 dark:bg-gray-800 px-2 py-0.5 rounded-full font-mono">
+                                        {count}
+                                    </span>
                                     <div className="h-px flex-1 bg-gray-200 dark:bg-gray-700"></div>
                                 </div>
-                                <div className="max-w-3xl lg:max-w-none mx-auto min-h-full w-full overflow-x-hidden flex flex-col">
-                                    {renderTabContent(status)}
+
+                                {/* Scrollable Column Content */}
+                                <div onScroll={(e) => handleVerticalScroll(e, status)} className="flex-1 overflow-y-auto px-4 lg:px-0 scrollbar-hide overscroll-none dashboard-scroll job-scroll-view" style={{ WebkitOverflowScrolling: 'touch', paddingTop: 'var(--header-h)' }}>
+                                    <div className="max-w-3xl lg:max-w-none mx-auto min-h-full w-full overflow-x-hidden flex flex-col pt-3 lg:pt-2">
+                                        {renderTabContent(status)}
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    ))}
+                        );
+                    })}
                 </div>
             </div>
 
