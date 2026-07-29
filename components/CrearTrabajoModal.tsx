@@ -842,7 +842,7 @@ const CrearTrabajoModal: React.FC<CrearTrabajoModalProps> = ({ onClose, onSucces
                                         type="datetime-local"
                                         value={fechaProgramada}
                                         onChange={e => setFechaProgramada(e.target.value)}
-                                        className="w-full p-2.5 border rounded-lg dark:bg-gray-700 dark:border-gray-600 text-sm focus:ring-1 focus:ring-taller-primary outline-none bg-white dark:text-white"
+                                        className="w-full h-[42px] px-3 py-2 m-0 border rounded-lg dark:bg-gray-700 dark:border-gray-600 text-sm focus:ring-1 focus:ring-taller-primary outline-none bg-white dark:text-white box-border shadow-sm font-semibold transition-all"
                                         required
                                     />
                                 </div>
